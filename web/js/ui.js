@@ -1,18 +1,25 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Interface Primitives (Terrane Edition - v1.1)
+ *     - Title: Interface Primitives (Terrane Edition - v1.2)
  *     - File Name: ui.js
  *     - Relative Path: web/js/ui.js
  *     - Artifact Type: javascript
- *     - Version: 1.1.0
- *     - Date: 11/11/2026
- *     - Update: Wednesday, November 11, 2026
+ *     - Version: 1.2.0
+ *     - Date: 11/12/2026
+ *     - Update: Thursday, November 12, 2026
  *     - Author: Dennis 'dendogg' Smaltz
  *     - A.I. Acknowledgement: Anthropic - Claude Opus 5.5
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
  *
  * ✒ Changelog:
+ *     - 1.2.0 (11/12/2026) [dendogg + Anthropic - Claude Opus 5.5] — Menu
+ *       items and notices carry icons; the menu and tip are placed by
+ *       Floating UI and unfold from the pointer's corner; notices show
+ *       their time left, pause it under the pointer, and leave with an
+ *       animation while their neighbours slide (FLIP); the virtual list
+ *       cascades rows in when its items change; slideIndicator moves the
+ *       ink plate of a tab strip or segmented switch.
  *     - 1.1.0 (11/11/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
  *       hover tip can carry a picture below its lines.
  *     - 1.0.0 (11/09/2026) [dendogg + Anthropic - Claude Fable 5.2] —
@@ -21,34 +28,40 @@
  * ✒ Description:
  *     The small set of interface parts every Terrane panel is built from:
  *     element construction, the context menu, modal dialogs, notices with
- *     an optional action, the hover tip and a virtual list for folders with
- *     tens of thousands of rows. Nothing here knows about the filesystem.
+ *     an optional action, the hover tip, sliding indicators and a virtual
+ *     list for folders with tens of thousands of rows. Nothing here knows
+ *     about the filesystem.
  *
  * ✒ Key Features:
  *     - One floating surface at a time: opening a menu, dialog or tip
  *       closes whichever other one is open
- *     - Context menu with full keyboard operation (arrows, Home, End,
- *       Enter, Escape) and focus returned to where it came from
+ *     - Context menu with icons and full keyboard operation (arrows, Home,
+ *       End, Enter, Escape), focus returned to where it came from
  *     - Unavailable menu items are inert, are not styled as clickable, and
  *       state the reason they are unavailable
  *     - Dialogs use the native dialog element, so focus trapping and
  *       Escape handling come from the browser
- *     - Notices are announced through a polite live region and can carry
- *       one action (used for Undo and Keep both)
- *     - Virtual list renders only visible rows and supports roving
- *       keyboard focus
+ *     - Notices are announced through a polite live region, can carry one
+ *       action (Undo, Keep both), and wait while the pointer rests on them
+ *     - Virtual list renders only visible rows, supports roving keyboard
+ *       focus, and marks a fresh list so its rows can cascade in
+ *     - slideIndicator(container, item) for tab strips and switches
  *
  * ✒ Usage Instructions:
  *     import { el, openMenu, ask, notice, tip, VirtualList } from './ui.js';
- *     openMenu(x, y, [{ label: 'Rename', hint: 'F2', run }, 'sep', ...]);
+ *     openMenu(x, y, [{ label: 'Rename', icon: 'rename', hint: 'F2', run }, 'sep']);
  *     const values = await ask({ title, fields: [{ name, label, value }] });
  *     notice('Moved 3 items', { action: { label: 'Undo', run: undo } });
  *
  * ✒ Other Important Information:
- *     - Dependencies: none
+ *     - Dependencies: icons.js, float.js, motion.js
  *     - Compatible platforms: browsers supporting the dialog element
  * ----------------------------------------------------------------------------
  */
+
+import { icon } from './icons.js';
+import { placeAt } from './float.js';
+import { flip, reduced } from './motion.js';
 
 export function el(tag, attrs = {}, ...children) {
   const node = document.createElement(tag);
@@ -107,15 +120,13 @@ export function openMenu(x, y, items, { title } = {}) {
     const row = el('button', {
       class: `menu-item${item.danger ? ' is-danger' : ''}`, role: 'menuitem', type: 'button',
       'aria-disabled': off ? 'true' : null, tabindex: '-1', title: off ? item.reason || '' : null,
-    }, el('span', { class: 'menu-label', text: item.label }), off && item.reason
+    }, item.icon ? icon(item.icon) : null, el('span', { class: 'menu-label', text: item.label }), off && item.reason
       ? el('span', { class: 'menu-why', text: item.reason }) : item.hint ? el('kbd', { text: item.hint }) : null);
     if (!off) row.addEventListener('click', () => { close(); item.run(); });
     host.append(row);
   }
   host.hidden = false;
-  const r = host.getBoundingClientRect();
-  host.style.left = `${Math.max(8, Math.min(x, window.innerWidth - r.width - 8))}px`;
-  host.style.top = `${Math.max(8, Math.min(y, window.innerHeight - r.height - 8))}px`;
+  placeAt(host, x, y, { placement: 'bottom-start', gap: 2, cross: 2 });
   const live = () => [...host.querySelectorAll('.menu-item:not([aria-disabled])')];
   host.onkeydown = (e) => {
     const list = live();
@@ -139,7 +150,7 @@ export function openMenu(x, y, items, { title } = {}) {
  * Modal question. Resolves to an object of field values (empty object when
  * there are no fields) or null when dismissed.
  */
-export function ask({ title, body, fields = [], confirm = 'Confirm', danger = false, validate, cancel = true }) {
+export function ask({ title, body, fields = [], confirm = 'Confirm', danger = false, validate, cancel = true, confirmIcon }) {
   return new Promise((resolve) => {
     closeFloating();
     const dlg = document.getElementById('dialog');
@@ -152,13 +163,18 @@ export function ask({ title, body, fields = [], confirm = 'Confirm', danger = fa
       error,
       el('div', { class: 'dialog-actions' },
         cancel ? el('button', { type: 'button', class: 'btn', text: 'Cancel', onclick: () => dlg.close('cancel') }) : null,
-        el('button', { type: 'submit', class: `btn ${danger ? 'btn-danger' : 'btn-primary'}`, text: confirm })));
+        el('button', { type: 'submit', class: `btn btn-raised ${danger ? 'btn-danger' : 'btn-primary'}` },
+          confirmIcon || danger ? icon(confirmIcon || 'remove') : null, confirm)));
     form.addEventListener('submit', (e) => {
       const values = Object.fromEntries(inputs.map((i) => [i.name, i.value]));
       const problem = validate?.(values);
       if (problem) {
         e.preventDefault();
         error.textContent = problem;
+        // Restart the nudge, so a repeated refusal is felt again.
+        error.style.animation = 'none';
+        void error.offsetWidth;
+        error.style.animation = '';
         return;
       }
       dlg.returnValue = 'ok';
@@ -184,17 +200,43 @@ export function ask({ title, body, fields = [], confirm = 'Confirm', danger = fa
 
 /* ---------- notices ---------- */
 
+const NOTICE_ICON = { ok: 'ok', error: 'error', info: 'info' };
+
 export function notice(message, { kind = 'ok', action, ms } = {}) {
   const host = document.getElementById('notices');
+  const life = ms ?? (kind === 'error' ? 12000 : action ? 9000 : 4500);
   const item = el('div', { class: `notice is-${kind}`, role: kind === 'error' ? 'alert' : 'status' },
-    el('span', { class: 'notice-mark', 'aria-hidden': 'true', text: kind === 'error' ? '!' : kind === 'info' ? 'i' : '✓' }),
+    el('span', { class: 'notice-mark', 'aria-hidden': 'true' }, icon(NOTICE_ICON[kind] || 'info')),
     el('span', { class: 'notice-text', text: message }));
-  const drop = () => item.remove();
+  item.style.setProperty('--life', `${life}ms`);
+  let gone = false;
+  const drop = () => {
+    if (gone) return;
+    gone = true;
+    clearTimeout(timer);
+    if (reduced() || !item.isConnected) return flip(host, () => item.remove());
+    item.classList.add('is-leaving');
+    setTimeout(() => flip(host, () => item.remove()), 150);
+    return undefined;
+  };
   if (action) item.append(el('button', { class: 'btn btn-small', type: 'button', text: action.label, onclick: () => { drop(); action.run(); } }));
-  item.append(el('button', { class: 'notice-close', type: 'button', 'aria-label': 'Dismiss', text: '×', onclick: drop }));
-  host.append(item);
-  while (host.children.length > 4) host.firstChild.remove();
-  setTimeout(drop, ms ?? (kind === 'error' ? 12000 : action ? 9000 : 4500));
+  item.append(el('button', { class: 'notice-close', type: 'button', 'aria-label': 'Dismiss', onclick: drop }, icon('close')));
+  flip(host, () => {
+    host.append(item);
+    while (host.children.length > 4) host.firstChild.remove();
+  });
+  // The time left runs only while nobody is reading it.
+  let left = life;
+  let started = performance.now();
+  let timer = setTimeout(drop, left);
+  item.addEventListener('pointerenter', () => {
+    clearTimeout(timer);
+    left -= performance.now() - started;
+  });
+  item.addEventListener('pointerleave', () => {
+    started = performance.now();
+    timer = setTimeout(drop, Math.max(600, left));
+  });
 }
 
 /* ---------- hover tip ---------- */
@@ -202,15 +244,27 @@ export function notice(message, { kind = 'ok', action, ms } = {}) {
 export function tip(x, y, lines, picture = null) {
   if (floatingOpen()) return;
   const host = document.getElementById('tip');
+  // replaceChildren would print a null argument as the text "null".
   host.replaceChildren(...lines.map((l, i) => el('div', { class: i === 0 ? 'tip-name' : 'tip-line', text: l })),
-    picture ? el('div', { class: 'tip-pic' }, picture) : null);
+    ...(picture ? [el('div', { class: 'tip-pic' }, picture)] : []));
   host.hidden = false;
-  const r = host.getBoundingClientRect();
-  host.style.left = `${Math.min(x + 16, window.innerWidth - r.width - 8)}px`;
-  host.style.top = `${Math.min(y + 18, window.innerHeight - r.height - 8)}px`;
+  placeAt(host, x, y, { placement: 'bottom-start', gap: 18, cross: 16, padding: 10 });
 }
 export function hideTip() {
   document.getElementById('tip').hidden = true;
+}
+
+/* ---------- sliding indicators ---------- */
+
+/**
+ * Moves the ink plate or underline of a tab strip or switch under the
+ * chosen item. The container's ::before or ::after reads --ind-x/--ind-w.
+ */
+export function slideIndicator(container, item) {
+  if (!container || !item || !item.offsetWidth) return;
+  container.style.setProperty('--ind-x', `${item.offsetLeft}px`);
+  container.style.setProperty('--ind-w', `${item.offsetWidth}px`);
+  container.dataset.ind = '';
 }
 
 /* ---------- virtual list ---------- */
@@ -222,6 +276,7 @@ export class VirtualList {
     this.render = render;
     this.items = [];
     this.cursor = 0;
+    this.entering = 0;
     this.spacer = el('div', { class: 'vl-spacer' });
     this.rows = el('div', { class: 'vl-rows' });
     host.classList.add('vl');
@@ -252,10 +307,17 @@ export class VirtualList {
   }
 
   setItems(items, keepScroll = false) {
+    const fresh = !keepScroll && items !== this.items;
     this.items = items;
     this.cursor = Math.min(this.cursor, Math.max(0, items.length - 1));
     this.spacer.style.height = `${items.length * this.rowHeight}px`;
     if (!keepScroll) this.host.scrollTop = 0;
+    // A new list cascades in; a redraw of the same one does not.
+    if (fresh && items.length) {
+      this.host.classList.add('is-entering');
+      clearTimeout(this.entering);
+      this.entering = setTimeout(() => this.host.classList.remove('is-entering'), 520);
+    }
     this.draw();
   }
 
@@ -278,10 +340,12 @@ export class VirtualList {
     if (scrollOnly && first === this.first && last === this.last) return;
     this.first = first;
     this.last = last;
+    const top = Math.floor(host.scrollTop / rowHeight);
     const frag = [];
     for (let i = first; i < last; i++) {
       const row = this.render(items[i], i);
       row.style.transform = `translateY(${i * rowHeight}px)`;
+      row.style.setProperty('--i', String(Math.max(0, i - top)));
       row.classList.toggle('is-cursor', i === this.cursor);
       row.setAttribute('role', 'option');
       frag.push(row);

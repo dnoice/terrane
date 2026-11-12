@@ -1,0 +1,141 @@
+/*
+ * ============================================================================
+ * ✒ Metadata
+ *     - Title: Application Shell (Terrane Edition - v1.0)
+ *     - File Name: layout.css
+ *     - Relative Path: web/css/layout.css
+ *     - Artifact Type: stylesheet
+ *     - Version: 1.0.0
+ *     - Date: 11/12/2026
+ *     - Update: Thursday, November 12, 2026
+ *     - Author: Dennis 'dendogg' Smaltz
+ *     - A.I. Acknowledgement: Anthropic - Claude Opus 5.5
+ *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
+ *
+ * ✒ Description:
+ *     The drawing sheet the world sits in: location bar on top, ledger
+ *     and inspector at the sides, the title block along the bottom, the
+ *     stage in the middle. Owns the grid, the panel frames, collapsing
+ *     panels and every width breakpoint.
+ *
+ * ✒ Key Features:
+ *     - One grid for the page and one for the main row, both in tokens
+ *     - Panels collapse by animating the grid tracks themselves, so the
+ *       stage widens smoothly instead of jumping ([ and ] keys)
+ *     - Ledger and inspector are size containers; their components adapt
+ *       to the panel's width, not the window's
+ *     - Lettered panel heads, the drawing-sheet reference motif
+ *     - Breakpoints at 1320, 1100 and 860 px: narrower panels, icon-only
+ *       bar buttons, then the inspector folds away
+ *
+ * ✒ Other Important Information:
+ *     - Dependencies: tokens.css, base.css
+ *     - Compatible platforms: current evergreen browsers (container
+ *       queries, animatable grid tracks)
+ *     - Limitations: designed for 1180 px and wider; below 860 px only
+ *       the ledger and the world are shown
+ * ----------------------------------------------------------------------------
+ */
+
+body {
+  display: grid;
+  grid-template-rows: var(--bar-h) minmax(0, 1fr) var(--block-h);
+  overflow: hidden;
+}
+
+main {
+  --ledger-w: var(--side-w);
+  --inspector-w: var(--side-w);
+  display: grid;
+  grid-template-columns: var(--ledger-w) minmax(0, 1fr) var(--inspector-w);
+  min-height: 0;
+  transition: grid-template-columns var(--dur-base) var(--ease-out-expo);
+}
+body.no-ledger main { --ledger-w: 0px; }
+body.no-inspector main { --inspector-w: 0px; }
+
+#ledger, #inspector {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  background: var(--surface-panel);
+  transition: visibility 0s linear var(--dur-base), opacity var(--dur-fast) var(--ease-out);
+}
+#ledger { border-right: var(--border); container: ledger / inline-size; }
+#inspector { border-left: var(--border); container: inspector / inline-size; }
+body.no-ledger #ledger, body.no-inspector #inspector { visibility: hidden; opacity: 0; border-width: 0; }
+body:not(.no-ledger) #ledger, body:not(.no-inspector) #inspector { transition-delay: 0s; }
+
+/* ---------- panel heads: the lettered reference motif ---------- */
+
+.panel-head {
+  display: flex;
+  align-items: stretch;
+  flex: none;
+  height: var(--panel-head-h);
+  border-bottom: var(--border);
+}
+.panel-head h2 { align-self: center; padding-left: 10px; flex: 1; }
+.ref {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: var(--panel-head-h);
+  background: var(--ink);
+  color: var(--on-ink);
+  font-size: 11px;
+  letter-spacing: 0;
+}
+.panel-tool {
+  appearance: none;
+  display: grid;
+  place-items: center;
+  width: var(--panel-head-h);
+  border: 0;
+  border-left: var(--border-2);
+  background: none;
+  color: var(--text-3);
+  transition: color var(--dur-fast), background-color var(--dur-fast);
+}
+.panel-tool:hover { background: var(--select); color: var(--text); }
+
+.panel-sub {
+  display: flex;
+  align-items: center;
+  flex: none;
+  gap: var(--s-1);
+  min-height: var(--control-h);
+  padding: 0 var(--s-2) 0 10px;
+  border-bottom: var(--border-2);
+  font: 500 var(--fs-xs) / 1 var(--mono);
+  color: var(--text-2);
+}
+.panel-sub .grow { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.ledger-body { flex: 1; min-height: 0; overflow: auto; overscroll-behavior: contain; scrollbar-gutter: stable; }
+#inspector-body { flex: 1; min-height: 0; overflow: auto; overscroll-behavior: contain; scrollbar-gutter: stable; }
+
+/* ---------- breakpoints ---------- */
+
+@media (max-width: 1320px) {
+  :root { --side-w: 280px; }
+}
+
+@media (max-width: 1100px) {
+  :root { --side-w: 252px; --bar-h: 48px; }
+  .bar-tools .btn .label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+  .bar-tools .btn { padding: 0 8px; }
+  .wordmark span { display: none; }
+}
+
+@media (max-width: 860px) {
+  main { --inspector-w: 0px; }
+  #inspector { visibility: hidden; }
+  .cell-grow, .cell-alt { display: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  main { transition: none; }
+}

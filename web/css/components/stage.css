@@ -1,0 +1,271 @@
+/*
+ * ============================================================================
+ * ✒ Metadata
+ *     - Title: Stage and Instruments (Terrane Edition - v1.0)
+ *     - File Name: stage.css
+ *     - Relative Path: web/css/components/stage.css
+ *     - Artifact Type: stylesheet
+ *     - Version: 1.0.0
+ *     - Date: 11/12/2026
+ *     - Update: Thursday, November 12, 2026
+ *     - Author: Dennis 'dendogg' Smaltz
+ *     - A.I. Acknowledgement: Anthropic - Claude Opus 5.5
+ *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
+ *
+ * ✒ Description:
+ *     The middle of the sheet: the WebGL canvas, the labels laid over it,
+ *     and the surveyor's instruments drawn around it: ruler ticks along
+ *     two edges, registration corners, the north arrow that turns with the
+ *     camera, the storage scale, the view tools, the placing banner and
+ *     the veil shown while the world is being surveyed.
+ *
+ * ✒ Key Features:
+ *     - Edge rulers and corner registration marks drawn in CSS only, never
+ *       intercepting the pointer
+ *     - North arrow rotated by the registered --yaw angle; clicking it
+ *       turns the view back to north
+ *     - Storage scale: a square of fixed screen size and the bytes it
+ *       stands for at the current height
+ *     - View tools as one ruled instrument strip of icon buttons with key
+ *       hints in their titles
+ *     - Labels in the world: plateau tags with leader lines, file tags
+ *     - Veil with the strata mark stacking in, a stippled progress rule,
+ *       and an error form in garnet
+ *
+ * ✒ Other Important Information:
+ *     - Dependencies: tokens.css, base.css, controls.css; web/js/hud.js
+ *       writes --yaw and the scale label
+ *     - Compatible platforms: current evergreen browsers
+ * ----------------------------------------------------------------------------
+ */
+
+#stage {
+  position: relative;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  background: var(--surface-ground);
+  isolation: isolate;
+}
+#view {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  cursor: grab;
+  touch-action: none;
+}
+#view.is-dragging { cursor: grabbing; }
+#view.is-hot { cursor: pointer; }
+#view.is-placing { cursor: copy; }
+#view:focus-visible { outline: var(--focus-ring); outline-offset: -4px; }
+
+/* ---------- survey frame: rulers and registration corners ---------- */
+
+.frame {
+  position: absolute;
+  inset: 0;
+  z-index: var(--z-hud);
+  pointer-events: none;
+}
+.frame::before, .frame::after {
+  content: '';
+  position: absolute;
+  background-repeat: repeat;
+  opacity: 0.9;
+}
+/* Top edge: a tick every 10 px, a long one every 50 px. */
+.frame::before {
+  inset: 0 0 auto 0;
+  height: 9px;
+  background-image:
+    linear-gradient(90deg, var(--ink-tick) 1px, transparent 1px),
+    linear-gradient(90deg, var(--ink-tick) 1px, transparent 1px);
+  background-size: 50px 9px, 10px 4px;
+  background-repeat: repeat-x;
+}
+/* Left edge, the same ruler turned. */
+.frame::after {
+  inset: 0 auto 0 0;
+  width: 9px;
+  background-image:
+    linear-gradient(var(--ink-tick) 1px, transparent 1px),
+    linear-gradient(var(--ink-tick) 1px, transparent 1px);
+  background-size: 9px 50px, 4px 10px;
+  background-repeat: repeat-y;
+}
+/* Registration corners sit inside the rulers and outside the instruments. */
+.frame i {
+  position: absolute;
+  width: 9px;
+  height: 9px;
+  border: 0 solid var(--ink);
+}
+.frame i:nth-child(1) { top: 11px; left: 11px; border-top-width: 1.5px; border-left-width: 1.5px; }
+.frame i:nth-child(2) { top: 11px; right: 11px; border-top-width: 1.5px; border-right-width: 1.5px; }
+.frame i:nth-child(3) { bottom: 11px; left: 11px; border-bottom-width: 1.5px; border-left-width: 1.5px; }
+.frame i:nth-child(4) { bottom: 11px; right: 11px; border-bottom-width: 1.5px; border-right-width: 1.5px; }
+
+/* ---------- world labels ---------- */
+
+#tags { position: absolute; inset: 0; z-index: 1; overflow: hidden; pointer-events: none; }
+.tag { position: absolute; top: 0; left: 0; white-space: nowrap; will-change: transform; }
+.tag-dir {
+  padding: 3px 5px;
+  border: var(--border);
+  background: var(--paper);
+  color: var(--text);
+  font: 700 var(--fs-xs) / 1 var(--sans);
+  font-stretch: 118%;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  box-shadow: var(--shadow-1);
+}
+.tag-dir::after { content: ''; position: absolute; top: 100%; left: 50%; width: 1px; height: 9px; background: var(--ink); }
+.tag-cap { background: var(--ink); color: var(--on-ink); }
+.tag-file { padding: 2px 4px; background: var(--paper-glass); color: var(--text); font: 500 var(--fs-xs) / 1 var(--mono); }
+
+/* ---------- instruments: north arrow and storage scale ---------- */
+
+.hud {
+  position: absolute;
+  z-index: var(--z-hud);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  pointer-events: none;
+}
+.hud-north { top: 24px; right: 24px; }
+.north {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  padding: 0;
+  border: var(--border);
+  border-radius: 50%;
+  background: var(--paper-glass);
+  color: var(--text);
+  box-shadow: var(--shadow-1);
+  pointer-events: auto;
+  transition: box-shadow var(--dur-fast) var(--ease-out), translate var(--dur-instant);
+}
+.north:hover { box-shadow: var(--shadow-2); translate: -1px -1px; }
+.north:active { box-shadow: none; translate: 1px 1px; }
+.north svg { width: 40px; height: 40px; rotate: var(--yaw); overflow: visible; }
+.north .needle-n { fill: var(--signal); }
+.north .needle-s { fill: var(--paper); stroke: var(--ink); stroke-width: 1; }
+.north .ring { fill: none; stroke: var(--ink-tick); stroke-width: 1; stroke-dasharray: 1 3.2; }
+.north .letter { font: 800 7px / 1 var(--sans); font-stretch: var(--wdth-max); fill: var(--ink); text-anchor: middle; }
+
+.hud-scale { left: 24px; bottom: 24px; transition: translate var(--dur-base) var(--ease-out-expo); }
+#jobs:not(:empty) ~ .hud-scale { translate: 0 -8px; opacity: 0; }
+.scale {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 8px 5px 5px;
+  border: var(--border);
+  background: var(--paper-glass);
+  box-shadow: var(--shadow-1);
+}
+.scale-square { width: 24px; height: 24px; border: var(--border); background: var(--tex-stipple), var(--paper); }
+.scale-text { display: grid; gap: 2px; }
+.scale-text b { font: 500 var(--fs-md) / 1 var(--mono); font-variant-numeric: tabular-nums; }
+.scale-text span { color: var(--text-3); font-size: 8.5px; }
+
+/* ---------- view tools: one ruled instrument strip ---------- */
+
+.view-tools {
+  position: absolute;
+  right: 24px;
+  bottom: 24px;
+  z-index: var(--z-hud);
+  display: flex;
+  align-items: stretch;
+  border: var(--border);
+  background: var(--surface-control);
+  box-shadow: var(--shadow-2);
+}
+.view-tools .btn {
+  height: 32px;
+  min-width: 32px;
+  padding: 0 9px;
+  border: 0;
+  border-right: var(--border-3);
+  background-color: transparent;
+}
+.view-tools .btn:last-child { border-right: 0; }
+.view-tools .btn .icon { width: var(--icon); height: var(--icon); }
+.view-tools .group-sep { width: 1px; background: var(--line); }
+@container stage (max-width: 620px) {
+  .view-tools .btn .label { display: none; }
+}
+
+/* ---------- placing banner ---------- */
+
+#placing {
+  position: absolute;
+  top: 24px;
+  left: 50%;
+  z-index: var(--z-hud);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  max-width: 92%;
+  padding: 6px 8px 6px 12px;
+  border: var(--border);
+  background: var(--tex-hatch-live);
+  background-size: 11px 11px;
+  color: var(--on-ink);
+  font-weight: 600;
+  box-shadow: var(--shadow-2);
+  translate: -50% 0;
+  animation: drop-in var(--dur-base) var(--ease-spring), hatch-run 1.2s linear infinite;
+}
+#placing-text { padding: 2px 6px; background: var(--verdigris-deep); }
+
+/* ---------- veil: surveying, unavailable, stopped ---------- */
+
+#veil {
+  position: absolute;
+  inset: 0;
+  z-index: var(--z-veil);
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 10px;
+  padding: 30px;
+  background: var(--tex-grid), var(--surface-ground);
+  color: var(--text-2);
+  font: 500 14px / 1.6 var(--sans);
+  text-align: center;
+  transition: opacity var(--dur-slow) var(--ease-out), scale var(--dur-slow) var(--ease-out);
+}
+#veil.is-leaving { opacity: 0; scale: 1.015; pointer-events: none; }
+#veil .veil-mark { width: 84px; height: 60px; overflow: visible; fill: var(--ink); }
+#veil .veil-mark rect { animation: stratum-in var(--dur-slow) var(--ease-out-expo) both; }
+#veil .veil-mark rect:nth-child(2) { animation-delay: 120ms; }
+#veil .veil-mark rect:nth-child(3) { animation-delay: 240ms; fill: var(--mark); stroke: var(--ink); stroke-width: 1.5; animation-timing-function: var(--ease-spring); }
+#veil strong {
+  display: block;
+  color: var(--text);
+  font: 800 22px / 1.2 var(--sans);
+  font-stretch: var(--wdth-expanded);
+  letter-spacing: var(--track-wide);
+  text-transform: uppercase;
+}
+#veil .veil-path { max-width: 70ch; font: 400 var(--fs-md) / 1.5 var(--mono); color: var(--text-3); overflow-wrap: anywhere; }
+#veil .veil-rule { width: 220px; height: 6px; border: var(--border); background: var(--tex-stipple), var(--paper); animation: stipple-run 1s linear infinite; }
+#veil.is-error strong { color: var(--danger); }
+#veil.is-error .veil-mark rect:nth-child(3) { fill: var(--danger); }
+#veil.is-error .veil-rule { display: none; }
+#veil.is-quiet { background: transparent; pointer-events: none; }
+#veil.is-quiet > * { padding: 14px 18px; border: var(--border); background: var(--surface-control); box-shadow: var(--shadow-2); pointer-events: auto; }
+
+#stage { container: stage / inline-size; }
+
+/* Without WebGL there is no world to measure: the instruments step aside. */
+body.no-gl .hud, body.no-gl .frame { display: none; }

@@ -1,11 +1,11 @@
 <!DOCTYPE html>
 <!--
 ✒ Metadata
-    - Title: Terrane Interface (Terrane Edition - v1.2)
+    - Title: Terrane Interface (Terrane Edition - v1.3)
     - File Name: index.html
     - Relative Path: web/index.html
     - Artifact Type: markup
-    - Version: 1.2.0
+    - Version: 1.3.0
     - Date: 11/12/2026
     - Update: Thursday, November 12, 2026
     - Author: Dennis 'dendogg' Smaltz
@@ -13,20 +13,24 @@
     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
 
 ✒ Changelog:
+    - 1.3.0 (11/12/2026) [dendogg + Anthropic - Claude Opus 5.5] — Icons
+      on every tool, the survey frame and instruments over the world (north
+      arrow, storage scale), panel toggles in the view tools, a clear button
+      and key hint in Find, a strata favicon, and the vendored Motion and
+      Floating UI scripts.
     - 1.2.0 (11/12/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
       ledger's tab buttons are made by app.js from its tab registry, so a
       feature can add a tab without editing this page.
     - 1.1.0 (11/11/2026) [dendogg + Anthropic - Claude Opus 5.5] — Adds
       the panel that holds operations in progress, at the lower left of
       the world.
-    - 1.0.0 (11/09/2026) [dendogg + Anthropic - Claude Fable 5.2] —
-      Initial release.
+    Earlier entries: see CHANGELOG.md
 
 ✒ Description:
     The single page of Terrane. It lays out the sheet around the world: the
-    location bar, the ledger on the left, the 3D world in the middle, the
-    inspector on the right and the title block along the bottom. All
-    behaviour is attached by web/js/app.js.
+    location bar, the ledger on the left, the 3D world in the middle with
+    its instruments, the inspector on the right and the title block along
+    the bottom. All behaviour is attached by web/js/app.js.
 
 ✒ Key Features:
     - Landmark structure (header, nav, main, complementary, footer) with a
@@ -34,12 +38,15 @@
     - The ledger is a complete non-spatial alternative to the viewport
     - One host element each for the menu, dialog, tip and notices, which is
       how "one floating surface at a time" is enforced
+    - Every icon-only control has an accessible name and a key hint
     - A polite live region announces selection and navigation changes
     - No inline script: the session token is carried in a meta tag and the
-      page runs under a strict content security policy
+      page runs under a strict content security policy; third-party code
+      is vendored and served from this origin
 
 ✒ Other Important Information:
-    - Dependencies: web/css/terrane.css, web/js/app.js
+    - Dependencies: web/css/terrane.css, web/js/app.js,
+      web/vendor/motion/motion.js, web/vendor/lucide/icons.svg
     - Compatible platforms: current Chrome, Edge, Firefox, Safari (WebGL2)
     - Security: the token placeholder in the meta tag is filled in by the
       service on each request; opening this file directly from disk will
@@ -50,10 +57,17 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <meta name="theme-color" content="#f1f4f0">
+  <meta name="description" content="Terrane: one directory as a world you travel through.">
   <meta name="terrane-token" content="__TERRANE_TOKEN__">
   <title>Terrane</title>
-  <link rel="icon" href="data:,">
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%23f1f4f0'/%3E%3Crect x='2' y='21' width='28' height='8' fill='%2318201e'/%3E%3Crect x='7' y='13' width='18' height='8' fill='%2318201e'/%3E%3Crect x='11.5' y='5.5' width='9' height='7' fill='%23f4c430' stroke='%2318201e' stroke-width='1.5'/%3E%3C/svg%3E">
   <link rel="stylesheet" href="css/terrane.css">
+  <link rel="modulepreload" href="vendor/floating-ui/floating-ui.dom.browser.min.mjs">
+  <link rel="modulepreload" href="vendor/floating-ui/floating-ui.core.browser.min.mjs">
+  <script src="vendor/motion/motion.js" defer></script>
+  <script type="module" src="js/app.js"></script>
 </head>
 <body>
   <a class="skip" href="#ledger-list">Skip to the ledger</a>
@@ -68,18 +82,34 @@
       <span>Terrane</span>
     </div>
     <nav id="crumbs" aria-label="Location"></nav>
-    <div class="search">
+    <div class="search" role="search">
+      <svg class="icon" aria-hidden="true"><use href="vendor/lucide/icons.svg#search"/></svg>
       <label class="sr" for="q">Find in this directory</label>
       <input id="q" type="search" autocomplete="off" spellcheck="false"
              placeholder="Find  ·  name  *.psd  ext:mp4  >50mb  older:1y  is:empty">
       <span id="q-count" aria-live="polite"></span>
+      <kbd class="search-hint" aria-hidden="true">/</kbd>
+      <button class="search-clear" id="q-clear" type="button" aria-label="Clear Find (Escape)" title="Clear (Escape)">
+        <svg class="icon" aria-hidden="true"><use href="vendor/lucide/icons.svg#x"/></svg>
+      </button>
     </div>
     <div class="bar-tools">
-      <button class="btn" id="b-up" type="button" title="Up one level (Backspace)">Up</button>
-      <button class="btn" id="b-new" type="button" title="New folder here (N)">New folder</button>
-      <button class="btn" id="b-undo" type="button" title="Undo last change (Ctrl+Z)">Undo</button>
-      <button class="btn" id="b-refresh" type="button" title="Re-read this folder from disk (F5)">Refresh</button>
-      <button class="btn" id="b-help" type="button" title="Keys and the visual language (?)">Guide</button>
+      <button class="btn" id="b-up" type="button" title="Up one level (Backspace)">
+        <svg class="icon" aria-hidden="true"><use href="vendor/lucide/icons.svg#corner-left-up"/></svg><span class="label">Up</span>
+      </button>
+      <button class="btn" id="b-new" type="button" title="New folder here (N)">
+        <svg class="icon" aria-hidden="true"><use href="vendor/lucide/icons.svg#folder-plus"/></svg><span class="label">New folder</span>
+      </button>
+      <button class="btn" id="b-undo" type="button" title="Undo last change (Ctrl+Z)">
+        <svg class="icon" aria-hidden="true"><use href="vendor/lucide/icons.svg#undo-2"/></svg><span class="label">Undo</span>
+      </button>
+      <button class="btn" id="b-refresh" type="button" title="Re-read this folder from disk (F5)">
+        <svg class="icon" aria-hidden="true"><use href="vendor/lucide/icons.svg#refresh-cw"/></svg><span class="label">Refresh</span>
+      </button>
+      <span class="sep" aria-hidden="true"></span>
+      <button class="btn btn-raised" id="b-help" type="button" title="Keys and the visual language (?)">
+        <svg class="icon" aria-hidden="true"><use href="vendor/lucide/icons.svg#book-open"/></svg><span class="label">Guide</span>
+      </button>
     </div>
   </header>
 
@@ -99,22 +129,67 @@
       <canvas id="view" tabindex="0"
               aria-label="3D world. W A S D to travel, arrow keys to move between items, Enter to go to a folder or open a file, Backspace to go up. The ledger lists the same items."></canvas>
       <div id="tags" aria-hidden="true"></div>
+      <div class="frame" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+
       <div id="placing" hidden>
         <span id="placing-text"></span>
         <button class="btn btn-primary btn-small" id="placing-here" type="button">Place where I am</button>
         <button class="btn btn-small" id="placing-cancel" type="button">Cancel</button>
       </div>
-      <div id="jobs" aria-label="Operations in progress"></div>
-      <div id="veil" hidden></div>
-      <div class="view-tools" role="group" aria-label="View">
-        <button class="btn btn-small" id="v-in" type="button" title="Fly closer (+)">+</button>
-        <button class="btn btn-small" id="v-out" type="button" title="Pull back (−)">−</button>
-        <button class="btn btn-small" id="v-left" type="button" title="Turn left (Q)">⟲</button>
-        <button class="btn btn-small" id="v-right" type="button" title="Turn right (E)">⟳</button>
-        <button class="btn btn-small" id="v-down" type="button" title="Drop to eye level where you are looking (V)">Descend</button>
-        <button class="btn btn-small" id="v-go" type="button" title="Fly to the selection (G)">Go to selection</button>
-        <button class="btn btn-small" id="v-over" type="button" title="Rise to see everything (0)">Overview</button>
+
+      <div class="hud hud-north">
+        <button class="north" id="north" type="button" aria-label="Turn to face north" title="Turn to face north">
+          <svg viewBox="-20 -20 40 40" aria-hidden="true">
+            <circle class="ring" r="16.5"/>
+            <path class="needle-n" d="M0 -11 L4.5 0 L-4.5 0 Z"/>
+            <path class="needle-s" d="M0 11 L4.5 0 L-4.5 0 Z"/>
+            <text class="letter" x="0" y="-12.5">N</text>
+          </svg>
+        </button>
       </div>
+
+      <div id="jobs" aria-label="Operations in progress"></div>
+      <div class="hud hud-scale">
+        <div class="scale" title="How much storage a square this size stands for at this height">
+          <span class="scale-square" aria-hidden="true"></span>
+          <span class="scale-text"><b id="scale-val">—</b><span class="caps">per square</span></span>
+        </div>
+      </div>
+
+      <div class="view-tools" role="toolbar" aria-label="View">
+        <button class="btn btn-icon" id="v-in" type="button" title="Fly closer (+)" aria-label="Fly closer">
+          <svg class="icon" aria-hidden="true"><use href="vendor/lucide/icons.svg#zoom-in"/></svg>
+        </button>
+        <button class="btn btn-icon" id="v-out" type="button" title="Pull back (−)" aria-label="Pull back">
+          <svg class="icon" aria-hidden="true"><use href="vendor/lucide/icons.svg#zoom-out"/></svg>
+        </button>
+        <span class="group-sep" aria-hidden="true"></span>
+        <button class="btn btn-icon" id="v-left" type="button" title="Turn left (Q)" aria-label="Turn left">
+          <svg class="icon" aria-hidden="true"><use href="vendor/lucide/icons.svg#rotate-ccw"/></svg>
+        </button>
+        <button class="btn btn-icon" id="v-right" type="button" title="Turn right (E)" aria-label="Turn right">
+          <svg class="icon" aria-hidden="true"><use href="vendor/lucide/icons.svg#rotate-cw"/></svg>
+        </button>
+        <span class="group-sep" aria-hidden="true"></span>
+        <button class="btn" id="v-down" type="button" title="Drop to eye level where you are looking (V)">
+          <svg class="icon" aria-hidden="true"><use href="vendor/lucide/icons.svg#person-standing"/></svg><span class="label">Descend</span>
+        </button>
+        <button class="btn" id="v-go" type="button" title="Fly to the selection (G)">
+          <svg class="icon" aria-hidden="true"><use href="vendor/lucide/icons.svg#locate-fixed"/></svg><span class="label">Go to selection</span>
+        </button>
+        <button class="btn" id="v-over" type="button" title="Rise to see everything (0)">
+          <svg class="icon" aria-hidden="true"><use href="vendor/lucide/icons.svg#scan"/></svg><span class="label">Overview</span>
+        </button>
+        <span class="group-sep" aria-hidden="true"></span>
+        <button class="btn btn-icon" id="v-ledger" type="button" title="Show or hide the ledger ([)" aria-label="Show or hide the ledger" aria-pressed="true">
+          <svg class="icon" aria-hidden="true"><use href="vendor/lucide/icons.svg#panel-left"/></svg>
+        </button>
+        <button class="btn btn-icon" id="v-inspector" type="button" title="Show or hide the inspector (])" aria-label="Show or hide the inspector" aria-pressed="true">
+          <svg class="icon" aria-hidden="true"><use href="vendor/lucide/icons.svg#panel-right"/></svg>
+        </button>
+      </div>
+
+      <div id="veil" hidden></div>
     </section>
 
     <aside id="inspector" aria-label="Inspector">
@@ -125,12 +200,16 @@
 
   <footer id="block">
     <div class="cell">
-      <span class="cell-label">Lens</span>
+      <span class="cell-label"><svg class="icon" aria-hidden="true"><use href="vendor/lucide/icons.svg#eye"/></svg>Lens</span>
       <div class="seg" id="lens" role="radiogroup" aria-label="Colour lens">
-        <button type="button" role="radio" data-lens="kind" aria-checked="true" title="Colour by kind (1)">Kind</button>
-        <button type="button" role="radio" data-lens="age" aria-checked="false" title="Colour by last change (2)">Age</button>
-        <button type="button" role="radio" data-lens="size" aria-checked="false" title="Colour by size (3)">Size</button>
-        <button type="button" role="radio" data-lens="dup" aria-checked="false" title="Show duplicate candidates (4)">Duplicates</button>
+        <button type="button" role="radio" data-lens="kind" aria-checked="true" title="Colour by kind (1)">
+          <svg class="icon" aria-hidden="true"><use href="vendor/lucide/icons.svg#shapes"/></svg>Kind</button>
+        <button type="button" role="radio" data-lens="age" aria-checked="false" title="Colour by last change (2)">
+          <svg class="icon" aria-hidden="true"><use href="vendor/lucide/icons.svg#history"/></svg>Age</button>
+        <button type="button" role="radio" data-lens="size" aria-checked="false" title="Colour by size (3)">
+          <svg class="icon" aria-hidden="true"><use href="vendor/lucide/icons.svg#ruler-dimension-line"/></svg>Size</button>
+        <button type="button" role="radio" data-lens="dup" aria-checked="false" title="Show duplicate candidates (4)">
+          <svg class="icon" aria-hidden="true"><use href="vendor/lucide/icons.svg#layers"/></svg>Duplicates</button>
       </div>
     </div>
     <div class="cell cell-grow">
@@ -138,15 +217,17 @@
       <div id="legend"></div>
     </div>
     <div class="cell">
-      <span class="cell-label">Grain</span>
+      <span class="cell-label"><svg class="icon" aria-hidden="true"><use href="vendor/lucide/icons.svg#scale"/></svg>Grain</span>
       <div class="stepper">
-        <button class="btn btn-small" id="grain-less" type="button" aria-label="Coarser: fewer, larger blocks">−</button>
+        <button class="btn btn-small" id="grain-less" type="button" aria-label="Coarser: fewer, larger blocks">
+          <svg class="icon" aria-hidden="true"><use href="vendor/lucide/icons.svg#minus"/></svg></button>
         <output id="grain-val">Medium</output>
-        <button class="btn btn-small" id="grain-more" type="button" aria-label="Finer: more, smaller blocks">+</button>
+        <button class="btn btn-small" id="grain-more" type="button" aria-label="Finer: more, smaller blocks">
+          <svg class="icon" aria-hidden="true"><use href="vendor/lucide/icons.svg#plus"/></svg></button>
       </div>
     </div>
-    <div class="cell">
-      <span class="cell-label">Altitude</span>
+    <div class="cell cell-alt">
+      <span class="cell-label"><svg class="icon" aria-hidden="true"><use href="vendor/lucide/icons.svg#mountain"/></svg>Altitude</span>
       <output id="alt-val" class="readout">Overview</output>
     </div>
     <div class="cell cell-status">
@@ -160,7 +241,5 @@
   <dialog id="dialog"></dialog>
   <div id="notices"></div>
   <div id="live" class="sr" aria-live="polite"></div>
-
-  <script type="module" src="js/app.js"></script>
 </body>
 </html>

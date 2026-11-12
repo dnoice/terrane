@@ -1,17 +1,21 @@
 <!--
 ✒ Metadata
-    - Title: Terrane Architecture (Terrane Edition - v1.1)
+    - Title: Terrane Architecture (Terrane Edition - v1.2)
     - File Name: ARCHITECTURE.md
     - Relative Path: docs/ARCHITECTURE.md
     - Artifact Type: docs
-    - Version: 1.1.0
-    - Date: 11/11/2026
-    - Update: Wednesday, November 11, 2026
+    - Version: 1.2.0
+    - Date: 11/12/2026
+    - Update: Thursday, November 12, 2026
     - Author: Dennis 'dendogg' Smaltz
     - A.I. Acknowledgement: Anthropic - Claude Opus 5.5
     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
 
 ✒ Changelog:
+    - 1.2.0 (11/12/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
+      stack table names the vendored browser libraries; the visual
+      identity covers icons for actions, the survey instruments, the
+      layered stylesheet and the rules for motion.
     - 1.1.0 (11/11/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
       service section covers jobs, the persistent journal, snapshot mode
       and thumbnails; a datasets section; the first measurements on
@@ -49,7 +53,9 @@
 | Filesystem access | Local Node service on the loopback address | The only option that can open, reveal, move and watch arbitrary local paths from a web interface | File System Access API: Chromium only, permission is per session, cannot open or reveal in the system, no change watching |
 | Service dependencies | None | One command to run, nothing to install, small audit surface for code that moves your files | Express, chokidar, trash: each replaceable by 30 to 80 lines here |
 | Rendering | three.js r187, WebGL2, vendored | Mature instancing and shader hooks; runs everywhere | Babylon.js (heavier, no advantage here); WebGPU (not yet universal); React Three Fiber (the scene is one instanced mesh, so a scene-graph reconciler adds cost and nothing else) |
-| Frontend | Plain ES modules, no build step | Six modules, one page; a bundler would be the largest dependency in the project | React, Vite |
+| Frontend | Plain ES modules, no build step | A handful of modules, one page; a bundler would be the largest dependency in the project | React, Vite |
+| Browser libraries | Floating UI (menu and tip placement), Motion (springs, counting figures), Lucide icons; fetched from jsDelivr once by `tools/vendor.mjs` and served from the page's own origin | Each does one hard job well; vendored with recorded digests, so the page keeps working offline and never runs live third-party code while holding a token that can move files | Loading them from a CDN at run time; a component framework |
+| Stylesheet | Native CSS in cascade layers, one module per component, no preprocessor | Layers settle precedence by intent instead of specificity; tokens, container queries, `color-mix`, `@property` and `@starting-style` cover what a preprocessor or animation runtime would | Sass, Tailwind, CSS-in-JS |
 | Geometry | Procedural | Every shape is data-driven: its size, height and position are the information | Blender assets. Blender 5.2 is available and was considered; nothing in this world is a fixed asset, so authored meshes would be decoration |
 | Scan transport | NDJSON over a streamed HTTP response | Progressive, backpressured, cancellable, no protocol code | WebSocket |
 | Change transport | Server-sent events | One-way, auto-reconnecting, built in | WebSocket, polling |
@@ -252,22 +258,39 @@ The brief asked for a clean break from earlier digiSpace work. The
 direction is a survey sheet around a plaster world.
 
 - **Ground**: pale mineral green-grey, light theme. No dark dashboard,
-  no neon, no glass, no blur, no gradients except the two data ramps.
-- **Line**: 1px ink rules, square corners. The same ink draws box edges
-  in the 3D world through the fragment shader, which is what ties the
-  two halves together.
+  no neon, no glass, no blur. Gradients only for the two data ramps and
+  the drawing textures (stipple, hatch, grid, a faint paper grain).
+- **Line**: 1px ink rules, square corners, hard offset shadows on what
+  floats. The same ink draws box edges in the 3D world through the
+  fragment shader, which is what ties the two halves together.
 - **Colour is semantic only**: highlighter yellow is selection and hover
   everywhere; vermilion is search; garnet is duplicates and destructive
   actions; verdigris is destinations and live state; nine muted pigments
-  are file kinds.
-- **Drawing conventions instead of icons**: hatch is sealed, hollow is
-  empty, stipple is aggregate, bands are links. The same marks appear in
-  the ledger swatches and the inspector key.
+  are file kinds. Hover is a highlighter stroke that wipes across a
+  control from the left, the same yellow that marks a selection.
+- **Icons name actions; conventions draw data**: Lucide line icons sit on
+  tools, menu items and buttons. What the world shows keeps its drawing
+  conventions: hatch is sealed, hollow is empty, stipple is aggregate,
+  bands are links. The same marks appear in the ledger swatches and the
+  inspector key, and no icon replaces them.
 - **Type**: Archivo, one variable family used across its width axis
   (expanded capitals for reference labels, normal for reading, condensed
-  for dense rows), with DM Mono for paths and figures.
-- **Layout motifs** from drawing sheets: lettered panel references and a
+  for dense rows), with DM Mono for paths and figures in tabular numbers.
+- **Layout motifs** from drawing sheets: lettered panel references, a
   title block along the bottom edge carrying lens, legend, grain,
-  altitude and status.
+  altitude and status, and instruments around the world: ruler ticks on
+  two edges, registration corners, a north arrow that turns with the
+  camera, and a scale stating how much storage a square of screen holds.
+- **Motion explains a change and stops**: things arrive from where they
+  came from, rules draw themselves, strata settle, figures count to
+  their new value, indicators slide to the chosen item. Only instruments
+  showing live work loop (the status lamp, a running copy). Under
+  `prefers-reduced-motion` every animation resolves to its end state.
+- **Stylesheet structure**: `web/css/terrane.css` declares the layers
+  `tokens, fonts, base, layout, components, utilities, motion, print`
+  and imports one module into each. Components read semantic roles from
+  `tokens.css`, never raw colours; utilities outrank components by
+  layer, not by `!important`. The print sheet lays the last drawn frame
+  of the world beside the inspector.
 
 <!-- ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once! -->

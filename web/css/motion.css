@@ -1,0 +1,71 @@
+/*
+ * ============================================================================
+ * ✒ Metadata
+ *     - Title: Motion (Terrane Edition - v1.0)
+ *     - File Name: motion.css
+ *     - Relative Path: web/css/motion.css
+ *     - Artifact Type: stylesheet
+ *     - Version: 1.0.0
+ *     - Date: 11/12/2026
+ *     - Update: Thursday, November 12, 2026
+ *     - Author: Dennis 'dendogg' Smaltz
+ *     - A.I. Acknowledgement: Anthropic - Claude Opus 5.5
+ *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
+ *
+ * ✒ Description:
+ *     The shared keyframes and the reduced-motion rule. Motion in Terrane
+ *     is short and explains a change: something arrives from where it came
+ *     from, a rule draws itself, a stratum settles. Nothing loops except
+ *     the instruments that show live work.
+ *
+ * ✒ Key Features:
+ *     - Entry keyframes: fade-in, fade-up, fade-down, row-in, drop-in,
+ *       pop-in, stratum-in
+ *     - Drawing keyframes: grow-x and rule-draw scale from the left edge
+ *     - Live-work loops: hatch-run, stipple-run, blink, sonar
+ *     - Feedback: nudge (a refused value), run-down (time left)
+ *     - prefers-reduced-motion removes every animation and transition,
+ *       keeping end states, so nothing is lost by turning motion off
+ *
+ * ✒ Other Important Information:
+ *     - Dependencies: tokens.css (durations and easings)
+ *     - Compatible platforms: current evergreen browsers
+ * ----------------------------------------------------------------------------
+ */
+
+@keyframes fade-in { from { opacity: 0; } }
+@keyframes fade-up { from { opacity: 0; translate: 0 6px; } }
+@keyframes fade-down { from { opacity: 0; translate: 0 -4px; } }
+@keyframes row-in { from { opacity: 0; translate: -6px 0; } }
+@keyframes drop-in { from { opacity: 0; translate: -50% -10px; } }
+@keyframes pop-in { from { opacity: 0; scale: 0.7; } }
+@keyframes stratum-in { from { opacity: 0; translate: 0 -7px; } }
+@keyframes rise { from { opacity: 0; translate: 0 6px; } }
+
+@keyframes grow-x { from { scale: 0 1; } }
+@keyframes rule-draw { from { scale: 0 1; } }
+@keyframes run-down { from { scale: 1 1; } to { scale: 0 1; } }
+
+@keyframes hatch-run { to { background-position: 11px 0; } }
+@keyframes stipple-run { to { background-position: 5px 0; } }
+@keyframes blink { 50% { background: var(--paper); } }
+@keyframes sonar {
+  0% { opacity: 0.8; inset: -1px; }
+  70%, 100% { opacity: 0; inset: -7px; }
+}
+@keyframes nudge {
+  25% { translate: -3px 0; }
+  50% { translate: 3px 0; }
+  75% { translate: -1px 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+    animation-delay: 0s !important;
+    transition-duration: 1ms !important;
+    transition-delay: 0s !important;
+    scroll-behavior: auto !important;
+  }
+}

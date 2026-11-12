@@ -1,11 +1,11 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Terrane Application (Terrane Edition - v1.2)
+ *     - Title: Terrane Application (Terrane Edition - v1.3)
  *     - File Name: app.js
  *     - Relative Path: web/js/app.js
  *     - Artifact Type: javascript
- *     - Version: 1.2.0
+ *     - Version: 1.3.0
  *     - Date: 11/12/2026
  *     - Update: Thursday, November 12, 2026
  *     - Author: Dennis 'dendogg' Smaltz
@@ -13,6 +13,12 @@
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
  *
  * ✒ Changelog:
+ *     - 1.3.0 (11/12/2026) [dendogg + Anthropic - Claude Opus 5.5] — Icons
+ *       on menus, tabs, sort keys, actions and operations; the north arrow
+ *       and storage scale over the world (hud.js); tab and lens indicators
+ *       that slide; status figures that count to their new values; the
+ *       inspector settles in when its subject changes; the veil lifts away
+ *       instead of vanishing; panel toggles and a Find clear button.
  *     - 1.2.0 (11/11/2026) [dendogg + Anthropic - Claude Opus 5.5] — Paint
  *       uses the STYLE table; the viewport's notices are shown; the title
  *       block says when a layout left blocks out to stay in budget. Keys,
@@ -30,8 +36,7 @@
  *       (status, refusals, newer-snapshot notice); thumbnails in the
  *       inspector and the hover tip in place of original files; the
  *       journal tab marks earlier-session and purged entries.
- *     - 1.0.0 (11/09/2026) [dendogg + Anthropic - Claude Fable 5.2] —
- *       Initial release.
+ *     Earlier entries: see CHANGELOG.md
  *
  * ✒ Description:
  *     The controller that makes Terrane one product instead of several
@@ -74,6 +79,8 @@
  *       allocation; a reserved key can only be bound by its owner
  *     - One age table per survey (timeline.js) answers how much of any
  *       folder changed since a date, for every feature that asks
+ *     - Instruments over the world: a north arrow that turns with the
+ *       camera and back to north on a click, and a storage scale
  *
  * ✒ Usage Instructions:
  *     Loaded by web/index.html as a module; start the service and open the
@@ -89,7 +96,8 @@
  *
  * ✒ Other Important Information:
  *     - Dependencies: model.js, layout.js, viewport.js, theme.js, ui.js,
- *       thumbs.js, timeline.js, features.js
+ *       thumbs.js, timeline.js, features.js, icons.js, motion.js, hud.js,
+ *       float.js
  *     - Compatible platforms: current evergreen browsers with WebGL2
  *     - Limitations: when WebGL is unavailable the ledger, inspector,
  *       search and every operation keep working without the 3D world
@@ -103,10 +111,14 @@ import {
 import { buildLayout, BOX, STYLE } from './layout.js';
 import { Viewport } from './viewport.js';
 import { THEME, mixHex, ramp, cssHex } from './theme.js';
-import { el, openMenu, closeFloating, floatingOpen, ask, notice, tip, hideTip, VirtualList } from './ui.js';
+import { el, openMenu, closeFloating, floatingOpen, ask, notice, tip, hideTip, slideIndicator, VirtualList } from './ui.js';
 import { thumbs } from './thumbs.js';
 import { buildAgeTable } from './timeline.js';
 import { FEATURES } from './features.js';
+import { icon } from './icons.js';
+import { countTo } from './motion.js';
+import { createHud } from './hud.js';
+import { preloadFloat } from './float.js';
 
 const $ = (id) => document.getElementById(id);
 const TOKEN = document.querySelector('meta[name="terrane-token"]').content;
@@ -389,7 +401,7 @@ async function scanInto(dir) {
   const idMap = [];
   await scanStream(relPath(dir), 0, (records) => {
     S.model.ingest(records, idMap, dir);
-    if (!S.noGL) $('veil').hidden = true;
+    if (!S.noGL) hideVeil();
     queueLayout();
     drawStatus();
   });
@@ -588,7 +600,11 @@ function moveFocus(dir) {
 }
 
 let whereTimer = 0;
+/** The north arrow and storage scale over the world; null without WebGL. */
+let hud = null;
+
 function onMoved(settled) {
+  hud?.heading(S.view.cam?.yaw);
   const eye = S.view.eye;
   const last = S.lastEye;
   if (last && !S.scanning) {
@@ -600,6 +616,7 @@ function onMoved(settled) {
 
 function drawAltitude() {
   if (S.view.alt === undefined) return;
+  hud?.scale(S.view, S.model.root.s);
   // Stated in the unit that matters here: roughly how much storage one
   // screen-width of ground stands for from this height.
   const p = S.view.look();
@@ -888,18 +905,21 @@ const LONG_OPS = new Set(['move', 'copy', 'trash']);
 const JOB_VERB = { move: 'Moving', copy: 'Copying', trash: 'Removing' };
 const newJobId = () => (crypto.randomUUID?.() || `${Date.now().toString(36)}${Math.random().toString(36).slice(2)}`).replace(/-/g, '').slice(0, 24);
 
+const JOB_ICON = { move: 'move', copy: 'copy', trash: 'remove' };
+
 function jobFor(id, op) {
   let j = JOBS.get(id);
   if (j) return j;
   const bar = el('i');
   const track = el('span', { class: 'job-track', role: 'progressbar', 'aria-valuemin': '0', 'aria-valuemax': '100', 'aria-label': 'Progress' }, bar);
   const title = el('span', { class: 'job-title', text: JOB_VERB[op] || 'Working' });
-  const cancel = el('button', { class: 'btn btn-small', type: 'button', text: 'Cancel', onclick: () => cancelJob(id) });
+  const label = el('span', { class: 'label', text: 'Cancel' });
+  const cancel = el('button', { class: 'btn btn-small', type: 'button', onclick: () => cancelJob(id) }, icon('cancel'), label);
   const figure = el('span', { class: 'job-fig' });
   const current = el('code', { class: 'job-cur' });
   const node = el('div', { class: 'job', role: 'group', 'aria-label': `${JOB_VERB[op] || 'Operation'} in progress` },
-    el('div', { class: 'job-head' }, title, cancel), track, figure, current);
-  j = { id, op, node, bar, track, title, cancel, figure, current, samples: [], shown: false, timer: 0 };
+    el('div', { class: 'job-head' }, icon(JOB_ICON[op] || 'busy'), title, cancel), track, figure, current);
+  j = { id, op, node, bar, track, title, cancel, label, figure, current, samples: [], shown: false, timer: 0 };
   JOBS.set(id, j);
   return j;
 }
@@ -923,7 +943,7 @@ async function cancelJob(id) {
   const j = JOBS.get(id);
   if (!j) return;
   j.cancel.disabled = true;
-  j.cancel.textContent = 'Cancelling…';
+  j.label.textContent = 'Cancelling…';
   try {
     await post('cancel', { job: id });
   } catch (err) {
@@ -973,7 +993,7 @@ function onJob(msg) {
   j.current.textContent = msg.current || '';
   if (msg.cancelling) {
     j.cancel.disabled = true;
-    j.cancel.textContent = 'Cancelling…';
+    j.label.textContent = 'Cancelling…';
   }
   return undefined;
 }
@@ -1181,39 +1201,39 @@ function menuFor(node, x, y) {
   let items;
   if (!node) {
     items = [
-      { label: 'New folder here…', hint: 'N', run: () => newFolder(S.focus), ...lock() },
-      { label: 'Copy path of this folder', run: () => copyPaths([S.focus]) },
-      { label: 'Reveal in file manager', run: () => runOp({ type: 'reveal', path: relPath(S.focus) }) },
+      { label: 'New folder here…', icon: 'newFolder', hint: 'N', run: () => newFolder(S.focus), ...lock() },
+      { label: 'Copy path of this folder', icon: 'copyPath', run: () => copyPaths([S.focus]) },
+      { label: 'Reveal in file manager', icon: 'reveal', run: () => runOp({ type: 'reveal', path: relPath(S.focus) }) },
       'sep',
-      { label: 'Up one level', hint: 'Backspace', run: goUp, disabled: !S.focus.p, reason: 'already at the root' },
-      { label: 'Rise to the overview', hint: '0', run: () => S.view.overview() },
-      { label: 'Re-read this folder', hint: 'F5', run: () => refreshDirs([relPath(S.focus)]) },
+      { label: 'Up one level', icon: 'up', hint: 'Backspace', run: goUp, disabled: !S.focus.p, reason: 'already at the root' },
+      { label: 'Rise to the overview', icon: 'overview', hint: '0', run: () => S.view.overview() },
+      { label: 'Re-read this folder', icon: 'refresh', hint: 'F5', run: () => refreshDirs([relPath(S.focus)]) },
     ];
   } else if (many) {
     const nodes = [...S.sel];
     items = [
-      { label: `Move ${nodes.length} items to…`, hint: 'M', run: () => startPlacing('move'), ...lock() },
-      { label: `Copy ${nodes.length} items to…`, run: () => startPlacing('copy'), ...lock() },
-      { label: 'Duplicate in place', hint: 'Ctrl+D', run: () => duplicate(), ...lock() },
-      { label: 'Copy paths', hint: 'Ctrl+C', run: () => copyPaths() },
+      { label: `Move ${nodes.length} items to…`, icon: 'move', hint: 'M', run: () => startPlacing('move'), ...lock() },
+      { label: `Copy ${nodes.length} items to…`, icon: 'copy', run: () => startPlacing('copy'), ...lock() },
+      { label: 'Duplicate in place', icon: 'duplicate', hint: 'Ctrl+D', run: () => duplicate(), ...lock() },
+      { label: 'Copy paths', icon: 'copyPath', hint: 'Ctrl+C', run: () => copyPaths() },
       'sep',
-      { label: `Remove ${nodes.length} items…`, hint: 'Del', danger: true, run: () => remove(), ...lock() },
+      { label: `Remove ${nodes.length} items…`, icon: 'remove', hint: 'Del', danger: true, run: () => remove(), ...lock() },
     ];
   } else {
     const rootLock = isRoot ? 'the authorized root' : null;
     items = [
-      node.d ? { label: 'Go there', hint: 'Enter', run: () => setFocus(node), disabled: !!node.e, reason: 'cannot be read' }
-        : { label: 'Open', hint: 'Enter', run: () => activate(node) },
-      { label: 'Reveal in file manager', run: () => runOp({ type: 'reveal', path: relPath(node) }) },
-      { label: 'Copy path', hint: 'Ctrl+C', run: () => copyPaths([node]) },
+      node.d ? { label: 'Go there', icon: 'goThere', hint: 'Enter', run: () => setFocus(node), disabled: !!node.e, reason: 'cannot be read' }
+        : { label: 'Open', icon: 'open', hint: 'Enter', run: () => activate(node) },
+      { label: 'Reveal in file manager', icon: 'reveal', run: () => runOp({ type: 'reveal', path: relPath(node) }) },
+      { label: 'Copy path', icon: 'copyPath', hint: 'Ctrl+C', run: () => copyPaths([node]) },
       'sep',
-      node.d ? { label: 'New folder inside…', run: () => newFolder(node), ...lock(node.e ? 'cannot be read' : null) } : null,
-      { label: 'Rename…', hint: 'F2', run: () => rename(node), ...lock(rootLock) },
-      { label: 'Move to…', hint: 'M', run: () => startPlacing('move', [node]), ...lock(rootLock) },
-      { label: 'Copy to…', run: () => startPlacing('copy', [node]), ...lock(rootLock) },
-      { label: 'Duplicate in place', hint: 'Ctrl+D', run: () => duplicate([node]), ...lock(rootLock) },
+      node.d ? { label: 'New folder inside…', icon: 'newFolder', run: () => newFolder(node), ...lock(node.e ? 'cannot be read' : null) } : null,
+      { label: 'Rename…', icon: 'rename', hint: 'F2', run: () => rename(node), ...lock(rootLock) },
+      { label: 'Move to…', icon: 'move', hint: 'M', run: () => startPlacing('move', [node]), ...lock(rootLock) },
+      { label: 'Copy to…', icon: 'copy', run: () => startPlacing('copy', [node]), ...lock(rootLock) },
+      { label: 'Duplicate in place', icon: 'duplicate', hint: 'Ctrl+D', run: () => duplicate([node]), ...lock(rootLock) },
       'sep',
-      { label: 'Remove…', hint: 'Del', danger: true, run: () => remove([node]), ...lock(rootLock) },
+      { label: 'Remove…', icon: 'remove', hint: 'Del', danger: true, run: () => remove([node]), ...lock(rootLock) },
     ].filter(Boolean);
   }
   openMenu(x, y, items, { title: many ? `${S.sel.size} items` : node ? node.n : S.focus.n });
@@ -1310,15 +1330,26 @@ function sortedContents() {
   return items;
 }
 
+/** Icons for the built-in tabs; a feature's tab may name its own as tab.icon. */
+const TAB_ICON = { contents: 'contents', findings: 'findings', survey: 'survey', journal: 'journal' };
+const tabIcon = (tab) => icon(tab.icon || TAB_ICON[tab.id] || 'list-tree');
+
+/** Moves the tab underline and the lens plate under their chosen items. */
+function slideIndicators() {
+  slideIndicator(document.querySelector('.tabs'), document.querySelector('.tabs [aria-selected=true]'));
+  slideIndicator($('lens'), document.querySelector('#lens [aria-checked=true]'));
+}
+
 /** The tab buttons, made from TABS. */
 function drawTabs() {
   document.querySelector('.tabs').replaceChildren(...[...TABS].map((tab) => el('button', {
-    role: 'tab', type: 'button', 'data-tab': tab.id, 'aria-selected': String(tab.id === S.tab), text: tab.label,
+    role: 'tab', type: 'button', 'data-tab': tab.id, 'aria-selected': String(tab.id === S.tab),
     onclick: () => {
       S.tab = tab.id;
       drawLedger();
     },
-  })));
+  }, tabIcon(tab), tab.label)));
+  requestAnimationFrame(slideIndicators);
 }
 
 let ledgerKey = null;
@@ -1338,9 +1369,10 @@ function drawLedger(keepScroll = false) {
     const t = TABS.get(b.dataset.tab);
     if (t?.count) {
       const n = t.count();
-      b.replaceChildren(t.label, n != null ? el('span', { class: 'count', text: fmtCount(n) }) : '');
+      b.replaceChildren(tabIcon(t), t.label, n != null ? el('span', { class: 'count', text: fmtCount(n) }) : '');
     }
   });
+  slideIndicators();
   const sub = $('ledger-sub');
   const rich = $('ledger-rich');
   const listHost = $('ledger-list');
@@ -1351,13 +1383,17 @@ function drawLedger(keepScroll = false) {
 }
 
 function drawContents(sub, _host, keepScroll) {
-  const sortBtn = (key, label) => el('button', {
-    class: 'sort', type: 'button', 'aria-pressed': String(S.sort.key === key), text: label + (S.sort.key === key ? (S.sort.dir < 0 ? ' ↓' : ' ↑') : ''),
-    onclick: () => {
-      S.sort = { key, dir: S.sort.key === key ? -S.sort.dir : key === 'name' ? 1 : -1 };
-      drawLedger();
-    },
-  });
+  const sortBtn = (key, label) => {
+    const on = S.sort.key === key;
+    return el('button', {
+      class: 'sort', type: 'button', 'aria-pressed': String(on),
+      title: on ? `Sorted by ${label.toLowerCase()}, ${S.sort.dir < 0 ? 'descending' : 'ascending'}; click to reverse` : `Sort by ${label.toLowerCase()}`,
+      onclick: () => {
+        S.sort = { key, dir: S.sort.key === key ? -S.sort.dir : key === 'name' ? 1 : -1 };
+        drawLedger();
+      },
+    }, label, on ? icon(S.sort.dir < 0 ? 'sortDown' : 'sortUp') : null);
+  };
   sub.replaceChildren(el('span', { class: 'grow', text: `${fmtCount(S.focus.c.length)} items · ${fmtBytes(S.focus.s)}` }), sortBtn('name', 'Name'), sortBtn('size', 'Size'), sortBtn('date', 'Changed'));
   list.render = (node) => rowFor(node, { total: S.focus.s });
   list.setItems(sortedContents(), keepScroll);
@@ -1370,13 +1406,13 @@ function drawFindings(sub, _host, keepScroll) {
     return;
   }
   sub.replaceChildren(el('span', { class: 'grow', text: `${fmtCount(S.search.list.length)} matches · ${fmtBytes(S.search.bytes)}` }),
-    el('button', { class: 'sort', type: 'button', text: 'Select all', onclick: () => {
+    el('button', { class: 'sort', type: 'button', title: 'Select every match (up to 5,000)', onclick: () => {
       S.sel = new Set(S.search.list.slice(0, 5000));
       S.primary = S.search.list[0] || null;
       repaint();
       drawInspector();
       drawLedger(true);
-    } }));
+    } }, icon('selectAll'), 'Select all'));
   list.render = (node) => rowFor(node, { showPath: true });
   list.setItems(S.search.list, keepScroll);
 }
@@ -1406,8 +1442,8 @@ function drawSurvey(sub, host) {
     dupBody.push(el('p', { class: 'note', text: verifiedGroups.length
       ? `${fmtCount(verifiedGroups.length)} groups confirmed identical by content. Unconfirmed groups share only their size.`
       : `Files of identical size, up to ${fmtBytes(waste)} if all are true copies. Size alone is only a hint.` }));
-    dupBody.push(el('div', { class: 'actions' }, el('button', { class: 'btn btn-small', type: 'button', text: 'Verify by content', onclick: verifyDuplicates }),
-      el('button', { class: 'btn btn-small', type: 'button', text: 'Show in the world', onclick: () => setLens('dup') })));
+    dupBody.push(el('div', { class: 'actions' }, el('button', { class: 'btn btn-small', type: 'button', onclick: verifyDuplicates }, icon('verify'), 'Verify by content'),
+      el('button', { class: 'btn btn-small', type: 'button', onclick: () => setLens('dup') }, icon('eye'), 'Show in the world')));
     for (const g of sv.dupGroups.slice(0, 60)) {
       dupBody.push(el('div', { class: 'group-head', text: `${g.files.length} × ${fmtBytes(g.size)} · ${g.verified ? (g.mode === 'sampled' ? 'probable (sampled)' : 'identical') : 'same size'}` }));
       for (const f of g.files.slice(0, 12)) dupBody.push(itemButton(f, ''));
@@ -1447,7 +1483,7 @@ async function drawJournal(sub, host) {
     el('details', { open: true }, el('summary', {}, 'Changes', el('span', { class: 'n', text: fmtCount(entries.length) })),
       entries.length ? null : el('p', { class: 'note', text: ro ? 'Read-only mode: nothing can be changed.' : 'Nothing has been changed yet.' }),
       entries.length ? el('p', { class: 'note', text: 'Kept in .terrane-trash with the holding area, so Undo still works after Terrane restarts.' }) : null,
-      entries.some((e) => !e.undone) && !ro ? el('div', { class: 'actions' }, el('button', { class: 'btn btn-small', type: 'button', text: 'Undo latest', onclick: undo })) : null,
+      entries.some((e) => !e.undone) && !ro ? el('div', { class: 'actions' }, el('button', { class: 'btn btn-small', type: 'button', onclick: undo }, icon('undo'), 'Undo latest')) : null,
       entries.map((e) => el('div', { class: 'item is-static' }, el('span', { class: e.undone ? 'swatch is-empty' : 'swatch', style: e.undone ? null : { background: 'var(--verdigris)' } }),
         el('span', {}, el('span', { class: 'nm', text: e.label }),
           el('span', { class: 'path', text: `${fmtDate(e.at)}${e.earlier ? ' · earlier session' : ''}${e.purged ? ' · purged' : e.undone ? ' · undone' : ''}` })), el('span')))),
@@ -1455,7 +1491,7 @@ async function drawJournal(sub, host) {
       el('p', { class: 'note', text: data.holding.length ? 'Removed items wait here, inside .terrane-trash in this directory, until restored or purged.' : 'Empty. Removed items wait here until restored or purged.' }),
       data.holding.map((h) => el('div', { class: 'item is-static' }, el('span', { class: 'swatch' }),
         el('span', {}, el('span', { class: 'nm', text: h.name }), el('span', { class: 'path', text: `from ${h.origin} · ${fmtDate(h.at)}` })),
-        ro ? el('span') : el('button', { class: 'btn btn-small', type: 'button', text: 'Restore', onclick: async () => {
+        ro ? el('span') : el('button', { class: 'btn btn-small', type: 'button', onclick: async () => {
           try {
             const res = await post('restore', { ids: [h.id] });
             notice(res.label);
@@ -1464,8 +1500,8 @@ async function drawJournal(sub, host) {
             notice(err.message, { kind: 'error' });
           }
           drawLedger();
-        } }))),
-      data.holding.length && !ro ? el('div', { class: 'actions' }, el('button', { class: 'btn btn-small btn-danger', type: 'button', text: 'Purge holding area…', onclick: async () => {
+        } }, icon('restore'), 'Restore'))),
+      data.holding.length && !ro ? el('div', { class: 'actions' }, el('button', { class: 'btn btn-small btn-danger', type: 'button', onclick: async () => {
         const ok = await ask({ title: 'Purge the holding area?', danger: true, confirm: 'Delete permanently',
           body: `${data.holding.length} held item${data.holding.length === 1 ? '' : 's'} will be deleted from disk. This is the one action in Terrane that cannot be undone.` });
         if (!ok) return;
@@ -1475,7 +1511,7 @@ async function drawJournal(sub, host) {
           notice(err.message, { kind: 'error' });
         }
         drawLedger();
-      } })) : null),
+      } }, icon('remove'), 'Purge holding area…')) : null),
   );
 }
 
@@ -1501,13 +1537,29 @@ function composition(dir) {
   ];
 }
 
-function actionButton(label, run, { off, danger, wide, title } = {}) {
-  return el('button', { class: `btn${danger ? ' btn-danger' : ''}${wide ? ' wide' : ''}`, type: 'button', text: label, disabled: !!off, title: off ? `Unavailable: ${off}` : title, onclick: run });
+function actionButton(label, run, { off, danger, wide, title, icon: name } = {}) {
+  return el('button', { class: `btn${danger ? ' btn-danger' : ''}${wide ? ' wide' : ''}`, type: 'button', disabled: !!off, title: off ? `Unavailable: ${off}` : title, onclick: run },
+    name ? icon(name) : null, label);
+}
+
+let inspected = null;
+let inspectTimer = 0;
+/** Sections settle in one after another, but only when the subject changes. */
+function settleInspector(host, subject) {
+  if (subject === inspected) return;
+  inspected = subject;
+  [...host.children].forEach((c, i) => c.style.setProperty('--i', String(i)));
+  host.classList.remove('is-entering');
+  void host.offsetWidth;
+  host.classList.add('is-entering');
+  clearTimeout(inspectTimer);
+  inspectTimer = setTimeout(() => host.classList.remove('is-entering'), 600);
 }
 
 function drawInspector() {
   const host = $('inspector-body');
   const ro = writable();
+  queueMicrotask(() => settleInspector(host, S.sel.size > 1 ? `sel:${S.sel.size}` : S.primary || S.focus));
   if (S.sel.size > 1) {
     const nodes = [...S.sel];
     const size = tops(nodes).reduce((a, n) => a + n.s, 0);
@@ -1516,9 +1568,9 @@ function drawInspector() {
       el('dl', { class: 'facts' }, fact('Size', el('b', { text: fmtBytes(size) }), ` · ${pct(size, S.model.root.s)} of root`, shareBar(size, S.model.root.s)),
         fact('Folders', fmtCount(nodes.filter((n) => n.d).length)), fact('Files', fmtCount(nodes.filter((n) => !n.d).length))),
       el('div', { class: 'section-title', text: 'Actions' }),
-      el('div', { class: 'actions-grid' }, actionButton('Move to…', () => startPlacing('move'), { off: ro }), actionButton('Copy to…', () => startPlacing('copy'), { off: ro }),
-        actionButton('Duplicate', () => duplicate(), { off: ro }), actionButton('Copy paths', () => copyPaths()),
-        actionButton('Remove…', () => remove(), { off: ro, danger: true }), actionButton('Clear selection', () => select(null))),
+      el('div', { class: 'actions-grid' }, actionButton('Move to…', () => startPlacing('move'), { off: ro, icon: 'move' }), actionButton('Copy to…', () => startPlacing('copy'), { off: ro, icon: 'copy' }),
+        actionButton('Duplicate', () => duplicate(), { off: ro, icon: 'duplicate' }), actionButton('Copy paths', () => copyPaths(), { icon: 'copyPath' }),
+        actionButton('Remove…', () => remove(), { off: ro, danger: true, icon: 'remove' }), actionButton('Clear selection', () => select(null), { icon: 'clear' })),
     );
     return;
   }
@@ -1599,16 +1651,16 @@ function nodeActions(node, { ro, lockRoot, visible }) {
   return [
     el('div', { class: 'section-title', text: 'Actions' }),
     el('div', { class: 'actions-grid' },
-      node.d ? actionButton('Go there', () => setFocus(node), { off: node.e ? 'cannot be read' : null })
-        : actionButton('Open', () => activate(node), { title: 'Open with the system default application', off: S.info.snapshot ? 'snapshot mode' : null }),
-      actionButton('Reveal', () => runOp({ type: 'reveal', path: relPath(node) }), { title: 'Show in the system file manager', off: S.info.snapshot ? 'snapshot mode' : null }),
-      actionButton('Rename…', () => rename(node), { off: lockRoot }),
-      actionButton('Duplicate', () => duplicate([node]), { off: lockRoot }),
-      actionButton('Move to…', () => startPlacing('move', [node]), { off: lockRoot }),
-      actionButton('Copy to…', () => startPlacing('copy', [node]), { off: lockRoot }),
-      node.d ? actionButton('New folder inside…', () => newFolder(node), { off: ro || (node.e ? 'cannot be read' : null), wide: true }) : null,
-      actionButton(visible ? 'Fly to it' : 'Find it in the world', () => reveal(node), { wide: true, title: 'G' }),
-      actionButton('Remove…', () => remove([node]), { off: lockRoot, danger: true, wide: true })),
+      node.d ? actionButton('Go there', () => setFocus(node), { off: node.e ? 'cannot be read' : null, icon: 'goThere' })
+        : actionButton('Open', () => activate(node), { title: 'Open with the system default application', off: S.info.snapshot ? 'snapshot mode' : null, icon: 'open' }),
+      actionButton('Reveal', () => runOp({ type: 'reveal', path: relPath(node) }), { title: 'Show in the system file manager', off: S.info.snapshot ? 'snapshot mode' : null, icon: 'reveal' }),
+      actionButton('Rename…', () => rename(node), { off: lockRoot, icon: 'rename' }),
+      actionButton('Duplicate', () => duplicate([node]), { off: lockRoot, icon: 'duplicate' }),
+      actionButton('Move to…', () => startPlacing('move', [node]), { off: lockRoot, icon: 'move' }),
+      actionButton('Copy to…', () => startPlacing('copy', [node]), { off: lockRoot, icon: 'copy' }),
+      node.d ? actionButton('New folder inside…', () => newFolder(node), { off: ro || (node.e ? 'cannot be read' : null), wide: true, icon: 'newFolder' }) : null,
+      actionButton(visible ? 'Fly to it' : 'Find it in the world', () => reveal(node), { wide: true, title: 'G', icon: 'fly' }),
+      actionButton('Remove…', () => remove([node]), { off: lockRoot, danger: true, wide: true, icon: 'remove' })),
   ];
 }
 
@@ -1649,6 +1701,7 @@ function setLens(lens) {
   S.lens = lens;
   S.kindFilter = -1;
   document.querySelectorAll('#lens button').forEach((b) => b.setAttribute('aria-checked', String(b.dataset.lens === lens)));
+  slideIndicators();
   repaint();
   drawLegend();
 }
@@ -1681,14 +1734,23 @@ function drawLegend() {
     host.replaceChildren(el('div', { class: 'rampbar' },
       el('span', { class: 'swatch', style: { background: 'repeating-linear-gradient(135deg, var(--garnet) 0 3px, var(--paper) 3px 6px)' } }), `same size · ${fmtCount(groups.length - v)}`,
       el('span', { class: 'swatch', style: { background: 'var(--garnet)' } }), `confirmed · ${fmtCount(v)}`,
-      groups.length ? el('button', { class: 'btn btn-small', type: 'button', text: 'Verify by content', onclick: verifyDuplicates }) : ''));
+      groups.length ? el('button', { class: 'btn btn-small', type: 'button', onclick: verifyDuplicates }, icon('verify'), 'Verify by content') : ''));
   }
+}
+
+/** The status line's parts, made once so their figures can count between values. */
+let statusParts = null;
+function statusLine() {
+  if (statusParts) return statusParts;
+  const fig = () => el('span', { class: 'num' });
+  statusParts = { lamp: el('span', { class: 'pulse' }), dirs: fig(), files: fig(), bytes: fig() };
+  $('status').replaceChildren(statusParts.lamp, el('span', {}, statusParts.dirs, ' folders · ', statusParts.files, ' files · ', statusParts.bytes));
+  return statusParts;
 }
 
 function drawStatus() {
   if (!S.model) return;
   const r = S.model.root;
-  const counts = `${fmtCount(r.dc)} folders · ${fmtCount(r.fc)} files · ${fmtBytes(r.s)}`;
   let cls = 'pulse';
   let label;
   if (S.scanning) { cls += ' is-busy'; label = 'Surveying'; }
@@ -1698,7 +1760,11 @@ function drawStatus() {
   else { cls += ' is-off'; label = 'Manual refresh'; }
   const fit = S.layout?.over ? ' · grain raised, some blocks left out' : S.layout?.coarsened ? ' · grain raised to fit' : '';
   $('status-label').textContent = `${label}${S.info.readOnly && !S.info.snapshot ? ' · read-only' : ''}${fit}`;
-  $('status').replaceChildren(el('span', { class: cls }), counts);
+  const parts = statusLine();
+  parts.lamp.className = cls;
+  countTo(parts.dirs, r.dc, fmtCount);
+  countTo(parts.files, r.fc, fmtCount);
+  countTo(parts.bytes, r.s, fmtBytes);
   $('status').title = `${fmtCount(S.layout?.n || 0)} blocks drawn`;
 }
 
@@ -1746,10 +1812,46 @@ async function showGuide() {
   dlg.classList.remove('is-wide');
 }
 
-function fatal(title, text) {
+/** The strata mark, drawn large for the veil. */
+const veilMark = () => {
+  const ns = 'http://www.w3.org/2000/svg';
+  const svg = document.createElementNS(ns, 'svg');
+  svg.setAttribute('class', 'veil-mark');
+  svg.setAttribute('viewBox', '0 0 28 20');
+  svg.setAttribute('aria-hidden', 'true');
+  for (const [x, y, w, h] of [[0, 14, 28, 6], [5, 8, 17, 6], [10, 2, 7, 6]]) {
+    const r = document.createElementNS(ns, 'rect');
+    Object.entries({ x, y, width: w, height: h }).forEach(([k, v]) => r.setAttribute(k, v));
+    svg.append(r);
+  }
+  return svg;
+};
+
+/**
+ * Shows the veil over the world. kind 'busy' while surveying, 'error' when
+ * the survey or the connection failed, 'quiet' when the world is simply
+ * unavailable and the rest of the page must stay usable.
+ */
+function fatal(title, text, kind = 'error') {
   const veil = $('veil');
-  veil.replaceChildren(el('strong', { text: title }), text);
+  clearTimeout(veilTimer);
+  veil.className = kind === 'busy' ? '' : `is-${kind}`;
+  veil.replaceChildren(el('div', { class: 'stack', style: { alignItems: 'center', gap: '10px' } },
+    veilMark(), el('strong', { text: title }), el('div', { class: 'veil-path', text }),
+    kind === 'busy' ? el('div', { class: 'veil-rule', 'aria-hidden': 'true' }) : null));
   veil.hidden = false;
+}
+
+let veilTimer = 0;
+/** Lifts the veil away rather than cutting it. */
+function hideVeil() {
+  const veil = $('veil');
+  if (veil.hidden || veil.classList.contains('is-leaving')) return;
+  veil.classList.add('is-leaving');
+  veilTimer = setTimeout(() => {
+    veil.hidden = true;
+    veil.classList.remove('is-leaving');
+  }, 420);
 }
 
 /* ====================================================================== */
@@ -1837,6 +1939,13 @@ function wireViewport() {
   });
 }
 
+/** Shows or hides a side panel; the view tools' toggles say which are shown. */
+function togglePanel(which) {
+  document.body.classList.toggle(which === 'ledger' ? 'no-ledger' : 'no-inspector');
+  $('v-ledger').setAttribute('aria-pressed', String(!document.body.classList.contains('no-ledger')));
+  $('v-inspector').setAttribute('aria-pressed', String(!document.body.classList.contains('no-inspector')));
+}
+
 function wireControls() {
   $('b-up').onclick = goUp;
   $('b-new').onclick = () => newFolder(S.primary?.d && S.sel.size === 1 ? S.primary : S.focus);
@@ -1863,6 +1972,13 @@ function wireControls() {
   $('v-over').onclick = () => S.view.overview();
   $('v-down').onclick = () => S.view.descend();
   $('v-go').onclick = () => (S.primary ? reveal(S.primary) : notice('Select something first, then fly to it.', { kind: 'info', ms: 2500 }));
+  $('v-ledger').onclick = () => togglePanel('ledger');
+  $('v-inspector').onclick = () => togglePanel('inspector');
+  $('q-clear').onclick = () => { clearQuery(); $('q').focus(); };
+  // Tabs and the lens switch are flexible; their indicators follow resizes.
+  const ro = new ResizeObserver(() => slideIndicators());
+  ro.observe(document.querySelector('.tabs'));
+  ro.observe($('lens'));
   $('placing-cancel').onclick = stopPlacing;
   $('placing-here').onclick = () => S.placing && transfer(S.placing.type, S.placing.nodes, S.focus);
 }
@@ -1938,7 +2054,7 @@ function wireKeys() {
   core({ id: 'back', mod: 'alt', keys: ['ArrowLeft'], run: () => { goBack(); }, guide: [SEL, 'Alt+←', 'Back'] });
   core({ id: 'find', keys: ['/'], run: () => { $('q').focus(); }, guide: [SEL, '/', 'Find'] });
   core({ id: 'guide-escape', guide: [SEL, 'Esc', 'Cancel, clear'] });
-  core({ id: 'panels', keys: ['[', ']'], run: (c) => { document.body.classList.toggle(c.k === '[' ? 'no-ledger' : 'no-inspector'); }, guide: [SEL, '[  ]', 'Hide ledger / inspector'] });
+  core({ id: 'panels', keys: ['[', ']'], run: (c) => { togglePanel(c.k === '[' ? 'ledger' : 'inspector'); }, guide: [SEL, '[  ]', 'Hide ledger / inspector'] });
   core({ id: 'lens', keys: ['1', '2', '3', '4'], run: (c) => { setLens(['kind', 'age', 'size', 'dup'][Number(c.k) - 1]); }, guide: [SEL, '1 – 4', 'Lens'] });
   core({ id: 'new-folder', keys: ['n'], run: () => { newFolder(S.primary?.d && S.sel.size === 1 ? S.primary : S.focus); }, guide: [CHG, 'N', 'New folder'] });
   core({ id: 'rename', keys: ['F2'], run: () => { rename(); }, guide: [CHG, 'F2', 'Rename'] });
@@ -2101,9 +2217,16 @@ async function start() {
     const noop = new Proxy(function () {}, { get: (_t, p) => (p === 'on' ? {} : p === 'eye' || p === 'alt' || p === 'w' || p === 'h' ? undefined : noop), apply: () => undefined, set: () => true });
     S.view = noop;
     S.noGL = true;
-    fatal('3D view unavailable', `This browser could not start WebGL (${err.message}). The ledger, inspector, search and every operation still work.`);
+    document.body.classList.add('no-gl');
+    fatal('3D view unavailable', `This browser could not start WebGL (${err.message}). The ledger, inspector, search and every operation still work.`, 'quiet');
     $('veil').style.pointerEvents = 'none';
   }
+  if (!S.noGL) {
+    hud = createHud({ onNorth: (yaw) => S.view.turn(-yaw) });
+    hud.heading(S.view.cam.yaw);
+    hud.printWith(() => S.view);
+  }
+  preloadFloat();
   list = new VirtualList($('ledger-list'), {
     render: (n) => rowFor(n),
     onKey: (e, node) => {
@@ -2125,7 +2248,7 @@ async function start() {
   wireViewport();
   wireControls();
   wireKeys();
-  if (!S.noGL) fatal(S.info.snapshot ? 'Reading the snapshot' : 'Surveying', S.info.root);
+  if (!S.noGL) fatal(S.info.snapshot ? 'Reading the snapshot' : 'Surveying', S.info.root, 'busy');
   S.scanning = true;
   thumbs.load(TOKEN);
   drawAll();
@@ -2137,7 +2260,7 @@ async function start() {
     return;
   }
   S.scanning = false;
-  if (!S.noGL) $('veil').hidden = true;
+  if (!S.noGL) hideVeil();
   clearTimeout(S.layoutTimer);
   S.layoutTimer = 0;
   S.survey = S.model.survey();

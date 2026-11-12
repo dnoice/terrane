@@ -1,0 +1,129 @@
+/*
+ * ============================================================================
+ * ✒ Metadata
+ *     - Title: Base Styles (Terrane Edition - v1.0)
+ *     - File Name: base.css
+ *     - Relative Path: web/css/base.css
+ *     - Artifact Type: stylesheet
+ *     - Version: 1.0.0
+ *     - Date: 11/12/2026
+ *     - Update: Thursday, November 12, 2026
+ *     - Author: Dennis 'dendogg' Smaltz
+ *     - A.I. Acknowledgement: Anthropic - Claude Opus 5.5
+ *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
+ *
+ * ✒ Description:
+ *     The reset and the element defaults every component starts from:
+ *     box model, document type, form controls, focus, selection,
+ *     scrollbars, keys and code. Nothing here names a component.
+ *
+ * ✒ Key Features:
+ *     - A small modern reset: border-box, no default margins, media as
+ *       blocks, controls that inherit the document font
+ *     - [hidden] always wins, so script can rely on it
+ *     - One visible focus ring for keyboard users only (:focus-visible)
+ *     - Highlighter-yellow text selection, the same colour as a selected
+ *       item in the world
+ *     - Thin scrollbars in the rule colour, standard and WebKit forms
+ *     - Tabular figures wherever DM Mono sets a number
+ *     - The reference-label voice (expanded capitals) as one rule shared
+ *       by every label in the interface
+ *
+ * ✒ Other Important Information:
+ *     - Dependencies: tokens.css (layer "tokens")
+ *     - Compatible platforms: current evergreen browsers
+ * ----------------------------------------------------------------------------
+ */
+
+*, *::before, *::after { box-sizing: border-box; }
+[hidden] { display: none !important; }
+
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html, body { height: 100%; margin: 0; }
+
+body {
+  background: var(--surface-ground);
+  color: var(--text);
+  font: 400 var(--fs-base) / var(--lh-base) var(--sans);
+  font-stretch: var(--wdth-normal);
+  font-synthesis: none;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+h1, h2, h3, h4, p, dl, dd, figure, pre { margin: 0; }
+img, svg, canvas, video { display: block; max-width: 100%; }
+img { height: auto; }
+button, input, select, textarea { font: inherit; color: inherit; letter-spacing: inherit; }
+button { cursor: pointer; }
+button:disabled, [aria-disabled='true'] { cursor: default; }
+a { color: inherit; text-underline-offset: 0.2em; }
+code, kbd, pre, samp, output { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+table { border-collapse: collapse; }
+
+:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: var(--focus-offset);
+  transition: outline-offset var(--dur-fast) var(--ease-out);
+}
+:focus:not(:focus-visible) { outline: none; }
+
+::selection { background: var(--select); color: var(--text); }
+
+/* Thin rules for scrollbars; the drawing sheet has no chrome. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--line-2) transparent;
+}
+::-webkit-scrollbar { width: 9px; height: 9px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--line-2); border: 2px solid var(--surface-panel); }
+::-webkit-scrollbar-thumb:hover { background: var(--text-3); }
+::-webkit-scrollbar-corner { background: transparent; }
+
+kbd {
+  display: inline-block;
+  min-width: 1.6em;
+  padding: 1px 4px;
+  border: var(--border-2);
+  border-bottom-width: 2px;
+  background: var(--surface-control);
+  color: var(--text-2);
+  font-size: var(--fs-xs);
+  line-height: 1.3;
+  text-align: center;
+  white-space: nowrap;
+}
+
+/* The reference-label voice: expanded capitals, used for every label. */
+.caps, .cell-label, .panel-head h2, .tabs button, .facts dt, .section-title, .menu-title, .ref, .guide h3, .field span {
+  font: 700 var(--fs-2xs) / 1 var(--sans);
+  font-stretch: var(--wdth-expanded);
+  letter-spacing: var(--track-caps);
+  text-transform: uppercase;
+}
+
+/* Icons: Lucide symbols drawn in the current text colour. */
+.icon {
+  display: inline-block;
+  flex: none;
+  width: var(--icon);
+  height: var(--icon);
+  fill: none;
+  stroke: currentColor;
+  stroke-width: var(--icon-stroke);
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  vertical-align: -0.2em;
+  pointer-events: none;
+}
+
+@media (forced-colors: active) {
+  .swatch, .glyph, .comp i, .share i, .job-track i, .pulse { forced-color-adjust: none; }
+}

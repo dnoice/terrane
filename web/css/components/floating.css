@@ -1,0 +1,307 @@
+/*
+ * ============================================================================
+ * ✒ Metadata
+ *     - Title: Floating Surfaces (Terrane Edition - v1.0)
+ *     - File Name: floating.css
+ *     - Relative Path: web/css/components/floating.css
+ *     - Artifact Type: stylesheet
+ *     - Version: 1.0.0
+ *     - Date: 11/12/2026
+ *     - Update: Thursday, November 12, 2026
+ *     - Author: Dennis 'dendogg' Smaltz
+ *     - A.I. Acknowledgement: Anthropic - Claude Opus 5.5
+ *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
+ *
+ * ✒ Description:
+ *     Everything that floats above the sheet: the context menu, the hover
+ *     tip, modal dialogs and the guide, notices, and the panel of
+ *     operations in progress. Each is a paper card with a hard ink shadow;
+ *     each enters with @starting-style, so no script times its arrival.
+ *
+ * ✒ Key Features:
+ *     - Menu with icons, key hints and reasons for unavailable items;
+ *       unfolds from the corner it was opened at
+ *     - Tip in ink that follows the pointer (Floating UI keeps it on
+ *       screen) and can carry a thumbnail
+ *     - Dialogs and their backdrop fade and rise in and out, including the
+ *       exit, through transition-behavior: allow-discrete
+ *     - Notices with an icon, an auto-dismiss rule that runs down along
+ *       the bottom edge and pauses while the pointer rests on it
+ *     - Operations panel: a live hatch runs along the progress rule while
+ *       bytes move; stipple while the total is still being counted
+ *     - The guide as a three-column key sheet with keycaps
+ *
+ * ✒ Other Important Information:
+ *     - Dependencies: tokens.css, base.css, controls.css; web/js/ui.js
+ *       and web/js/float.js position the menu and tip
+ *     - Compatible platforms: current evergreen browsers (@starting-style,
+ *       allow-discrete); older ones show the same surfaces without motion
+ * ----------------------------------------------------------------------------
+ */
+
+/* ---------- context menu ---------- */
+
+#menu {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: var(--z-menu);
+  min-width: 236px;
+  max-width: 360px;
+  padding: 4px 0;
+  border: var(--border);
+  background: var(--surface-control);
+  box-shadow: var(--shadow-2);
+  transform-origin: var(--origin, top left);
+  transition: opacity var(--dur-fast) var(--ease-out), scale var(--dur-base) var(--ease-spring);
+}
+@starting-style {
+  #menu { opacity: 0; scale: 0.94; }
+}
+.menu-title {
+  padding: 8px 12px 7px;
+  margin-bottom: 4px;
+  border-bottom: var(--border-2);
+  color: var(--text-3);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.menu-item {
+  appearance: none;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 6px 12px;
+  border: 0;
+  background-color: transparent;
+  color: var(--text);
+  text-align: left;
+  font: 500 var(--fs-md) / 1.2 var(--sans);
+}
+.menu-item .icon { width: var(--icon-sm); height: var(--icon-sm); color: var(--text-2); }
+.menu-item:hover, .menu-item:focus { --sweep: 100%; outline: none; }
+.menu-item.is-danger { --sweep-color: var(--danger); color: var(--danger); }
+.menu-item.is-danger .icon { color: inherit; }
+.menu-item.is-danger:hover, .menu-item.is-danger:focus { color: var(--on-ink); }
+.menu-item[aria-disabled='true'] { --sweep: 0% !important; color: var(--text-3); }
+.menu-item[aria-disabled='true'] .icon { color: var(--line-2); }
+.menu-label { flex: 1; }
+.menu-why { max-width: 150px; font: 400 var(--fs-xs) / 1.2 var(--mono); color: var(--text-3); text-align: right; }
+.menu-item kbd { border-color: var(--line-3); background: transparent; }
+.menu-item:hover kbd, .menu-item:focus kbd { border-color: currentColor; color: inherit; }
+.menu-sep { height: 1px; margin: 4px 0; background: var(--line-2); }
+
+/* ---------- hover tip ---------- */
+
+#tip {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: var(--z-tip);
+  max-width: 360px;
+  padding: 7px 9px;
+  background: var(--ink);
+  color: var(--on-ink);
+  box-shadow: 3px 3px 0 var(--ink-veil);
+  pointer-events: none;
+  transition: opacity var(--dur-instant) var(--ease-out);
+}
+@starting-style {
+  #tip { opacity: 0; }
+}
+.tip-name { font: 600 var(--fs-md) / 1.25 var(--sans); overflow-wrap: anywhere; }
+.tip-line { font: 400 var(--fs-xs) / 1.45 var(--mono); color: var(--on-ink-2); }
+.tip-pic { margin-top: 7px; line-height: 0; }
+.tip-pic img {
+  display: block;
+  width: auto;
+  height: auto;
+  max-width: 160px;
+  max-height: 160px;
+  border: 1px solid var(--paper);
+  animation: fade-in var(--dur-base) var(--ease-out);
+}
+
+/* ---------- dialogs ---------- */
+
+dialog {
+  width: min(440px, 92vw);
+  padding: 0;
+  border: var(--border);
+  border-radius: var(--radius);
+  background: var(--surface-control);
+  color: var(--text);
+  box-shadow: var(--shadow-3);
+  opacity: 0;
+  translate: 0 10px;
+  transition: opacity var(--dur-base) var(--ease-out), translate var(--dur-base) var(--ease-out-expo),
+    overlay var(--dur-base) allow-discrete, display var(--dur-base) allow-discrete;
+}
+dialog[open] { opacity: 1; translate: 0 0; }
+@starting-style {
+  dialog[open] { opacity: 0; translate: 0 10px; }
+}
+dialog::backdrop {
+  background: var(--ink-veil);
+  opacity: 0;
+  transition: opacity var(--dur-base) var(--ease-out), overlay var(--dur-base) allow-discrete,
+    display var(--dur-base) allow-discrete;
+}
+dialog[open]::backdrop { opacity: 1; }
+@starting-style {
+  dialog[open]::backdrop { opacity: 0; }
+}
+dialog.is-wide { width: min(880px, 94vw); }
+.dialog-form { padding: 20px; }
+.dialog-form h2 { margin: 0 0 10px; font: 700 18px / 1.2 var(--sans); font-stretch: 104%; }
+.dialog-body { margin: 0 0 12px; color: var(--text-2); overflow-wrap: anywhere; text-wrap: pretty; }
+.dialog-error { min-height: 18px; margin: 4px 0 0; color: var(--danger); font-size: 12px; font-weight: 600; }
+.dialog-error:not(:empty) { animation: nudge 260ms var(--ease-out); }
+.dialog-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 14px; }
+
+/* ---------- the guide: a key sheet ---------- */
+
+.guide { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px 26px; margin: 4px 0; }
+.guide > div { animation: fade-up var(--dur-base) var(--ease-out-expo) both; }
+.guide > div:nth-child(2) { animation-delay: 40ms; }
+.guide > div:nth-child(3) { animation-delay: 80ms; }
+.guide > div:nth-child(n + 4) { animation-delay: 120ms; }
+.guide h3 { margin: 14px 0 7px; padding-bottom: 5px; border-bottom: var(--border-2); color: var(--text-3); }
+.guide dl { display: grid; grid-template-columns: auto 1fr; gap: 6px 12px; margin: 0; font-size: 12px; }
+.guide dt {
+  justify-self: start;
+  padding: 1px 5px;
+  border: var(--border-2);
+  border-bottom-width: 2px;
+  background: var(--surface-panel);
+  font: 500 11px / 1.4 var(--mono);
+  white-space: nowrap;
+}
+.guide dd { margin: 0; color: var(--text-2); }
+@media (max-width: 760px) { .guide { grid-template-columns: 1fr; } }
+
+/* ---------- notices ---------- */
+
+#notices {
+  position: fixed;
+  left: 50%;
+  bottom: calc(var(--block-h) + 14px);
+  z-index: var(--z-notices);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  width: min(640px, 92vw);
+  translate: -50% 0;
+  pointer-events: none;
+}
+.notice {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  max-width: 100%;
+  padding: 7px 8px;
+  overflow: hidden;
+  border: var(--border);
+  background: var(--ink);
+  color: var(--on-ink);
+  box-shadow: 4px 4px 0 var(--ink-veil);
+  pointer-events: auto;
+  transition: opacity var(--dur-fast) var(--ease-out), translate var(--dur-base) var(--ease-spring),
+    scale var(--dur-fast) var(--ease-out);
+}
+@starting-style {
+  .notice { opacity: 0; translate: 0 12px; }
+}
+.notice.is-leaving { opacity: 0; scale: 0.96; translate: 0 4px; }
+.notice-mark {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  background: var(--live);
+  color: var(--on-ink);
+}
+.notice-mark .icon { width: 13px; height: 13px; stroke-width: 2.5; }
+.notice.is-error .notice-mark { background: var(--danger); }
+.notice.is-info .notice-mark { background: var(--paper); color: var(--ink); }
+.notice-text { font-weight: 500; overflow-wrap: anywhere; }
+.notice .btn { --sweep-color: var(--select); border-color: var(--on-ink); background-color: transparent; color: var(--on-ink); }
+.notice .btn:hover { color: var(--ink); }
+.notice-close {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--on-ink-2);
+  transition: color var(--dur-fast), rotate var(--dur-base) var(--ease-spring);
+}
+.notice-close:hover { color: var(--mark); rotate: 90deg; }
+.notice-close .icon { width: var(--icon-sm); height: var(--icon-sm); }
+/* The time left before it goes, as a rule running down the bottom edge. */
+.notice::after {
+  content: '';
+  position: absolute;
+  inset: auto 0 0 0;
+  height: 2px;
+  background: var(--mark);
+  transform-origin: left;
+  animation: run-down var(--life, 4500ms) linear forwards;
+}
+.notice.is-error::after { background: var(--signal); }
+.notice:hover::after { animation-play-state: paused; }
+
+/* ---------- operations in progress ---------- */
+
+#jobs {
+  position: absolute;
+  left: 24px;
+  bottom: 24px;
+  z-index: var(--z-jobs);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: min(390px, calc(100% - 48px));
+}
+.job {
+  display: grid;
+  gap: 7px;
+  padding: 10px 10px 11px;
+  border: var(--border);
+  background: var(--surface-control);
+  box-shadow: var(--shadow-2);
+  transition: opacity var(--dur-base) var(--ease-out), translate var(--dur-base) var(--ease-spring);
+}
+@starting-style {
+  .job { opacity: 0; translate: -10px 0; }
+}
+.job-head { display: flex; align-items: center; gap: 10px; }
+.job-head > .icon { color: var(--live); }
+.job-title {
+  flex: 1;
+  font: 700 var(--fs-xs) / 1.2 var(--sans);
+  font-stretch: 118%;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+.job-track { position: relative; display: block; height: 9px; overflow: hidden; border: var(--border); background: var(--rule-soft); }
+.job-track i {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 0;
+  background: var(--tex-hatch-live);
+  background-size: 11px 11px;
+  animation: hatch-run 0.8s linear infinite;
+  transition: width 140ms linear;
+}
+.job-track.is-unknown i { width: 100%; background: var(--tex-stipple); animation: stipple-run 1s linear infinite; }
+.job-fig { font: 400 11px / 1.3 var(--mono); font-variant-numeric: tabular-nums; color: var(--text-2); }
+.job-cur { overflow: hidden; font: 400 var(--fs-xs) / 1.3 var(--mono); color: var(--text-3); text-overflow: ellipsis; white-space: nowrap; }
+.job-cur:empty, .job-fig:empty { display: none; }

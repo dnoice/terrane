@@ -1,10 +1,10 @@
 <!--
 ✒ Metadata
-    - Title: Package Manifest (Terrane Edition - v1.2)
+    - Title: Package Manifest (Terrane Edition - v1.3)
     - File Name: package.json
     - Relative Path: package.json
     - Artifact Type: config
-    - Version: 1.2.0
+    - Version: 1.3.0
     - Date: 11/12/2026
     - Update: Thursday, November 12, 2026
     - Author: Dennis 'dendogg' Smaltz
@@ -12,6 +12,10 @@
     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
 
 ✒ Changelog:
+    - 1.3.0 (11/12/2026) [dendogg + Anthropic - Claude Opus 5.5] — Adds
+      the vendor script, which fetches the pinned browser libraries once
+      and verifies them offline, and raises the package version to 1.2.0
+      for the interface overhaul.
     - 1.2.0 (11/12/2026) [dendogg + Anthropic - Claude Opus 5.5] — Adds
       the ui-check script, the headless browser check of the keyboard
       routes with and without WebGL.
@@ -37,6 +41,8 @@
     - snapshot: records a directory's structure into a dataset
     - thumbs: builds or updates the thumbnail dataset (Python and Pillow)
     - test: runs the service smoke test against a throwaway directory
+    - vendor: fetches the pinned third-party browser files into
+      web/vendor/ from jsDelivr; --check verifies them offline
     - ui-check: drives the page in headless Edge or Chrome, keyboard
       only, with and without WebGL, and compares draw calls with the
       recorded baseline; needs Edge or Chrome installed
@@ -52,10 +58,12 @@
     npm test
     npm run ui-check
     npm run ui-check -- core --pass nogl
+    npm run vendor -- --check
     npm run fixture -- C:\temp\terrane-fixture 50000
 
 ✒ Other Important Information:
-    - Dependencies: none (three.js and the fonts are vendored in web/);
+    - Dependencies: none at run time (three.js, Motion, Floating UI,
+      Lucide icons and the fonts are vendored in web/);
       the thumbnail builder needs Python 3.10+ with Pillow, and Inkscape
       for heavy SVGs; ui-check needs Microsoft Edge or Google Chrome
     - Compatible platforms: Node.js 22.5 or newer

@@ -1,0 +1,83 @@
+{
+  "_meta": {
+    "title": "Vendored Files Manifest (Terrane Edition - v1.0)",
+    "file": "web/vendor/manifest.json",
+    "artifactType": "data",
+    "description": "Written by tools/vendor.mjs: the source, size and SHA-256 of every vendored browser file. Verify with node tools/vendor.mjs --check.",
+    "author": "Dennis 'dendogg' Smaltz",
+    "aiAcknowledgement": "Anthropic - Claude Opus 5.5",
+    "signature": "︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!"
+  },
+  "items": [
+    {
+      "name": "@floating-ui/core",
+      "version": "1.8.0",
+      "licence": "MIT",
+      "files": [
+        {
+          "path": "web/vendor/floating-ui/floating-ui.core.browser.min.mjs",
+          "source": "https://cdn.jsdelivr.net/npm/@floating-ui/core@1.8.0/dist/floating-ui.core.browser.min.mjs",
+          "bytes": 12387,
+          "sha256": "895286af18d41dd1d59d8bca70f5d6ccee1c0d3c8ae41b8e5075758bf8c13f7e"
+        },
+        {
+          "path": "web/vendor/floating-ui/LICENSE",
+          "source": "https://cdn.jsdelivr.net/npm/@floating-ui/core@1.8.0/LICENSE",
+          "bytes": 1089,
+          "sha256": "0e4c9a9b6c71019cbbea3bdc20b01223110a9035700f9c960c8fcbf78c2325ce"
+        }
+      ]
+    },
+    {
+      "name": "@floating-ui/dom",
+      "version": "1.8.0",
+      "licence": "MIT",
+      "files": [
+        {
+          "path": "web/vendor/floating-ui/floating-ui.dom.browser.min.mjs",
+          "source": "https://cdn.jsdelivr.net/npm/@floating-ui/dom@1.8.0/dist/floating-ui.dom.browser.min.mjs",
+          "bytes": 9872,
+          "sha256": "f9d7c524ab0793080120176182ec21fb51e27179ea00a667aab40f23bce3625d"
+        }
+      ]
+    },
+    {
+      "name": "lucide-static",
+      "version": "1.72.0",
+      "licence": "ISC",
+      "files": [
+        {
+          "path": "web/vendor/lucide/LICENSE",
+          "source": "https://cdn.jsdelivr.net/npm/lucide-static@1.72.0/LICENSE",
+          "bytes": 3208,
+          "sha256": "b495047bd93a9b06913511076f504daba17d5bbeb3e0650f3bb53a4220329c57"
+        },
+        {
+          "path": "web/vendor/lucide/icons.svg",
+          "source": "https://cdn.jsdelivr.net/npm/lucide-static@1.72.0/icons/*.svg (62 icons)",
+          "bytes": 12338,
+          "sha256": "5ec939ec179b0093daa5122d49ad4d80b1785bae09faea7f754db20b477e1b3a"
+        }
+      ]
+    },
+    {
+      "name": "motion",
+      "version": "14.12.0",
+      "licence": "MIT",
+      "files": [
+        {
+          "path": "web/vendor/motion/motion.js",
+          "source": "https://cdn.jsdelivr.net/npm/motion@14.12.0/dist/motion.js",
+          "bytes": 188678,
+          "sha256": "a18fc08eb11c67658b34270bb71bc4ba806c87dbc1b720d7acd38c437844eee7"
+        },
+        {
+          "path": "web/vendor/motion/LICENSE.md",
+          "source": "https://cdn.jsdelivr.net/npm/motion@14.12.0/LICENSE.md",
+          "bytes": 1100,
+          "sha256": "1bf0dc3f7727723e5a032ed12164a47cf92c05204cb1a3485f123c24e2833ed1"
+        }
+      ]
+    }
+  ]
+}

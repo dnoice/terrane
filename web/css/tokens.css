@@ -1,0 +1,241 @@
+/*
+ * ============================================================================
+ * ✒ Metadata
+ *     - Title: Design Tokens (Terrane Edition - v1.0)
+ *     - File Name: tokens.css
+ *     - Relative Path: web/css/tokens.css
+ *     - Artifact Type: stylesheet
+ *     - Version: 1.0.0
+ *     - Date: 11/12/2026
+ *     - Update: Thursday, November 12, 2026
+ *     - Author: Dennis 'dendogg' Smaltz
+ *     - A.I. Acknowledgement: Anthropic - Claude Opus 5.5
+ *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
+ *
+ * ✒ Description:
+ *     Every value the interface is built from, defined once: colour
+ *     primitives and the semantic roles that use them, file-kind pigments,
+ *     type, space, sizes, elevation, layering, motion and the drawing
+ *     textures. Components read roles, never primitives. The 3D world
+ *     reads the same colours through web/js/theme.js.
+ *
+ * ✒ Key Features:
+ *     - Primitives (chalk, bone, paper, ink, rule) and semantic roles
+ *       (surface, text, line, mark, signal, garnet, verdigris)
+ *     - Derived tints made with color-mix in OKLCH, so a primitive change
+ *       carries through every wash and hover
+ *     - A type scale on Archivo's width axis plus DM Mono for figures
+ *     - A 4 px space scale and named control sizes
+ *     - Hard offset elevation, the drafting-sheet shadow
+ *     - Motion tokens, including a spring curve written with linear()
+ *     - Registered custom properties (@property) so progress, heading
+ *       and sweep values animate as numbers and angles
+ *     - Drawing textures (stipple, hatch, grid, paper grain) as tokens
+ *     - Overrides for prefers-contrast and forced-colors
+ *
+ * ✒ Other Important Information:
+ *     - Dependencies: imported into layer "tokens" by web/css/terrane.css
+ *     - Compatible platforms: current evergreen browsers (color-mix,
+ *       linear() easing, @property)
+ * ----------------------------------------------------------------------------
+ */
+
+/* ---------- registered properties: animate as values, not strings ---------- */
+
+@property --p { syntax: '<number>'; inherits: true; initial-value: 0; }
+@property --yaw { syntax: '<angle>'; inherits: true; initial-value: 0deg; }
+@property --sweep { syntax: '<percentage>'; inherits: false; initial-value: 0%; }
+@property --lift { syntax: '<length>'; inherits: false; initial-value: 0px; }
+@property --ind-x { syntax: '<length>'; inherits: true; initial-value: 0px; }
+@property --ind-w { syntax: '<length>'; inherits: true; initial-value: 0px; }
+
+:root {
+  color-scheme: light;
+
+  /* ---------- colour primitives ---------- */
+  --chalk: #e2e7e3;
+  --bone: #f1f4f0;
+  --paper: #fafbf8;
+  --white: #ffffff;
+  --ink: #18201e;
+  --ink-2: #47534f;
+  --ink-3: #6f7b76;
+  --rule: #c6cec9;
+  --rule-soft: #dbe1dc;
+
+  --mark: #f4c430;
+  --signal: #e5482d;
+  --garnet: #9b1c3a;
+  --verdigris: #1f7f73;
+
+  /* file-kind pigments, matched to KINDS in web/js/model.js */
+  --k-code: #1f8a7d;
+  --k-document: #3d5fa8;
+  --k-image: #c9546c;
+  --k-video: #6c4a8f;
+  --k-audio: #d27a34;
+  --k-archive: #7b5a41;
+  --k-data: #5f8f47;
+  --k-binary: #46504d;
+  --k-other: #9aa39f;
+
+  /* ---------- derived tints (OKLCH mixing keeps hue honest) ---------- */
+  --mark-soft: color-mix(in oklch, var(--mark) 38%, var(--paper));
+  --mark-wash: color-mix(in oklch, var(--mark) 16%, var(--paper));
+  --signal-wash: color-mix(in oklch, var(--signal) 12%, var(--paper));
+  --garnet-wash: color-mix(in oklch, var(--garnet) 10%, var(--paper));
+  --verdigris-wash: color-mix(in oklch, var(--verdigris) 12%, var(--paper));
+  --verdigris-deep: color-mix(in oklch, var(--verdigris) 78%, var(--ink));
+  --ink-veil: color-mix(in oklch, var(--ink) 34%, transparent);
+  --ink-ghost: color-mix(in oklch, var(--ink) 7%, transparent);
+  --ink-tick: color-mix(in oklch, var(--ink) 30%, transparent);
+  --paper-glass: color-mix(in oklch, var(--paper) 92%, transparent);
+  --on-ink: var(--paper);
+  --on-ink-2: #c9d2cd;
+
+  /* ---------- semantic roles ---------- */
+  --surface-ground: var(--chalk);   /* the stage and the page behind */
+  --surface-panel: var(--bone);     /* docked panels and the bars */
+  --surface-control: var(--paper);  /* buttons, fields, floating sheets */
+  --surface-field: var(--white);    /* a field being typed in */
+  --text: var(--ink);
+  --text-2: var(--ink-2);
+  --text-3: var(--ink-3);
+  --line: var(--ink);
+  --line-2: var(--rule);
+  --line-3: var(--rule-soft);
+  --select: var(--mark);
+  --select-hover: var(--mark-soft);
+  --search: var(--signal);
+  --danger: var(--garnet);
+  --live: var(--verdigris);
+
+  /* ---------- type ---------- */
+  --sans: 'Archivo', 'Segoe UI', system-ui, sans-serif;
+  --mono: 'DM Mono', 'Cascadia Mono', Consolas, ui-monospace, monospace;
+  --fs-3xs: 9.5px;
+  --fs-2xs: 10px;
+  --fs-xs: 10.5px;
+  --fs-sm: 11.5px;
+  --fs-md: 12.5px;
+  --fs-base: 13px;
+  --fs-lg: 15px;
+  --fs-xl: 19px;
+  --fs-2xl: 24px;
+  --fs-3xl: 34px;
+  --lh-tight: 1.15;
+  --lh-snug: 1.3;
+  --lh-base: 1.45;
+  --wdth-condensed: 92%;
+  --wdth-normal: 100%;
+  --wdth-wide: 108%;
+  --wdth-expanded: 122%;
+  --wdth-max: 125%;
+  --track-caps: 0.13em;
+  --track-wide: 0.08em;
+
+  /* ---------- space (4 px unit) ---------- */
+  --u: 4px;
+  --s-1: 4px;
+  --s-2: 8px;
+  --s-3: 12px;
+  --s-4: 16px;
+  --s-5: 20px;
+  --s-6: 24px;
+  --s-8: 32px;
+
+  /* ---------- sizes ---------- */
+  --bar-h: 52px;
+  --block-h: 58px;
+  --side-w: 328px;
+  --panel-head-h: 34px;
+  --control-h: 30px;
+  --control-h-sm: 26px;
+  --row-h: 30px;
+  --icon-xs: 12px;
+  --icon-sm: 14px;
+  --icon: 16px;
+  --icon-lg: 20px;
+  --icon-stroke: 1.75;
+  --hit-min: 24px;
+
+  /* ---------- line, corner, elevation ---------- */
+  --hair: 1px;
+  --border: var(--hair) solid var(--line);
+  --border-2: var(--hair) solid var(--line-2);
+  --border-3: var(--hair) solid var(--line-3);
+  --radius: 0;
+  --shadow-1: 2px 2px 0 var(--line);
+  --shadow-2: 4px 4px 0 var(--line);
+  --shadow-3: 6px 6px 0 var(--line);
+  --focus-ring: 2px solid var(--line);
+  --focus-offset: 2px;
+
+  /* ---------- layers ---------- */
+  --z-world: 0;
+  --z-hud: 4;
+  --z-jobs: 6;
+  --z-veil: 8;
+  --z-tip: 30;
+  --z-menu: 40;
+  --z-notices: 45;
+  --z-skip: 50;
+
+  /* ---------- motion ---------- */
+  --dur-instant: 90ms;
+  --dur-fast: 140ms;
+  --dur-base: 220ms;
+  --dur-slow: 420ms;
+  --dur-lazy: 900ms;
+  --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --ease-in: cubic-bezier(0.5, 0, 0.75, 0);
+  /* A damped spring sampled into linear(): one overshoot, settles by 60%. */
+  --ease-spring: linear(0, 0.009, 0.035 2.1%, 0.141 4.4%, 0.723 12.9%, 0.938 16.7%, 1.017 19.4%, 1.067, 1.099 24.3%,
+    1.108 26%, 1.1, 1.078 30.1%, 1.049 32.5%, 0.985 38.3%, 0.973, 0.968 43.4%, 0.969 45.7%, 0.991 54.6%, 0.999 58.6%,
+    1.003 64.4%, 1.001 79.3%, 1);
+  --stagger: 18ms;
+
+  /* ---------- drawing textures ---------- */
+  --tex-stipple: radial-gradient(var(--ink) 0.9px, transparent 1.2px) 0 0 / 5px 5px;
+  --tex-hatch: repeating-linear-gradient(135deg, var(--ink) 0 1.5px, transparent 1.5px 4px);
+  --tex-hatch-live: repeating-linear-gradient(135deg, var(--verdigris-deep) 0 3px, var(--verdigris) 3px 8px);
+  --tex-grid: linear-gradient(var(--ink-ghost) 1px, transparent 1px) 0 0 / 24px 24px,
+    linear-gradient(90deg, var(--ink-ghost) 1px, transparent 1px) 0 0 / 24px 24px;
+  --tex-grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .09 0 0 0 0 .12 0 0 0 0 .11 0 0 0 .05 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* ---------- user preferences ---------- */
+
+@media (prefers-contrast: more) {
+  :root {
+    --ink-2: #26302d;
+    --ink-3: #3b4642;
+    --rule: #6f7b76;
+    --rule-soft: #9aa39f;
+    --tex-grain: none;
+  }
+}
+
+@media (forced-colors: active) {
+  :root {
+    --line: CanvasText;
+    --line-2: CanvasText;
+    --line-3: GrayText;
+    --select: Highlight;
+    --select-hover: Highlight;
+    --shadow-1: none;
+    --shadow-2: none;
+    --shadow-3: none;
+    --tex-grain: none;
+  }
+}
+
+@media (pointer: coarse) {
+  :root {
+    --control-h: 38px;
+    --control-h-sm: 34px;
+    --hit-min: 40px;
+  }
+}

@@ -1,6 +1,6 @@
 {
   "name": "terrane",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "private": true,
   "description": "Explore and manage a directory as a 3D world. Local service plus browser interface.",
   "license": "MIT",
@@ -16,6 +16,7 @@
     "thumbs": "python tools/thumbs.py",
     "test": "node tools/smoke-test.mjs",
     "ui-check": "node tools/ui-check.mjs",
+    "vendor": "node tools/vendor.mjs",
     "fixture": "node tools/make-fixture.mjs"
   }
 }

@@ -1,0 +1,252 @@
+/*
+ * ============================================================================
+ * ✒ Metadata
+ *     - Title: Controls (Terrane Edition - v1.0)
+ *     - File Name: controls.css
+ *     - Relative Path: web/css/components/controls.css
+ *     - Artifact Type: stylesheet
+ *     - Version: 1.0.0
+ *     - Date: 11/12/2026
+ *     - Update: Thursday, November 12, 2026
+ *     - Author: Dennis 'dendogg' Smaltz
+ *     - A.I. Acknowledgement: Anthropic - Claude Opus 5.5
+ *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
+ *
+ * ✒ Description:
+ *     Every control the interface is operated with: buttons, icon buttons,
+ *     the segmented lens switch, the stepper, chips, tabs, sort toggles and
+ *     text fields. Hover is a highlighter stroke wiping across the control
+ *     from the left, the same yellow that marks a selection in the world.
+ *
+ * ✒ Key Features:
+ *     - .btn with icon and label, in default, primary, danger and small
+ *       variants, plus .btn-icon for square icon-only buttons
+ *     - The highlighter sweep: a background layer whose width animates on
+ *       hover, so the colour is drawn on rather than switched on
+ *     - A pressed state that seats the control one pixel into the sheet
+ *     - Segmented control and tab strip with an ink indicator that slides
+ *       to the chosen item (positions set by ui.js slideIndicator)
+ *     - Disabled controls drop to rule colour and lose every hover
+ *     - Hit areas never smaller than --hit-min, larger on coarse pointers
+ *
+ * ✒ Other Important Information:
+ *     - Dependencies: tokens.css, base.css
+ *     - Compatible platforms: current evergreen browsers
+ * ----------------------------------------------------------------------------
+ */
+
+/* ---------- the highlighter sweep, shared by every pressable surface ---------- */
+
+.btn, .seg button, .chip, .sort, .tabs button, .menu-item, .crumb, .item, .rich summary {
+  --sweep-color: var(--select);
+  background-image: linear-gradient(var(--sweep-color), var(--sweep-color));
+  background-repeat: no-repeat;
+  background-position: 0 0;
+  background-size: var(--sweep) 100%;
+  transition: --sweep var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out),
+    border-color var(--dur-fast) var(--ease-out), box-shadow var(--dur-fast) var(--ease-out),
+    translate var(--dur-instant) var(--ease-out);
+}
+@media (hover: hover) {
+  .btn:hover, .seg button:hover, .chip:hover, .sort:hover, .tabs button:hover, .crumb:hover, .item:hover,
+  .rich summary:hover { --sweep: 100%; }
+}
+
+/* ---------- buttons ---------- */
+
+.btn {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: var(--control-h);
+  min-width: var(--hit-min);
+  padding: 0 11px;
+  border: var(--border);
+  border-radius: var(--radius);
+  background-color: var(--surface-control);
+  color: var(--text);
+  font: 600 12px / 1 var(--sans);
+  font-stretch: 104%;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+  user-select: none;
+}
+.btn .icon { width: var(--icon-sm); height: var(--icon-sm); }
+.btn:active:not(:disabled, [aria-disabled='true']) { translate: 1px 1px; }
+.btn-small { height: var(--control-h-sm); padding: 0 8px; font-size: var(--fs-sm); gap: 5px; }
+.btn-small .icon { width: 13px; height: 13px; }
+.btn-icon { padding: 0; width: var(--control-h); }
+.btn-small.btn-icon { width: var(--control-h-sm); }
+
+.btn-primary { --sweep-color: var(--select); background-color: var(--ink); color: var(--on-ink); }
+@media (hover: hover) { .btn-primary:hover { color: var(--text); } }
+
+.btn-danger { --sweep-color: var(--danger); border-color: var(--danger); color: var(--danger); }
+@media (hover: hover) { .btn-danger:hover { color: var(--on-ink); } }
+
+/* A raised button: the drafting-card shadow, which flattens when pressed. */
+.btn-raised { box-shadow: var(--shadow-1); }
+.btn-raised:active:not(:disabled) { translate: 2px 2px; box-shadow: none; }
+
+.btn:disabled, .btn[aria-disabled='true'] {
+  --sweep: 0%;
+  border-color: var(--line-2);
+  background-color: transparent;
+  color: var(--text-3);
+  box-shadow: none;
+}
+
+/* ---------- segmented switch with a sliding indicator ---------- */
+
+.seg {
+  position: relative;
+  display: inline-flex;
+  border: var(--border);
+  background: var(--surface-control);
+  isolation: isolate;
+}
+.seg button {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: var(--control-h-sm);
+  padding: 0 10px;
+  border: 0;
+  border-right: var(--border);
+  background-color: transparent;
+  color: var(--text);
+  font: 600 var(--fs-sm) / 1 var(--sans);
+  font-stretch: 104%;
+}
+.seg button .icon { width: 13px; height: 13px; }
+.seg button:last-child { border-right: 0; }
+.seg button[aria-checked='true'] { --sweep: 0%; color: var(--on-ink); }
+/* The ink plate under the chosen item; slideIndicator sets --ind-x/--ind-w. */
+.seg::before {
+  content: '';
+  position: absolute;
+  z-index: -1;
+  inset: 0 auto 0 0;
+  width: var(--ind-w);
+  translate: var(--ind-x) 0;
+  background: var(--ink);
+  transition: translate var(--dur-base) var(--ease-spring), width var(--dur-base) var(--ease-spring);
+}
+.seg:not([data-ind]) button[aria-checked='true'] { background-color: var(--ink); }
+
+/* ---------- stepper ---------- */
+
+.stepper { display: inline-flex; align-items: center; }
+.stepper output {
+  display: block;
+  min-width: 64px;
+  height: var(--control-h-sm);
+  border-block: var(--border);
+  background: var(--surface-control);
+  font: 500 12px / var(--control-h-sm) var(--mono);
+  text-align: center;
+}
+.stepper .btn { min-width: var(--control-h-sm); padding: 0; width: var(--control-h-sm); }
+
+/* ---------- chips (legend filters) ---------- */
+
+.chip {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 24px;
+  padding: 0 7px;
+  border: var(--hair) solid transparent;
+  background-color: transparent;
+  color: var(--text);
+  font: 500 var(--fs-sm) / 1 var(--sans);
+  font-stretch: 96%;
+  white-space: nowrap;
+}
+.chip[aria-pressed='true'] { border-color: var(--line); background-color: var(--surface-control); box-shadow: var(--shadow-1); }
+.chip .swatch { width: 11px; height: 11px; transition: scale var(--dur-fast) var(--ease-spring); }
+.chip:hover .swatch { scale: 1.18; }
+
+/* ---------- tabs with a sliding underline ---------- */
+
+.tabs { position: relative; display: flex; flex: 1; }
+.tabs button {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  flex: 1;
+  min-width: 0;
+  padding: 0 4px;
+  border: 0;
+  border-right: var(--border-3);
+  background-color: transparent;
+  color: var(--text-3);
+  font-size: var(--fs-3xs);
+  font-stretch: var(--wdth-wide);
+  letter-spacing: 0.07em;
+  white-space: nowrap;
+}
+.tabs button:last-child { border-right: 0; }
+.tabs button .icon { width: 13px; height: 13px; }
+.tabs button[aria-selected='true'] { color: var(--text); }
+.tabs .count { font-family: var(--mono); font-stretch: 100%; letter-spacing: 0; color: var(--search); }
+.tabs::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  height: 3px;
+  width: var(--ind-w);
+  translate: var(--ind-x) 0;
+  background: var(--ink);
+  pointer-events: none;
+  transition: translate var(--dur-base) var(--ease-spring), width var(--dur-base) var(--ease-spring);
+}
+.tabs:not([data-ind]) button[aria-selected='true'] { box-shadow: inset 0 -3px 0 var(--ink); }
+
+/* Icons join the tab labels only when the panel has room for both. */
+@container ledger (max-width: 420px) {
+  .tabs button .icon { display: none; }
+}
+
+/* ---------- sort toggles ---------- */
+
+.sort {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 6px 5px;
+  border: 0;
+  background-color: transparent;
+  color: var(--text-3);
+  font: 600 var(--fs-xs) / 1 var(--sans);
+  font-stretch: 110%;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.sort .icon { width: 12px; height: 12px; }
+.sort[aria-pressed='true'] { color: var(--text); }
+
+/* ---------- text fields ---------- */
+
+.field { display: block; margin: 10px 0; }
+.field span { display: block; color: var(--text-3); margin-bottom: 6px; }
+.field input {
+  width: 100%;
+  height: 34px;
+  padding: 0 9px;
+  border: var(--border);
+  border-radius: var(--radius);
+  background: var(--surface-field);
+  color: var(--text);
+  font: 400 var(--fs-base) / 1 var(--mono);
+  transition: box-shadow var(--dur-fast) var(--ease-out);
+}
+.field input:focus { outline: none; box-shadow: var(--shadow-1), 0 0 0 1px var(--line) inset; }

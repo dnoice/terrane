@@ -1,0 +1,171 @@
+/*
+ * ============================================================================
+ * ✒ Metadata
+ *     - Title: Location Bar (Terrane Edition - v1.0)
+ *     - File Name: bar.css
+ *     - Relative Path: web/css/components/bar.css
+ *     - Artifact Type: stylesheet
+ *     - Version: 1.0.0
+ *     - Date: 11/12/2026
+ *     - Update: Thursday, November 12, 2026
+ *     - Author: Dennis 'dendogg' Smaltz
+ *     - A.I. Acknowledgement: Anthropic - Claude Opus 5.5
+ *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
+ *
+ * ✒ Description:
+ *     The strip across the top of the sheet: the strata wordmark, the
+ *     breadcrumb path of where the eye is, the Find field and the bar's
+ *     tools. The strata in the mark settle into place on load and lift
+ *     apart when the pointer rests on them.
+ *
+ * ✒ Key Features:
+ *     - Wordmark whose three strata stack in on load and part on hover
+ *     - Breadcrumbs in DM Mono with an ink rule under the current folder
+ *       that draws itself in from the left
+ *     - Find field with a search icon, a "/" key hint while empty, a clear
+ *       button while not, and the vermilion match count
+ *     - Tool buttons grouped by rule, icon plus label; labels fold away on
+ *       narrow sheets (layout.css)
+ *
+ * ✒ Other Important Information:
+ *     - Dependencies: tokens.css, base.css, controls.css
+ *     - Compatible platforms: current evergreen browsers
+ * ----------------------------------------------------------------------------
+ */
+
+#bar {
+  position: relative;
+  z-index: 2;
+  display: grid;
+  grid-template-columns: auto minmax(120px, 1fr) minmax(220px, 420px) auto;
+  align-items: center;
+  gap: 18px;
+  padding: 0 14px;
+  border-bottom: var(--border);
+  background: var(--surface-panel) var(--tex-grain);
+}
+
+/* ---------- wordmark ---------- */
+
+.wordmark {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font: 800 17px / 1 var(--sans);
+  font-stretch: var(--wdth-max);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  user-select: none;
+}
+.wordmark svg { overflow: visible; fill: var(--ink); }
+.wordmark rect { transition: translate var(--dur-base) var(--ease-spring); }
+.wordmark #mark-top { fill: var(--mark); stroke: var(--ink); stroke-width: 1; }
+.wordmark #mark-base { animation: stratum-in var(--dur-slow) var(--ease-out-expo) both; }
+.wordmark #mark-mid { animation: stratum-in var(--dur-slow) var(--ease-out-expo) 90ms both; }
+.wordmark #mark-top { animation: stratum-in var(--dur-slow) var(--ease-spring) 180ms both; }
+@media (hover: hover) {
+  .wordmark:hover #mark-mid { translate: 0 -1.5px; }
+  .wordmark:hover #mark-top { translate: 0 -3.5px; }
+}
+
+/* ---------- breadcrumbs ---------- */
+
+#crumbs {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  overflow: hidden;
+  font: 500 var(--fs-md) / 1 var(--mono);
+  mask-image: linear-gradient(to right, transparent, #000 18px);
+}
+#crumbs .crumb {
+  appearance: none;
+  position: relative;
+  flex: 0 1 auto;
+  min-width: 28px;
+  padding: 7px 5px;
+  border: 0;
+  background-color: transparent;
+  color: var(--text-2);
+  font: inherit;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+#crumbs .crumb[aria-current] { flex-shrink: 0; color: var(--text); font-weight: 500; }
+#crumbs .crumb[aria-current]::after {
+  content: '';
+  position: absolute;
+  inset: auto 5px 2px 5px;
+  height: 2px;
+  background: var(--ink);
+  transform-origin: left;
+  animation: rule-draw var(--dur-base) var(--ease-out-expo) both;
+}
+#crumbs .crumb.is-drop { --sweep: 100%; --sweep-color: var(--live); color: var(--on-ink); }
+#crumbs .slash { flex: none; padding: 0 1px; color: var(--text-3); }
+
+/* ---------- Find ---------- */
+
+.search { position: relative; display: flex; align-items: center; }
+.search > .icon {
+  position: absolute;
+  left: 10px;
+  width: var(--icon-sm);
+  height: var(--icon-sm);
+  color: var(--text-3);
+  transition: color var(--dur-fast);
+}
+.search input {
+  width: 100%;
+  height: 32px;
+  padding: 0 92px 0 31px;
+  border: var(--border);
+  border-radius: var(--radius);
+  background: var(--surface-control);
+  color: var(--text);
+  font: 400 var(--fs-md) / 1 var(--mono);
+  transition: background-color var(--dur-fast), box-shadow var(--dur-fast) var(--ease-out);
+}
+.search input::-webkit-search-cancel-button { display: none; }
+.search input::placeholder { color: var(--text-3); }
+.search input:focus { outline: none; background: var(--surface-field); box-shadow: var(--shadow-1); }
+.search:focus-within > .icon { color: var(--text); }
+.search-hint {
+  position: absolute;
+  right: 9px;
+  pointer-events: none;
+  transition: opacity var(--dur-fast);
+}
+.search input:focus ~ .search-hint, .search input:not(:placeholder-shown) ~ .search-hint { opacity: 0; }
+.search-clear {
+  position: absolute;
+  right: 4px;
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border: 0;
+  background: none;
+  color: var(--text-3);
+  opacity: 0;
+  scale: 0.6;
+  pointer-events: none;
+  transition: opacity var(--dur-fast), scale var(--dur-base) var(--ease-spring), color var(--dur-fast);
+}
+.search-clear .icon { width: var(--icon-sm); height: var(--icon-sm); }
+.search input:not(:placeholder-shown) ~ .search-clear { opacity: 1; scale: 1; pointer-events: auto; }
+.search-clear:hover { color: var(--search); }
+#q-count {
+  position: absolute;
+  right: 32px;
+  font: 500 var(--fs-xs) / 1 var(--mono);
+  color: var(--search);
+  pointer-events: none;
+}
+#q-count:not(:empty) { animation: pop-in var(--dur-base) var(--ease-spring); }
+
+/* ---------- tools ---------- */
+
+.bar-tools { display: flex; align-items: center; gap: 6px; }
+.bar-tools .sep { width: 1px; height: 20px; margin: 0 4px; background: var(--line-2); }

@@ -1,10 +1,10 @@
 <!--
 ✒ Metadata
-    - Title: Terrane Readme (Terrane Edition - v1.1)
+    - Title: Terrane Readme (Terrane Edition - v1.2)
     - File Name: README.md
     - Relative Path: README.md
     - Artifact Type: docs
-    - Version: 1.1.1
+    - Version: 1.2.0
     - Date: 11/12/2026
     - Update: Thursday, November 12, 2026
     - Author: Dennis 'dendogg' Smaltz
@@ -12,6 +12,10 @@
     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
 
 ✒ Changelog:
+    - 1.2.0 (11/12/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
+      instruments over the world, the browser check and the vendoring
+      tool; the project map lists the stylesheet modules and the new
+      interface modules, and License names every vendored library.
     - 1.1.1 (11/12/2026) [dendogg + Anthropic - Claude Opus 5.5] —
       Adds the License section for the public release under MIT, with the
       licenses of the bundled three.js and fonts.
@@ -111,6 +115,8 @@ It does four things:
 | `npm run thumbs -- --huge` | Also thumbnail images over 80 megapixels, one at a time |
 | `npm run thumbs -- --heavy-svg` | Also render SVGs over 512 KB through Inkscape |
 | `node server/terrane.mjs --snapshot <folder>` | Serve a snapshot without the dev runner |
+| `npm run ui-check` | Drive the page in headless Edge or Chrome, keyboard only, with and without WebGL |
+| `npm run vendor -- --check` | Verify the vendored browser libraries against their recorded digests |
 
 Datasets live in `%LOCALAPPDATA%\terrane\datasets\<name>` (on other
 systems `~/.cache/terrane/datasets`), outside the project and outside
@@ -135,6 +141,8 @@ files and can be queried directly, for example
 | Ink pin | A heavyweight: one of the largest files, at least 2% of the root |
 | Highlighter yellow | What you have selected, here and in every list |
 | Garnet arc | Ties a selected file to its duplicate candidates |
+| North arrow (top right) | Turns with the camera; click it to face north again |
+| Storage scale (bottom left) | How much storage a square that size holds at this height |
 
 ## Travelling
 
@@ -207,6 +215,7 @@ by the Windows hidden attribute.
 | Snapshot of real data on Windows: 230,307 files in 30,159 folders | Snapshot 2.4 s; replay matches a live scan folder for folder; served in 0.3 s against 2.3 s live |
 | Same snapshot in Chrome on an RTX 5050 laptop GPU | Surveyed in 1.6 s; 84 MB heap; 60 fps at the overview (the display's limit); search, fly-to seven levels down, inspector and hover thumbnails exercised |
 | Thumbnails of the same tree | 11,103 rasters and 4,467 light SVGs in about 3 minutes, 255 MB; an inspector preview is one 32 KB request in place of a 2.2 MB original |
+| `npm run ui-check` on Windows 11 (11/12/2026): keyboard routes, layout budget, relation lines, seams, focus and the age table, in a WebGL pass and a pass with WebGL disabled | 314 passed; draw calls at the recorded baseline |
 | Scale: synthetic 400,018 files in 28,575 folders, 12 levels deep (11/09/2026, Linux) | Scan 7 to 12 s on 2 cores; 85 MB browser heap; layout plus paint about 10 ms; pick 0.08 ms |
 
 Not verified: running on macOS; frame rate at street level in the largest
@@ -225,17 +234,29 @@ server/transfer.mjs  measured, cancellable copy that cleans up after itself
 server/snapshot.mjs  structure snapshots: write, replay, dataset home
 server/thumbs.mjs    serves the thumbnail dataset
 web/index.html       page structure
-web/css/terrane.css  design system
+web/css/terrane.css  stylesheet entry: cascade layers and module imports
+web/css/tokens.css   every colour, size, shadow, layer and motion value
+web/css/components/  controls, bar, ledger, stage, inspector, block, floating
+web/css/*.css        also: fonts, base, layout, utilities, motion, print
 web/js/app.js        controller: state, service calls, panels, progress
 web/js/model.js      tree model, aggregation, search, survey
 web/js/layout.js     the spatial language and level of detail
 web/js/viewport.js   3D world, camera, picking, transitions
 web/js/theme.js      colours shared with the stylesheet
 web/js/thumbs.js     the only way the page shows an image
-web/js/ui.js         menu, dialog, notices, tip, virtual list
+web/js/ui.js         menu, dialog, notices, tip, indicators, virtual list
+web/js/icons.js      the only way the page draws an icon (Lucide sprite)
+web/js/float.js      places the menu and tip beside a point (Floating UI)
+web/js/motion.js     counting figures, FLIP, springs (Motion, or WAAPI)
+web/js/hud.js        north arrow, storage scale, the print frame
+web/js/features.js   the feature modules app.js installs
+web/js/timeline.js   the shared table of bytes by last change
+web/vendor/          three.js, Floating UI, Motion, Lucide; see VENDORED.md
 tools/dev.mjs        development runner (snapshot mode, kept current)
 tools/snapshot.mjs   take a structure snapshot
 tools/thumbs.py      build and update the thumbnail dataset
+tools/ui-check.mjs   headless browser check; scenarios in tools/ui-scenarios/
+tools/vendor.mjs     fetch and verify the vendored browser libraries
 tools/               also: fixture generator, smoke test
 docs/                ARCHITECTURE.md, ROADMAP.md
 ```
@@ -249,7 +270,12 @@ plan, the minimum filesystem scope and the exploration loop are in
 
 Terrane is released under the MIT License; see `LICENSE`. The bundled
 third-party files keep their own licenses, which sit beside them:
-three.js in `web/vendor/three/` is MIT, and the Archivo and DM Mono
-fonts in `web/fonts/` are under the SIL Open Font License 1.1.
+
+- three.js, Floating UI and Motion in `web/vendor/` are MIT.
+- The Lucide icons in `web/vendor/lucide/` are ISC.
+- The Archivo and DM Mono fonts in `web/fonts/` are under the SIL Open
+  Font License 1.1.
+
+`web/vendor/VENDORED.md` records the version and source of each.
 
 <!-- ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once! -->

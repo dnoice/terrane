@@ -1,0 +1,63 @@
+/*
+ * ============================================================================
+ * ✒ Metadata
+ *     - Title: Print Sheet (Terrane Edition - v1.0)
+ *     - File Name: print.css
+ *     - Relative Path: web/css/print.css
+ *     - Artifact Type: stylesheet
+ *     - Version: 1.0.0
+ *     - Date: 11/12/2026
+ *     - Update: Thursday, November 12, 2026
+ *     - Author: Dennis 'dendogg' Smaltz
+ *     - A.I. Acknowledgement: Anthropic - Claude Opus 5.5
+ *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
+ *
+ * ✒ Description:
+ *     What Ctrl+P produces: a landscape survey sheet of the current view.
+ *     The world prints as the frame last drawn, the inspector prints in
+ *     full beside it, the title block stays along the bottom, and every
+ *     control, floating surface and animation is left off the paper.
+ *
+ * ✒ Key Features:
+ *     - A4 landscape with drawing-sheet margins
+ *     - The page grid flattens to normal flow so long panels can break
+ *       across pages
+ *     - Controls, notices, menus, tips and tools are not printed
+ *     - Ink on white: textures and washes removed, rules kept
+ *     - Sections and fact rows never split across a page break
+ *
+ * ✒ Other Important Information:
+ *     - Dependencies: imported with the print media query by terrane.css
+ *     - Compatible platforms: Chromium and Firefox print engines
+ * ----------------------------------------------------------------------------
+ */
+
+@page { size: A4 landscape; margin: 12mm 12mm 14mm; }
+
+:root { --tex-grain: none; --surface-panel: #fff; --surface-ground: #fff; --surface-control: #fff; }
+
+html, body { height: auto; overflow: visible; background: #fff; }
+body { display: block; font-size: 10.5pt; print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+
+.skip, .bar-tools, .search, #notices, #menu, #tip, dialog, #jobs, .view-tools, .hud, #placing, #veil,
+.panel-tool, .frame, .actions-grid, .search-clear, #ledger { display: none !important; }
+
+#bar { display: flex; height: auto; padding: 0 0 8px; border-bottom: 1.5pt solid #000; }
+#crumbs { mask-image: none; overflow: visible; flex-wrap: wrap; }
+
+main { display: grid; grid-template-columns: 1fr 74mm; gap: 6mm; margin: 6mm 0; transition: none; }
+#stage { height: 120mm; border: 1pt solid #000; break-inside: avoid; }
+#inspector { visibility: visible !important; opacity: 1 !important; border: 1pt solid #000; overflow: visible; }
+#inspector-body { overflow: visible; }
+
+.facts > div, .reading li, .comp-key li, .section-title { break-inside: avoid; }
+.section-title { break-after: avoid; }
+
+#block { border-top: 1.5pt solid #000; break-inside: avoid; }
+.cell { padding: 4px 10px; }
+
+*, *::before, *::after { animation: none !important; transition: none !important; box-shadow: none !important; }
+
+/* The world as last drawn (hud.js renders a frame into #print-shot before printing). */
+#view, #tags { display: none !important; }
+#print-shot { position: absolute; inset: 0; display: block; width: 100%; height: 100%; object-fit: cover; }

@@ -1,0 +1,98 @@
+/*
+ * ============================================================================
+ * ✒ Metadata
+ *     - Title: Utilities (Terrane Edition - v1.0)
+ *     - File Name: utilities.css
+ *     - Relative Path: web/css/utilities.css
+ *     - Artifact Type: stylesheet
+ *     - Version: 1.0.0
+ *     - Date: 11/12/2026
+ *     - Update: Thursday, November 12, 2026
+ *     - Author: Dennis 'dendogg' Smaltz
+ *     - A.I. Acknowledgement: Anthropic - Claude Opus 5.5
+ *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
+ *
+ * ✒ Description:
+ *     Single-purpose classes for the cases a component should not have to
+ *     restate: hiding things from the eye but not the screen reader, text
+ *     treatments, figure setting, quick flex arrangements and the semantic
+ *     text colours. They sit in the "utilities" layer, so one always beats
+ *     a component rule without needing !important.
+ *
+ * ✒ Key Features:
+ *     - Accessibility: .sr, .sr-focusable, .skip
+ *     - Text: .truncate, .mono, .num, .caps (in base.css), .balance, .pretty
+ *     - Colour roles: .muted, .faint, .is-search, .is-danger, .is-live
+ *     - Arrangement: .row-flex, .stack, .cluster, .grow, .no-shrink, .center
+ *     - Icon sizes: .icon-xs, .icon-sm, .icon-lg
+ *     - Responsive: .hide-narrow, .only-narrow
+ *     - Motion: .no-motion turns every animation and transition off
+ *
+ * ✒ Usage Instructions:
+ *     el('span', { class: 'mono num muted', text: fmtBytes(n) })
+ *     <span class="sr">Ledger</span>
+ *
+ * ✒ Other Important Information:
+ *     - Dependencies: tokens.css
+ *     - Compatible platforms: current evergreen browsers
+ * ----------------------------------------------------------------------------
+ */
+
+/* ---------- accessibility ---------- */
+
+.sr, .sr-focusable:not(:focus, :focus-within) {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+.skip {
+  position: absolute;
+  top: -60px;
+  left: 8px;
+  z-index: var(--z-skip);
+  padding: 8px 12px;
+  background: var(--ink);
+  color: var(--on-ink);
+  transition: top var(--dur-fast) var(--ease-out);
+}
+.skip:focus { top: 8px; }
+
+/* ---------- text ---------- */
+
+.truncate { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.mono { font-family: var(--mono); }
+.num { font-variant-numeric: tabular-nums; }
+.balance { text-wrap: balance; }
+.pretty { text-wrap: pretty; }
+.muted { color: var(--text-2); }
+.faint { color: var(--text-3); }
+.is-search { color: var(--search); }
+.is-danger { color: var(--danger); }
+.is-live { color: var(--live); }
+
+/* ---------- arrangement ---------- */
+
+.row-flex { display: flex; align-items: center; gap: var(--gap, var(--s-2)); }
+.stack { display: flex; flex-direction: column; gap: var(--gap, var(--s-2)); }
+.cluster { display: flex; flex-wrap: wrap; align-items: center; gap: var(--gap, var(--s-2)); }
+.grow { flex: 1; min-width: 0; }
+.no-shrink { flex-shrink: 0; }
+.center { display: grid; place-items: center; }
+
+/* ---------- icons ---------- */
+
+.icon-xs { width: var(--icon-xs); height: var(--icon-xs); }
+.icon-sm { width: var(--icon-sm); height: var(--icon-sm); }
+.icon-lg { width: var(--icon-lg); height: var(--icon-lg); }
+
+/* ---------- responsive ---------- */
+
+@media (max-width: 1100px) { .hide-narrow { display: none !important; } }
+@media (min-width: 1101px) { .only-narrow { display: none !important; } }
+
+/* ---------- motion ---------- */
+
+.no-motion, .no-motion * { animation: none !important; transition: none !important; }
