@@ -1,0 +1,29 @@
+# ==============================================================================
+# ✒ Metadata
+#     - Title: GitAttributes (Terrane Edition - v1.0)
+#     - File Name: .gitattributes
+#     - Relative Path: .gitattributes
+#     - Artifact Type: config
+#     - Version: 1.0.0
+#     - Date: 11/11/2026
+#     - Update: Wednesday, November 11, 2026
+#     - Author: Dennis 'dendogg' Smaltz
+#     - A.I. Acknowledgement: Anthropic - Claude Opus 5.5
+#     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
+#
+# ✒ Description:
+#     Pins every text file to LF line endings in the repository and the
+#     working tree, whatever core.autocrlf says on the machine, so files
+#     read the same on Windows, macOS and Linux. Fonts are marked binary.
+#
+# ✒ Other Important Information:
+#     - Dependencies: none
+#     - Compatible platforms: Git on Windows, macOS, Linux
+# ==============================================================================
+
+* text=auto eol=lf
+
+*.woff2 binary
+*.png binary
+*.jpg binary
+*.ico binary

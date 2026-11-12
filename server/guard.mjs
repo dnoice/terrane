@@ -1,0 +1,139 @@
+/*
+ * ============================================================================
+ * ✒ Metadata
+ *     - Title: Path Guard (Terrane Edition - v1.0)
+ *     - File Name: guard.mjs
+ *     - Relative Path: server/guard.mjs
+ *     - Artifact Type: javascript
+ *     - Version: 1.0.0
+ *     - Date: 11/09/2026
+ *     - Update: Monday, November 9, 2026
+ *     - Author: Dennis 'dendogg' Smaltz
+ *     - A.I. Acknowledgement: Anthropic - Claude Fable 5.2
+ *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
+ *
+ * ✒ Description:
+ *     The permission boundary of the Terrane service. Every path the browser
+ *     sends is a root-relative string; this module turns it into an absolute
+ *     path and proves that path is inside the one authorized directory before
+ *     any other module is allowed to touch the disk.
+ *
+ * ✒ Key Features:
+ *     - Root-relative addressing: the client never sends an absolute path, so
+ *       there is no absolute path to smuggle past the boundary
+ *     - Lexical containment check, then a realpath check on the parent so a
+ *       symbolic link inside the root cannot redirect a write outside it
+ *     - The holding-area folder (.terrane-trash) is unreachable through the
+ *       public addressing scheme
+ *     - Name validation for create and rename: separators, control
+ *       characters, dot names, and on Windows the reserved characters,
+ *       device names and trailing dot or space
+ *     - Typed errors (code + HTTP status) so the interface can explain a
+ *       refusal instead of showing a generic failure
+ *
+ * ✒ Usage Instructions:
+ *     import { makeGuard, GuardError } from './guard.mjs';
+ *     const guard = await makeGuard('/data/projects');
+ *     const abs = guard.resolve('music/demos');      // lexical check
+ *     await guard.assertParentInside(abs);            // symlink check
+ *     guard.checkName('New folder');                  // throws GuardError
+ *
+ * ✒ Other Important Information:
+ *     - Dependencies: Node.js built-ins only (node:path, node:fs)
+ *     - Compatible platforms: Node.js 20+ on Windows, macOS, Linux
+ *     - Security: resolve() is lexical only; any operation that writes must
+ *       also call assertParentInside()
+ * ----------------------------------------------------------------------------
+ */
+
+import path from 'node:path';
+import fs from 'node:fs/promises';
+
+export const HOLD_DIR = '.terrane-trash';
+
+export class GuardError extends Error {
+  constructor(code, message, status = 400) {
+    super(message);
+    this.code = code;
+    this.status = status;
+  }
+}
+
+const WIN_RESERVED = /^(con|prn|aux|nul|com[1-9]|lpt[1-9])(\..*)?$/i;
+
+export async function makeGuard(rootInput) {
+  const root = await fs.realpath(path.resolve(rootInput));
+  const stat = await fs.stat(root);
+  if (!stat.isDirectory()) throw new GuardError('ENOTDIR', `Not a directory: ${root}`);
+  const prefix = root.endsWith(path.sep) ? root : root + path.sep;
+  const inside = (abs) => abs === root || abs.startsWith(prefix);
+
+  return {
+    root,
+
+    /** Root-relative posix-style string -> absolute path inside the root. */
+    resolve(rel, { allowRoot = true } = {}) {
+      if (typeof rel !== 'string') throw new GuardError('EPATH', 'Path must be a string.');
+      if (rel.includes('\0')) throw new GuardError('EPATH', 'Path contains a null byte.');
+      const parts = rel.split('/').filter((p) => p !== '');
+      for (const p of parts) {
+        if (p === '.' || p === '..') throw new GuardError('EPATH', 'Relative segments are not allowed.');
+        if (p === HOLD_DIR) throw new GuardError('EPATH', 'The holding area is managed by Terrane.', 403);
+        if (path.sep === '\\' && p.includes('\\')) throw new GuardError('EPATH', 'Invalid path segment.');
+      }
+      const abs = path.join(root, ...parts);
+      if (!inside(abs)) throw new GuardError('EOUTSIDE', 'Path is outside the authorized directory.', 403);
+      if (!allowRoot && abs === root) {
+        throw new GuardError('EROOT', 'The authorized root itself cannot be changed from here.', 403);
+      }
+      return abs;
+    },
+
+    /** Proves the real location of abs's parent is inside the root. */
+    async assertParentInside(abs) {
+      let real;
+      try {
+        real = await fs.realpath(path.dirname(abs));
+      } catch (err) {
+        throw new GuardError(err.code || 'ENOENT', `Parent folder is not reachable: ${err.message}`, 404);
+      }
+      if (!inside(real)) {
+        throw new GuardError('EOUTSIDE', 'A symbolic link leads outside the authorized directory.', 403);
+      }
+    },
+
+    /** Proves a directory's own real location is inside the root. */
+    async assertDirInside(abs) {
+      let real;
+      try {
+        real = await fs.realpath(abs);
+      } catch (err) {
+        throw new GuardError(err.code || 'ENOENT', `Folder is not reachable: ${err.message}`, 404);
+      }
+      if (!inside(real)) {
+        throw new GuardError('EOUTSIDE', 'A symbolic link leads outside the authorized directory.', 403);
+      }
+    },
+
+    rel(abs) {
+      return path.relative(root, abs).split(path.sep).join('/');
+    },
+
+    checkName(name) {
+      if (typeof name !== 'string' || name.length === 0) throw new GuardError('ENAME', 'A name is required.');
+      if (Buffer.byteLength(name) > 255) throw new GuardError('ENAME', 'That name is longer than 255 bytes.');
+      if (name === '.' || name === '..') throw new GuardError('ENAME', 'That name is reserved.');
+      if (name === HOLD_DIR) throw new GuardError('ENAME', 'That name is reserved by Terrane.');
+      // eslint-disable-next-line no-control-regex
+      if (/[\/\\\u0000-\u001f]/.test(name)) {
+        throw new GuardError('ENAME', 'Names cannot contain slashes or control characters.');
+      }
+      if (process.platform === 'win32') {
+        if (/[<>:"|?*]/.test(name)) throw new GuardError('ENAME', 'Windows does not allow < > : " | ? * in names.');
+        if (/[. ]$/.test(name)) throw new GuardError('ENAME', 'Windows names cannot end with a dot or a space.');
+        if (WIN_RESERVED.test(name)) throw new GuardError('ENAME', 'That is a reserved Windows device name.');
+      }
+      return name;
+    },
+  };
+}

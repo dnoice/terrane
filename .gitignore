@@ -1,0 +1,52 @@
+# ==============================================================================
+# ✒ Metadata
+#     - Title: GitIgnore (Terrane Edition - v1.0)
+#     - File Name: .gitignore
+#     - Relative Path: .gitignore
+#     - Artifact Type: config
+#     - Version: 1.0.0
+#     - Date: 11/11/2026
+#     - Update: Wednesday, November 11, 2026
+#     - Author: Dennis 'dendogg' Smaltz
+#     - A.I. Acknowledgement: Anthropic - Claude Opus 5.5
+#     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
+#
+# ✒ Description:
+#     Git ignore patterns for Terrane. Excludes dependency folders, logs,
+#     editor and OS clutter, local secrets, and any holding area or journal
+#     that a test run or a launch against the project itself leaves behind.
+#     The vendored three.js and fonts in web/ are source and stay tracked.
+#
+# ✒ Other Important Information:
+#     - Dependencies: none
+#     - Compatible platforms: Git on Windows, macOS, Linux
+# ==============================================================================
+
+# Dependencies (there are none today; this keeps it that way by accident too)
+node_modules/
+
+# Terrane's own state, if the service is ever pointed at this directory
+.terrane-trash/
+
+# Logs and scratch output
+*.log
+npm-debug.log*
+*.tmp
+.scratch/
+
+# Local secrets and machine settings
+.env
+.env.*
+.claude/settings.local.json
+
+# Editors
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+.idea/
+
+# OS and sync clutter
+.DS_Store
+Thumbs.db
+desktop.ini
+~$*

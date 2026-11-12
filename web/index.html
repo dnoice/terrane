@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<!--
+✒ Metadata
+    - Title: Terrane Interface (Terrane Edition - v1.0)
+    - File Name: index.html
+    - Relative Path: web/index.html
+    - Artifact Type: markup
+    - Version: 1.0.0
+    - Date: 11/09/2026
+    - Update: Monday, November 9, 2026
+    - Author: Dennis 'dendogg' Smaltz
+    - A.I. Acknowledgement: Anthropic - Claude Fable 5.2
+    - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
+
+✒ Description:
+    The single page of Terrane. It lays out the sheet around the world: the
+    location bar, the ledger on the left, the 3D world in the middle, the
+    inspector on the right and the title block along the bottom. All
+    behaviour is attached by web/js/app.js.
+
+✒ Key Features:
+    - Landmark structure (header, nav, main, complementary, footer) with a
+      skip link, so the page is navigable without the 3D view
+    - The ledger is a complete non-spatial alternative to the viewport
+    - One host element each for the menu, dialog, tip and notices, which is
+      how "one floating surface at a time" is enforced
+    - A polite live region announces selection and navigation changes
+    - No inline script: the session token is carried in a meta tag and the
+      page runs under a strict content security policy
+
+✒ Other Important Information:
+    - Dependencies: web/css/terrane.css, web/js/app.js
+    - Compatible platforms: current Chrome, Edge, Firefox, Safari (WebGL2)
+    - Security: the token placeholder in the meta tag is filled in by the
+      service on each request; opening this file directly from disk will
+      not work
+---------
+-->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="terrane-token" content="__TERRANE_TOKEN__">
+  <title>Terrane</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="css/terrane.css">
+</head>
+<body>
+  <a class="skip" href="#ledger-list">Skip to the ledger</a>
+
+  <header id="bar">
+    <div class="wordmark" aria-label="Terrane">
+      <svg viewBox="0 0 28 20" width="28" height="20" aria-hidden="true">
+        <rect id="mark-base" x="0" y="14" width="28" height="6"/>
+        <rect id="mark-mid" x="5" y="8" width="17" height="6"/>
+        <rect id="mark-top" x="10" y="2" width="7" height="6"/>
+      </svg>
+      <span>Terrane</span>
+    </div>
+    <nav id="crumbs" aria-label="Location"></nav>
+    <div class="search">
+      <label class="sr" for="q">Find in this directory</label>
+      <input id="q" type="search" autocomplete="off" spellcheck="false"
+             placeholder="Find  ·  name  *.psd  ext:mp4  >50mb  older:1y  is:empty">
+      <span id="q-count" aria-live="polite"></span>
+    </div>
+    <div class="bar-tools">
+      <button class="btn" id="b-up" type="button" title="Up one level (Backspace)">Up</button>
+      <button class="btn" id="b-new" type="button" title="New folder here (N)">New folder</button>
+      <button class="btn" id="b-undo" type="button" title="Undo last change (Ctrl+Z)">Undo</button>
+      <button class="btn" id="b-refresh" type="button" title="Re-read this folder from disk (F5)">Refresh</button>
+      <button class="btn" id="b-help" type="button" title="Keys and the visual language (?)">Guide</button>
+    </div>
+  </header>
+
+  <main>
+    <aside id="ledger" aria-label="Ledger">
+      <div class="panel-head">
+        <span class="ref">A</span>
+        <div class="tabs" role="tablist" aria-label="Ledger views">
+          <button role="tab" type="button" data-tab="contents" aria-selected="true">Contents</button>
+          <button role="tab" type="button" data-tab="findings" aria-selected="false">Findings</button>
+          <button role="tab" type="button" data-tab="survey" aria-selected="false">Survey</button>
+          <button role="tab" type="button" data-tab="journal" aria-selected="false">Journal</button>
+        </div>
+      </div>
+      <div id="ledger-sub" class="panel-sub"></div>
+      <div id="ledger-list" class="ledger-body"></div>
+      <div id="ledger-rich" class="ledger-body rich" hidden></div>
+    </aside>
+
+    <section id="stage" aria-label="3D world of the directory">
+      <canvas id="view" tabindex="0"
+              aria-label="3D world. W A S D to travel, arrow keys to move between items, Enter to go to a folder or open a file, Backspace to go up. The ledger lists the same items."></canvas>
+      <div id="tags" aria-hidden="true"></div>
+      <div id="placing" hidden>
+        <span id="placing-text"></span>
+        <button class="btn btn-primary btn-small" id="placing-here" type="button">Place where I am</button>
+        <button class="btn btn-small" id="placing-cancel" type="button">Cancel</button>
+      </div>
+      <div id="veil" hidden></div>
+      <div class="view-tools" role="group" aria-label="View">
+        <button class="btn btn-small" id="v-in" type="button" title="Fly closer (+)">+</button>
+        <button class="btn btn-small" id="v-out" type="button" title="Pull back (−)">−</button>
+        <button class="btn btn-small" id="v-left" type="button" title="Turn left (Q)">⟲</button>
+        <button class="btn btn-small" id="v-right" type="button" title="Turn right (E)">⟳</button>
+        <button class="btn btn-small" id="v-down" type="button" title="Drop to eye level where you are looking (V)">Descend</button>
+        <button class="btn btn-small" id="v-go" type="button" title="Fly to the selection (G)">Go to selection</button>
+        <button class="btn btn-small" id="v-over" type="button" title="Rise to see everything (0)">Overview</button>
+      </div>
+    </section>
+
+    <aside id="inspector" aria-label="Inspector">
+      <div class="panel-head"><span class="ref">B</span><h2>Inspector</h2></div>
+      <div id="inspector-body"></div>
+    </aside>
+  </main>
+
+  <footer id="block">
+    <div class="cell">
+      <span class="cell-label">Lens</span>
+      <div class="seg" id="lens" role="radiogroup" aria-label="Colour lens">
+        <button type="button" role="radio" data-lens="kind" aria-checked="true" title="Colour by kind (1)">Kind</button>
+        <button type="button" role="radio" data-lens="age" aria-checked="false" title="Colour by last change (2)">Age</button>
+        <button type="button" role="radio" data-lens="size" aria-checked="false" title="Colour by size (3)">Size</button>
+        <button type="button" role="radio" data-lens="dup" aria-checked="false" title="Show duplicate candidates (4)">Duplicates</button>
+      </div>
+    </div>
+    <div class="cell cell-grow">
+      <span class="cell-label" id="legend-label">Legend</span>
+      <div id="legend"></div>
+    </div>
+    <div class="cell">
+      <span class="cell-label">Grain</span>
+      <div class="stepper">
+        <button class="btn btn-small" id="grain-less" type="button" aria-label="Coarser: fewer, larger blocks">−</button>
+        <output id="grain-val">Medium</output>
+        <button class="btn btn-small" id="grain-more" type="button" aria-label="Finer: more, smaller blocks">+</button>
+      </div>
+    </div>
+    <div class="cell">
+      <span class="cell-label">Altitude</span>
+      <output id="alt-val" class="readout">Overview</output>
+    </div>
+    <div class="cell cell-status">
+      <span class="cell-label" id="status-label">Status</span>
+      <div id="status" role="status"></div>
+    </div>
+  </footer>
+
+  <div id="menu" role="menu" hidden></div>
+  <div id="tip" role="tooltip" hidden></div>
+  <dialog id="dialog"></dialog>
+  <div id="notices"></div>
+  <div id="live" class="sr" aria-live="polite"></div>
+
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>

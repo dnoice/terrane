@@ -1,0 +1,13 @@
+{
+  "name": "terrane",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Explore and manage a directory as a 3D world. Local service plus browser interface.",
+  "type": "module",
+  "engines": { "node": ">=20" },
+  "scripts": {
+    "start": "node server/terrane.mjs",
+    "test": "node tools/smoke-test.mjs",
+    "fixture": "node tools/make-fixture.mjs"
+  }
+}
