@@ -4,14 +4,17 @@
     - File Name: package.json
     - Relative Path: package.json
     - Artifact Type: config
-    - Version: 1.1.0
-    - Date: 11/11/2026
-    - Update: Wednesday, November 11, 2026
+    - Version: 1.1.1
+    - Date: 11/12/2026
+    - Update: Thursday, November 12, 2026
     - Author: Dennis 'dendogg' Smaltz
     - A.I. Acknowledgement: Anthropic - Claude Opus 5.5
     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
 
 ✒ Changelog:
+    - 1.1.1 (11/12/2026) [dendogg + Anthropic - Claude Opus 5.5] —
+      Declares the MIT license, the author, and the GitHub repository and
+      homepage, for the public release.
     - 1.1.0 (11/11/2026) [dendogg + Anthropic - Claude Opus 5.5] — Adds
       the dev, snapshot and thumbs scripts and raises the minimum Node.js
       to 22.5 for the built-in SQLite the datasets use.
@@ -47,6 +50,8 @@
       the thumbnail builder needs Python 3.10+ with Pillow, and Inkscape
       for heavy SVGs
     - Compatible platforms: Node.js 22.5 or newer
+    - License: MIT (see LICENSE); private stays true so the package is
+      never published to npm by accident
 ---------
 -->
 

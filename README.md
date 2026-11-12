@@ -4,14 +4,17 @@
     - File Name: README.md
     - Relative Path: README.md
     - Artifact Type: docs
-    - Version: 1.1.0
-    - Date: 11/11/2026
-    - Update: Wednesday, November 11, 2026
+    - Version: 1.1.1
+    - Date: 11/12/2026
+    - Update: Thursday, November 12, 2026
     - Author: Dennis 'dendogg' Smaltz
     - A.I. Acknowledgement: Anthropic - Claude Opus 5.5
     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
 
 ✒ Changelog:
+    - 1.1.1 (11/12/2026) [dendogg + Anthropic - Claude Opus 5.5] —
+      Adds the License section for the public release under MIT, with the
+      licenses of the bundled three.js and fonts.
     - 1.1.0 (11/11/2026) [dendogg + Anthropic - Claude Opus 5.5] —
       Development against snapshots, the thumbnail dataset, progress and
       cancellation, the persistent journal, and the first verification on
@@ -34,6 +37,7 @@
     - Safety model and its limits
     - What was verified, and what was not
     - Project map for continuing development
+    - License terms, including the bundled third-party files
 
 ✒ Other Important Information:
     - Dependencies: Node.js 22.5 or newer; a browser with WebGL2; Python
@@ -240,5 +244,12 @@ There is no build step. Edit a file and reload the page. The design
 decisions and their trade-offs are in `docs/ARCHITECTURE.md`; the staged
 plan, the minimum filesystem scope and the exploration loop are in
 `docs/ROADMAP.md`.
+
+## License
+
+Terrane is released under the MIT License; see `LICENSE`. The bundled
+third-party files keep their own licenses, which sit beside them:
+three.js in `web/vendor/three/` is MIT, and the Archivo and DM Mono
+fonts in `web/fonts/` are under the SIL Open Font License 1.1.
 
 <!-- ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once! -->
