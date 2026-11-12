@@ -1,16 +1,25 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Terrane Application (Terrane Edition - v1.0)
+ *     - Title: Terrane Application (Terrane Edition - v1.1)
  *     - File Name: app.js
  *     - Relative Path: web/js/app.js
  *     - Artifact Type: javascript
- *     - Version: 1.0.0
- *     - Date: 11/09/2026
- *     - Update: Monday, November 9, 2026
+ *     - Version: 1.1.0
+ *     - Date: 11/11/2026
+ *     - Update: Wednesday, November 11, 2026
  *     - Author: Dennis 'dendogg' Smaltz
- *     - A.I. Acknowledgement: Anthropic - Claude Fable 5.2
+ *     - A.I. Acknowledgement: Anthropic - Claude Opus 5.5
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
+ *
+ * ✒ Changelog:
+ *     - 1.1.0 (11/11/2026) [dendogg + Anthropic - Claude Opus 5.5] — A
+ *       progress panel with Cancel for copy, move and remove; snapshot mode
+ *       (status, refusals, newer-snapshot notice); thumbnails in the
+ *       inspector and the hover tip in place of original files; the
+ *       journal tab marks earlier-session and purged entries.
+ *     - 1.0.0 (11/09/2026) [dendogg + Anthropic - Claude Fable 5.2] —
+ *       Initial release.
  *
  * ✒ Description:
  *     The controller that makes Terrane one product instead of several
@@ -38,13 +47,20 @@
  *       in the world, in the ledger, or on a breadcrumb
  *     - After every change only the affected folders are re-read
  *     - Live updates from the service's watcher, merged the same way
+ *     - Long operations show progress (bytes, rate, time left, current
+ *       item) after 400 ms and can be cancelled from the keyboard or pointer
+ *     - Images are shown only through thumbnails: the inspector and the
+ *       hover tip never request an original file
+ *     - Snapshot mode is stated in the title block, and every change and
+ *       system hand-off is shown as unavailable with the reason
  *
  * ✒ Usage Instructions:
  *     Loaded by web/index.html as a module. There is no public API; start
  *     the service and open the address it prints.
  *
  * ✒ Other Important Information:
- *     - Dependencies: model.js, layout.js, viewport.js, theme.js, ui.js
+ *     - Dependencies: model.js, layout.js, viewport.js, theme.js, ui.js,
+ *       thumbs.js
  *     - Compatible platforms: current evergreen browsers with WebGL2
  *     - Limitations: when WebGL is unavailable the ledger, inspector,
  *       search and every operation keep working without the 3D world
@@ -59,6 +75,7 @@ import { buildLayout, BOX } from './layout.js';
 import { Viewport } from './viewport.js';
 import { THEME, mixHex, ramp, cssHex } from './theme.js';
 import { el, openMenu, closeFloating, floatingOpen, ask, notice, tip, hideTip, VirtualList } from './ui.js';
+import { thumbs } from './thumbs.js';
 
 const $ = (id) => document.getElementById(id);
 const TOKEN = document.querySelector('meta[name="terrane-token"]').content;
@@ -216,12 +233,18 @@ function connectEvents() {
   const es = new EventSource(`/api/events?${new URLSearchParams({ t: TOKEN, dirs: S.model.root.dc })}`);
   es.onmessage = (e) => {
     const msg = JSON.parse(e.data);
+    if (msg.type === 'job') return onJob(msg);
     if (msg.type === 'watch') S.watch = msg.state;
     else if (msg.type === 'change' && !S.scanning) refreshDirs(msg.dirs);
     else if (msg.type === 'bulk') {
       notice(`${fmtCount(msg.count)} folders changed on disk.`, { kind: 'info', action: { label: 'Rescan all', run: fullScan } });
+    } else if (msg.type === 'snapshot') {
+      S.info.snapshot = { ...S.info.snapshot, takenAt: msg.takenAt, folders: msg.folders, files: msg.files };
+      notice(`A newer snapshot is ready: ${fmtCount(msg.files)} files, taken ${fmtDate(msg.takenAt)}.`,
+        { kind: 'info', action: { label: 'Rescan', run: fullScan }, ms: 20000 });
     }
     drawStatus();
+    return undefined;
   };
   es.onerror = () => {
     S.watch = 'lost';
@@ -239,6 +262,7 @@ async function fullScan() {
   S.trail = [];
   S.survey = null;
   drawAll();
+  thumbs.reload(TOKEN);
   try {
     await scanInto(S.model.root);
   } catch (err) {
@@ -571,12 +595,118 @@ function stepSelection(key) {
 /* operations                                                             */
 /* ====================================================================== */
 
-const writable = () => (S.info.readOnly ? 'read-only mode' : null);
+const writable = () => (S.info.snapshot ? 'snapshot mode' : S.info.readOnly ? 'read-only mode' : null);
+
+/* ---------- long operations: progress and cancel ---------- */
+
+const JOBS = new Map();
+const LONG_OPS = new Set(['move', 'copy', 'trash']);
+const JOB_VERB = { move: 'Moving', copy: 'Copying', trash: 'Removing' };
+const newJobId = () => (crypto.randomUUID?.() || `${Date.now().toString(36)}${Math.random().toString(36).slice(2)}`).replace(/-/g, '').slice(0, 24);
+
+function jobFor(id, op) {
+  let j = JOBS.get(id);
+  if (j) return j;
+  const bar = el('i');
+  const track = el('span', { class: 'job-track', role: 'progressbar', 'aria-valuemin': '0', 'aria-valuemax': '100', 'aria-label': 'Progress' }, bar);
+  const title = el('span', { class: 'job-title', text: JOB_VERB[op] || 'Working' });
+  const cancel = el('button', { class: 'btn btn-small', type: 'button', text: 'Cancel', onclick: () => cancelJob(id) });
+  const figure = el('span', { class: 'job-fig' });
+  const current = el('code', { class: 'job-cur' });
+  const node = el('div', { class: 'job', role: 'group', 'aria-label': `${JOB_VERB[op] || 'Operation'} in progress` },
+    el('div', { class: 'job-head' }, title, cancel), track, figure, current);
+  j = { id, op, node, bar, track, title, cancel, figure, current, samples: [], shown: false, timer: 0 };
+  JOBS.set(id, j);
+  return j;
+}
+
+function showJob(j) {
+  if (j.shown || !JOBS.has(j.id)) return;
+  j.shown = true;
+  $('jobs').append(j.node);
+  say(`${JOB_VERB[j.op] || 'Working'}. Cancel is available.`);
+}
+
+function endJob(id) {
+  const j = JOBS.get(id);
+  if (!j) return;
+  clearTimeout(j.timer);
+  j.node.remove();
+  JOBS.delete(id);
+}
+
+async function cancelJob(id) {
+  const j = JOBS.get(id);
+  if (!j) return;
+  j.cancel.disabled = true;
+  j.cancel.textContent = 'Cancelling…';
+  try {
+    await post('cancel', { job: id });
+  } catch (err) {
+    if (err.code !== 'ENOJOB') notice(err.message, { kind: 'error' });
+  }
+}
+
+const fmtSecs = (s) => (s < 60 ? `${Math.max(1, Math.round(s))} s` : s < 3600 ? `${Math.round(s / 60)} min` : `${(s / 3600).toFixed(1)} h`);
+
+/** Applies one progress message from the event stream. */
+function onJob(msg) {
+  if (msg.phase === 'end') return endJob(msg.id);
+  // A job this page did not start (another tab, or a reload mid-copy) shows at once.
+  const j = JOBS.get(msg.id) || jobFor(msg.id, msg.op);
+  if (!j.timer) showJob(j);
+  const [b0, b1] = msg.bytes;
+  const [i0, i1] = msg.items;
+  const verb = JOB_VERB[msg.op] || 'Working';
+  let frac = null;
+  let fig = '';
+  if (msg.phase === 'queued') {
+    j.title.textContent = `${verb} · waiting for the operation ahead of it`;
+  } else if (msg.phase === 'counting') {
+    j.title.textContent = `${verb} · counting`;
+    fig = `${fmtCount(msg.files[1])} files, ${fmtBytes(b1)} so far`;
+  } else {
+    j.title.textContent = `${verb} · item ${Math.min(i0 + 1, i1)} of ${fmtCount(i1)}`;
+    const now = performance.now();
+    j.samples.push([now, b0]);
+    while (j.samples.length > 2 && now - j.samples[0][0] > 4000) j.samples.shift();
+    if (b1 > 0) {
+      frac = b0 / b1;
+      const [t0, s0] = j.samples[0];
+      const rate = (b0 - s0) / Math.max(0.001, (now - t0) / 1000);
+      fig = `${fmtBytes(b0)} of ${fmtBytes(b1)} · ${Math.floor(frac * 100)}%`;
+      if (rate > 0 && now - t0 > 1200) fig += ` · ${fmtBytes(rate)}/s · about ${fmtSecs((b1 - b0) / rate)} left`;
+    } else if (i1 > 0) {
+      frac = i0 / i1;
+      fig = `${fmtCount(i0)} of ${fmtCount(i1)} items`;
+    }
+  }
+  j.track.classList.toggle('is-unknown', frac === null);
+  j.bar.style.width = frac === null ? '' : `${(frac * 100).toFixed(1)}%`;
+  if (frac === null) j.track.removeAttribute('aria-valuenow');
+  else j.track.setAttribute('aria-valuenow', String(Math.floor(frac * 100)));
+  j.figure.textContent = fig;
+  j.current.textContent = msg.current || '';
+  if (msg.cancelling) {
+    j.cancel.disabled = true;
+    j.cancel.textContent = 'Cancelling…';
+  }
+  return undefined;
+}
 
 async function runOp(body, { silent = false } = {}) {
+  let id = null;
+  if (LONG_OPS.has(body.type)) {
+    id = newJobId();
+    body = { ...body, job: id };
+    const j = jobFor(id, body.type);
+    // Quick operations finish before the panel would appear, so it never flickers.
+    j.timer = setTimeout(() => showJob(j), 400);
+  }
   try {
     const res = await post('op', body);
-    if (!silent) notice(res.label, res.undoable ? { action: { label: 'Undo', run: undo } } : {});
+    if (res.cancelled) notice(res.label, { kind: 'info', ...(res.undoable ? { action: { label: 'Undo', run: undo } } : {}) });
+    else if (!silent) notice(res.label, res.undoable ? { action: { label: 'Undo', run: undo } } : {});
     if (res.affected?.length) await refreshDirs(res.affected);
     if (S.tab === 'journal') drawLedger();
     return res;
@@ -586,6 +716,8 @@ async function runOp(body, { silent = false } = {}) {
       notice(err.message, { kind: 'error', action: { label: 'Keep both', run: () => runOp({ ...body, onConflict: 'keepBoth' }) } });
     } else notice(err.message, { kind: 'error' });
     return null;
+  } finally {
+    if (id) endJob(id);
   }
 }
 
@@ -816,7 +948,7 @@ function drawAll() {
   $('b-up').toggleAttribute('disabled', !S.focus?.p);
   for (const id of ['b-new', 'b-undo']) {
     $(id).toggleAttribute('disabled', !!S.info.readOnly);
-    if (S.info.readOnly) $(id).title = 'Unavailable: Terrane was started in read-only mode';
+    if (S.info.readOnly) $(id).title = `Unavailable: Terrane is in ${S.info.snapshot ? 'snapshot' : 'read-only'} mode`;
   }
 }
 
@@ -987,7 +1119,11 @@ function drawSurvey(sub, host) {
 }
 
 async function drawJournal(sub, host) {
-  sub.replaceChildren(el('span', { class: 'grow', text: 'Changes made this session, and the holding area' }));
+  sub.replaceChildren(el('span', { class: 'grow', text: 'Changes made to this directory, and the holding area' }));
+  if (S.info.snapshot) {
+    host.replaceChildren(el('p', { class: 'note', text: 'Snapshot mode: this is a recorded copy of the directory structure, so nothing can be changed and there is no journal.' }));
+    return;
+  }
   let data;
   try {
     data = await get('journal');
@@ -999,11 +1135,13 @@ async function drawJournal(sub, host) {
   const ro = S.info.readOnly;
   const entries = [...data.journal].reverse();
   host.replaceChildren(
-    el('details', { open: true }, el('summary', {}, 'Session changes', el('span', { class: 'n', text: fmtCount(entries.length) })),
+    el('details', { open: true }, el('summary', {}, 'Changes', el('span', { class: 'n', text: fmtCount(entries.length) })),
       entries.length ? null : el('p', { class: 'note', text: ro ? 'Read-only mode: nothing can be changed.' : 'Nothing has been changed yet.' }),
-      entries.some((e) => !e.undone) ? el('div', { class: 'actions' }, el('button', { class: 'btn btn-small', type: 'button', text: 'Undo latest', onclick: undo })) : null,
+      entries.length ? el('p', { class: 'note', text: 'Kept in .terrane-trash with the holding area, so Undo still works after Terrane restarts.' }) : null,
+      entries.some((e) => !e.undone) && !ro ? el('div', { class: 'actions' }, el('button', { class: 'btn btn-small', type: 'button', text: 'Undo latest', onclick: undo })) : null,
       entries.map((e) => el('div', { class: 'item is-static' }, el('span', { class: e.undone ? 'swatch is-empty' : 'swatch', style: e.undone ? null : { background: 'var(--verdigris)' } }),
-        el('span', {}, el('span', { class: 'nm', text: e.label }), el('span', { class: 'path', text: `${fmtDate(e.at)}${e.undone ? ' · undone' : ''}` })), el('span')))),
+        el('span', {}, el('span', { class: 'nm', text: e.label }),
+          el('span', { class: 'path', text: `${fmtDate(e.at)}${e.earlier ? ' · earlier session' : ''}${e.purged ? ' · purged' : e.undone ? ' · undone' : ''}` })), el('span')))),
     el('details', { open: true }, el('summary', {}, 'Holding area', el('span', { class: 'n', text: fmtCount(data.holding.length) })),
       el('p', { class: 'note', text: data.holding.length ? 'Removed items wait here, inside .terrane-trash in this directory, until restored or purged.' : 'Empty. Removed items wait here until restored or purged.' }),
       data.holding.map((h) => el('div', { class: 'item is-static' }, el('span', { class: 'swatch' }),
@@ -1130,8 +1268,8 @@ function drawInspector() {
   parts.push(el('div', { class: 'section-title', text: 'Actions' }));
   parts.push(el('div', { class: 'actions-grid' },
     node.d ? actionButton('Go there', () => setFocus(node), { off: node.e ? 'cannot be read' : null })
-      : actionButton('Open', () => activate(node), { title: 'Open with the system default application' }),
-    actionButton('Reveal', () => runOp({ type: 'reveal', path: relPath(node) }), { title: 'Show in the system file manager' }),
+      : actionButton('Open', () => activate(node), { title: 'Open with the system default application', off: S.info.snapshot ? 'snapshot mode' : null }),
+    actionButton('Reveal', () => runOp({ type: 'reveal', path: relPath(node) }), { title: 'Show in the system file manager', off: S.info.snapshot ? 'snapshot mode' : null }),
     actionButton('Rename…', () => rename(node), { off: lockRoot }),
     actionButton('Duplicate', () => duplicate([node]), { off: lockRoot }),
     actionButton('Move to…', () => startPlacing('move', [node]), { off: lockRoot }),
@@ -1142,8 +1280,22 @@ function drawInspector() {
 
   const ext = extOf(node.n);
   if (!node.d && !(node.f & FLAG_LINK) && node.s > 0) {
-    if (IMAGE_EXT.has(ext) && node.s < 32 * 1024 * 1024) {
-      parts.push(el('div', { class: 'section-title', text: 'Preview' }), el('div', { class: 'preview' }, el('img', { src: rawUrl(node, 33554432), alt: `Preview of ${node.n}`, loading: 'lazy' })));
+    if (IMAGE_EXT.has(ext)) {
+      // Thumbnails only: an original can be hundreds of megabytes.
+      const rel = relPath(node);
+      const t = thumbs.info(rel);
+      const img = thumbs.img(rel, 480, `Preview of ${node.n}`);
+      const small = !S.info.snapshot && node.s <= 2 * 1024 * 1024 && ext !== 'svg';
+      let body;
+      if (img) body = img;
+      else if (small) body = el('img', { src: rawUrl(node, 2 * 1024 * 1024), alt: `Preview of ${node.n}`, loading: 'lazy', decoding: 'async' });
+      else if (t?.status === 'huge') body = el('div', { class: 'none', text: 'Too large to thumbnail in the normal pass. npm run thumbs -- --huge makes one.' });
+      else if (t?.status === 'heavy-svg') body = el('div', { class: 'none', text: 'Heavy vector art. npm run thumbs -- --heavy-svg renders it.' });
+      else if (t?.status === 'error') body = el('div', { class: 'none', text: 'This file could not be read as an image.' });
+      else body = el('div', { class: 'none', text: 'No thumbnail yet. npm run thumbs makes one.' });
+      parts.push(el('div', { class: 'section-title', text: t?.w ? `Preview · ${fmtCount(t.w)} × ${fmtCount(t.h)} px` : 'Preview' }), el('div', { class: 'preview' }, body));
+    } else if (S.info.snapshot) {
+      parts.push(el('div', { class: 'section-title', text: 'Preview' }), el('div', { class: 'preview' }, el('div', { class: 'none', text: 'Snapshot mode holds names, sizes and dates, not contents.' })));
     } else if (node.k === 0 || node.k === 6 || TEXT_EXT.has(ext)) {
       const pre = el('pre', { text: '…' });
       parts.push(el('div', { class: 'section-title', text: node.s > 16384 ? 'Preview · first 16 KB' : 'Preview' }), el('div', { class: 'preview' }, pre));
@@ -1213,10 +1365,11 @@ function drawStatus() {
   let cls = 'pulse';
   let label;
   if (S.scanning) { cls += ' is-busy'; label = 'Surveying'; }
+  else if (S.watch === 'snapshot') { cls += ' is-off'; label = `Snapshot · ${fmtDate(S.info.snapshot.takenAt)}`; }
   else if (S.watch === 'live') label = 'Live';
   else if (S.watch === 'lost') { cls += ' is-off'; label = 'Service stopped'; }
   else { cls += ' is-off'; label = 'Manual refresh'; }
-  $('status-label').textContent = `${label}${S.info.readOnly ? ' · read-only' : ''}${S.layout?.coarsened ? ' · grain raised to fit' : ''}`;
+  $('status-label').textContent = `${label}${S.info.readOnly && !S.info.snapshot ? ' · read-only' : ''}${S.layout?.coarsened ? ' · grain raised to fit' : ''}`;
   $('status').replaceChildren(el('span', { class: cls }), counts);
   $('status').title = `${fmtCount(S.layout?.n || 0)} blocks drawn`;
 }
@@ -1301,8 +1454,21 @@ function wireViewport() {
     } else {
       lines = [node.n, `${fmtBytes(node.s)} · ${KINDS[node.k].label} · changed ${fmtAge(node.m)}`];
       if (node.dup) lines.push(S.survey?.dupGroups[node.dup - 1]?.verified ? 'Has identical copies' : 'Shares its size with other files');
+      const pic = thumbs.info(relPath(node));
+      if (pic?.w) lines.push(`${fmtCount(pic.w)} × ${fmtCount(pic.h)} px`);
     }
-    return tip(e.clientX, e.clientY, lines);
+    tip(e.clientX, e.clientY, lines);
+    // A picture only for a pointer that rests: sweeping across the world
+    // must not fire a request per block it passes.
+    clearTimeout(S.tipTimer);
+    if (!node.d && t !== BOX.SCREE) {
+      S.tipTimer = setTimeout(() => {
+        if (S.view.hoverIndex !== i) return;
+        const img = thumbs.img(relPath(node), 160, '');
+        if (img) tip(e.clientX, e.clientY, lines, img);
+      }, 180);
+    }
+    return undefined;
   };
   v.on.click = (i, e) => {
     closeFloating();
@@ -1468,8 +1634,9 @@ async function start() {
   wireViewport();
   wireControls();
   wireKeys();
-  if (!S.noGL) fatal('Surveying', S.info.root);
+  if (!S.noGL) fatal(S.info.snapshot ? 'Reading the snapshot' : 'Surveying', S.info.root);
   S.scanning = true;
+  thumbs.load(TOKEN);
   drawAll();
   const t0 = performance.now();
   try {

@@ -1,16 +1,23 @@
 <!DOCTYPE html>
 <!--
 ✒ Metadata
-    - Title: Terrane Interface (Terrane Edition - v1.0)
+    - Title: Terrane Interface (Terrane Edition - v1.1)
     - File Name: index.html
     - Relative Path: web/index.html
     - Artifact Type: markup
-    - Version: 1.0.0
-    - Date: 11/09/2026
-    - Update: Monday, November 9, 2026
+    - Version: 1.1.0
+    - Date: 11/11/2026
+    - Update: Wednesday, November 11, 2026
     - Author: Dennis 'dendogg' Smaltz
-    - A.I. Acknowledgement: Anthropic - Claude Fable 5.2
+    - A.I. Acknowledgement: Anthropic - Claude Opus 5.5
     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
+
+✒ Changelog:
+    - 1.1.0 (11/11/2026) [dendogg + Anthropic - Claude Opus 5.5] — Adds
+      the panel that holds operations in progress, at the lower left of
+      the world.
+    - 1.0.0 (11/09/2026) [dendogg + Anthropic - Claude Fable 5.2] —
+      Initial release.
 
 ✒ Description:
     The single page of Terrane. It lays out the sheet around the world: the
@@ -98,6 +105,7 @@
         <button class="btn btn-primary btn-small" id="placing-here" type="button">Place where I am</button>
         <button class="btn btn-small" id="placing-cancel" type="button">Cancel</button>
       </div>
+      <div id="jobs" aria-label="Operations in progress"></div>
       <div id="veil" hidden></div>
       <div class="view-tools" role="group" aria-label="View">
         <button class="btn btn-small" id="v-in" type="button" title="Fly closer (+)">+</button>

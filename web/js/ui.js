@@ -1,16 +1,22 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Interface Primitives (Terrane Edition - v1.0)
+ *     - Title: Interface Primitives (Terrane Edition - v1.1)
  *     - File Name: ui.js
  *     - Relative Path: web/js/ui.js
  *     - Artifact Type: javascript
- *     - Version: 1.0.0
- *     - Date: 11/09/2026
- *     - Update: Monday, November 9, 2026
+ *     - Version: 1.1.0
+ *     - Date: 11/11/2026
+ *     - Update: Wednesday, November 11, 2026
  *     - Author: Dennis 'dendogg' Smaltz
- *     - A.I. Acknowledgement: Anthropic - Claude Fable 5.2
+ *     - A.I. Acknowledgement: Anthropic - Claude Opus 5.5
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
+ *
+ * ✒ Changelog:
+ *     - 1.1.0 (11/11/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
+ *       hover tip can carry a picture below its lines.
+ *     - 1.0.0 (11/09/2026) [dendogg + Anthropic - Claude Fable 5.2] —
+ *       Initial release.
  *
  * ✒ Description:
  *     The small set of interface parts every Terrane panel is built from:
@@ -193,10 +199,11 @@ export function notice(message, { kind = 'ok', action, ms } = {}) {
 
 /* ---------- hover tip ---------- */
 
-export function tip(x, y, lines) {
+export function tip(x, y, lines, picture = null) {
   if (floatingOpen()) return;
   const host = document.getElementById('tip');
-  host.replaceChildren(...lines.map((l, i) => el('div', { class: i === 0 ? 'tip-name' : 'tip-line', text: l })));
+  host.replaceChildren(...lines.map((l, i) => el('div', { class: i === 0 ? 'tip-name' : 'tip-line', text: l })),
+    picture ? el('div', { class: 'tip-pic' }, picture) : null);
   host.hidden = false;
   const r = host.getBoundingClientRect();
   host.style.left = `${Math.min(x + 16, window.innerWidth - r.width - 8)}px`;

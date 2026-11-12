@@ -1,15 +1,23 @@
 <!--
 ✒ Metadata
-    - Title: Terrane Architecture (Terrane Edition - v1.0)
+    - Title: Terrane Architecture (Terrane Edition - v1.1)
     - File Name: ARCHITECTURE.md
     - Relative Path: docs/ARCHITECTURE.md
     - Artifact Type: docs
-    - Version: 1.0.0
-    - Date: 11/09/2026
-    - Update: Monday, November 9, 2026
+    - Version: 1.1.0
+    - Date: 11/11/2026
+    - Update: Wednesday, November 11, 2026
     - Author: Dennis 'dendogg' Smaltz
-    - A.I. Acknowledgement: Anthropic - Claude Fable 5.2
+    - A.I. Acknowledgement: Anthropic - Claude Opus 5.5
     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
+
+✒ Changelog:
+    - 1.1.0 (11/11/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
+      service section covers jobs, the persistent journal, snapshot mode
+      and thumbnails; a datasets section; the first measurements on
+      Windows with a hardware GPU.
+    - 1.0.0 (11/09/2026) [dendogg + Anthropic - Claude Fable 5.2] —
+      Initial release.
 
 ✒ Description:
     The technical and design decisions behind Terrane and the reasons for
@@ -22,6 +30,7 @@
     - The spatial model and why it was rebuilt
     - World management: level of detail, budgets, coordinates
     - Service design and data flow
+    - Datasets for development against real data
     - The visual identity
     - Measurements and known limitations
 
@@ -113,16 +122,30 @@ above were replaced.
 ```text
 browser                              service (127.0.0.1)
   GET  /api/scan?path=&depth=   ->   scan.mjs      NDJSON, one record per folder
-  GET  /api/events              ->   fs.watch      SSE: folders that changed
+  GET  /api/events              ->   fs.watch      SSE: folders that changed, job progress
   POST /api/op                  ->   ops.mjs       mkdir rename move copy trash open reveal
+  POST /api/cancel              ->   ops.mjs       stop a running or queued job
   POST /api/undo | restore | purge
   POST /api/hash                ->   SHA-1         duplicate verification
   GET  /api/stat | raw          ->   metadata, sandboxed preview bytes
+  GET  /api/thumbs | thumb      ->   thumbs.mjs    image index, versioned thumbnails
            every path  ->  guard.mjs  (root-relative, lexical check, realpath check)
+
+snapshot mode (--snapshot):  scan, stat, events  ->  snapshot.mjs  (structure database)
+                             every change, open, reveal, raw  ->  refused
 ```
 
 - **One mutation at a time**, through a queue. A batch is validated in
   full before its first item moves.
+- **Copy, move and remove run as jobs.** Each reports its phase, bytes,
+  files and items over the event stream, throttled to about seven
+  updates a second. A copy measures first, then streams large files in
+  1 MB chunks so a cancel lands within one chunk. Every path it creates
+  is recorded; on cancel or failure those paths are removed newest first,
+  folders only when empty, so nothing another program wrote is touched.
+- **The journal persists** in `.terrane-trash/journal.json`, written
+  atomically after every change, with root-relative paths that are
+  resolved through the guard again on undo.
 - **After a change, only the affected folders are re-read** (depth-1
   scan), reconciled into the model by name so selection survives, and
   any new child folder is deep-scanned. The watcher feeds the same path.
@@ -163,6 +186,53 @@ overview a 400,000-file tree is about a hundred masses.
 Frame rate on real graphics hardware was not measured. The test machine
 rasterizes on the CPU.
 
+### Measured (Windows 11, 16 cores, RTX 5050 laptop GPU, 11/11/2026)
+
+| Measure | 230,307 files / 30,159 folders (real, from a snapshot) |
+| ------- | ---- |
+| Snapshot taken | 2.4 s |
+| Survey in the browser | 1.6 s (0.3 s served, the rest ingest and layout) |
+| Browser heap | 84 MB |
+| Frame rate at the overview | 60 fps, the display's limit |
+| Thumbnail index | 19,181 images, one request of 346 KB |
+| Inspector preview | one 32 KB thumbnail in place of a 2.2 MB original |
+
+## 5. Datasets
+
+Two SQLite files per mirrored directory, kept in
+`%LOCALAPPDATA%\terrane\datasets\<name>`, outside the project and outside
+OneDrive.
+
+| Dataset | Written by | Read by | Shape |
+| ------- | ---------- | ------- | ----- |
+| `structure-<time>.db` | `snapshot.mjs`, through the live scanner | snapshot mode | `folders` (path-indexed, breadth-first ids), `files`, an `entries` view, `meta` |
+| `thumbs.db` | `tools/thumbs.py` | `thumbs.mjs`, both modes | one row per image: version, status, size in pixels, average colour, 4×4 grid, 160 and 480 px WebP or gzipped SVG source |
+
+Choices and their reasons:
+
+- **Snapshots are new files, never rewritten.** A reader opens the
+  database per request and closes it, so a new snapshot can be renamed
+  into place while the service runs; on Windows an open file cannot be
+  replaced. The newest three are kept.
+- **Replay keeps the scan contract exactly.** Ids are assigned
+  breadth-first, so ordering by id puts every parent before its children
+  and the replay is the same stream the live scanner produces. The smoke
+  test compares the two record for record.
+- **Thumbnails are built by Python and Pillow**, not the service. Node has
+  no image decoder, and the builder is a development tool, not a runtime
+  dependency. It reads originals only, through the paths the snapshot
+  recorded, and skips OneDrive cloud-only files by their attributes.
+- **Images never reach the browser at full size.** The index carries each
+  image's colour and pixel size, so the world and the panels can use them
+  with no image request. Thumbnails are fetched only where they are shown,
+  and their URLs carry the image version and no token, so the browser
+  caches each one once, as immutable; a SameSite=Strict cookie
+  authenticates them.
+- **Opening a large file is expensive on Windows** because the antivirus
+  scans it in full on open, even for an 8 KB header read. The builder
+  therefore records heavy SVGs without opening them, and renders them
+  only on request.
+
 ### Known limitations
 
 - The browser holds the whole tree: about 150 MB per million entries.
@@ -176,7 +246,7 @@ rasterizes on the CPU.
 - Shadows soften at very small scales.
 - Touch input is limited to one-finger slide and tap.
 
-## 5. Visual identity
+## 6. Visual identity
 
 The brief asked for a clean break from earlier digiSpace work. The
 direction is a survey sheet around a plaster world.

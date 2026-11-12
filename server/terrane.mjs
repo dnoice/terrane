@@ -2,16 +2,27 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Terrane Service (Terrane Edition - v1.0)
+ *     - Title: Terrane Service (Terrane Edition - v1.1)
  *     - File Name: terrane.mjs
  *     - Relative Path: server/terrane.mjs
  *     - Artifact Type: CLI
- *     - Version: 1.0.0
- *     - Date: 11/09/2026
- *     - Update: Monday, November 9, 2026
+ *     - Version: 1.1.0
+ *     - Date: 11/11/2026
+ *     - Update: Wednesday, November 11, 2026
  *     - Author: Dennis 'dendogg' Smaltz
- *     - A.I. Acknowledgement: Anthropic - Claude Fable 5.2
+ *     - A.I. Acknowledgement: Anthropic - Claude Opus 5.5
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
+ *
+ * ✒ Changelog:
+ *     - 1.1.0 (11/11/2026) [dendogg + Anthropic - Claude Opus 5.5] — Job
+ *       progress is broadcast on the change stream and replayed to a page
+ *       that connects mid-job; POST /api/cancel stops a job; Ctrl+C
+ *       cancels running jobs and waits for their cleanup before exiting.
+ *       Snapshot mode (--snapshot) serves a recorded structure and touches
+ *       no real file. /api/thumbs and /api/thumb serve the thumbnail
+ *       dataset with versioned, immutable caching. Requires Node 22.5.
+ *     - 1.0.0 (11/09/2026) [dendogg + Anthropic - Claude Fable 5.2] —
+ *       Initial release.
  *
  * ✒ Description:
  *     The local service behind Terrane. It is given exactly one directory on
@@ -27,26 +38,42 @@
  *     - NDJSON scan stream with backpressure, cancelled when the tab closes
  *     - Server-sent change events from a recursive watcher, debounced and
  *       reduced to the set of folders that need re-reading
+ *     - Progress for copy, move and remove on the same event stream, with
+ *       cancellation through POST /api/cancel
+ *     - Ctrl+C cancels running jobs and lets them remove their partial
+ *       output before the process exits
  *     - Duplicate verification by content hash (full SHA-1 up to 16 MB,
  *       three sampled megabytes plus size beyond that, reported as such)
  *     - Sandboxed raw-file endpoint for previews: capped length, nosniff,
  *       and a CSP sandbox so a previewed HTML or SVG file cannot run
+ *     - Snapshot mode: the same scan, stat and event contract served from
+ *       a structure database; every change, open, reveal and content read
+ *       is refused; a newer snapshot landing beside it is announced
+ *     - Thumbnails from the thumbnail dataset, in both modes: one gzipped
+ *       index, and versioned images cached as immutable; image URLs carry
+ *       no token and authenticate with a SameSite=Strict cookie
  *     - Zero npm dependencies; three.js and the fonts are vendored in web/
  *
  * ✒ Usage Instructions:
  *     node server/terrane.mjs <directory> [options]
+ *     node server/terrane.mjs --snapshot <dataset folder or .db> [options]
  *     The service prints its address and opens it in the default browser.
- *     Stop it with Ctrl+C.
+ *     Stop it with Ctrl+C. For development, npm run dev wraps snapshot mode.
  *
  * ✒ Examples:
  *     node server/terrane.mjs "C:\Users\DnnsS\OneDrive\Desktop\dd1\projects"
  *     node server/terrane.mjs ~/Music --read-only
  *     node server/terrane.mjs /srv/share --port 5050 --no-open
  *     node server/terrane.mjs . --no-watch
+ *     node server/terrane.mjs --snapshot "%LOCALAPPDATA%\terrane\datasets\projects"
  *
  * ✒ Command-Line Arguments:
  *     Input:
  *         <directory>     The one directory Terrane may read and change.
+ *         --snapshot <p>  Instead of a directory: a dataset folder (newest
+ *                         snapshot in it) or one structure .db file.
+ *         --thumbs <db>   Thumbnail dataset to serve (default: thumbs.db in
+ *                         the dataset folder for the root).
  *     Safety:
  *         --read-only     Refuse every operation that changes the disk.
  *     Processing:
@@ -56,8 +83,8 @@
  *         --no-open       Do not open the browser automatically.
  *
  * ✒ Other Important Information:
- *     - Dependencies: Node.js built-ins only
- *     - Compatible platforms: Node.js 20+ on Windows, macOS, Linux
+ *     - Dependencies: Node.js built-ins only (node:sqlite for datasets)
+ *     - Compatible platforms: Node.js 22.5+ on Windows, macOS, Linux
  *     - Security: the token defends against other web pages, not against
  *       other programs running as the same user, which already have the
  *       same filesystem access the service has
@@ -74,11 +101,13 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { spawn } from 'node:child_process';
-import { makeGuard, GuardError, HOLD_DIR } from './guard.mjs';
+import { makeGuard, GuardError, HOLD_DIR, relParts } from './guard.mjs';
 import { scan } from './scan.mjs';
 import { makeOps } from './ops.mjs';
+import { openSnapshots, listSnapshots, datasetHome, slugOf } from './snapshot.mjs';
+import { openThumbs } from './thumbs.mjs';
 
-const VERSION = '1.0.0';
+const VERSION = '1.1.0';
 const WEB = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'web');
 
 const args = process.argv.slice(2);
@@ -87,29 +116,52 @@ const option = (name, fallback) => {
   const i = args.indexOf(name);
   return i >= 0 && args[i + 1] ? args[i + 1] : fallback;
 };
-const positional = args.filter((a, i) => !a.startsWith('--') && args[i - 1] !== '--port');
+const VALUED = ['--port', '--snapshot', '--thumbs'];
+const positional = args.filter((a, i) => !a.startsWith('--') && !VALUED.includes(args[i - 1]));
+const snapshotArg = option('--snapshot', null);
+const usageOk = snapshotArg ? positional.length === 0 : positional.length === 1;
 
-if (positional.length !== 1 || flag('--help')) {
+if (!usageOk || flag('--help')) {
   console.error([
     '',
     '  Terrane ' + VERSION,
     '  Usage: node server/terrane.mjs <directory> [--read-only] [--port n] [--no-open] [--no-watch]',
+    '         node server/terrane.mjs --snapshot <folder or .db> [--port n] [--no-open]',
     '',
-    '  Terrane only works inside the directory you name here.',
+    '  Terrane only works inside the directory you name here. With --snapshot it',
+    '  shows a recorded structure instead and touches no real files at all.',
     '',
   ].join('\n'));
-  process.exit(positional.length === 1 ? 0 : 1);
+  process.exit(usageOk ? 0 : 1);
 }
 
-let guard;
-try {
-  guard = await makeGuard(positional[0]);
-} catch (err) {
-  console.error(`\n  Cannot use "${positional[0]}": ${err.message}\n`);
-  process.exit(1);
+let guard = null;
+let snap = null;
+let snapMeta = null;
+if (snapshotArg) {
+  try {
+    snap = openSnapshots(path.resolve(snapshotArg));
+    snapMeta = snap.meta();
+  } catch (err) {
+    console.error(`\n  Cannot use snapshot "${snapshotArg}": ${err.message}\n`);
+    process.exit(1);
+  }
+} else {
+  try {
+    guard = await makeGuard(positional[0]);
+  } catch (err) {
+    console.error(`\n  Cannot use "${positional[0]}": ${err.message}\n`);
+    process.exit(1);
+  }
 }
-const readOnly = flag('--read-only');
-const ops = makeOps(guard, { readOnly });
+const readOnly = flag('--read-only') || !!snap;
+
+// The thumbnail dataset sits beside the structure snapshots. It is opened
+// lazily so one built after the service started is still picked up.
+const thumbsFile = option('--thumbs', null)
+  || (snap ? path.join(path.dirname(snap.file()), 'thumbs.db') : path.join(datasetHome(slugOf(guard.root)), 'thumbs.db'));
+let thumbs = null;
+const getThumbs = () => thumbs || (thumbs = openThumbs(thumbsFile, { root: snap ? snapMeta.root : guard.root }));
 const token = crypto.randomBytes(24).toString('base64url');
 let port = Number(option('--port', 4173));
 
@@ -165,7 +217,7 @@ const readBody = (req) => new Promise((resolve, reject) => {
 
 const listeners = new Set();
 let watcher = null;
-let watchState = flag('--no-watch') ? 'off' : 'idle';
+let watchState = snap ? 'snapshot' : flag('--no-watch') ? 'off' : 'idle';
 let pendingDirs = new Set();
 let pendingTimer = null;
 
@@ -173,6 +225,79 @@ const broadcast = (obj) => {
   const line = `data: ${JSON.stringify(obj)}\n\n`;
   for (const res of listeners) res.write(line);
 };
+
+const ops = snap ? null : makeOps(guard, { readOnly, onJob: (job) => broadcast({ type: 'job', ...job }) });
+
+/* ---------- snapshot mode ---------- */
+
+const SNAP_REFUSAL = 'Snapshot mode: Terrane is showing a recorded copy of the directory structure, so nothing on disk is read or changed. Start Terrane on the real directory to do this.';
+
+// A newer snapshot landing in the folder is announced to open pages.
+if (snap && !snapshotArg.endsWith('.db')) {
+  let newest = snap.file();
+  setInterval(() => {
+    const now = listSnapshots(path.resolve(snapshotArg))[0];
+    if (!now || now === newest) return;
+    newest = now;
+    try {
+      snapMeta = snap.meta();
+      broadcast({ type: 'snapshot', takenAt: snapMeta.takenAt, folders: snapMeta.folders, files: snapMeta.files });
+    } catch { /* still being renamed into place */ }
+  }, 5000).unref();
+}
+
+const snapInfo = () => ({
+  version: VERSION, root: snapMeta.root, name: snapMeta.name, sep: snapMeta.sep, platform: snapMeta.platform,
+  readOnly: true, watch: 'snapshot',
+  snapshot: { takenAt: snapMeta.takenAt, folders: snapMeta.folders, files: snapMeta.files, bytes: snapMeta.bytes },
+});
+
+async function snapshotApi(req, res, route, q) {
+  if (req.method !== 'GET') throw new GuardError('ESNAPSHOT', SNAP_REFUSAL, 403);
+  if (route === 'info') return json(res, 200, snapInfo());
+  if (route === 'scan') {
+    const rel = relParts(q.get('path') || '').join('/');
+    const depth = q.get('depth') ? Math.max(1, Number(q.get('depth'))) : Infinity;
+    const ac = new AbortController();
+    res.on('close', () => ac.abort());
+    const it = snap.scan(rel, { depth, signal: ac.signal });
+    let first;
+    try {
+      first = await it.next();
+    } catch (err) {
+      throw new GuardError(err.code || 'ENOENT', err.message, 404);
+    }
+    res.writeHead(200, { 'Content-Type': 'application/x-ndjson', 'Cache-Control': 'no-store' });
+    for (let step = first; !step.done; step = await it.next()) {
+      if (ac.signal.aborted) break;
+      if (!res.write(JSON.stringify(step.value) + '\n')) await new Promise((r) => res.once('drain', r));
+    }
+    return res.end();
+  }
+  if (route === 'stat') {
+    const parts = relParts(q.get('path') || '');
+    const s = snap.stat(parts.join('/'));
+    if (!s) throw new GuardError('ENOENT', 'That item is not in the snapshot.', 404);
+    return json(res, 200, {
+      abs: [snapMeta.root, ...parts].join(snapMeta.sep), size: s.size, mtime: s.mtime,
+      birthtime: null, atime: null, mode: null, dir: s.dir, link: null, snapshot: true,
+    });
+  }
+  if (route === 'events') {
+    res.writeHead(200, { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-store', Connection: 'keep-alive' });
+    res.write(`data: ${JSON.stringify({ type: 'watch', state: 'snapshot' })}\n\n`);
+    listeners.add(res);
+    const beat = setInterval(() => res.write(': keep-alive\n\n'), 25000);
+    res.on('close', () => {
+      clearInterval(beat);
+      listeners.delete(res);
+    });
+    return undefined;
+  }
+  if (route === 'journal') return json(res, 200, { journal: [], holding: [], snapshot: true });
+  if (route === 'raw') throw new GuardError('ESNAPSHOT', 'Previews of the original file are not available in snapshot mode: a snapshot holds names, sizes and dates, not contents.', 403);
+  throw new GuardError('EROUTE', 'No such endpoint.', 404);
+}
 
 function startWatch(dirCount) {
   if (watchState !== 'idle') return;
@@ -232,13 +357,51 @@ async function hashFile(abs) {
   return { hash: h.digest('hex'), mode: 'sampled' };
 }
 
+/* ---------- thumbnails ---------- */
+
+function thumbApi(req, res, route, q) {
+  const t = getThumbs();
+  if (route === 'thumbs') {
+    if (!t) return json(res, 200, { available: false, fields: [], rows: [] });
+    const idx = t.index();
+    const gz = /\bgzip\b/.test(String(req.headers['accept-encoding'] || ''));
+    res.writeHead(200, {
+      'Content-Type': 'application/json', 'Cache-Control': 'no-store', Vary: 'Accept-Encoding',
+      ...(gz ? { 'Content-Encoding': 'gzip' } : {}),
+    });
+    return res.end(gz ? idx.gzip : idx.body);
+  }
+  const rel = relParts(q.get('path') || '').join('/');
+  const hit = t?.get(rel, q.get('w') || '160');
+  if (!hit) throw new GuardError('ENOTHUMB', 'There is no thumbnail for that item yet.', 404);
+  if (req.headers['if-none-match'] === hit.etag) {
+    res.writeHead(304, { ETag: hit.etag });
+    return res.end();
+  }
+  res.writeHead(200, {
+    'Content-Type': hit.type, 'Content-Length': hit.body.length, ETag: hit.etag,
+    // A URL naming the current version never changes meaning.
+    'Cache-Control': q.get('v') === hit.version ? 'private, max-age=31536000, immutable' : 'private, no-cache',
+    'X-Content-Type-Options': 'nosniff',
+    'Content-Security-Policy': "sandbox; default-src 'none'; style-src 'unsafe-inline'",
+    ...(hit.gzip ? { 'Content-Encoding': 'gzip' } : {}),
+  });
+  return res.end(hit.body);
+}
+
 /* ---------- routes ---------- */
 
 async function api(req, res, url) {
   const route = url.pathname.slice(5);
   const q = url.searchParams;
-  const supplied = req.headers['x-terrane-token'] || q.get('t');
+  const isThumb = req.method === 'GET' && (route === 'thumb' || route === 'thumbs');
+  // Thumbnail URLs carry no token so they stay identical across restarts
+  // and the browser cache survives; a SameSite=Strict cookie stands in.
+  const cookie = /(?:^|;\s*)terrane=([^;]+)/.exec(req.headers.cookie || '')?.[1];
+  const supplied = req.headers['x-terrane-token'] || q.get('t') || (isThumb ? cookie : undefined);
   if (supplied !== token) throw new GuardError('ETOKEN', 'Missing or wrong session token. Reload the page from the address Terrane printed.', 401);
+  if (isThumb) return thumbApi(req, res, route, q);
+  if (snap) return snapshotApi(req, res, route, q);
 
   if (req.method === 'GET') {
     if (route === 'info') {
@@ -299,6 +462,7 @@ async function api(req, res, url) {
       startWatch(Number(q.get('dirs')) || 0);
       res.writeHead(200, { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-store', Connection: 'keep-alive' });
       res.write(`data: ${JSON.stringify({ type: 'watch', state: watchState })}\n\n`);
+      for (const job of ops.jobs()) res.write(`data: ${JSON.stringify({ type: 'job', ...job })}\n\n`);
       listeners.add(res);
       const beat = setInterval(() => res.write(': keep-alive\n\n'), 25000);
       res.on('close', () => {
@@ -307,7 +471,7 @@ async function api(req, res, url) {
       });
       return undefined;
     }
-    if (route === 'journal') return json(res, 200, { journal: ops.journal(), holding: await ops.holding() });
+    if (route === 'journal') return json(res, 200, { journal: await ops.journal(), holding: await ops.holding() });
   }
 
   if (req.method === 'POST') {
@@ -319,6 +483,7 @@ async function api(req, res, url) {
     if (route === 'undo') return json(res, 200, await ops.undo());
     if (route === 'restore') return json(res, 200, await ops.restore(body.ids || []));
     if (route === 'purge') return json(res, 200, await ops.purge());
+    if (route === 'cancel') return json(res, 200, ops.cancel(String(body.job || '')));
     if (route === 'hash') {
       const paths = (body.paths || []).slice(0, 4000);
       const results = new Array(paths.length);
@@ -362,6 +527,8 @@ async function serveStatic(req, res, url) {
     data = Buffer.from(data.toString('utf8').replace('__TERRANE_TOKEN__', token));
     headers['Content-Security-Policy'] = "default-src 'self'; img-src 'self' blob: data:; style-src 'self' 'unsafe-inline'; frame-ancestors 'none'";
     headers['Referrer-Policy'] = 'no-referrer';
+    // Lets thumbnail images authenticate without a token in their URL.
+    headers['Set-Cookie'] = `terrane=${token}; Path=/api/; HttpOnly; SameSite=Strict`;
   }
   res.writeHead(200, headers);
   res.end(data);
@@ -397,8 +564,12 @@ const listen = (attempt = 0) => {
     console.log([
       '',
       `  Terrane ${VERSION}`,
-      `  Authorized directory : ${guard.root}`,
-      `  Mode                 : ${readOnly ? 'read-only' : 'read and write (no overwrite, no direct delete)'}`,
+      ...(snap
+        ? [`  Snapshot of          : ${snapMeta.root}`,
+          `  Taken                : ${new Date(snapMeta.takenAt).toLocaleString('en-US')} (${snapMeta.files.toLocaleString('en-US')} files)`,
+          '  Mode                 : snapshot (no real file is read or changed)']
+        : [`  Authorized directory : ${guard.root}`,
+          `  Mode                 : ${readOnly ? 'read-only' : 'read and write (no overwrite, no direct delete)'}`]),
       `  Open                 : ${address}`,
       '',
       '  Ctrl+C to stop.',
@@ -415,8 +586,17 @@ const listen = (attempt = 0) => {
 };
 listen();
 
-process.on('SIGINT', () => {
+let stopping = false;
+const stop = async () => {
+  if (stopping) process.exit(1);
+  stopping = true;
   watcher?.close();
   server.close();
+  if (ops?.jobs().length) {
+    console.log('  Cancelling running operations and removing their partial output…');
+    await ops.shutdown();
+  }
   process.exit(0);
-});
+};
+process.on('SIGINT', stop);
+process.on('SIGTERM', stop);

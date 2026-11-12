@@ -1,28 +1,38 @@
 <!--
 ✒ Metadata
-    - Title: Terrane Roadmap (Terrane Edition - v1.0)
+    - Title: Terrane Roadmap (Terrane Edition - v1.1)
     - File Name: ROADMAP.md
     - Relative Path: docs/ROADMAP.md
     - Artifact Type: docs
-    - Version: 1.0.0
-    - Date: 11/09/2026
-    - Update: Monday, November 9, 2026
+    - Version: 1.1.0
+    - Date: 11/11/2026
+    - Update: Wednesday, November 11, 2026
     - Author: Dennis 'dendogg' Smaltz
-    - A.I. Acknowledgement: Anthropic - Claude Fable 5.2
+    - A.I. Acknowledgement: Anthropic - Claude Opus 5.5
     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
 
+✒ Changelog:
+    - 1.1.0 (11/11/2026) [dendogg + Anthropic - Claude Opus 5.5] —
+      Requirements 14 and 15 are met. Stage 6 records progress,
+      cancellation and the persistent journal as done. Adds development
+      datasets: structure snapshots and thumbnails.
+    - 1.0.0 (11/09/2026) [dendogg + Anthropic - Claude Fable 5.2] —
+      Initial release.
+
 ✒ Description:
-    The four planning items Dennis asked for alongside the build: the
-    exploration loop the world is designed around, the minimum viable
-    filesystem scope, the practical filesystem interaction requirements,
-    and a staged implementation roadmap that marks what is built and what
-    is next.
+    The plan behind Terrane: the exploration loop the world is designed
+    around, the minimum viable filesystem scope, the practical filesystem
+    interaction requirements, a staged implementation roadmap that marks
+    what is built and what is next, and the datasets that let development
+    run against real data without touching it.
 
 ✒ Key Features:
     - Exploration loop with the system that serves each step
     - Minimum filesystem scope: in, out, and why
     - Interaction requirements written as checkable statements
-    - Six stages, each with an exit test; stages 1 to 3 are complete
+    - Six stages, each with an exit test; stages 1 to 3 are complete and
+      stage 6 is under way
+    - Development datasets: how to build against real data safely
 
 ✒ Other Important Information:
     - Dependencies: none
@@ -82,8 +92,7 @@ The smallest scope at which Terrane is a tool and not a demonstration.
 
 ## 3. Practical filesystem interaction requirements
 
-Written so each can be checked. All are met by the current build unless
-marked otherwise.
+Written so each can be checked. All fifteen are met by the current build.
 
 1. Every item drawn in the world corresponds to exactly one real entry,
    or is an aggregate that states its count and total size.
@@ -110,9 +119,13 @@ marked otherwise.
 12. The user can always tell where they are (breadcrumbs follow the
     camera) and can always get out (Backspace, 0, Escape).
 13. Selection survives a refresh of the folder it is in.
-14. *Not yet met:* operations longer than a few seconds show progress and
-    can be cancelled. Large copies currently block until done.
-15. *Not yet met:* the undo journal survives a restart of the service.
+14. Operations longer than a moment show progress (bytes, rate, time
+    left, current item) and can be cancelled. A cancelled copy removes
+    only its own partial output, and what finished before the cancel can
+    be undone.
+15. The undo journal survives a restart of the service. It is kept in
+    `.terrane-trash/journal.json`, and its paths pass through the guard
+    again on undo.
 
 ## 4. Staged implementation
 
@@ -180,10 +193,16 @@ much information each adds:
 Exit test for each: it answers a question about the directory that the
 ledger alone cannot.
 
-### Stage 6. Operations at scale
+### Stage 6. Operations at scale. Under way
 
-- Progress and cancellation for long copies and moves.
+Done on 11/11/2026:
+
+- Progress and cancellation for copies, moves and removals, with cleanup
+  of the partial item and undo of the finished ones.
 - A journal that persists across restarts.
+
+Next:
+
 - Batch rename with preview.
 - Send to the operating system's recycle bin as an alternative holding
   area.
@@ -192,6 +211,40 @@ ledger alone cannot.
 - Windows hidden attribute, allocated sizes, hard-link detection.
 
 Exit test: move 50 GB between folders with a live progress figure, cancel
-halfway, and undo to the starting state.
+halfway, and undo to the starting state. Within one volume a move is a
+rename and finishes at once; the test applies to a copy, or a move onto
+another volume. `npm test` runs the same sequence on a 24 MB copy slowed
+to take a second.
+
+## 5. Development datasets
+
+Building Terrane against a real directory without risk to it.
+
+| Dataset | Made by | Holds | Used by |
+| ------- | ------- | ----- | ------- |
+| Structure snapshot | `npm run snapshot -- <dir>` | Every folder and file: name, size, dates, type. No contents | `terrane --snapshot`, which touches no real file |
+| Thumbnails | `npm run thumbs` | Per image: average colour, 4×4 colour grid, 160 and 480 px WebP, or the source of a light SVG | `/api/thumbs`, `/api/thumb`, in both modes |
+
+`npm run dev` ties them together: it refreshes a stale snapshot, starts the
+service in snapshot mode, keeps thumbnails current in the background, and
+re-snapshots every hour while it runs. Both datasets live in
+`%LOCALAPPDATA%\terrane\datasets\<name>`, outside the project and outside
+OneDrive, because they hold real file names and run to hundreds of
+megabytes.
+
+The rules the image work follows, set by the shape of the real data
+(19,181 images, 35.7 GB, a largest file of 443 MB):
+
+- The browser never requests an original image. The inspector and the
+  hover tip use thumbnails; the tip waits for the pointer to rest.
+- Thumbnail URLs carry the image's version and no token, so each is
+  cached once, as immutable, across reloads and restarts.
+- The builder is incremental: an image is read again only when its size
+  or date changes. It goes cheapest first, skips OneDrive cloud-only
+  files, holds images over 80 megapixels for an explicit `--huge` pass,
+  and renders heavy SVGs through Inkscape only with `--heavy-svg`.
+- A heavy SVG borrows the thumbnail of its own raster export only when
+  the export sits within two folders of it. A same-named file further
+  away is a different artwork, such as a generated frame around a photo.
 
 <!-- ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once! -->

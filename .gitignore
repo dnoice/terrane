@@ -1,21 +1,29 @@
 # ==============================================================================
 # ✒ Metadata
-#     - Title: GitIgnore (Terrane Edition - v1.0)
+#     - Title: GitIgnore (Terrane Edition - v1.1)
 #     - File Name: .gitignore
 #     - Relative Path: .gitignore
 #     - Artifact Type: config
-#     - Version: 1.0.0
+#     - Version: 1.1.0
 #     - Date: 11/11/2026
 #     - Update: Wednesday, November 11, 2026
 #     - Author: Dennis 'dendogg' Smaltz
 #     - A.I. Acknowledgement: Anthropic - Claude Opus 5.5
 #     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
 #
+# ✒ Changelog:
+#     - 1.1.0 (11/11/2026) [dendogg + Anthropic - Claude Opus 5.5] —
+#       Ignores .dev/, the local development settings.
+#     - 1.0.0 (11/11/2026) [dendogg + Anthropic - Claude Opus 5.5] —
+#       Initial release.
+#
 # ✒ Description:
 #     Git ignore patterns for Terrane. Excludes dependency folders, logs,
-#     editor and OS clutter, local secrets, and any holding area or journal
-#     that a test run or a launch against the project itself leaves behind.
-#     The vendored three.js and fonts in web/ are source and stay tracked.
+#     editor and OS clutter, local secrets, local development settings, and
+#     any holding area or journal that a test run or a launch against the
+#     project itself leaves behind. The vendored three.js and fonts in web/
+#     are source and stay tracked. Snapshots and thumbnails live outside the
+#     project entirely.
 #
 # ✒ Other Important Information:
 #     - Dependencies: none
@@ -28,10 +36,11 @@ node_modules/
 # Terrane's own state, if the service is ever pointed at this directory
 .terrane-trash/
 
-# Logs and scratch output
+# Logs, caches and scratch output
 *.log
 npm-debug.log*
 *.tmp
+__pycache__/
 .scratch/
 
 # Local secrets and machine settings
@@ -50,3 +59,6 @@ npm-debug.log*
 Thumbs.db
 desktop.ini
 ~$*
+
+# Local development state: the mirrored target and its settings
+.dev/

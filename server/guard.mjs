@@ -1,16 +1,23 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Path Guard (Terrane Edition - v1.0)
+ *     - Title: Path Guard (Terrane Edition - v1.1)
  *     - File Name: guard.mjs
  *     - Relative Path: server/guard.mjs
  *     - Artifact Type: javascript
- *     - Version: 1.0.0
- *     - Date: 11/09/2026
- *     - Update: Monday, November 9, 2026
+ *     - Version: 1.1.0
+ *     - Date: 11/11/2026
+ *     - Update: Wednesday, November 11, 2026
  *     - Author: Dennis 'dendogg' Smaltz
- *     - A.I. Acknowledgement: Anthropic - Claude Fable 5.2
+ *     - A.I. Acknowledgement: Anthropic - Claude Opus 5.5
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
+ *
+ * ✒ Changelog:
+ *     - 1.1.0 (11/11/2026) [dendogg + Anthropic - Claude Opus 5.5] — Path
+ *       validation is exported as relParts(), so snapshot mode refuses
+ *       exactly what the live guard refuses.
+ *     - 1.0.0 (11/09/2026) [dendogg + Anthropic - Claude Fable 5.2] —
+ *       Initial release.
  *
  * ✒ Description:
  *     The permission boundary of the Terrane service. Every path the browser
@@ -61,6 +68,23 @@ export class GuardError extends Error {
 
 const WIN_RESERVED = /^(con|prn|aux|nul|com[1-9]|lpt[1-9])(\..*)?$/i;
 
+/**
+ * Validates a root-relative posix-style path and returns its segments.
+ * Shared by the live guard and by snapshot mode, so both refuse the same
+ * inputs.
+ */
+export function relParts(rel) {
+  if (typeof rel !== 'string') throw new GuardError('EPATH', 'Path must be a string.');
+  if (rel.includes('\0')) throw new GuardError('EPATH', 'Path contains a null byte.');
+  const parts = rel.split('/').filter((p) => p !== '');
+  for (const p of parts) {
+    if (p === '.' || p === '..') throw new GuardError('EPATH', 'Relative segments are not allowed.');
+    if (p === HOLD_DIR) throw new GuardError('EPATH', 'The holding area is managed by Terrane.', 403);
+    if (path.sep === '\\' && p.includes('\\')) throw new GuardError('EPATH', 'Invalid path segment.');
+  }
+  return parts;
+}
+
 export async function makeGuard(rootInput) {
   const root = await fs.realpath(path.resolve(rootInput));
   const stat = await fs.stat(root);
@@ -73,15 +97,7 @@ export async function makeGuard(rootInput) {
 
     /** Root-relative posix-style string -> absolute path inside the root. */
     resolve(rel, { allowRoot = true } = {}) {
-      if (typeof rel !== 'string') throw new GuardError('EPATH', 'Path must be a string.');
-      if (rel.includes('\0')) throw new GuardError('EPATH', 'Path contains a null byte.');
-      const parts = rel.split('/').filter((p) => p !== '');
-      for (const p of parts) {
-        if (p === '.' || p === '..') throw new GuardError('EPATH', 'Relative segments are not allowed.');
-        if (p === HOLD_DIR) throw new GuardError('EPATH', 'The holding area is managed by Terrane.', 403);
-        if (path.sep === '\\' && p.includes('\\')) throw new GuardError('EPATH', 'Invalid path segment.');
-      }
-      const abs = path.join(root, ...parts);
+      const abs = path.join(root, ...relParts(rel));
       if (!inside(abs)) throw new GuardError('EOUTSIDE', 'Path is outside the authorized directory.', 403);
       if (!allowRoot && abs === root) {
         throw new GuardError('EROOT', 'The authorized root itself cannot be changed from here.', 403);

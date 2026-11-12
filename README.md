@@ -1,24 +1,34 @@
 <!--
 ✒ Metadata
-    - Title: Terrane Readme (Terrane Edition - v1.0)
+    - Title: Terrane Readme (Terrane Edition - v1.1)
     - File Name: README.md
     - Relative Path: README.md
     - Artifact Type: docs
-    - Version: 1.0.0
-    - Date: 11/09/2026
-    - Update: Monday, November 9, 2026
+    - Version: 1.1.0
+    - Date: 11/11/2026
+    - Update: Wednesday, November 11, 2026
     - Author: Dennis 'dendogg' Smaltz
-    - A.I. Acknowledgement: Anthropic - Claude Fable 5.2
+    - A.I. Acknowledgement: Anthropic - Claude Opus 5.5
     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
 
+✒ Changelog:
+    - 1.1.0 (11/11/2026) [dendogg + Anthropic - Claude Opus 5.5] —
+      Development against snapshots, the thumbnail dataset, progress and
+      cancellation, the persistent journal, and the first verification on
+      Windows with a hardware GPU.
+    - 1.0.0 (11/09/2026) [dendogg + Anthropic - Claude Fable 5.2] —
+      Initial release, built to Dennis's brief for a filesystem explorer
+      you step inside rather than look at.
+
 ✒ Description:
-    How to launch Terrane, how to read and travel its world, what it can
-    do to files and how those actions are kept safe, and where to start
-    when continuing development. Built to Dennis's brief for a filesystem
-    explorer you step inside rather than look at.
+    How to launch Terrane, how to develop it against real data without
+    touching that data, how to read and travel its world, what it can do to
+    files and how those actions are kept safe, and where to start when
+    continuing development.
 
 ✒ Key Features:
     - Launch instructions for Windows, macOS and Linux
+    - Development mode: snapshots and thumbnails of a real directory
     - The visual language in one table
     - Travel, selection and operation controls
     - Safety model and its limits
@@ -26,9 +36,10 @@
     - Project map for continuing development
 
 ✒ Other Important Information:
-    - Dependencies: Node.js 20 or newer; a browser with WebGL2
-    - Compatible platforms: developed and tested on Linux; written for
-      Windows and macOS but not yet run there
+    - Dependencies: Node.js 22.5 or newer; a browser with WebGL2; Python
+      3.10+ with Pillow for thumbnails, and Inkscape for heavy SVGs
+    - Compatible platforms: tested on Linux and on Windows 11; written for
+      macOS but not yet run there
 ---------
 -->
 
@@ -44,7 +55,7 @@ and a browser interface that talks only to that service.
 
 ## Launch
 
-Requires Node.js 20 or newer. Nothing to install.
+Requires Node.js 22.5 or newer. Nothing to install.
 
 ```bash
 node server/terrane.mjs "C:\Users\DnnsS\OneDrive\Desktop\dd1\projects"
@@ -64,6 +75,44 @@ the default browser. Stop it with Ctrl+C.
 node server/terrane.mjs "E:\digiSpace" --read-only
 npm start -- ~/Music --port 5050
 ```
+
+## Developing against real data
+
+Development runs against a recorded copy of a real directory, so nothing
+real can be changed by a bug, a test or a half-built feature.
+
+```bash
+npm run dev -- --target "C:\Users\DnnsS\OneDrive\Desktop\dd1\projects"
+npm run dev
+```
+
+The first form remembers the target; after that `npm run dev` is enough.
+It does four things:
+
+1. Takes a structure snapshot if the newest is more than six hours old:
+   every folder and file with its name, size, dates and type, never its
+   contents. About 230,000 entries take under three seconds.
+2. Starts Terrane with `--snapshot`. In this mode the service reads only
+   the snapshot; every change, open, reveal and content preview is refused
+   with a sentence saying why.
+3. Updates the thumbnail dataset in the background at below-normal
+   priority. Only new or changed images are read.
+4. Takes a new snapshot every hour while it runs. The open page offers to
+   rescan when one lands.
+
+| Command | Does |
+| ------- | ---- |
+| `npm run snapshot -- <dir>` | One snapshot now |
+| `npm run thumbs` | Update thumbnails; `--stats` shows what is stored |
+| `npm run thumbs -- --huge` | Also thumbnail images over 80 megapixels, one at a time |
+| `npm run thumbs -- --heavy-svg` | Also render SVGs over 512 KB through Inkscape |
+| `node server/terrane.mjs --snapshot <folder>` | Serve a snapshot without the dev runner |
+
+Datasets live in `%LOCALAPPDATA%\terrane\datasets\<name>` (on other
+systems `~/.cache/terrane/datasets`), outside the project and outside
+OneDrive. They hold real file names, so they stay local. Both are SQLite
+files and can be queried directly, for example
+`SELECT folder, name, size FROM entries ORDER BY size DESC LIMIT 20`.
 
 ## Reading the world
 
@@ -114,7 +163,7 @@ list.
 | Copy path | Ctrl+C, menu, inspector | Absolute path |
 | New folder | N, toolbar, menu | |
 | Rename | F2, menu, inspector | |
-| Move, Copy | M, menu, drag a ledger row | Click a destination plateau, or travel there and choose Place where I am |
+| Move, Copy | M, menu, drag a ledger row | Click a destination plateau, or travel there and choose Place where I am. Anything that takes longer than a moment shows progress and a Cancel button |
 | Duplicate | Ctrl+D | Copies in place as `name copy.ext` |
 | Remove | Del | Moves to the holding area. Nothing is deleted |
 | Undo | Ctrl+Z, toolbar, Journal tab | Reverses the latest change |
@@ -130,46 +179,60 @@ list.
   anything moves, and offers Keep both.
 - It never deletes directly. Remove moves items into `.terrane-trash`
   inside the authorized directory, so the move is atomic and reversible.
-- Every change records its inverse. Undo refuses, with the reason, if the
-  disk has changed in a way that would make the undo destroy something.
+- Every change records its inverse in a journal kept beside the holding
+  area, so Undo works after a restart. Journal paths pass through the
+  same guard as a request. Undo refuses, with the reason, if the disk has
+  changed in a way that would make the undo destroy something.
+- A cancelled copy removes only the paths it created, newest first, and
+  folders only when empty. Items finished before the cancel stay and can
+  be undone.
 - The service listens on `127.0.0.1` only, checks the Host header, and
   requires a per-session token on every API call.
 
-Limits worth knowing: the undo journal lasts for the session (the holding
-area persists); `.terrane-trash` lives inside your directory, so on a
-OneDrive folder it will sync until purged; hidden items are detected by dot
-prefix only, not by the Windows hidden attribute.
+Limits worth knowing: the journal keeps the latest 500 changes;
+`.terrane-trash` lives inside your directory, so on a OneDrive folder it
+will sync until purged; hidden items are detected by dot prefix only, not
+by the Windows hidden attribute.
 
 ## What was verified
 
 | Check | Result |
 | ----- | ------ |
-| `npm test`: 28 service checks on a throwaway directory (boundary, every operation verified on disk, collisions, full undo chain against content hashes, read-only) | 28 passed |
-| Interface driven in headless Chrome on scratch data: new folder, F2 rename, move by placing, live pickup of an outside change, collision refusal, Keep both, remove, journal | Passed, each confirmed on disk |
-| Real data, read-only: a 39,990-file, 3,160-folder dependency tree | Scanned in about 0.9 s; travel, search, lenses, reveal exercised |
-| Scale: synthetic 400,018 files in 28,575 folders, 12 levels deep | Scan 7 to 12 s on 2 cores; 85 MB browser heap; layout plus paint about 10 ms; pick 0.08 ms |
+| `npm test` on Windows 11: 54 service checks on a throwaway directory (boundary, every operation verified on disk, collisions, progress and cancel mid-file, a queued job cancelled, the full undo chain run by a restarted service against content hashes, a tampered journal, snapshot replay against a live scan, read-only) | 54 passed, three runs in a row |
+| Interface driven in headless Chrome on scratch data (11/09/2026, Linux): new folder, F2 rename, move by placing, live pickup of an outside change, collision refusal, Keep both, remove, journal | Passed, each confirmed on disk |
+| Snapshot of real data on Windows: 230,307 files in 30,159 folders | Snapshot 2.4 s; replay matches a live scan folder for folder; served in 0.3 s against 2.3 s live |
+| Same snapshot in Chrome on an RTX 5050 laptop GPU | Surveyed in 1.6 s; 84 MB heap; 60 fps at the overview (the display's limit); search, fly-to seven levels down, inspector and hover thumbnails exercised |
+| Thumbnails of the same tree | 11,103 rasters and 4,467 light SVGs in about 3 minutes, 255 MB; an inspector preview is one 32 KB request in place of a 2.2 MB original |
+| Scale: synthetic 400,018 files in 28,575 folders, 12 levels deep (11/09/2026, Linux) | Scan 7 to 12 s on 2 cores; 85 MB browser heap; layout plus paint about 10 ms; pick 0.08 ms |
 
-Not verified: running on Windows or macOS; frame rate on a real GPU (the
-test machine had only a software rasterizer, which managed 0.3 to 1 s per
-frame and says nothing about hardware); Open and Reveal reaching a desktop
-application (the test machine has no desktop).
+Not verified: running on macOS; frame rate at street level in the largest
+trees on a hardware GPU; Open and Reveal reaching a desktop application on
+Windows; the progress panel driven in a browser (its service side is
+covered by `npm test`).
 
 ## Continuing development
 
 ```text
-server/terrane.mjs   entry point, HTTP routes, watcher, hashing
+server/terrane.mjs   entry point, HTTP routes, watcher, hashing, snapshot mode
 server/guard.mjs     the permission boundary
 server/scan.mjs      progressive breadth-first scanner
-server/ops.mjs       real operations, journal, holding area
+server/ops.mjs       real operations, persistent journal, holding area, jobs
+server/transfer.mjs  measured, cancellable copy that cleans up after itself
+server/snapshot.mjs  structure snapshots: write, replay, dataset home
+server/thumbs.mjs    serves the thumbnail dataset
 web/index.html       page structure
 web/css/terrane.css  design system
-web/js/app.js        controller: state, service calls, panels
+web/js/app.js        controller: state, service calls, panels, progress
 web/js/model.js      tree model, aggregation, search, survey
 web/js/layout.js     the spatial language and level of detail
 web/js/viewport.js   3D world, camera, picking, transitions
 web/js/theme.js      colours shared with the stylesheet
-web/js/ui.js         menu, dialog, notices, virtual list
-tools/               fixture generator, smoke test
+web/js/thumbs.js     the only way the page shows an image
+web/js/ui.js         menu, dialog, notices, tip, virtual list
+tools/dev.mjs        development runner (snapshot mode, kept current)
+tools/snapshot.mjs   take a structure snapshot
+tools/thumbs.py      build and update the thumbnail dataset
+tools/               also: fixture generator, smoke test
 docs/                ARCHITECTURE.md, ROADMAP.md
 ```
 

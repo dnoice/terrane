@@ -1,36 +1,56 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Filesystem Operations (Terrane Edition - v1.0)
+ *     - Title: Filesystem Operations (Terrane Edition - v1.1)
  *     - File Name: ops.mjs
  *     - Relative Path: server/ops.mjs
  *     - Artifact Type: javascript
- *     - Version: 1.0.0
- *     - Date: 11/09/2026
- *     - Update: Monday, November 9, 2026
+ *     - Version: 1.1.0
+ *     - Date: 11/11/2026
+ *     - Update: Wednesday, November 11, 2026
  *     - Author: Dennis 'dendogg' Smaltz
- *     - A.I. Acknowledgement: Anthropic - Claude Fable 5.2
+ *     - A.I. Acknowledgement: Anthropic - Claude Opus 5.5
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
+ *
+ * ✒ Changelog:
+ *     - 1.1.0 (11/11/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
+ *       undo journal persists in the holding area with root-relative paths
+ *       that the guard re-checks on undo. Copy, move and remove run as jobs
+ *       that report progress and can be cancelled; a cancelled copy removes
+ *       only its own partial output. Purge keeps the journal. Partial
+ *       removals are journaled. Holding index writes are atomic.
+ *     - 1.0.0 (11/09/2026) [dendogg + Anthropic - Claude Fable 5.2] —
+ *       Initial release.
  *
  * ✒ Description:
  *     Performs the real changes Terrane makes on disk: create folder, rename,
  *     move, copy, remove to the holding area, restore, open and reveal. Each
  *     change is validated through the path guard, never overwrites existing
- *     data, and is written to a journal with the exact inverse needed to
- *     undo it.
+ *     data, and is written to a persistent journal with the exact inverse
+ *     needed to undo it, including after the service restarts.
  *
  * ✒ Key Features:
  *     - No overwrite, ever: a name collision is refused with a 409 unless
  *       the caller asks for "keep both", which picks a free "name copy" name
  *     - No direct delete: remove moves items into .terrane-trash inside the
  *       root (same volume, so the move is atomic and instantly reversible)
- *     - Undo journal: every mutation records its inverse; undo replays it
- *       and refuses, with a reason, if the disk has changed underneath
+ *     - Persistent undo journal in .terrane-trash/journal.json, written
+ *       atomically after every change. Paths are stored root-relative and
+ *       pass through the guard again on undo, so an edited journal cannot
+ *       reach outside the root. Undo refuses, with a reason, if the disk has
+ *       changed underneath
+ *     - Jobs: copy, move and remove report phase, bytes, files and items
+ *       through a callback, throttled, and can be cancelled while queued,
+ *       while counting, or between chunks of a copy
+ *     - A cancelled or failed copy removes exactly the paths it created;
+ *       items finished before the cancel stay and are journaled, so Undo
+ *       returns the directory to where it started
  *     - Batches are validated in full before the first item is touched
  *     - Guards against moving a folder into itself or its own descendants
  *     - Case-only renames work on case-insensitive volumes without being
  *       mistaken for a collision
- *     - Cross-volume moves fall back to copy, verify presence, then remove
+ *     - Cross-volume moves fall back to a measured copy, verify presence,
+ *       then remove the source
  *     - One mutation at a time through a queue, so operations cannot
  *       interleave
  *     - Open and reveal hand the path to the operating system's own
@@ -38,25 +58,30 @@
  *     - Read-only mode refuses every mutation with an explanation
  *
  * ✒ Usage Instructions:
- *     const ops = makeOps(guard, { readOnly: false });
+ *     const ops = makeOps(guard, { readOnly: false, onJob: (view) => {} });
  *     await ops.run({ type: 'mkdir', parent: 'docs', name: 'Drafts' });
  *     await ops.run({ type: 'rename', path: 'docs/a.txt', name: 'b.txt' });
  *     await ops.run({ type: 'move', paths: ['a', 'b'], dest: 'archive' });
- *     await ops.run({ type: 'copy', paths: ['a.txt'], dest: '' });
+ *     await ops.run({ type: 'copy', paths: ['big'], dest: '', job: 'k3x9q2' });
+ *     ops.cancel('k3x9q2');
  *     await ops.run({ type: 'trash', paths: ['old.log'] });
  *     await ops.undo();
- *     Each call resolves to { ok, label, affected: [dir rel paths], ... }.
+ *     Each call resolves to { ok, label, affected: [dir rel paths], ... };
+ *     a cancelled job resolves with cancelled: true and says what was done.
  *
  * ✒ Other Important Information:
- *     - Dependencies: Node.js built-ins only
+ *     - Dependencies: Node.js built-ins only; guard.mjs, transfer.mjs
  *     - Compatible platforms: Node.js 20+ on Windows, macOS, Linux
  *     - Limitations: the existence check and the rename are two system
  *       calls, so another program creating the same name in the few
  *       microseconds between them is not defended against. The journal
- *       lives in memory for the session; the holding area and its index
- *       persist on disk and survive a restart.
- *     - Security: purge is the only permanent deletion and only ever acts
- *       inside .terrane-trash
+ *       keeps the latest 500 entries. Undo of a cross-volume move copies
+ *       back without progress or cancellation. A same-volume move is one
+ *       rename per item and cannot be interrupted partway through an item
+ *     - Security: purge is the only permanent deletion of user data and
+ *       only ever acts inside .terrane-trash. Cleanup after a cancelled
+ *       copy deletes only paths that copy created, newest first, and
+ *       removes folders only when empty
  * ----------------------------------------------------------------------------
  */
 
@@ -64,6 +89,13 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { spawn } from 'node:child_process';
 import { GuardError, HOLD_DIR } from './guard.mjs';
+import { measure, copyTree, removeCreated, isCancel } from './transfer.mjs';
+
+const JOURNAL_MAX = 500;
+const JOURNAL_FORMAT = 1;
+const JOB_ID = /^[A-Za-z0-9_-]{6,64}$/;
+const JOBBED = new Set(['move', 'copy', 'trash']);
+const PROGRESS_MS = 150;
 
 const exists = async (abs) => {
   try {
@@ -93,25 +125,97 @@ async function freeName(dir, name) {
   throw new GuardError('EEXIST', 'Could not find a free name.', 409);
 }
 
-async function moveEntry(from, to) {
+/** Writes a sibling file and renames it over the target. */
+async function writeAtomic(file, text) {
+  const tmp = `${file}.${process.pid}.tmp`;
+  await fs.writeFile(tmp, text);
+  for (let attempt = 0; ; attempt++) {
+    try {
+      await fs.rename(tmp, file);
+      return;
+    } catch (err) {
+      // Windows refuses the swap while a sync client or scanner holds the
+      // target open; it clears within milliseconds.
+      if (attempt >= 6 || !['EPERM', 'EBUSY', 'EACCES'].includes(err.code)) {
+        await fs.rm(tmp, { force: true });
+        throw err;
+      }
+      await new Promise((r) => setTimeout(r, 40 * (attempt + 1)));
+    }
+  }
+}
+
+/** Copies with progress; on any failure removes what it created. */
+async function copyOwned(from, to, job) {
+  const created = [];
+  try {
+    await copyTree(from, to, { signal: job?.signal, created, onBytes: job?.addBytes, onFile: job?.addFile });
+  } catch (err) {
+    err.leftover = await removeCreated(created);
+    throw err;
+  }
+}
+
+async function moveEntry(from, to, job) {
   try {
     await fs.rename(from, to);
+    return;
   } catch (err) {
     if (err.code !== 'EXDEV') throw err;
-    await fs.cp(from, to, { recursive: true, errorOnExist: true, force: false, verbatimSymlinks: true });
-    await fs.lstat(to);
-    await fs.rm(from, { recursive: true, force: false });
   }
+  if (job) {
+    const m = await measure(from, { signal: job.signal });
+    job.bytes[1] += m.bytes;
+    job.files[1] += m.files;
+  }
+  await copyOwned(from, to, job);
+  await fs.lstat(to);
+  await fs.rm(from, { recursive: true, force: false });
 }
 
 const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`;
 
-export function makeOps(guard, { readOnly = false } = {}) {
+function makeJob(id, type, onJob) {
+  const ac = new AbortController();
+  const job = {
+    id, type, phase: 'queued', bytes: [0, 0], files: [0, 0], items: [0, 0], current: '', last: 0,
+    signal: ac.signal,
+  };
+  job.abort = () => ac.abort();
+  job.view = () => ({
+    id, op: type, phase: job.phase, bytes: [...job.bytes], files: [...job.files], items: [...job.items],
+    current: job.current, cancelling: ac.signal.aborted,
+  });
+  job.emit = (force = false) => {
+    const now = Date.now();
+    if (!force && now - job.last < PROGRESS_MS) return;
+    job.last = now;
+    onJob?.(job.view());
+  };
+  job.set = (phase) => {
+    job.phase = phase;
+    job.emit(true);
+  };
+  job.addBytes = (n) => {
+    job.bytes[0] += n;
+    job.emit();
+  };
+  job.addFile = () => {
+    job.files[0] += 1;
+    job.emit();
+  };
+  return job;
+}
+
+export function makeOps(guard, { readOnly = false, onJob } = {}) {
+  const SESSION = Date.now().toString(36);
   const journal = [];
+  const jobs = new Map();
   let seq = 0;
-  let queue = Promise.resolve();
+  let warned = false;
   const holdRoot = path.join(guard.root, HOLD_DIR);
   const holdIndexPath = path.join(holdRoot, 'index.json');
+  const journalPath = path.join(holdRoot, 'journal.json');
 
   const readHold = async () => {
     try {
@@ -122,10 +226,17 @@ export function makeOps(guard, { readOnly = false } = {}) {
   };
   const writeHold = async (items) => {
     await fs.mkdir(holdRoot, { recursive: true });
-    await fs.writeFile(holdIndexPath, JSON.stringify(items, null, 1));
+    await writeAtomic(holdIndexPath, JSON.stringify(items, null, 1));
   };
 
   const parentRel = (abs) => guard.rel(path.dirname(abs));
+
+  /** A journal path back to an absolute one, through the same guard as a request. */
+  const fromJournal = async (rel) => {
+    const abs = guard.resolve(rel, { allowRoot: false });
+    await guard.assertParentInside(abs);
+    return abs;
+  };
 
   const target = async (rel) => {
     const abs = guard.resolve(rel, { allowRoot: false });
@@ -142,20 +253,57 @@ export function makeOps(guard, { readOnly = false } = {}) {
     return abs;
   };
 
-  /** Moves a set of entries into the holding area; returns index records. */
-  const hold = async (absList) => {
+  /* ---------- journal ---------- */
+
+  const saveJournal = async () => {
+    if (readOnly) return;
+    while (journal.length > JOURNAL_MAX) journal.shift();
+    try {
+      await fs.mkdir(holdRoot, { recursive: true });
+      await writeAtomic(journalPath, JSON.stringify({ format: JOURNAL_FORMAT, entries: journal }));
+    } catch (err) {
+      // The change itself succeeded; only its persistence did not.
+      if (!warned) console.warn(`  Journal could not be saved (${err.code || err.message}); undo still works until the service stops.`);
+      warned = true;
+    }
+  };
+
+  const record = async (type, label, undo, affected) => {
+    const entry = { id: ++seq, type, label, at: Date.now(), session: SESSION, undo, undone: false };
+    journal.push(entry);
+    await saveJournal();
+    return { ok: true, id: entry.id, label, affected, undoable: true };
+  };
+
+  /* ---------- holding area ---------- */
+
+  /** Moves entries into the holding area; stops early when the job is cancelled. */
+  const hold = async (absList, job) => {
     const items = await readHold();
     const added = [];
     for (const abs of absList) {
+      if (job?.signal.aborted) break;
       const id = `${Date.now().toString(36)}-${(seq++).toString(36)}`;
       const slot = path.join(holdRoot, 'items', id);
       await fs.mkdir(slot, { recursive: true });
       const held = path.join(slot, path.basename(abs));
-      await moveEntry(abs, held);
+      if (job) job.current = guard.rel(abs);
+      try {
+        await moveEntry(abs, held, job);
+      } catch (err) {
+        await fs.rmdir(slot).catch(() => {});
+        if (isCancel(err)) break;
+        err.added = added;
+        throw err;
+      }
       const rec = { id, name: path.basename(abs), origin: guard.rel(abs), at: Date.now() };
       items.push(rec);
       added.push({ ...rec, held, abs });
       await writeHold(items);
+      if (job) {
+        job.items[0] = added.length;
+        job.emit(true);
+      }
     }
     return added;
   };
@@ -184,11 +332,7 @@ export function makeOps(guard, { readOnly = false } = {}) {
     return { affected: [...affected], names };
   };
 
-  const record = (type, label, undo, affected) => {
-    const entry = { id: ++seq, type, label, at: Date.now(), undo, undone: false };
-    journal.push(entry);
-    return { ok: true, id: entry.id, label, affected, undoable: true };
-  };
+  /* ---------- operations ---------- */
 
   const handlers = {
     async mkdir({ parent, name }) {
@@ -197,7 +341,8 @@ export function makeOps(guard, { readOnly = false } = {}) {
       const abs = path.join(dir, name);
       if (await exists(abs)) throw new GuardError('EEXIST', `"${name}" already exists here.`, 409);
       await fs.mkdir(abs);
-      return { ...record('mkdir', `Created folder "${name}"`, { kind: 'rmdir', abs }, [guard.rel(dir)]), created: guard.rel(abs) };
+      const res = await record('mkdir', `Created folder "${name}"`, { kind: 'rmdir', rel: guard.rel(abs) }, [guard.rel(dir)]);
+      return { ...res, created: guard.rel(abs) };
     },
 
     async rename({ path: rel, name }) {
@@ -209,11 +354,12 @@ export function makeOps(guard, { readOnly = false } = {}) {
         throw new GuardError('EEXIST', `"${name}" already exists in this folder.`, 409);
       }
       await fs.rename(from, to);
-      const res = record('rename', `Renamed "${path.basename(from)}" to "${name}"`, { kind: 'moves', pairs: [[from, to]] }, [parentRel(from)]);
+      const res = await record('rename', `Renamed "${path.basename(from)}" to "${name}"`,
+        { kind: 'moves', pairs: [[guard.rel(from), guard.rel(to)]] }, [parentRel(from)]);
       return { ...res, renamed: guard.rel(to) };
     },
 
-    async transfer({ type, paths, dest, onConflict = 'fail' }) {
+    async transfer({ type, paths, dest, onConflict = 'fail' }, job) {
       if (!Array.isArray(paths) || paths.length === 0) throw new GuardError('EARGS', 'Nothing was selected.');
       const dir = await destDir(dest);
       const realDir = await fs.realpath(dir);
@@ -241,56 +387,145 @@ export function makeOps(guard, { readOnly = false } = {}) {
         taken.add(name);
         plan.push([from, path.join(dir, name)]);
       }
-      const done = [];
+
+      const Verb = type === 'move' ? 'Move' : 'Copy';
+      const verbed = type === 'move' ? 'moving' : 'copying';
+      const where = guard.rel(dir) || path.basename(guard.root);
       const affected = new Set([guard.rel(dir)]);
-      try {
-        for (const [from, to] of plan) {
+      job.items[1] = plan.length;
+
+      if (type === 'copy') {
+        job.set('counting');
+        try {
+          for (const [from] of plan) {
+            const base = [job.bytes[1], job.files[1]];
+            const m = await measure(from, {
+              signal: job.signal,
+              onCount: (files, bytes) => {
+                job.files[1] = base[1] + files;
+                job.bytes[1] = base[0] + bytes;
+                job.emit();
+              },
+            });
+            job.bytes[1] = base[0] + m.bytes;
+            job.files[1] = base[1] + m.files;
+          }
+        } catch (err) {
+          if (isCancel(err)) return { ok: true, cancelled: true, label: 'Copy cancelled. Nothing was changed.', affected: [], undoable: false };
+          throw err;
+        }
+      }
+
+      job.set(verbed);
+      const done = [];
+      let stop = null;
+      let leftover = 0;
+      for (const [from, to] of plan) {
+        if (job.signal.aborted) {
+          stop = 'cancel';
+          break;
+        }
+        job.current = guard.rel(from);
+        job.emit(true);
+        try {
           if (type === 'move') {
-            await moveEntry(from, to);
+            await moveEntry(from, to, job);
             affected.add(parentRel(from));
           } else {
-            await fs.cp(from, to, { recursive: true, errorOnExist: true, force: false, verbatimSymlinks: true });
+            await copyOwned(from, to, job);
           }
-          done.push([from, to]);
+        } catch (err) {
+          leftover += err.leftover || 0;
+          stop = isCancel(err) ? 'cancel' : err;
+          break;
         }
-      } catch (err) {
-        if (done.length) {
-          record(type, `Partial ${type} (${done.length} of ${plan.length})`,
-            type === 'move' ? { kind: 'moves', pairs: done } : { kind: 'holdCopies', abs: done.map((p) => p[1]) }, [...affected]);
-        }
-        const e = new GuardError(err.code || 'EIO', `${type === 'move' ? 'Move' : 'Copy'} stopped after ${done.length} of ${plan.length}: ${err.message}`, 500);
+        done.push([from, to]);
+        job.items[0] = done.length;
+        job.emit(true);
+      }
+
+      const pairs = done.map(([f, t]) => [guard.rel(f), guard.rel(t)]);
+      const undo = type === 'move' ? { kind: 'moves', pairs } : { kind: 'holdCopies', rels: pairs.map((p) => p[1]) };
+      const results = pairs.map((p) => p[1]);
+      const residue = leftover
+        ? ' Part of the unfinished item was left in place because something else was written into it meanwhile.'
+        : '';
+
+      if (stop === 'cancel') {
+        if (!done.length) return { ok: true, cancelled: true, label: `${Verb} cancelled. Nothing was changed.${residue}`, affected: [...affected], undoable: false };
+        const rest = plan.length - done.length;
+        const res = await record(type, `${Verb} cancelled after ${done.length} of ${plural(plan.length, 'item')}`, undo, [...affected]);
+        return {
+          ...res, cancelled: true, results,
+          label: `Cancelled after ${verbed} ${done.length} of ${plural(plan.length, 'item')} to "${where}". `
+            + `The other ${rest} ${type === 'move' ? 'stayed where they were' : 'were not copied'}.${residue}`,
+        };
+      }
+      if (stop) {
+        if (done.length) await record(type, `Partial ${type} (${done.length} of ${plan.length})`, undo, [...affected]);
+        const e = new GuardError(stop.code || 'EIO', `${Verb} stopped after ${done.length} of ${plan.length}: ${stop.message}${residue}`, 500);
         e.affected = [...affected];
         throw e;
       }
-      const where = guard.rel(dir) || path.basename(guard.root);
-      const res = type === 'move'
-        ? record('move', `Moved ${plural(done.length, 'item')} to "${where}"`, { kind: 'moves', pairs: done }, [...affected])
-        : record('copy', `Copied ${plural(done.length, 'item')} to "${where}"`, { kind: 'holdCopies', abs: done.map((p) => p[1]) }, [...affected]);
-      return { ...res, results: done.map((p) => guard.rel(p[1])) };
+      const label = type === 'move' ? `Moved ${plural(done.length, 'item')} to "${where}"` : `Copied ${plural(done.length, 'item')} to "${where}"`;
+      return { ...(await record(type, label, undo, [...affected])), results };
     },
 
-    move(args) {
-      return handlers.transfer({ ...args, type: 'move' });
+    move(args, job) {
+      return handlers.transfer({ ...args, type: 'move' }, job);
     },
 
-    copy(args) {
-      return handlers.transfer({ ...args, type: 'copy' });
+    copy(args, job) {
+      return handlers.transfer({ ...args, type: 'copy' }, job);
     },
 
-    async trash({ paths }) {
+    async trash({ paths }, job) {
       if (!Array.isArray(paths) || paths.length === 0) throw new GuardError('EARGS', 'Nothing was selected.');
       const absList = [];
       for (const rel of paths) absList.push(await target(rel));
       // Drop anything nested inside another selected folder.
       const tops = absList.filter((a) => !absList.some((b) => b !== a && a.startsWith(b + path.sep)));
-      const added = await hold(tops);
-      const affected = [...new Set(tops.map(parentRel))];
-      return record('trash', `Removed ${plural(added.length, 'item')} to the holding area`, { kind: 'restore', ids: added.map((a) => a.id) }, affected);
+      job.items[1] = tops.length;
+      job.set('removing');
+      let added;
+      let failure = null;
+      try {
+        added = await hold(tops, job);
+      } catch (err) {
+        added = err.added || [];
+        failure = err;
+      }
+      const affected = [...new Set(added.map((a) => parentRel(a.abs)))];
+      const undo = { kind: 'restore', ids: added.map((a) => a.id) };
+      if (failure) {
+        if (added.length) await record('trash', `Partial removal (${added.length} of ${tops.length})`, undo, affected);
+        const e = new GuardError(failure.code || 'EIO', `Removal stopped after ${added.length} of ${tops.length}: ${failure.message}`, 500);
+        e.affected = [...new Set([...affected, ...tops.map(parentRel)])];
+        throw e;
+      }
+      if (added.length < tops.length) {
+        if (!added.length) return { ok: true, cancelled: true, label: 'Removal cancelled. Nothing was changed.', affected: [], undoable: false };
+        const res = await record('trash', `Removal cancelled after ${added.length} of ${plural(tops.length, 'item')}`, undo, affected);
+        return {
+          ...res, cancelled: true,
+          label: `Cancelled after removing ${added.length} of ${plural(tops.length, 'item')} to the holding area. The other ${tops.length - added.length} stayed where they were.`,
+        };
+      }
+      return record('trash', `Removed ${plural(added.length, 'item')} to the holding area`, undo, affected);
     },
   };
 
+  /* ---------- undo ---------- */
+
   const undoHandlers = {
-    async rmdir({ abs }) {
+    async rmdir({ rel }) {
+      let abs;
+      try {
+        abs = await fromJournal(rel);
+      } catch (err) {
+        if (err.code === 'ENOENT') return [];
+        throw err;
+      }
       try {
         await fs.rmdir(abs);
       } catch (err) {
@@ -302,31 +537,73 @@ export function makeOps(guard, { readOnly = false } = {}) {
       return [parentRel(abs)];
     },
     async moves({ pairs }) {
-      const affected = new Set();
-      for (const [from, to] of pairs) {
+      const resolved = [];
+      for (const [fromRel, toRel] of pairs) {
+        let from;
+        let to;
+        try {
+          [from, to] = [await fromJournal(fromRel), await fromJournal(toRel)];
+        } catch (err) {
+          if (err.code !== 'ENOENT') throw err;
+          throw new GuardError('ENOENT', `Cannot undo: the folder "${String(fromRel).split('/').pop()}" came from, or went to, no longer exists.`, 409);
+        }
         if (!(await exists(to))) throw new GuardError('ENOENT', `"${path.basename(to)}" is no longer where the operation left it.`, 409);
         if ((await exists(from)) && !(await sameEntry(from, to))) {
           throw new GuardError('EEXIST', `Cannot undo: "${path.basename(from)}" exists again at the original location.`, 409);
         }
+        resolved.push([from, to]);
       }
-      for (const [from, to] of [...pairs].reverse()) {
+      const affected = new Set();
+      for (const [from, to] of resolved.reverse()) {
         await moveEntry(to, from);
         affected.add(parentRel(from));
         affected.add(parentRel(to));
       }
       return [...affected];
     },
-    async holdCopies({ abs }) {
+    async holdCopies({ rels }) {
       const present = [];
-      for (const a of abs) if (await exists(a)) present.push(a);
+      for (const rel of rels) {
+        try {
+          const abs = await fromJournal(rel);
+          if (await exists(abs)) present.push(abs);
+        } catch (err) {
+          if (err.code !== 'ENOENT') throw err;
+        }
+      }
       await hold(present);
-      return [...new Set(abs.map(parentRel))];
+      return [...new Set(present.map(parentRel))];
     },
     async restore({ ids }) {
       // Items already restored by hand from the Journal are simply skipped.
       return (await restore(ids, { skipMissing: true })).affected;
     },
   };
+
+  const validEntry = (e) => e && Number.isInteger(e.id) && typeof e.label === 'string' && typeof e.type === 'string'
+    && e.undo && typeof e.undo.kind === 'string' && Object.hasOwn(undoHandlers, e.undo.kind);
+
+  const loadJournal = async () => {
+    let text;
+    try {
+      text = await fs.readFile(journalPath, 'utf8');
+    } catch {
+      return;
+    }
+    try {
+      const data = JSON.parse(text);
+      if (!Array.isArray(data.entries)) throw new Error('no entries');
+      for (const e of data.entries) if (validEntry(e)) journal.push(e);
+      for (const e of journal) seq = Math.max(seq, e.id);
+    } catch {
+      // Keep an unreadable journal for inspection rather than overwrite it.
+      console.warn('  The saved journal could not be read; starting a new one.');
+      if (!readOnly) await fs.rename(journalPath, path.join(holdRoot, `journal.unreadable-${Date.now()}.json`)).catch(() => {});
+    }
+  };
+
+  const ready = loadJournal();
+  let queue = ready.catch(() => {});
 
   const serial = (fn) => {
     const next = queue.then(fn, fn);
@@ -343,8 +620,31 @@ export function makeOps(guard, { readOnly = false } = {}) {
     });
   });
 
+  const openJob = (op) => {
+    const id = typeof op.job === 'string' && JOB_ID.test(op.job) && !jobs.has(op.job)
+      ? op.job : `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
+    const job = makeJob(id, op.type, onJob);
+    jobs.set(id, job);
+    job.emit(true);
+    return job;
+  };
+
+  const closeJob = (job, outcome) => {
+    job.phase = 'end';
+    job.outcome = outcome;
+    onJob?.({ ...job.view(), outcome });
+    jobs.delete(job.id);
+  };
+
   return {
-    journal: () => journal.map(({ id, type, label, at, undone }) => ({ id, type, label, at, undone })),
+    async journal() {
+      await ready;
+      return journal.map(({ id, type, label, at, undone, purged, session }) => ({
+        id, type, label, at, undone, purged: !!purged, earlier: session !== SESSION,
+      }));
+    },
+
+    jobs: () => [...jobs.values()].map((j) => j.view()),
 
     run(op) {
       if (op.type === 'open' || op.type === 'reveal') {
@@ -360,7 +660,35 @@ export function makeOps(guard, { readOnly = false } = {}) {
       const handler = Object.hasOwn(handlers, op.type) && op.type !== 'transfer' ? handlers[op.type] : null;
       if (!handler) return Promise.reject(new GuardError('EOP', `Unknown operation "${op.type}".`));
       if (readOnly) return Promise.reject(new GuardError('EREADONLY', 'Terrane was started in read-only mode, so nothing on disk can be changed.', 403));
-      return serial(() => handler(op));
+      const job = JOBBED.has(op.type) ? openJob(op) : null;
+      return serial(async () => {
+        let outcome = 'failed';
+        try {
+          if (job?.signal.aborted) {
+            outcome = 'cancelled';
+            return { ok: true, cancelled: true, label: 'Cancelled before it started. Nothing was changed.', affected: [], undoable: false };
+          }
+          const res = await handler(op, job);
+          outcome = res.cancelled ? 'cancelled' : 'done';
+          return job ? { ...res, job: job.id } : res;
+        } finally {
+          if (job) closeJob(job, outcome);
+        }
+      });
+    },
+
+    cancel(id) {
+      const job = jobs.get(id);
+      if (!job) throw new GuardError('ENOJOB', 'That operation had already finished.', 404);
+      job.abort();
+      job.emit(true);
+      return { ok: true, label: 'Cancelling…' };
+    },
+
+    /** Cancels every job and resolves when the queue is idle or the wait runs out. */
+    async shutdown(ms = 3000) {
+      for (const job of jobs.values()) job.abort();
+      await Promise.race([queue, new Promise((r) => setTimeout(r, ms))]);
     },
 
     undo() {
@@ -370,7 +698,9 @@ export function makeOps(guard, { readOnly = false } = {}) {
         if (!entry) throw new GuardError('ENOUNDO', 'There is nothing to undo.', 409);
         const affected = await undoHandlers[entry.undo.kind](entry.undo);
         entry.undone = true;
-        return { ok: true, label: `Undid: ${entry.label}`, affected, undoable: false };
+        await saveJournal();
+        const when = entry.session === SESSION ? '' : ' (from an earlier session)';
+        return { ok: true, label: `Undid: ${entry.label}${when}`, affected, undoable: false };
       });
     },
 
@@ -390,8 +720,15 @@ export function makeOps(guard, { readOnly = false } = {}) {
       if (readOnly) return Promise.reject(new GuardError('EREADONLY', 'Read-only mode.', 403));
       return serial(async () => {
         const items = await readHold();
-        await fs.rm(holdRoot, { recursive: true, force: true });
-        for (const e of journal) if (e.undo.kind === 'restore') e.undone = true;
+        await fs.rm(path.join(holdRoot, 'items'), { recursive: true, force: true });
+        await fs.rm(holdIndexPath, { force: true });
+        for (const e of journal) {
+          if (e.undo.kind === 'restore' && !e.undone) {
+            e.undone = true;
+            e.purged = true;
+          }
+        }
+        await saveJournal();
         return { ok: true, label: `Permanently deleted ${plural(items.length, 'held item')}`, affected: [], undoable: false };
       });
     },
