@@ -1,16 +1,26 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Terrace Layout (Terrane Edition - v1.0)
+ *     - Title: Terrace Layout (Terrane Edition - v1.2)
  *     - File Name: layout.js
  *     - Relative Path: web/js/layout.js
  *     - Artifact Type: javascript
- *     - Version: 1.0.0
- *     - Date: 11/09/2026
- *     - Update: Monday, November 9, 2026
+ *     - Version: 1.2.0
+ *     - Date: 11/11/2026
+ *     - Update: Wednesday, November 11, 2026
  *     - Author: Dennis 'dendogg' Smaltz
- *     - A.I. Acknowledgement: Anthropic - Claude Fable 5.2
+ *     - A.I. Acknowledgement: Anthropic - Claude Opus 5.5
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
+ *
+ * ✒ Changelog:
+ *     - 1.2.0 (11/11/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
+ *       box budget is checked before every box, so a layout never holds
+ *       more than 70,000 and cannot overflow the viewport. Options reach
+ *       the layout as one object; a per-box aux byte, an optional plateau
+ *       key and index aliases are added; BOX and STYLE codes are allocated
+ *       here, with WALL and CROSSED reserved.
+ *     - 1.0.0 (11/09/2026) [dendogg + Anthropic - Claude Fable 5.2] —
+ *       Initial release.
  *
  * ✒ Description:
  *     Turns the tree model into the list of boxes that make up the world,
@@ -36,21 +46,30 @@
  *       count and size
  *     - Forced path: a set of nodes that must be drawn regardless of
  *       distance, used to reveal a search result before flying to it
- *     - Box budget: if a layout would exceed 70,000 boxes the grain is
- *       coarsened and the layout is rebuilt; one folder draws at most
- *       5,000 entries individually
+ *     - Box budget: checked before every box; if a layout would exceed
+ *       70,000 boxes the grain is coarsened and the layout is rebuilt, and
+ *       one folder draws at most 5,000 entries individually
  *     - Every entry gets a small base footprint so zero-byte files and
  *       empty folders stay visible
+ *     - One table of box types (BOX) and one of drawing conventions
+ *       (STYLE), so every code has a single owner
  *
  * ✒ Usage Instructions:
  *     const layout = buildLayout(root, { cam: { x, y, z }, grain: 0.006 });
- *     layout.n          number of boxes
+ *     Options travel to the layout as one object: cam, grain, now, force,
+ *     aliases (pairs [node, key]: the node resolves in index to the box
+ *     with that key), and any key a feature reads, such as asOf or inside.
+ *     layout.n          number of boxes, never more than MAX_BOXES
  *     layout.geo        Float64Array, 6 per box: cx, cy, cz, sx, sy, sz
- *     layout.type[i]    BOX.DIR | BOX.FILE | BOX.CAP | BOX.SCREE
+ *     layout.type[i]    a BOX code
  *     layout.node[i]    model node (for scree: the folder it belongs to)
  *     layout.key[i]     identity used to animate between layouts
  *     layout.top[i]     highest point of everything standing on box i
+ *     layout.aux[i]     a feature's mark for box i, 0 when unmarked
  *     layout.scree      Map of box index to { count, size }
+ *     layout.coarsened  the grain was raised to fit the budget
+ *     layout.over       even the coarsest grain did not fit: the boxes
+ *                       past the budget were left out
  *
  * ✒ Other Important Information:
  *     - Dependencies: model.js (freshness)
@@ -65,13 +84,28 @@
 
 import { freshness } from './model.js';
 
-export const BOX = { DIR: 0, FILE: 1, CAP: 2, SCREE: 3 };
+/**
+ * Box types. Codes are allocated here and nowhere else, so two features
+ * cannot claim the same number. WALL is reserved for archive interiors;
+ * no box uses it yet.
+ */
+export const BOX = Object.freeze({ DIR: 0, FILE: 1, CAP: 2, SCREE: 3, WALL: 4 });
+
+/**
+ * Drawing conventions: the per-box style code the fragment shader in
+ * viewport.js draws, allocated here for the same reason. CROSSED is
+ * reserved for the time view and draws plain until its branch exists;
+ * 7 is free.
+ */
+export const STYLE = Object.freeze({ PLAIN: 0, HATCH: 1, HOLLOW: 2, STIPPLE: 3, BANDS: 4, HALF_BANDS: 5, CROSSED: 6 });
+
 export const WORLD = 1000;
 export const RISER_MAX = 9;
 const RISER_RATIO = 0.045;
 const OPEN_AT = 0.135;
 const PER_FOLDER_MAX = 5000;
-const MAX_BOXES = 70000;
+/** The most boxes one layout holds; the viewport's capacity is above it. */
+export const MAX_BOXES = 70000;
 
 const clamp = (v, lo, hi) => (v < lo ? lo : v > hi ? hi : v);
 
@@ -137,36 +171,50 @@ function distToRect(cam, x, z, w, d, y) {
   return Math.sqrt(dx * dx + dy * dy + dz * dz);
 }
 
-function attempt(root, cam, grain, now, force) {
+/**
+ * One layout at one grain. `opts` is buildLayout's options object, passed
+ * whole, so a feature reads its own key from it without a new parameter.
+ */
+function attempt(root, opts) {
+  const { cam, grain, now, force } = opts;
   const key = [];
   const node = [];
   const type = [];
   const level = [];
   const geo = [];
   const top = [];
+  const aux = [];
   const scree = new Map();
   let over = false;
 
-  const push = (k, nd, t, lvl, cx, cy, cz, sx, sy, sz) => {
+  // The budget is checked before every box, whoever pushes it. A box that
+  // would pass MAX_BOXES is refused (-1) and ends the attempt, so n never
+  // passes the viewport's capacity. `ax` is a free byte per box for a
+  // feature's own mark, read back as layout.aux.
+  const push = (k, nd, t, lvl, cx, cy, cz, sx, sy, sz, ax = 0) => {
+    if (over || key.length >= MAX_BOXES) {
+      over = true;
+      return -1;
+    }
     key.push(k); node.push(nd); type.push(t); level.push(lvl);
     geo.push(cx, cy, cz, sx, sy, sz);
     top.push(cy + sy / 2);
+    aux.push(ax);
     return key.length - 1;
   };
 
-  const place = (dir, x, z, w, d, y, lvl) => {
+  // `k` is the plateau's identity across layouts: the folder itself, or
+  // another object when a feature keys a plateau by something else.
+  const place = (dir, x, z, w, d, y, lvl, k = dir) => {
     // The step height belongs to the plateau: the world is self-similar,
     // so a folder looks the same from as many of its own widths away.
     const riser = Math.min(Math.min(w, d) * RISER_RATIO, RISER_MAX);
-    const idx = push(dir, dir, BOX.DIR, lvl, x + w / 2, y + riser / 2, z + d / 2, w, riser, d);
+    const idx = push(k, dir, BOX.DIR, lvl, x + w / 2, y + riser / 2, z + d / 2, w, riser, d);
+    if (idx < 0) return y;
     const base = y + riser;
     let peak = base;
     const kids = dir.c;
     if (!kids.length || over) return peak;
-    if (key.length > MAX_BOXES) {
-      over = true;
-      return peak;
-    }
     const eps = (dir.s / kids.length) * 0.12 + 1;
     if (dir.dirty) {
       kids.sort((a, b) => b.s - a.s);
@@ -208,7 +256,8 @@ function attempt(root, cam, grain, now, force) {
     const rects = new Float64Array(n * 4);
     squarify(weights, n, x + pad, z + pad, iw, id, rects);
 
-    for (let i = 0; i < n; i++) {
+    // Once the budget is spent, nothing more is placed in this attempt.
+    for (let i = 0; i < n && !over; i++) {
       let rx = rects[i * 4];
       let rz = rects[i * 4 + 1];
       let rw = rects[i * 4 + 2];
@@ -223,7 +272,7 @@ function attempt(root, cam, grain, now, force) {
         const h = riser * 0.2;
         dir._scree ||= { scree: true };
         const si = push(dir._scree, dir, BOX.SCREE, lvl + 1, cx, base + h / 2, cz, rw, h, rd);
-        scree.set(si, { count: screeCount, size: screeSize, from: big });
+        if (si >= 0) scree.set(si, { count: screeCount, size: screeSize, from: big });
         continue;
       }
       const ch = kids[i];
@@ -257,22 +306,36 @@ function attempt(root, cam, grain, now, force) {
   };
 
   place(root, -WORLD / 2, -WORLD / 2, WORLD, WORLD, 0, 0);
-  return { over, key, node, type, level, geo, top, scree };
+  return { over, key, node, type, level, geo, top, aux, scree };
 }
 
-export function buildLayout(root, { cam, grain = 0.006, now = Date.now(), force = null } = {}) {
-  let g = grain;
-  let r = attempt(root, cam, g, now, force);
+/**
+ * Lays the tree out as seen from `options.cam`. The options object reaches
+ * attempt() whole (with grain, now and force defaulted), so a new option
+ * never changes a signature. `options.aliases` is an iterable of
+ * [node, key] pairs: each node that is not itself a box's key resolves in
+ * layout.index to the box keyed by `key`, when that box is present.
+ */
+export function buildLayout(root, options = {}) {
+  const grain = options.grain ?? 0.006;
+  const opts = { ...options, grain, now: options.now ?? Date.now(), force: options.force ?? null };
+  let r = attempt(root, opts);
   let guard = 0;
   while (r.over && guard++ < 8) {
-    g *= 1.45;
-    r = attempt(root, cam, g, now, force);
+    opts.grain *= 1.45;
+    r = attempt(root, opts);
   }
   const index = new Map();
   for (let i = 0; i < r.key.length; i++) index.set(r.key[i], i);
+  if (opts.aliases) {
+    for (const [alias, k] of opts.aliases) {
+      const i = index.get(k);
+      if (i !== undefined && !index.has(alias)) index.set(alias, i);
+    }
+  }
   return {
     n: r.key.length, key: r.key, node: r.node, type: Uint8Array.from(r.type), level: Uint8Array.from(r.level),
-    geo: Float64Array.from(r.geo), top: Float64Array.from(r.top), scree: r.scree, index, root,
-    coarsened: g !== grain,
+    geo: Float64Array.from(r.geo), top: Float64Array.from(r.top), aux: Uint8Array.from(r.aux), scree: r.scree, index, root,
+    coarsened: opts.grain !== grain, over: r.over,
   };
 }

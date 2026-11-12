@@ -1,18 +1,30 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Terrane Application (Terrane Edition - v1.1)
+ *     - Title: Terrane Application (Terrane Edition - v1.2)
  *     - File Name: app.js
  *     - Relative Path: web/js/app.js
  *     - Artifact Type: javascript
- *     - Version: 1.1.0
- *     - Date: 11/11/2026
- *     - Update: Wednesday, November 11, 2026
+ *     - Version: 1.2.0
+ *     - Date: 11/12/2026
+ *     - Update: Thursday, November 12, 2026
  *     - Author: Dennis 'dendogg' Smaltz
  *     - A.I. Acknowledgement: Anthropic - Claude Opus 5.5
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
  *
  * ✒ Changelog:
+ *     - 1.2.0 (11/11/2026) [dendogg + Anthropic - Claude Opus 5.5] — Paint
+ *       uses the STYLE table; the viewport's notices are shown; the title
+ *       block says when a layout left blocks out to stay in budget. Keys,
+ *       Escape, pins, hover lines, inspector sections, Reading rows, tabs,
+ *       layout options and after-layout, refresh and survey hooks are
+ *       registries that feature modules fill through install(api); the
+ *       key allocation is fixed and the guide is made from the key table.
+ *       Without WebGL, going to a folder moves the location there and a
+ *       relayout leaves it in place, so Contents can go down levels.
+ *       Every survey rebuilds a shared table of each folder's bytes and
+ *       files by last change (S.ages), and Rescan all drops the old one.
+ *       The Menu key opens the menu without WebGL instead of throwing.
  *     - 1.1.0 (11/11/2026) [dendogg + Anthropic - Claude Opus 5.5] — A
  *       progress panel with Cancel for copy, move and remove; snapshot mode
  *       (status, refusals, newer-snapshot notice); thumbnails in the
@@ -34,7 +46,8 @@
  *       drive it, by pointer or by keyboard
  *     - Location follows the eye: the folder you are in is derived from
  *       where the camera is looking, and the breadcrumbs, ledger and
- *       legend follow it; clicking any of them flies you there
+ *       legend follow it; clicking any of them flies you there. Without
+ *       WebGL there is no camera, and going to a folder sets it directly
  *     - World management: the layout is rebuilt around the eye whenever
  *       it has moved more than a fraction of its altitude
  *     - Four lenses over one geometry: kind, age, size, duplicates
@@ -53,14 +66,30 @@
  *       hover tip never request an original file
  *     - Snapshot mode is stated in the title block, and every change and
  *       system hand-off is shown as unavailable with the reason
+ *     - Seams for features: ordered registries (KEYS, ESCAPE, PIN_SOURCES,
+ *       TIP_LINES, INSPECTOR, READING, TABS, LAYOUT_OPTS) and hook lists
+ *       (AFTER_LAYOUT, AFTER_REFRESH, AFTER_SURVEY), so a feature adds
+ *       entries from its own file instead of editing these functions
+ *     - One key table drives the keyboard, the guide and the fixed key
+ *       allocation; a reserved key can only be bound by its owner
+ *     - One age table per survey (timeline.js) answers how much of any
+ *       folder changed since a date, for every feature that asks
  *
  * ✒ Usage Instructions:
- *     Loaded by web/index.html as a module. There is no public API; start
- *     the service and open the address it prints.
+ *     Loaded by web/index.html as a module; start the service and open the
+ *     address it prints. Feature modules listed in features.js export
+ *     name and install(api); api carries S, the registries and the
+ *     controller's own functions:
+ *         api.KEYS.add({ id: 'time-toggle', owner: 'time', keys: ['t'],
+ *           run: () => toggle(), guide: ['Time', 'T', 'Look back'] });
+ *         api.ESCAPE.add({ id: 'time', order: 40, active, clear });
+ *         api.PIN_SOURCES.add({ id: 'places', order: 10, pins: (L) => [] });
+ *         api.AFTER_LAYOUT.add({ id: 'route', run: (L) => draw(L) });
+ *     Every entry has a unique id; order (default 50) places it.
  *
  * ✒ Other Important Information:
  *     - Dependencies: model.js, layout.js, viewport.js, theme.js, ui.js,
- *       thumbs.js
+ *       thumbs.js, timeline.js, features.js
  *     - Compatible platforms: current evergreen browsers with WebGL2
  *     - Limitations: when WebGL is unavailable the ledger, inspector,
  *       search and every operation keep working without the 3D world
@@ -71,11 +100,13 @@ import {
   Model, KINDS, FLAG_LINK, FLAG_HIDDEN, extOf, fmtBytes, fmtCount, fmtDate, fmtAge, freshness, relPath, depthOf,
   isAncestor, parseQuery, runSearch,
 } from './model.js';
-import { buildLayout, BOX } from './layout.js';
+import { buildLayout, BOX, STYLE } from './layout.js';
 import { Viewport } from './viewport.js';
 import { THEME, mixHex, ramp, cssHex } from './theme.js';
 import { el, openMenu, closeFloating, floatingOpen, ask, notice, tip, hideTip, VirtualList } from './ui.js';
 import { thumbs } from './thumbs.js';
+import { buildAgeTable } from './timeline.js';
+import { FEATURES } from './features.js';
 
 const $ = (id) => document.getElementById(id);
 const TOKEN = document.querySelector('meta[name="terrane-token"]').content;
@@ -90,7 +121,204 @@ const S = {
   placing: null, drag: null,
   tab: 'contents', sort: { key: 'size', dir: -1 },
   layoutTimer: 0, surveyTimer: 0,
+  // Owned by feature modules, null until one fills it: the date scrub,
+  // the open archive interior, benchmarks and the return point, and
+  // working sessions. ages is the shared age table (timeline.js), rebuilt
+  // after every survey and null until the first one.
+  time: null, interior: null, places: null, ages: null, sessions: null,
 };
+
+/* ====================================================================== */
+/* seams: registries that feature modules fill through install(api)       */
+/* ====================================================================== */
+
+/**
+ * An ordered registry. Every entry is an object with a unique string id;
+ * `order` (default 50) places it, and entries of equal order keep the
+ * order they were added in. Iterating walks a copy, so an entry may
+ * remove itself while the registry is being run.
+ */
+function registry(name, check) {
+  const list = [];
+  const reg = {
+    name,
+    add(entry) {
+      if (!entry || typeof entry !== 'object') throw new TypeError(`${name}: an entry must be an object.`);
+      if (typeof entry.id !== 'string' || !entry.id) throw new TypeError(`${name}: an entry needs an id.`);
+      if (list.some((x) => x.id === entry.id)) throw new Error(`${name}: "${entry.id}" is already registered.`);
+      check?.(entry, list);
+      const order = entry.order ?? 50;
+      let at = list.length;
+      while (at > 0 && (list[at - 1].order ?? 50) > order) at--;
+      list.splice(at, 0, entry);
+      return entry;
+    },
+    remove(id) {
+      const at = list.findIndex((x) => x.id === id);
+      if (at >= 0) list.splice(at, 1);
+      return at >= 0;
+    },
+    get: (id) => list.find((x) => x.id === id),
+    ids: () => list.map((x) => x.id),
+    get size() { return list.length; },
+    [Symbol.iterator]: () => [...list][Symbol.iterator](),
+  };
+  return reg;
+}
+
+const needs = (name, ...fns) => (x) => {
+  for (const f of fns) if (typeof x[f] !== 'function') throw new TypeError(`${name}: "${x.id}" needs ${f}().`);
+};
+
+/** Runs every hook of a list; a hook that throws is reported and the rest still run. */
+function runHooks(reg, ...args) {
+  for (const h of reg) {
+    try {
+      h.run(...args);
+    } catch (err) {
+      console.error(`${reg.name} "${h.id}" failed:`, err);
+    }
+  }
+}
+
+/**
+ * The fixed key allocation for plain keys (no Ctrl, Cmd or Alt). A
+ * reserved key is refused to any entry whose owner is not its owner. The
+ * canvas keeps its travel keys; Session and Strata have no keys.
+ */
+const KEY_OWNERS = Object.freeze({
+  w: 'viewport', a: 'viewport', s: 'viewport', d: 'viewport', q: 'viewport', e: 'viewport', r: 'viewport', f: 'viewport',
+  i: 'interiors',
+  t: 'time', ',': 'time', '.': 'time', '<': 'time', '>': 'time',
+  b: 'landmarks', h: 'landmarks', j: 'landmarks',
+});
+const keyName = (k) => (k.length === 1 ? k.toLowerCase() : k);
+
+/**
+ * KEYS: the keyboard map and the guide, as data. An entry is
+ *   { id, owner, keys: ['t'], mod: '' | 'ctrl' | 'alt', run(c), when?(c),
+ *     inList, guide: [section, keys label, description] }
+ * keys are KeyboardEvent.key values (letters match either case). mod ''
+ * means neither Ctrl/Cmd nor Alt is held; 'ctrl' needs Ctrl or Cmd; 'alt'
+ * needs Alt. inList (default true) lets the key act while the ledger list
+ * has focus. run(c) gets { e, k, t, ctrl, alt, inList, onCanvas } and
+ * returns false, exactly, when the key was not used, so the browser keeps
+ * it. An entry with a guide row and no keys documents the pointer or the
+ * canvas's own keys.
+ */
+const KEYS = registry('KEYS', (x, list) => {
+  const mod = x.mod || '';
+  if (!['', 'ctrl', 'alt'].includes(mod)) throw new TypeError(`KEYS: "${x.id}" has an unknown mod "${x.mod}".`);
+  if (!x.keys && !x.guide) throw new TypeError(`KEYS: "${x.id}" has neither keys nor a guide row.`);
+  if (x.keys && typeof x.run !== 'function') throw new TypeError(`KEYS: "${x.id}" needs run().`);
+  for (const k of x.keys || []) {
+    const name = keyName(k);
+    const owner = mod === '' && Object.hasOwn(KEY_OWNERS, name) ? KEY_OWNERS[name] : undefined;
+    if (owner && owner !== x.owner) throw new Error(`KEYS: "${k}" belongs to ${owner}, not ${x.owner || 'an unnamed owner'}.`);
+    const taken = list.find((y) => (y.mod || '') === mod && y.keys?.some((z) => keyName(z) === name));
+    if (taken) throw new Error(`KEYS: "${k}" is already bound to "${taken.id}".`);
+  }
+});
+/** The entry that answers a key event, or undefined. */
+KEYS.match = (c) => {
+  const name = keyName(c.k);
+  for (const x of KEYS) {
+    if (!x.keys) continue;
+    const mod = x.mod || '';
+    if (mod === 'ctrl' ? !c.ctrl : mod === 'alt' ? !c.alt : c.ctrl || c.alt) continue;
+    if (!x.keys.some((k) => keyName(k) === name)) continue;
+    if (c.inList && x.inList === false) continue;
+    if (x.when && !x.when(c)) continue;
+    return x;
+  }
+  return undefined;
+};
+/** The guide's sections in order of first appearance: Map<title, [keys, text][]>. */
+KEYS.guide = () => {
+  const sections = new Map();
+  for (const x of KEYS) {
+    if (!x.guide) continue;
+    const [title, keys, text] = x.guide;
+    if (!sections.has(title)) sections.set(title, []);
+    sections.get(title).push([keys, text]);
+  }
+  return sections;
+};
+
+/**
+ * ESCAPE: what Escape undoes, first match wins: { id, order, active(),
+ * clear(), typing }. Only entries with typing: true act while a text field
+ * has focus. Orders: floating surface 10, placing 20, kind filter 30,
+ * search 50, selection 70; a date scrub sits at 40, an interior after 70.
+ */
+const ESCAPE = registry('ESCAPE', needs('ESCAPE', 'active', 'clear'));
+
+/**
+ * PIN_SOURCES: { id, order, pins(L, room) -> [{ i, color }] | null }. The
+ * sources add up in order and the total stops at the pin capacity. Orders:
+ * places 10, search matches 20, heavyweight files 30.
+ */
+const PIN_SOURCES = registry('PIN_SOURCES', needs('PIN_SOURCES', 'pins'));
+const PIN_CAP = 3000; // the viewport's pin capacity
+
+/**
+ * TIP_LINES: { id, order, lines(node, { i, type, L }) -> string | string[]
+ * | null }. Lines follow the name and summary of the hovered block, scree
+ * included (type is BOX.SCREE and node its folder).
+ */
+const TIP_LINES = registry('TIP_LINES', needs('TIP_LINES', 'lines'));
+
+/**
+ * INSPECTOR.focus: the "You are in" summary when nothing is selected;
+ * INSPECTOR.node: the single selected item. Sections are { id, order,
+ * build(node, ctx) -> Element | Element[] | null }; ctx carries ro (why
+ * changes are unavailable, or null) and, for node, lockRoot and visible.
+ * Node orders: title 0, path 5, facts 10, composition 20, copies 30,
+ * actions 50, preview 60. Focus orders: title 0, facts 10, composition 20,
+ * Reading the world 90.
+ */
+const INSPECTOR = Object.freeze({
+  focus: registry('INSPECTOR.focus', needs('INSPECTOR.focus', 'build')),
+  node: registry('INSPECTOR.node', needs('INSPECTOR.node', 'build')),
+});
+
+/** READING: the "Reading the world" rows: { id, order, glyph, title, text }. */
+const READING = registry('READING', (x) => {
+  for (const f of ['glyph', 'title', 'text']) if (typeof x[f] !== 'string') throw new TypeError(`READING: "${x.id}" needs ${f}.`);
+});
+
+/**
+ * TABS: the ledger tabs: { id, order, label, draw(sub, host, keepScroll),
+ * list, count(), enter(node), key() }. list tabs draw into the virtual
+ * list, the rest into the rich panel; count() puts a figure on the tab;
+ * enter(node) is Enter on a list row (default: go there or open it);
+ * key() adds to what decides whether the ledger keeps its scroll.
+ */
+const TABS = registry('TABS', (x) => {
+  if (typeof x.label !== 'string') throw new TypeError(`TABS: "${x.id}" needs a label.`);
+  needs('TABS', 'draw')(x);
+});
+
+/** LAYOUT_OPTS: { id, order, options(opts) -> object | null }, merged into buildLayout's options. */
+const LAYOUT_OPTS = registry('LAYOUT_OPTS', needs('LAYOUT_OPTS', 'options'));
+
+/**
+ * Hook lists, each { id, order, run(...) }:
+ * AFTER_LAYOUT run(L) at the end of every relayout;
+ * AFTER_REFRESH run(dirs) in refreshDirs once selection, focus and trail
+ *   are pruned, to prune or re-resolve a feature's own node references;
+ * AFTER_SURVEY run(survey, { full }) whenever a survey is compiled; full
+ *   is true when the whole model is new (first scan or Rescan all). The
+ *   age table is rebuilt first (order 10), so later hooks read S.ages new.
+ */
+const AFTER_LAYOUT = registry('AFTER_LAYOUT', needs('AFTER_LAYOUT', 'run'));
+const AFTER_REFRESH = registry('AFTER_REFRESH', needs('AFTER_REFRESH', 'run'));
+const AFTER_SURVEY = registry('AFTER_SURVEY', needs('AFTER_SURVEY', 'run'));
+
+/** QUERY: search tokens for parseQuery: is.<word>(node) and prefix.<name>(value, raw) -> predicate. */
+const QUERY = Object.freeze({ is: {}, prefix: {} });
+
+for (const reg of [KEYS, ESCAPE, PIN_SOURCES, TIP_LINES, INSPECTOR.focus, INSPECTOR.node, READING, TABS, LAYOUT_OPTS, AFTER_LAYOUT, AFTER_REFRESH, AFTER_SURVEY]) Object.freeze(reg);
 
 /* ====================================================================== */
 /* service                                                                */
@@ -206,6 +434,7 @@ function refreshDirs(rels) {
     if (S.primary && !isAttached(S.primary)) S.primary = [...S.sel].at(-1) || null;
     if (!isAttached(S.focus)) S.focus = S.model.root;
     S.trail = S.trail.filter(isAttached);
+    runHooks(AFTER_REFRESH, dirs);
     if (S.search) runQuery();
     queueLayout(40);
     queueSurvey();
@@ -223,6 +452,7 @@ function queueSurvey() {
       const v = verified.get(g.files.map(relPath).sort().join('|'));
       if (v) { g.verified = true; g.mode = v.mode; }
     }
+    runHooks(AFTER_SURVEY, S.survey, { full: false });
     repaint();
     if (S.tab === 'survey') drawLedger();
     drawLegend();
@@ -261,6 +491,7 @@ async function fullScan() {
   S.primary = null;
   S.trail = [];
   S.survey = null;
+  S.ages = null;
   drawAll();
   thumbs.reload(TOKEN);
   try {
@@ -270,6 +501,7 @@ async function fullScan() {
   }
   S.scanning = false;
   S.survey = S.model.survey();
+  runHooks(AFTER_SURVEY, S.survey, { full: true });
   relayout();
   drawAll();
 }
@@ -290,24 +522,37 @@ function relayout({ animate = true } = {}) {
   S.model.now = Date.now();
   const eye = S.view.eye || { x: 0, y: 900, z: 1200 };
   S.lastEye = { ...eye, alt: S.view.alt || 900 };
-  S.layout = buildLayout(S.model.root, { cam: eye, grain: GRAINS[S.grain].v, now: S.model.now, force: S.force });
+  const opts = { cam: eye, grain: GRAINS[S.grain].v, now: S.model.now, force: S.force };
+  for (const o of LAYOUT_OPTS) {
+    try {
+      const more = o.options(opts);
+      if (more) Object.assign(opts, more);
+    } catch (err) {
+      console.error(`LAYOUT_OPTS "${o.id}" failed:`, err);
+    }
+  }
+  S.layout = buildLayout(S.model.root, opts);
   S.view.setLayout(S.layout, paint(), { animate });
   syncViewSelection();
   drawPins();
   updateWhere();
   drawStatus();
+  runHooks(AFTER_LAYOUT, S.layout);
 }
 
 /**
  * The folder you are "in": the deepest one under the centre of the view
  * that still fills a good part of it. Breadcrumbs and the ledger follow.
+ * Without a 3D view there is no camera to read, so the location stays
+ * where setFocus put it.
  */
 function updateWhere() {
   const L = S.layout;
   if (!L) return;
   const p = S.view.look();
+  if (!p) return;
   let dir = S.model.root;
-  if (p && p.point) {
+  if (p.point) {
     const width = p.dist * 0.82 * (S.view.w / S.view.h);
     for (;;) {
       let next = null;
@@ -328,6 +573,11 @@ function updateWhere() {
       dir = next;
     }
   }
+  moveFocus(dir);
+}
+
+/** Makes dir the folder you are in and redraws everything that shows it. */
+function moveFocus(dir) {
   if (dir === S.focus) return;
   S.focus = dir;
   drawCrumbs();
@@ -400,15 +650,15 @@ function paint() {
     const type = L.type[i];
     const lvl = L.level[i];
     let c;
-    let s = 0;
+    let s = STYLE.PLAIN;
     if (type === BOX.DIR) {
       c = THEME.plaster[Math.min(lvl, THEME.plaster.length - 1)];
     } else if (type === BOX.SCREE) {
       c = THEME.plaster[Math.max(0, Math.min(lvl, 5) - 1)];
-      s = 3;
+      s = STYLE.STIPPLE;
     } else if (type === BOX.CAP) {
-      if (node.e) { c = THEME.clay; s = 1; }
-      else if (node.c.length === 0) { c = THEME.paper; s = 2; }
+      if (node.e) { c = THEME.clay; s = STYLE.HATCH; }
+      else if (node.c.length === 0) { c = THEME.paper; s = STYLE.HOLLOW; }
       else if (S.lens === 'kind') c = mixHex(THEME.clay, KINDS[dominantKind(node)].color, 0.42);
       else if (S.lens === 'age') c = mixHex(THEME.clay, ramp(THEME.ageRamp, freshness(node.mm, now)), 0.7);
       else if (S.lens === 'size') c = mixHex(THEME.clay, ramp(THEME.sizeRamp, Math.log2(node.s + 2) / maxLog), 0.7);
@@ -419,9 +669,9 @@ function paint() {
       else if (S.lens === 'size') c = ramp(THEME.sizeRamp, Math.log2(node.s + 2) / maxLog);
       else if (node.dup) {
         c = THEME.garnet;
-        if (!S.survey?.dupGroups[node.dup - 1]?.verified) s = 5;
+        if (!S.survey?.dupGroups[node.dup - 1]?.verified) s = STYLE.HALF_BANDS;
       } else c = 0xd3d9d4;
-      if (node.f & FLAG_LINK) s = 4;
+      if (node.f & FLAG_LINK) s = STYLE.BANDS;
       if (node.f & FLAG_HIDDEN && S.lens === 'kind') c = mixHex(c, THEME.paper, 0.4);
     }
 
@@ -485,24 +735,50 @@ function syncViewSelection() {
   S.view.setTies(ties.length ? i : -1, [...new Set(ties)]);
 }
 
+/** Pins from every source in PIN_SOURCES order, up to the capacity. */
 function drawPins() {
   const L = S.layout;
+  if (!L) return;
   const pins = [];
-  if (S.search) {
-    for (let i = 0; i < L.n && pins.length < 2500; i++) {
-      const node = L.node[i];
-      const t = L.type[i];
-      if (t === BOX.FILE ? S.search.set.has(node)
-        : t === BOX.CAP ? S.search.set.has(node) || S.search.within.has(node)
-          : t === BOX.SCREE ? screeHasMatch(i) : false) pins.push({ i, color: THEME.signal });
+  for (const src of PIN_SOURCES) {
+    const room = PIN_CAP - pins.length;
+    if (room <= 0) break;
+    let got;
+    try {
+      got = src.pins(L, room);
+    } catch (err) {
+      console.error(`PIN_SOURCES "${src.id}" failed:`, err);
+      continue;
     }
-  } else if (S.survey && S.lens !== 'dup') {
-    for (const f of S.survey.heavy) {
-      const i = L.index.get(f);
-      if (i !== undefined) pins.push({ i, color: THEME.ink });
-    }
+    if (got) for (let k = 0; k < got.length && k < room; k++) pins.push(got[k]);
   }
   S.view.setPins(pins);
+}
+
+/** Search matches in vermilion: files, masses holding matches, and scree hiding them. */
+function searchPins(L, room) {
+  if (!S.search) return null;
+  const pins = [];
+  const cap = Math.min(2500, room);
+  for (let i = 0; i < L.n && pins.length < cap; i++) {
+    const node = L.node[i];
+    const t = L.type[i];
+    if (t === BOX.FILE ? S.search.set.has(node)
+      : t === BOX.CAP ? S.search.set.has(node) || S.search.within.has(node)
+        : t === BOX.SCREE ? screeHasMatch(i) : false) pins.push({ i, color: THEME.signal });
+  }
+  return pins;
+}
+
+/** Heavyweight files in ink, when no search is showing and the lens is not duplicates. */
+function heavyPins(L) {
+  if (S.search || !S.survey || S.lens === 'dup') return null;
+  const pins = [];
+  for (const f of S.survey.heavy) {
+    const i = L.index.get(f);
+    if (i !== undefined) pins.push({ i, color: THEME.ink });
+  }
+  return pins;
 }
 
 /* ====================================================================== */
@@ -539,7 +815,10 @@ function select(node, { add = false, quiet = false } = {}) {
   if (S.primary) say(S.sel.size > 1 ? `${S.sel.size} items selected` : describe(S.primary));
 }
 
-/** Flies to a folder. "Where you are" then follows from the camera. */
+/**
+ * Flies to a folder. "Where you are" then follows from the camera, or,
+ * without a 3D view, moves to the folder at once.
+ */
 function setFocus(dir, { remember = true } = {}) {
   if (!dir || !dir.d) return;
   if (remember && S.focus !== dir) S.trail.push(S.focus);
@@ -549,6 +828,11 @@ function setFocus(dir, { remember = true } = {}) {
   const i = S.layout.index.get(dir);
   if (!dir.p || i === undefined) S.view.overview();
   else S.view.frame(i);
+  // With a 3D view the location follows the camera when the flight lands.
+  // Without one there is no camera to follow, so the location moves here.
+  // A view that looks at the sky still has a camera: setting the location
+  // early there would be undone by the first frame of the flight.
+  if (S.noGL || !S.view.look()) moveFocus(dir);
   say(`Travelling to ${dir.n}, ${fmtCount(dir.c.length)} items`);
 }
 
@@ -1026,53 +1310,79 @@ function sortedContents() {
   return items;
 }
 
+/** The tab buttons, made from TABS. */
+function drawTabs() {
+  document.querySelector('.tabs').replaceChildren(...[...TABS].map((tab) => el('button', {
+    role: 'tab', type: 'button', 'data-tab': tab.id, 'aria-selected': String(tab.id === S.tab), text: tab.label,
+    onclick: () => {
+      S.tab = tab.id;
+      drawLedger();
+    },
+  })));
+}
+
 let ledgerKey = null;
 function drawLedger(keepScroll = false) {
+  let tab = TABS.get(S.tab);
+  if (!tab) {
+    S.tab = 'contents';
+    tab = TABS.get(S.tab);
+  }
   // The list only returns to the top when it shows something different;
   // a refresh of the same folder leaves the reader where they were.
-  const key = [S.tab, S.focus, S.sort.key, S.sort.dir, S.query].map((v) => (typeof v === 'object' ? v?.n : v)).join('|') + '|' + (S.tab === 'contents' ? relPath(S.focus) : '');
+  const key = [S.tab, S.focus, S.sort.key, S.sort.dir, S.query].map((v) => (typeof v === 'object' ? v?.n : v)).join('|') + '|' + (S.tab === 'contents' ? relPath(S.focus) : '') + (tab.key ? `|${tab.key()}` : '');
   if (key === ledgerKey) keepScroll = true;
   ledgerKey = key;
-  document.querySelectorAll('.tabs [role=tab]').forEach((t) => t.setAttribute('aria-selected', String(t.dataset.tab === S.tab)));
+  document.querySelectorAll('.tabs [role=tab]').forEach((b) => {
+    b.setAttribute('aria-selected', String(b.dataset.tab === S.tab));
+    const t = TABS.get(b.dataset.tab);
+    if (t?.count) {
+      const n = t.count();
+      b.replaceChildren(t.label, n != null ? el('span', { class: 'count', text: fmtCount(n) }) : '');
+    }
+  });
   const sub = $('ledger-sub');
   const rich = $('ledger-rich');
   const listHost = $('ledger-list');
-  const useList = S.tab === 'contents' || S.tab === 'findings';
+  const useList = !!tab.list;
   listHost.hidden = !useList;
   rich.hidden = useList;
-  const findTab = document.querySelector('[data-tab=findings]');
-  findTab.replaceChildren('Findings', S.search ? el('span', { class: 'count', text: fmtCount(S.search.list.length) }) : '');
-
-  if (S.tab === 'contents') {
-    const sortBtn = (key, label) => el('button', {
-      class: 'sort', type: 'button', 'aria-pressed': String(S.sort.key === key), text: label + (S.sort.key === key ? (S.sort.dir < 0 ? ' ↓' : ' ↑') : ''),
-      onclick: () => {
-        S.sort = { key, dir: S.sort.key === key ? -S.sort.dir : key === 'name' ? 1 : -1 };
-        drawLedger();
-      },
-    });
-    sub.replaceChildren(el('span', { class: 'grow', text: `${fmtCount(S.focus.c.length)} items · ${fmtBytes(S.focus.s)}` }), sortBtn('name', 'Name'), sortBtn('size', 'Size'), sortBtn('date', 'Changed'));
-    list.render = (node) => rowFor(node, { total: S.focus.s });
-    list.setItems(sortedContents(), keepScroll);
-  } else if (S.tab === 'findings') {
-    if (!S.search) {
-      sub.replaceChildren(el('span', { class: 'grow', text: 'Type in the Find field to search every level.' }));
-      list.setItems([]);
-    } else {
-      sub.replaceChildren(el('span', { class: 'grow', text: `${fmtCount(S.search.list.length)} matches · ${fmtBytes(S.search.bytes)}` }),
-        el('button', { class: 'sort', type: 'button', text: 'Select all', onclick: () => {
-          S.sel = new Set(S.search.list.slice(0, 5000));
-          S.primary = S.search.list[0] || null;
-          repaint();
-          drawInspector();
-          drawLedger(true);
-        } }));
-      list.render = (node) => rowFor(node, { showPath: true });
-      list.setItems(S.search.list, keepScroll);
-    }
-  } else if (S.tab === 'survey') drawSurvey(sub, rich);
-  else drawJournal(sub, rich);
+  tab.draw(sub, useList ? listHost : rich, keepScroll);
 }
+
+function drawContents(sub, _host, keepScroll) {
+  const sortBtn = (key, label) => el('button', {
+    class: 'sort', type: 'button', 'aria-pressed': String(S.sort.key === key), text: label + (S.sort.key === key ? (S.sort.dir < 0 ? ' ↓' : ' ↑') : ''),
+    onclick: () => {
+      S.sort = { key, dir: S.sort.key === key ? -S.sort.dir : key === 'name' ? 1 : -1 };
+      drawLedger();
+    },
+  });
+  sub.replaceChildren(el('span', { class: 'grow', text: `${fmtCount(S.focus.c.length)} items · ${fmtBytes(S.focus.s)}` }), sortBtn('name', 'Name'), sortBtn('size', 'Size'), sortBtn('date', 'Changed'));
+  list.render = (node) => rowFor(node, { total: S.focus.s });
+  list.setItems(sortedContents(), keepScroll);
+}
+
+function drawFindings(sub, _host, keepScroll) {
+  if (!S.search) {
+    sub.replaceChildren(el('span', { class: 'grow', text: 'Type in the Find field to search every level.' }));
+    list.setItems([]);
+    return;
+  }
+  sub.replaceChildren(el('span', { class: 'grow', text: `${fmtCount(S.search.list.length)} matches · ${fmtBytes(S.search.bytes)}` }),
+    el('button', { class: 'sort', type: 'button', text: 'Select all', onclick: () => {
+      S.sel = new Set(S.search.list.slice(0, 5000));
+      S.primary = S.search.list[0] || null;
+      repaint();
+      drawInspector();
+      drawLedger(true);
+    } }));
+  list.render = (node) => rowFor(node, { showPath: true });
+  list.setItems(S.search.list, keepScroll);
+}
+
+/** A collapsible section of the rich ledger panel. */
+const section = (title, count, open, ...body) => el('details', { open }, el('summary', {}, title, el('span', { class: 'n', text: count })), ...body);
 
 function itemButton(node, figure) {
   return el('button', { class: 'item', type: 'button', onclick: () => reveal(node) },
@@ -1089,7 +1399,6 @@ function drawSurvey(sub, host) {
     return;
   }
   sub.replaceChildren(el('span', { class: 'grow', text: 'Noteworthy conditions across every level' }));
-  const section = (title, count, open, ...body) => el('details', { open }, el('summary', {}, title, el('span', { class: 'n', text: count })), ...body);
   const verifiedGroups = sv.dupGroups.filter((g) => g.verified);
   const waste = sv.dupGroups.reduce((a, g) => a + g.waste, 0);
   const dupBody = [];
@@ -1215,105 +1524,123 @@ function drawInspector() {
   }
   const node = S.primary;
   if (!node) {
-    const f = S.focus;
-    host.replaceChildren(
-      el('div', { class: 'insp-title' }, el('div', { class: 'insp-kind', text: 'You are in' }), el('h3', { class: 'insp-name', text: f.n })),
-      el('dl', { class: 'facts' }, fact('Size', el('b', { text: fmtBytes(f.s) })), fact('Contains', `${fmtCount(f.fc)} files · ${fmtCount(f.dc)} folders`), fact('Depth below', `${f.h} level${f.h === 1 ? '' : 's'}`)),
-      ...composition(f),
-      el('div', { class: 'section-title', text: 'Reading the world' }),
-      el('ul', { class: 'reading' },
-        el('li', {}, el('span', { class: 'glyph g-foot' }), el('span', {}, el('b', { text: 'Footprint is storage' }), 'Ground area is share of the parent folder.')),
-        el('li', {}, el('span', { class: 'glyph g-elev' }), el('span', {}, el('b', { text: 'Elevation is nesting' }), 'Each level stands one step up, one tone lighter, and one scale smaller.')),
-        el('li', {}, el('span', { class: 'glyph g-height' }), el('span', {}, el('b', { text: 'Height is recency' }), 'Fresh files stand tall; untouched ones wear down flat.')),
-        el('li', {}, el('span', { class: 'glyph g-mass' }), el('span', {}, el('b', { text: 'Closed mass' }), 'A folder seen from afar. Taller means more levels inside. Approach and it opens.')),
-        el('li', {}, el('span', { class: 'glyph g-scree' }), el('span', {}, el('b', { text: 'Scree' }), 'Items too small to see from here, gathered into one tile. Go closer.')),
-        el('li', {}, el('span', { class: 'glyph g-seal' }), el('span', {}, el('b', { text: 'Hatched' }), 'Sealed: the folder could not be read.')),
-        el('li', {}, el('span', { class: 'glyph g-empty' }), el('span', {}, el('b', { text: 'Hollow' }), 'An empty folder.')),
-        el('li', {}, el('span', { class: 'glyph g-pin' }), el('span', {}, el('b', { text: 'Pin' }), 'Vermilion marks a search match; ink marks a heavyweight file.')),
-      ));
+    host.replaceChildren(...buildSections(INSPECTOR.focus, S.focus, { ro }));
     return;
   }
-  const parent = node.p;
-  const isRoot = !parent;
-  const lockRoot = ro || (isRoot ? 'the authorized root' : null);
-  const kindLine = node.d ? (node.e ? `Sealed folder · ${node.e}` : node.c.length ? 'Folder' : 'Empty folder')
-    : `${KINDS[node.k].label}${extOf(node.n) ? ` · .${extOf(node.n)}` : ''}${node.f & FLAG_LINK ? ' · symbolic link' : ''}${node.f & FLAG_HIDDEN ? ' · hidden' : ''}`;
-  const created = el('dd', { text: '…' });
-  const linkRow = el('div', { hidden: true }, el('dt', { text: 'Points to' }), el('dd'));
-  const visible = S.layout.index.has(node);
-  const parts = [
-    el('div', { class: 'insp-title' },
-      el('div', { class: 'insp-kind' }, el('span', { class: node.d ? 'swatch is-dir' : 'swatch', style: node.d ? null : { background: cssHex(KINDS[node.k].color) } }), kindLine),
-      el('h3', { class: 'insp-name', text: node.n })),
-    el('div', { class: 'insp-path' }, el('code', { text: absPath(node) }), el('button', { class: 'btn btn-small', type: 'button', text: 'Copy', onclick: () => copyPaths([node]) })),
-    el('dl', { class: 'facts' },
-      fact('Size', el('b', { text: fmtBytes(node.s) }), node.s >= 1024 ? ` · ${fmtCount(node.s)} B` : ''),
-      parent ? fact('Of parent', pct(node.s, parent.s), shareBar(node.s, parent.s)) : null,
-      fact('Of root', pct(node.s, S.model.root.s), shareBar(node.s, S.model.root.s)),
-      node.d ? fact('Contains', `${fmtCount(node.fc)} files · ${fmtCount(node.dc)} folders`) : null,
-      node.d ? fact('Levels', `${depthOf(node)} above · ${node.h} below`) : fact('Level', String(depthOf(node))),
-      fact(node.d ? 'Newest' : 'Changed', `${fmtDate(node.d ? node.mm : node.m)}`, el('br'), fmtAge(node.d ? node.mm : node.m)),
-      el('div', {}, el('dt', { text: 'Created' }), created),
-      linkRow,
-      !visible ? fact('In the world', 'inside the framed mass or scree; fly to it to see it') : null),
-  ];
-  if (node.d) parts.push(...composition(node));
-  if (!node.d && node.dup && S.survey) {
-    const g = S.survey.dupGroups[node.dup - 1];
-    if (g) {
-      parts.push(el('div', { class: 'section-title', text: g.verified ? (g.mode === 'sampled' ? 'Probable copies' : 'Identical copies') : 'Same-size candidates' }));
-      parts.push(el('div', {}, g.files.filter((f) => f !== node).slice(0, 8).map((f) => itemButton(f, ''))));
-    }
-  }
-  parts.push(el('div', { class: 'section-title', text: 'Actions' }));
-  parts.push(el('div', { class: 'actions-grid' },
-    node.d ? actionButton('Go there', () => setFocus(node), { off: node.e ? 'cannot be read' : null })
-      : actionButton('Open', () => activate(node), { title: 'Open with the system default application', off: S.info.snapshot ? 'snapshot mode' : null }),
-    actionButton('Reveal', () => runOp({ type: 'reveal', path: relPath(node) }), { title: 'Show in the system file manager', off: S.info.snapshot ? 'snapshot mode' : null }),
-    actionButton('Rename…', () => rename(node), { off: lockRoot }),
-    actionButton('Duplicate', () => duplicate([node]), { off: lockRoot }),
-    actionButton('Move to…', () => startPlacing('move', [node]), { off: lockRoot }),
-    actionButton('Copy to…', () => startPlacing('copy', [node]), { off: lockRoot }),
-    node.d ? actionButton('New folder inside…', () => newFolder(node), { off: ro || (node.e ? 'cannot be read' : null), wide: true }) : null,
-    actionButton(visible ? 'Fly to it' : 'Find it in the world', () => reveal(node), { wide: true, title: 'G' }),
-    actionButton('Remove…', () => remove([node]), { off: lockRoot, danger: true, wide: true })));
-
-  const ext = extOf(node.n);
-  if (!node.d && !(node.f & FLAG_LINK) && node.s > 0) {
-    if (IMAGE_EXT.has(ext)) {
-      // Thumbnails only: an original can be hundreds of megabytes.
-      const rel = relPath(node);
-      const t = thumbs.info(rel);
-      const img = thumbs.img(rel, 480, `Preview of ${node.n}`);
-      const small = !S.info.snapshot && node.s <= 2 * 1024 * 1024 && ext !== 'svg';
-      let body;
-      if (img) body = img;
-      else if (small) body = el('img', { src: rawUrl(node, 2 * 1024 * 1024), alt: `Preview of ${node.n}`, loading: 'lazy', decoding: 'async' });
-      else if (t?.status === 'huge') body = el('div', { class: 'none', text: 'Too large to thumbnail in the normal pass. npm run thumbs -- --huge makes one.' });
-      else if (t?.status === 'heavy-svg') body = el('div', { class: 'none', text: 'Heavy vector art. npm run thumbs -- --heavy-svg renders it.' });
-      else if (t?.status === 'error') body = el('div', { class: 'none', text: 'This file could not be read as an image.' });
-      else body = el('div', { class: 'none', text: 'No thumbnail yet. npm run thumbs makes one.' });
-      parts.push(el('div', { class: 'section-title', text: t?.w ? `Preview · ${fmtCount(t.w)} × ${fmtCount(t.h)} px` : 'Preview' }), el('div', { class: 'preview' }, body));
-    } else if (S.info.snapshot) {
-      parts.push(el('div', { class: 'section-title', text: 'Preview' }), el('div', { class: 'preview' }, el('div', { class: 'none', text: 'Snapshot mode holds names, sizes and dates, not contents.' })));
-    } else if (node.k === 0 || node.k === 6 || TEXT_EXT.has(ext)) {
-      const pre = el('pre', { text: '…' });
-      parts.push(el('div', { class: 'section-title', text: node.s > 16384 ? 'Preview · first 16 KB' : 'Preview' }), el('div', { class: 'preview' }, pre));
-      fetch(rawUrl(node, 16384)).then((r) => (r.ok ? r.text() : Promise.reject())).then((t) => {
-        pre.textContent = t.includes('\u0000') ? 'Binary content: no text preview.' : t;
-      }).catch(() => { pre.textContent = 'This file could not be read.'; });
-    }
-  }
-  host.replaceChildren(...parts.filter(Boolean));
+  const ctx = { ro, lockRoot: ro || (node.p ? null : 'the authorized root'), visible: S.layout.index.has(node) };
+  host.replaceChildren(...buildSections(INSPECTOR.node, node, ctx));
   host.scrollTop = 0;
+  const { created, linkRow } = ctx;
   get('stat', { path: relPath(node) }).then((st) => {
-    if (S.primary !== node) return;
+    if (S.primary !== node || !created) return;
     created.textContent = st.birthtime ? fmtDate(st.birthtime) : 'not recorded';
     if (st.link) {
       linkRow.hidden = false;
       linkRow.lastChild.textContent = st.link;
     }
-  }).catch(() => { created.textContent = 'unavailable'; });
+  }).catch(() => { if (created) created.textContent = 'unavailable'; });
+}
+
+/** Builds the sections of one INSPECTOR registry; a section that throws is reported and left out. */
+function buildSections(reg, node, ctx) {
+  const parts = [];
+  for (const s of reg) {
+    try {
+      const r = s.build(node, ctx);
+      if (Array.isArray(r)) parts.push(...r.flat(Infinity));
+      else parts.push(r);
+    } catch (err) {
+      console.error(`${reg.name} "${s.id}" failed:`, err);
+    }
+  }
+  return parts.filter(Boolean);
+}
+
+const readingRow = (r) => el('li', {}, el('span', { class: `glyph ${r.glyph}` }), el('span', {}, el('b', { text: r.title }), r.text));
+
+/* The inspector's own sections, in INSPECTOR order. */
+
+function nodeTitle(node) {
+  const kindLine = node.d ? (node.e ? `Sealed folder · ${node.e}` : node.c.length ? 'Folder' : 'Empty folder')
+    : `${KINDS[node.k].label}${extOf(node.n) ? ` · .${extOf(node.n)}` : ''}${node.f & FLAG_LINK ? ' · symbolic link' : ''}${node.f & FLAG_HIDDEN ? ' · hidden' : ''}`;
+  return el('div', { class: 'insp-title' },
+    el('div', { class: 'insp-kind' }, el('span', { class: node.d ? 'swatch is-dir' : 'swatch', style: node.d ? null : { background: cssHex(KINDS[node.k].color) } }), kindLine),
+    el('h3', { class: 'insp-name', text: node.n }));
+}
+
+function nodeFacts(node, ctx) {
+  const parent = node.p;
+  // Filled in by drawInspector when the service answers /stat.
+  ctx.created = el('dd', { text: '…' });
+  ctx.linkRow = el('div', { hidden: true }, el('dt', { text: 'Points to' }), el('dd'));
+  return el('dl', { class: 'facts' },
+    fact('Size', el('b', { text: fmtBytes(node.s) }), node.s >= 1024 ? ` · ${fmtCount(node.s)} B` : ''),
+    parent ? fact('Of parent', pct(node.s, parent.s), shareBar(node.s, parent.s)) : null,
+    fact('Of root', pct(node.s, S.model.root.s), shareBar(node.s, S.model.root.s)),
+    node.d ? fact('Contains', `${fmtCount(node.fc)} files · ${fmtCount(node.dc)} folders`) : null,
+    node.d ? fact('Levels', `${depthOf(node)} above · ${node.h} below`) : fact('Level', String(depthOf(node))),
+    fact(node.d ? 'Newest' : 'Changed', `${fmtDate(node.d ? node.mm : node.m)}`, el('br'), fmtAge(node.d ? node.mm : node.m)),
+    el('div', {}, el('dt', { text: 'Created' }), ctx.created),
+    ctx.linkRow,
+    !ctx.visible ? fact('In the world', 'inside the framed mass or scree; fly to it to see it') : null);
+}
+
+function nodeCopies(node) {
+  if (node.d || !node.dup || !S.survey) return null;
+  const g = S.survey.dupGroups[node.dup - 1];
+  if (!g) return null;
+  return [
+    el('div', { class: 'section-title', text: g.verified ? (g.mode === 'sampled' ? 'Probable copies' : 'Identical copies') : 'Same-size candidates' }),
+    el('div', {}, g.files.filter((f) => f !== node).slice(0, 8).map((f) => itemButton(f, ''))),
+  ];
+}
+
+function nodeActions(node, { ro, lockRoot, visible }) {
+  return [
+    el('div', { class: 'section-title', text: 'Actions' }),
+    el('div', { class: 'actions-grid' },
+      node.d ? actionButton('Go there', () => setFocus(node), { off: node.e ? 'cannot be read' : null })
+        : actionButton('Open', () => activate(node), { title: 'Open with the system default application', off: S.info.snapshot ? 'snapshot mode' : null }),
+      actionButton('Reveal', () => runOp({ type: 'reveal', path: relPath(node) }), { title: 'Show in the system file manager', off: S.info.snapshot ? 'snapshot mode' : null }),
+      actionButton('Rename…', () => rename(node), { off: lockRoot }),
+      actionButton('Duplicate', () => duplicate([node]), { off: lockRoot }),
+      actionButton('Move to…', () => startPlacing('move', [node]), { off: lockRoot }),
+      actionButton('Copy to…', () => startPlacing('copy', [node]), { off: lockRoot }),
+      node.d ? actionButton('New folder inside…', () => newFolder(node), { off: ro || (node.e ? 'cannot be read' : null), wide: true }) : null,
+      actionButton(visible ? 'Fly to it' : 'Find it in the world', () => reveal(node), { wide: true, title: 'G' }),
+      actionButton('Remove…', () => remove([node]), { off: lockRoot, danger: true, wide: true })),
+  ];
+}
+
+function nodePreview(node) {
+  const ext = extOf(node.n);
+  if (node.d || node.f & FLAG_LINK || node.s <= 0) return null;
+  if (IMAGE_EXT.has(ext)) {
+    // Thumbnails only: an original can be hundreds of megabytes.
+    const rel = relPath(node);
+    const t = thumbs.info(rel);
+    const img = thumbs.img(rel, 480, `Preview of ${node.n}`);
+    const small = !S.info.snapshot && node.s <= 2 * 1024 * 1024 && ext !== 'svg';
+    let body;
+    if (img) body = img;
+    else if (small) body = el('img', { src: rawUrl(node, 2 * 1024 * 1024), alt: `Preview of ${node.n}`, loading: 'lazy', decoding: 'async' });
+    else if (t?.status === 'huge') body = el('div', { class: 'none', text: 'Too large to thumbnail in the normal pass. npm run thumbs -- --huge makes one.' });
+    else if (t?.status === 'heavy-svg') body = el('div', { class: 'none', text: 'Heavy vector art. npm run thumbs -- --heavy-svg renders it.' });
+    else if (t?.status === 'error') body = el('div', { class: 'none', text: 'This file could not be read as an image.' });
+    else body = el('div', { class: 'none', text: 'No thumbnail yet. npm run thumbs makes one.' });
+    return [el('div', { class: 'section-title', text: t?.w ? `Preview · ${fmtCount(t.w)} × ${fmtCount(t.h)} px` : 'Preview' }), el('div', { class: 'preview' }, body)];
+  }
+  if (S.info.snapshot) {
+    return [el('div', { class: 'section-title', text: 'Preview' }), el('div', { class: 'preview' }, el('div', { class: 'none', text: 'Snapshot mode holds names, sizes and dates, not contents.' }))];
+  }
+  if (node.k === 0 || node.k === 6 || TEXT_EXT.has(ext)) {
+    const pre = el('pre', { text: '…' });
+    fetch(rawUrl(node, 16384)).then((r) => (r.ok ? r.text() : Promise.reject())).then((t) => {
+      pre.textContent = t.includes('\u0000') ? 'Binary content: no text preview.' : t;
+    }).catch(() => { pre.textContent = 'This file could not be read.'; });
+    return [el('div', { class: 'section-title', text: node.s > 16384 ? 'Preview · first 16 KB' : 'Preview' }), el('div', { class: 'preview' }, pre)];
+  }
+  return null;
 }
 
 /* ---------- title block ---------- */
@@ -1369,7 +1696,8 @@ function drawStatus() {
   else if (S.watch === 'live') label = 'Live';
   else if (S.watch === 'lost') { cls += ' is-off'; label = 'Service stopped'; }
   else { cls += ' is-off'; label = 'Manual refresh'; }
-  $('status-label').textContent = `${label}${S.info.readOnly && !S.info.snapshot ? ' · read-only' : ''}${S.layout?.coarsened ? ' · grain raised to fit' : ''}`;
+  const fit = S.layout?.over ? ' · grain raised, some blocks left out' : S.layout?.coarsened ? ' · grain raised to fit' : '';
+  $('status-label').textContent = `${label}${S.info.readOnly && !S.info.snapshot ? ' · read-only' : ''}${fit}`;
   $('status').replaceChildren(el('span', { class: cls }), counts);
   $('status').title = `${fmtCount(S.layout?.n || 0)} blocks drawn`;
 }
@@ -1379,7 +1707,7 @@ function drawStatus() {
 /* ====================================================================== */
 
 function runQuery() {
-  const pred = parseQuery(S.query);
+  const pred = parseQuery(S.query, QUERY);
   S.search = pred ? runSearch(S.model, pred) : null;
   $('q-count').textContent = S.search ? `${fmtCount(S.search.list.length)} found` : '';
 }
@@ -1413,11 +1741,7 @@ async function showGuide() {
   dlg.classList.add('is-wide');
   await ask({
     title: 'Guide', confirm: 'Close', cancel: false,
-    body: el('div', { class: 'guide' },
-      keys('Travelling', [['Wheel', 'Fly toward what is under the cursor'], ['Drag', 'Slide the ground'], ['Right-drag', 'Orbit the point you grabbed'], ['Alt+drag', 'Look around'], ['W A S D', 'Move (Shift: faster)'], ['Q  E', 'Turn'], ['R  F', 'Rise / descend'], ['V', 'Drop to eye level'], ['0', 'Rise to the overview'], ['G', 'Fly to the selection'], ['Double-click', 'Fly to folder / open file']]),
-      keys('Selecting and going places', [['Click', 'Select'], ['Ctrl+click', 'Add to selection'], ['← →', 'Previous / next sibling'], ['↑ ↓', 'Parent / first child'], ['Enter', 'Go to folder / open file'], ['Backspace', 'Up one level'], ['Alt+←', 'Back'], ['/', 'Find'], ['Esc', 'Cancel, clear'], ['[  ]', 'Hide ledger / inspector'], ['1 – 4', 'Lens']]),
-      keys('Changing things', [['N', 'New folder'], ['F2', 'Rename'], ['M', 'Move to…'], ['Ctrl+D', 'Duplicate'], ['Del', 'Remove to holding area'], ['Ctrl+Z', 'Undo'], ['Ctrl+C', 'Copy path'], ['Drag a row', 'Drop on a folder, breadcrumb or plateau'], ['Menu key', 'Context menu'], ['F5', 'Re-read folder']]),
-    ),
+    body: el('div', { class: 'guide' }, [...KEYS.guide()].map(([title, rows]) => keys(title, rows))),
   });
   dlg.classList.remove('is-wide');
 }
@@ -1448,14 +1772,16 @@ function wireViewport() {
       lines = [`${fmtCount(info.count)} small items in ${node.n}`, `${fmtBytes(info.size)} · too small to see from here`, 'Double-click to fly closer'];
     } else if (node.d) {
       lines = [node.n, node.e ? `Sealed · ${node.e}` : `${fmtBytes(node.s)} · ${fmtCount(node.fc)} files · ${fmtCount(node.dc)} folders`];
-      if (t === BOX.CAP && !node.e && node.c.length) lines.push(`${node.h + 1} level${node.h ? 's' : ''} inside · opens as you approach · double-click to go`);
-      if (S.search?.within.has(node)) lines.push(`${fmtCount(S.search.within.get(node))} matches inside`);
-      if (S.placing) lines.push(destinationProblem(S.placing.type, S.placing.nodes, node) ? `Cannot place here: ${destinationProblem(S.placing.type, S.placing.nodes, node)}` : 'Click to place here');
     } else {
       lines = [node.n, `${fmtBytes(node.s)} · ${KINDS[node.k].label} · changed ${fmtAge(node.m)}`];
-      if (node.dup) lines.push(S.survey?.dupGroups[node.dup - 1]?.verified ? 'Has identical copies' : 'Shares its size with other files');
-      const pic = thumbs.info(relPath(node));
-      if (pic?.w) lines.push(`${fmtCount(pic.w)} × ${fmtCount(pic.h)} px`);
+    }
+    for (const p of TIP_LINES) {
+      try {
+        const more = p.lines(node, { i, type: t, L });
+        if (more) lines.push(...[more].flat().filter(Boolean));
+      } catch (err) {
+        console.error(`TIP_LINES "${p.id}" failed:`, err);
+      }
     }
     tip(e.clientX, e.clientY, lines);
     // A picture only for a pointer that rests: sweeping across the world
@@ -1480,6 +1806,7 @@ function wireViewport() {
     select(node, { add: !!node && (e.ctrlKey || e.metaKey) });
   };
   v.on.moved = onMoved;
+  v.on.notice = (text) => notice(text, { kind: 'info' });
   v.on.dblclick = (i, e) => {
     if (i < 0 || S.placing) return;
     const node = S.layout.node[i];
@@ -1521,7 +1848,6 @@ function wireControls() {
     if (e.key === 'Escape') { clearQuery(); $('view').focus(); }
     if (e.key === 'Enter' || e.key === 'ArrowDown') { e.preventDefault(); $('ledger-list').focus(); }
   });
-  document.querySelectorAll('.tabs [role=tab]').forEach((t) => { t.onclick = () => { S.tab = t.dataset.tab; drawLedger(); }; });
   document.querySelectorAll('#lens button').forEach((b) => { b.onclick = () => setLens(b.dataset.lens); });
   const grain = (d) => {
     S.grain = Math.max(0, Math.min(GRAINS.length - 1, S.grain + d));
@@ -1541,57 +1867,221 @@ function wireControls() {
   $('placing-here').onclick = () => S.placing && transfer(S.placing.type, S.placing.nodes, S.focus);
 }
 
+/** Escape: the first ESCAPE entry that is active is cleared. */
+function onEscape(typing) {
+  for (const x of ESCAPE) {
+    if (typing && !x.typing) continue;
+    let on = false;
+    try {
+      on = x.active();
+      if (on) x.clear();
+    } catch (err) {
+      console.error(`ESCAPE "${x.id}" failed:`, err);
+    }
+    if (on) return;
+  }
+}
+
 function wireKeys() {
   window.addEventListener('keydown', (e) => {
     const t = e.target;
     const typing = t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable;
     if ($('dialog').open) return;
     if (e.key === 'Escape') {
-      if (floatingOpen()) closeFloating();
-      else if (S.placing) stopPlacing();
-      else if (typing) return;
-      else if (S.kindFilter >= 0) { S.kindFilter = -1; repaint(); drawLegend(); }
-      else if (S.search) clearQuery();
-      else select(null);
+      onEscape(typing);
       return;
     }
     if (typing || floatingOpen()) return;
-    const ctrl = e.ctrlKey || e.metaKey;
-    const inList = !!t.closest?.('.vl');
-    const onCanvas = t === $('view');
-    const k = e.key;
-    let used = true;
-    if (ctrl && k.toLowerCase() === 'z') undo();
-    else if (ctrl && k.toLowerCase() === 'd') { if (!writable()) duplicate(); }
-    else if (ctrl && k.toLowerCase() === 'c') { if (window.getSelection().toString()) return; copyPaths(); }
-    else if (ctrl || e.altKey) {
-      if (e.altKey && k === 'ArrowLeft') goBack();
-      else used = false;
-    } else if (k === '/') $('q').focus();
-    else if (k === '?') showGuide();
-    else if (k === 'F5') refreshDirs([relPath(S.focus)]);
-    else if (k === 'F2') rename();
-    else if (k === 'Delete') remove();
-    else if (k === 'Backspace') goUp();
-    else if (k === 'ContextMenu' || (e.shiftKey && k === 'F10')) {
-      const i = visibleIndexOf(S.primary);
-      const p = i >= 0 ? S.view.screenOf(i) : { x: window.innerWidth / 2, y: window.innerHeight / 2 };
-      menuFor(S.primary, p.x, p.y);
-    } else if (k === 'Enter' && !inList && !t.closest?.('button, summary, a')) { if (S.placing && S.primary?.d) transfer(S.placing.type, S.placing.nodes, S.primary); else activate(S.primary); }
-    else if (k.startsWith('Arrow') && onCanvas) stepSelection(k);
-    else if (k === 'n' || k === 'N') newFolder(S.primary?.d && S.sel.size === 1 ? S.primary : S.focus);
-    else if (k === 'm' || k === 'M') { if (!writable()) startPlacing('move'); else notice('Read-only mode: nothing can be moved.', { kind: 'info' }); }
-    else if (k === 'g' || k === 'G') { if (S.primary) reveal(S.primary); }
-    else if (k === '0' || k === 'Home') S.view.overview();
-    else if (k === 'v' || k === 'V') S.view.descend();
-    else if (k === '+' || k === '=') S.view.zoomAt(0.7);
-    else if (k === '-' || k === '_') S.view.zoomAt(1.45);
-    else if (k === '[') document.body.classList.toggle('no-ledger');
-    else if (k === ']') document.body.classList.toggle('no-inspector');
-    else if (k >= '1' && k <= '4') setLens(['kind', 'age', 'size', 'dup'][Number(k) - 1]);
-    else used = false;
-    if (used) e.preventDefault();
+    const c = { e, k: e.key, t, ctrl: e.ctrlKey || e.metaKey, alt: e.altKey, inList: !!t.closest?.('.vl'), onCanvas: t === $('view') };
+    const entry = KEYS.match(c);
+    if (entry && entry.run(c) !== false) e.preventDefault();
   });
+}
+
+/* ====================================================================== */
+/* the controller's own registry entries                                  */
+/* ====================================================================== */
+
+{
+  const core = (x) => KEYS.add({ owner: 'core', ...x });
+  const GO = 'Travelling';
+  const SEL = 'Selecting and going places';
+  const CHG = 'Changing things';
+  // In guide order. Rows without keys document the pointer and the keys
+  // the canvas handles itself.
+  core({ id: 'guide-wheel', guide: [GO, 'Wheel', 'Fly toward what is under the cursor'] });
+  core({ id: 'guide-drag', guide: [GO, 'Drag', 'Slide the ground'] });
+  core({ id: 'guide-right-drag', guide: [GO, 'Right-drag', 'Orbit the point you grabbed'] });
+  core({ id: 'guide-alt-drag', guide: [GO, 'Alt+drag', 'Look around'] });
+  core({ id: 'guide-travel', guide: [GO, 'W A S D', 'Move (Shift: faster)'] });
+  core({ id: 'guide-turn', guide: [GO, 'Q  E', 'Turn'] });
+  core({ id: 'guide-rise', guide: [GO, 'R  F', 'Rise / descend'] });
+  core({ id: 'descend', keys: ['v'], run: () => { S.view.descend(); }, guide: [GO, 'V', 'Drop to eye level'] });
+  core({ id: 'overview', keys: ['0', 'Home'], run: () => { S.view.overview(); }, guide: [GO, '0', 'Rise to the overview'] });
+  core({ id: 'fly-to-selection', keys: ['g'], run: () => { if (S.primary) reveal(S.primary); }, guide: [GO, 'G', 'Fly to the selection'] });
+  core({ id: 'closer', keys: ['+', '='], run: () => { S.view.zoomAt(0.7); } });
+  core({ id: 'farther', keys: ['-', '_'], run: () => { S.view.zoomAt(1.45); } });
+  core({ id: 'guide-double-click', guide: [GO, 'Double-click', 'Fly to folder / open file'] });
+  core({ id: 'guide-click', guide: [SEL, 'Click', 'Select'] });
+  core({ id: 'guide-ctrl-click', guide: [SEL, 'Ctrl+click', 'Add to selection'] });
+  core({ id: 'sibling', keys: ['ArrowLeft', 'ArrowRight'], when: (c) => c.onCanvas, run: (c) => { stepSelection(c.k); }, guide: [SEL, '← →', 'Previous / next sibling'] });
+  core({ id: 'parent-child', keys: ['ArrowUp', 'ArrowDown'], when: (c) => c.onCanvas, run: (c) => { stepSelection(c.k); }, guide: [SEL, '↑ ↓', 'Parent / first child'] });
+  core({
+    id: 'activate', keys: ['Enter'], inList: false, when: (c) => !c.t.closest?.('button, summary, a'),
+    run: () => {
+      if (S.placing && S.primary?.d) transfer(S.placing.type, S.placing.nodes, S.primary);
+      else activate(S.primary);
+    },
+    guide: [SEL, 'Enter', 'Go to folder / open file'],
+  });
+  core({ id: 'up', keys: ['Backspace'], run: () => { goUp(); }, guide: [SEL, 'Backspace', 'Up one level'] });
+  core({ id: 'back', mod: 'alt', keys: ['ArrowLeft'], run: () => { goBack(); }, guide: [SEL, 'Alt+←', 'Back'] });
+  core({ id: 'find', keys: ['/'], run: () => { $('q').focus(); }, guide: [SEL, '/', 'Find'] });
+  core({ id: 'guide-escape', guide: [SEL, 'Esc', 'Cancel, clear'] });
+  core({ id: 'panels', keys: ['[', ']'], run: (c) => { document.body.classList.toggle(c.k === '[' ? 'no-ledger' : 'no-inspector'); }, guide: [SEL, '[  ]', 'Hide ledger / inspector'] });
+  core({ id: 'lens', keys: ['1', '2', '3', '4'], run: (c) => { setLens(['kind', 'age', 'size', 'dup'][Number(c.k) - 1]); }, guide: [SEL, '1 – 4', 'Lens'] });
+  core({ id: 'new-folder', keys: ['n'], run: () => { newFolder(S.primary?.d && S.sel.size === 1 ? S.primary : S.focus); }, guide: [CHG, 'N', 'New folder'] });
+  core({ id: 'rename', keys: ['F2'], run: () => { rename(); }, guide: [CHG, 'F2', 'Rename'] });
+  core({
+    id: 'move', keys: ['m'],
+    run: () => {
+      if (!writable()) startPlacing('move');
+      else notice('Read-only mode: nothing can be moved.', { kind: 'info' });
+    },
+    guide: [CHG, 'M', 'Move to…'],
+  });
+  core({ id: 'duplicate', mod: 'ctrl', keys: ['d'], run: () => { if (!writable()) duplicate(); }, guide: [CHG, 'Ctrl+D', 'Duplicate'] });
+  core({ id: 'remove', keys: ['Delete'], run: () => { remove(); }, guide: [CHG, 'Del', 'Remove to holding area'] });
+  core({ id: 'undo', mod: 'ctrl', keys: ['z'], run: () => { undo(); }, guide: [CHG, 'Ctrl+Z', 'Undo'] });
+  core({
+    id: 'copy-paths', mod: 'ctrl', keys: ['c'],
+    // Selected text on the page is the browser's to copy.
+    run: () => {
+      if (window.getSelection().toString()) return false;
+      copyPaths();
+      return undefined;
+    },
+    guide: [CHG, 'Ctrl+C', 'Copy path'],
+  });
+  core({ id: 'guide-drag-row', guide: [CHG, 'Drag a row', 'Drop on a folder, breadcrumb or plateau'] });
+  core({
+    id: 'menu', keys: ['ContextMenu', 'F10'], when: (c) => c.k === 'ContextMenu' || c.e.shiftKey,
+    run: () => {
+      const i = visibleIndexOf(S.primary);
+      // Without WebGL screenOf returns nothing; the menu opens mid-window.
+      const p = (i >= 0 && S.view.screenOf(i)) || { x: window.innerWidth / 2, y: window.innerHeight / 2 };
+      menuFor(S.primary, p.x, p.y);
+    },
+    guide: [CHG, 'Menu key', 'Context menu'],
+  });
+  core({ id: 'reread', keys: ['F5'], run: () => { refreshDirs([relPath(S.focus)]); }, guide: [CHG, 'F5', 'Re-read folder'] });
+  core({ id: 'guide', keys: ['?'], run: () => { showGuide(); } });
+
+  ESCAPE.add({ id: 'floating', order: 10, typing: true, active: floatingOpen, clear: closeFloating });
+  ESCAPE.add({ id: 'placing', order: 20, typing: true, active: () => !!S.placing, clear: stopPlacing });
+  ESCAPE.add({
+    id: 'kind-filter', order: 30, active: () => S.kindFilter >= 0,
+    clear: () => {
+      S.kindFilter = -1;
+      repaint();
+      drawLegend();
+    },
+  });
+  ESCAPE.add({ id: 'search', order: 50, active: () => !!S.search, clear: clearQuery });
+  ESCAPE.add({ id: 'selection', order: 70, active: () => S.sel.size > 0 || !!S.primary, clear: () => select(null) });
+
+  // The shared age table, rebuilt with every survey so no feature walks
+  // the tree for it and pressing a key never waits on it.
+  AFTER_SURVEY.add({ id: 'ages', order: 10, run: () => { S.ages = buildAgeTable(S.model.root, Date.now()); } });
+
+  PIN_SOURCES.add({ id: 'search', order: 20, pins: searchPins });
+  PIN_SOURCES.add({ id: 'heavy', order: 30, pins: heavyPins });
+
+  TIP_LINES.add({ id: 'levels', order: 10, lines: (node, c) => (c.type === BOX.CAP && !node.e && node.c.length ? `${node.h + 1} level${node.h ? 's' : ''} inside · opens as you approach · double-click to go` : null) });
+  TIP_LINES.add({ id: 'matches', order: 20, lines: (node, c) => (c.type !== BOX.SCREE && node.d && S.search?.within.has(node) ? `${fmtCount(S.search.within.get(node))} matches inside` : null) });
+  TIP_LINES.add({
+    id: 'placing', order: 30,
+    lines: (node, c) => {
+      if (c.type === BOX.SCREE || !node.d || !S.placing) return null;
+      const why = destinationProblem(S.placing.type, S.placing.nodes, node);
+      return why ? `Cannot place here: ${why}` : 'Click to place here';
+    },
+  });
+  TIP_LINES.add({ id: 'copies', order: 40, lines: (node) => (!node.d && node.dup ? (S.survey?.dupGroups[node.dup - 1]?.verified ? 'Has identical copies' : 'Shares its size with other files') : null) });
+  TIP_LINES.add({
+    id: 'pixels', order: 50,
+    lines: (node) => {
+      if (node.d) return null;
+      const pic = thumbs.info(relPath(node));
+      return pic?.w ? `${fmtCount(pic.w)} × ${fmtCount(pic.h)} px` : null;
+    },
+  });
+
+  INSPECTOR.focus.add({ id: 'title', order: 0, build: (f) => el('div', { class: 'insp-title' }, el('div', { class: 'insp-kind', text: 'You are in' }), el('h3', { class: 'insp-name', text: f.n })) });
+  INSPECTOR.focus.add({
+    id: 'facts', order: 10,
+    build: (f) => el('dl', { class: 'facts' }, fact('Size', el('b', { text: fmtBytes(f.s) })), fact('Contains', `${fmtCount(f.fc)} files · ${fmtCount(f.dc)} folders`), fact('Depth below', `${f.h} level${f.h === 1 ? '' : 's'}`)),
+  });
+  INSPECTOR.focus.add({ id: 'composition', order: 20, build: (f) => composition(f) });
+  INSPECTOR.focus.add({ id: 'reading', order: 90, build: () => [el('div', { class: 'section-title', text: 'Reading the world' }), el('ul', { class: 'reading' }, [...READING].map(readingRow))] });
+
+  INSPECTOR.node.add({ id: 'title', order: 0, build: nodeTitle });
+  INSPECTOR.node.add({ id: 'path', order: 5, build: (node) => el('div', { class: 'insp-path' }, el('code', { text: absPath(node) }), el('button', { class: 'btn btn-small', type: 'button', text: 'Copy', onclick: () => copyPaths([node]) })) });
+  INSPECTOR.node.add({ id: 'facts', order: 10, build: nodeFacts });
+  INSPECTOR.node.add({ id: 'composition', order: 20, build: (node) => (node.d ? composition(node) : null) });
+  INSPECTOR.node.add({ id: 'copies', order: 30, build: nodeCopies });
+  INSPECTOR.node.add({ id: 'actions', order: 50, build: nodeActions });
+  INSPECTOR.node.add({ id: 'preview', order: 60, build: nodePreview });
+
+  READING.add({ id: 'footprint', order: 10, glyph: 'g-foot', title: 'Footprint is storage', text: 'Ground area is share of the parent folder.' });
+  READING.add({ id: 'elevation', order: 20, glyph: 'g-elev', title: 'Elevation is nesting', text: 'Each level stands one step up, one tone lighter, and one scale smaller.' });
+  READING.add({ id: 'height', order: 30, glyph: 'g-height', title: 'Height is recency', text: 'Fresh files stand tall; untouched ones wear down flat.' });
+  READING.add({ id: 'mass', order: 40, glyph: 'g-mass', title: 'Closed mass', text: 'A folder seen from afar. Taller means more levels inside. Approach and it opens.' });
+  READING.add({ id: 'scree', order: 50, glyph: 'g-scree', title: 'Scree', text: 'Items too small to see from here, gathered into one tile. Go closer.' });
+  READING.add({ id: 'sealed', order: 60, glyph: 'g-seal', title: 'Hatched', text: 'Sealed: the folder could not be read.' });
+  READING.add({ id: 'empty', order: 70, glyph: 'g-empty', title: 'Hollow', text: 'An empty folder.' });
+  READING.add({ id: 'pin', order: 80, glyph: 'g-pin', title: 'Pin', text: 'Vermilion marks a search match; ink marks a heavyweight file.' });
+
+  TABS.add({ id: 'contents', order: 10, label: 'Contents', list: true, draw: drawContents });
+  TABS.add({ id: 'findings', order: 20, label: 'Findings', list: true, draw: drawFindings, count: () => (S.search ? S.search.list.length : null), enter: (node) => reveal(node) });
+  TABS.add({ id: 'survey', order: 30, label: 'Survey', draw: drawSurvey });
+  TABS.add({ id: 'journal', order: 40, label: 'Journal', draw: drawJournal });
+}
+
+/* ====================================================================== */
+/* feature modules                                                        */
+/* ====================================================================== */
+
+/**
+ * What install(api) receives: the session state, every registry, and the
+ * controller functions a feature needs to read the tree, travel, redraw
+ * and speak. Frozen, so a feature extends Terrane only through entries.
+ */
+const API = Object.freeze({
+  S, KEY_OWNERS,
+  KEYS, ESCAPE, PIN_SOURCES, TIP_LINES, INSPECTOR, READING, TABS, LAYOUT_OPTS, AFTER_LAYOUT, AFTER_REFRESH, AFTER_SURVEY, QUERY,
+  get, post, runOp, refreshDirs, writable, isAttached, relPath, absPath,
+  relayout, queueLayout, repaint, drawPins, visibleIndexOf,
+  select, setFocus, reveal, activate, describe, say,
+  drawAll, drawTabs, drawLedger, drawInspector, drawLegend, drawStatus, runQuery,
+  el, notice, section, itemButton, actionButton, fact, shareBar, pct,
+});
+
+/** Installs feature modules; one that fails to start is reported and the rest still start. */
+function installFeatures(features) {
+  for (const f of features) {
+    const name = f?.name || 'A feature';
+    const failed = (err) => {
+      console.error(`${name} could not start:`, err);
+      notice(`${name} could not start: ${err?.message || err}`, { kind: 'error' });
+    };
+    try {
+      const r = f.install(API);
+      if (typeof r?.then === 'function') r.then(null, failed);
+    } catch (err) {
+      failed(err);
+    }
+  }
 }
 
 async function start() {
@@ -1622,8 +2112,7 @@ async function start() {
       else if (e.key === 'Enter') {
         e.preventDefault();
         if (S.placing && node.d) transfer(S.placing.type, S.placing.nodes, node);
-        else if (S.tab === 'findings') reveal(node);
-        else activate(node);
+        else (TABS.get(S.tab)?.enter || activate)(node);
       } else if (e.key === ' ') {
         e.preventDefault();
         select(node, { add: true });
@@ -1631,6 +2120,8 @@ async function start() {
       list.draw();
     },
   });
+  installFeatures(FEATURES);
+  drawTabs();
   wireViewport();
   wireControls();
   wireKeys();
@@ -1650,9 +2141,10 @@ async function start() {
   clearTimeout(S.layoutTimer);
   S.layoutTimer = 0;
   S.survey = S.model.survey();
+  runHooks(AFTER_SURVEY, S.survey, { full: true });
   relayout();
   drawAll();
-  window.__terrane = { S, list, scanMs: Math.round(performance.now() - t0) };
+  window.__terrane = { S, list, scanMs: Math.round(performance.now() - t0), api: API, install: installFeatures };
   if (S.model.root.e) notice(`The root could not be read: ${S.model.root.e}`, { kind: 'error' });
   connectEvents();
 }

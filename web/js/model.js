@@ -1,16 +1,24 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Tree Model (Terrane Edition - v1.0)
+ *     - Title: Tree Model (Terrane Edition - v1.2)
  *     - File Name: model.js
  *     - Relative Path: web/js/model.js
  *     - Artifact Type: javascript
- *     - Version: 1.0.0
- *     - Date: 11/09/2026
- *     - Update: Monday, November 9, 2026
+ *     - Version: 1.2.0
+ *     - Date: 11/12/2026
+ *     - Update: Thursday, November 12, 2026
  *     - Author: Dennis 'dendogg' Smaltz
- *     - A.I. Acknowledgement: Anthropic - Claude Fable 5.2
+ *     - A.I. Acknowledgement: Anthropic - Claude Opus 5.5
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
+ *
+ * ✒ Changelog:
+ *     - 1.2.0 (11/12/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
+ *       search grammar takes is: words and name:value tokens from the
+ *       caller, so a feature can make itself searchable; is: looks up
+ *       only real words, so is:constructor no longer matches everything.
+ *     - 1.0.0 (11/09/2026) [dendogg + Anthropic - Claude Fable 5.2] —
+ *       Initial release.
  *
  * ✒ Description:
  *     The in-browser copy of the scanned directory tree. It ingests scan
@@ -30,6 +38,8 @@
  *     - Nine content kinds derived from the extension
  *     - Search grammar: free text, glob, ext:, kind:, is:, size and age
  *       comparisons, all combinable
+ *     - Extensible search: callers add is: words and name:value tokens
+ *       without changing the grammar here; built-in ones cannot be replaced
  *     - Survey: largest files, heavyweight files, empty folders, unreadable
  *       folders, symbolic links and duplicate candidates grouped by size
  *     - Formatting helpers for bytes, counts, dates and ages
@@ -39,6 +49,8 @@
  *     model.ingest(records, idMap, model.root);   // streaming scan
  *     const { added } = model.reconcile(dir, records);  // after a change
  *     const hits = runSearch(model, parseQuery('ext:psd >50mb older:1y'));
+ *     parseQuery('is:benchmark', { is: { benchmark: (n) => marked.has(n) } });
+ *     parseQuery('session:2', { prefix: { session: (v) => inWindow(v) } });
  *
  * ✒ Examples:
  *     report            name contains "report"
@@ -348,7 +360,17 @@ export class Model {
 const SIZE_UNIT = { b: 1, k: 1024, kb: 1024, m: 1024 ** 2, mb: 1024 ** 2, g: 1024 ** 3, gb: 1024 ** 3, t: 1024 ** 4, tb: 1024 ** 4 };
 const AGE_UNIT = { h: 1 / 24, d: 1, w: 7, mo: 30.4, m: 30.4, y: 365.25 };
 
-export function parseQuery(text) {
+/**
+ * Turns a query into a predicate over nodes, or null when it is empty.
+ * ext.is adds is:<word> tests ({ word: (node) => boolean }); ext.prefix
+ * adds name:value tokens ({ name: (value, raw) => predicate }), where
+ * value is lower-cased and raw keeps its case. A predicate that is not a
+ * function matches nothing. Built-in words and prefixes (ext, kind, is,
+ * older, newer) cannot be replaced.
+ */
+export function parseQuery(text, ext = {}) {
+  const isExt = ext?.is || {};
+  const prefixExt = ext?.prefix || {};
   const tests = [];
   const terms = [];
   for (const raw of text.trim().split(/\s+/).filter(Boolean)) {
@@ -370,13 +392,18 @@ export function parseQuery(text) {
         dir: (n) => !!n.d, folder: (n) => !!n.d, file: (n) => !n.d,
         sealed: (n) => !!n.d && !!n.e,
       };
-      tests.push(table[what] || (() => false));
+      // Own keys only: "is:constructor" is not a test.
+      const test = Object.hasOwn(table, what) ? table[what] : Object.hasOwn(isExt, what) ? isExt[what] : null;
+      tests.push(typeof test === 'function' ? test : () => false);
     } else if ((m = tok.match(/^([<>])(=?)(\d+(?:\.\d+)?)(b|kb?|mb?|gb?|tb?)?$/))) {
       const bytes = Number(m[3]) * (SIZE_UNIT[m[4] || 'b']);
       tests.push(m[1] === '>' ? (n) => n.s > bytes : (n) => n.s < bytes);
     } else if ((m = tok.match(/^(older|newer):(\d+(?:\.\d+)?)(h|d|w|mo|m|y)$/))) {
       const cutoff = Date.now() - Number(m[2]) * AGE_UNIT[m[3]] * 86400000;
       tests.push(m[1] === 'older' ? (n) => (n.d ? n.mm : n.m) < cutoff : (n) => (n.d ? n.mm : n.m) > cutoff);
+    } else if ((m = tok.match(/^([a-z][\w-]*):(.+)$/)) && Object.hasOwn(prefixExt, m[1])) {
+      const test = prefixExt[m[1]](m[2], raw.slice(m[1].length + 1));
+      tests.push(typeof test === 'function' ? test : () => false);
     } else if (tok.includes('*') || tok.includes('?')) {
       const re = new RegExp('^' + tok.replace(/[.+^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*').replace(/\?/g, '.') + '$', 'i');
       tests.push((n) => re.test(n.n));

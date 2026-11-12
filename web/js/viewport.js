@@ -1,21 +1,40 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: 3D Viewport (Terrane Edition - v1.0)
+ *     - Title: 3D Viewport (Terrane Edition - v1.2)
  *     - File Name: viewport.js
  *     - Relative Path: web/js/viewport.js
  *     - Artifact Type: javascript
- *     - Version: 1.0.0
- *     - Date: 11/09/2026
- *     - Update: Monday, November 9, 2026
+ *     - Version: 1.2.0
+ *     - Date: 11/12/2026
+ *     - Update: Thursday, November 12, 2026
  *     - Author: Dennis 'dendogg' Smaltz
- *     - A.I. Acknowledgement: Anthropic - Claude Fable 5.2
+ *     - A.I. Acknowledgement: Anthropic - Claude Opus 5.5
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
+ *
+ * ✒ Changelog:
+ *     - 1.2.0 (11/11/2026) [dendogg + Anthropic - Claude Opus 5.5] — A
+ *       layout larger than the instance buffers draws up to their capacity
+ *       and says so through on.notice, instead of throwing a RangeError.
+ *       Shader style branches take their codes from STYLE and are bounded
+ *       on both sides, so an unassigned code draws plain. Box and pin
+ *       buffers upload only the part that is drawn, not the whole array,
+ *       and during a transition the shadow map is redrawn on every fourth
+ *       frame at most and on the frame the boxes arrive. Duplicate ties
+ *       become the set 'dup' in one relation-line layer that any named set
+ *       can draw into: one preallocated buffer uploaded by range instead of
+ *       a new one at every repaint, rewritten around the floating origin at
+ *       every layout, hidden while boxes travel, with dashes of a constant
+ *       size on screen and chevrons for direction. A set's arc segments
+ *       and lift are made whole and finite, so one bad set cannot blank
+ *       the others; frame and screenOf stop at the drawn count.
+ *     - 1.0.0 (11/09/2026) [dendogg + Anthropic - Claude Fable 5.2] —
+ *       Initial release.
  *
  * ✒ Description:
  *     Draws a layout as a world you travel through and handles everything
  *     spatial: the free camera, flight, picking, transitions between
- *     layouts, labels, pins, duplicate tie lines and selection frames. It
+ *     layouts, labels, pins, relation lines and selection frames. It
  *     knows nothing about the filesystem; it is handed boxes and paint and
  *     reports pointer events as box indices.
  *
@@ -44,12 +63,21 @@
  *       text is real text: selectable, crisp and readable by assistive
  *       technology
  *     - Honors prefers-reduced-motion by cutting flights and transitions
+ *     - A layout with more boxes than the buffers hold draws as many as
+ *       fit and states how many were left out; it never throws
+ *     - Relation lines in named sets (duplicate ties first) share one
+ *       draw call: straight or arched, solid or dashed at a constant size
+ *       on screen at any depth, with optional direction chevrons
  *
  * ✒ Usage Instructions:
  *     const view = new Viewport({ canvas, labelLayer });
  *     view.on = { hover, click, dblclick, context };   // (index, event)
+ *     view.on.notice = (sentence) => ...;  // something the viewer should know
  *     view.setLayout(layout, paint);       // animated when keys overlap
  *     view.setPaint(paint);                // recolour only
+ *     view.setRelation(key, { color, dashed, lift, arrows, legs });
+ *     view.clearRelation(key);             // legs: ax ay az bx by bz, world
+ *     view.setTies(from, toIndices);       // the set 'dup', garnet arcs
  *     view.frame(index);  view.overview();  view.eye;  view.look();
  *
  * ✒ Other Important Information:
@@ -57,22 +85,191 @@
  *       layout.js, theme.js
  *     - Compatible platforms: browsers with WebGL2
  *     - Performance: 70,000 boxes is the layout budget; transitions write
- *       matrices directly into the instance buffer
+ *       matrices directly into the instance buffer, and every buffer
+ *       upload covers only the boxes, pins and line vertices drawn; the
+ *       4096 x 4096 shadow map is redrawn on every fourth frame of a
+ *       transition; relation lines hold 40,000 vertices in all
  *     - Limitations: touch gestures are limited to one-finger slide and
  *       tap; shadows soften at very small scales
  * ----------------------------------------------------------------------------
  */
 
 import * as THREE from '../vendor/three/three.module.js';
-import { BOX, WORLD } from './layout.js';
+import { BOX, STYLE, WORLD } from './layout.js';
 
 const FOV = 44;
 const HORIZON = 0xe9eeea;
 const ZENITH = 0xc3d2d1;
 import { THEME } from './theme.js';
 
+// Instance buffer size. buildLayout keeps every layout within MAX_BOXES,
+// which is below this.
 const CAPACITY = 72000;
 const PIN_CAPACITY = 3000;
+// The sun's 4096 x 4096 shadow map costs more to draw than the view does.
+// While boxes travel it is redrawn on every fourth frame at most, and again
+// on the frame where they arrive.
+const SHADOW_EVERY = 4;
+const fmtCount = (n) => n.toLocaleString('en-US');
+
+/**
+ * Marks the first `count` elements of a buffer attribute for the next
+ * upload. With no range set, three.js sends the whole array, 4.6 MB for the
+ * box matrices, however few boxes are drawn. Every write here starts at
+ * element 0, so each attribute keeps one range and widens it. A count of 0
+ * marks nothing: WebGL2 reads a zero length as "to the end of the array",
+ * and nothing past the count is drawn.
+ */
+function upload(attr, count) {
+  if (count <= 0) return;
+  const r = attr.updateRanges;
+  if (r.length === 1 && r[0].start === 0) r[0].count = Math.max(r[0].count, count);
+  else attr.addUpdateRange(0, count);
+  attr.needsUpdate = true;
+}
+
+// Relation lines: every named set (duplicate ties, routes, twins) shares one
+// preallocated LineSegments, so the layer is one draw call whatever is in it.
+const REL_CAPACITY = 40000; // vertices, two per segment
+const ARC_SEGMENTS = 28; // segments in a lifted leg, as the duplicate ties always had
+const MIN_ARC = 4; // the fewest an arc keeps when the sets need more room than there is
+const MAX_ARC = 64; // the most a set may ask for, so one set cannot take the shared buffer
+// Any value a caller passes becomes a whole count in [1, MAX_ARC]; junk gets the default.
+const arcSegments = (v) => {
+  const n = Math.floor(Number(v));
+  return Number.isFinite(n) ? Math.min(MAX_ARC, Math.max(1, n)) : ARC_SEGMENTS;
+};
+const ARROW = 0.06; // chevron arm, as a share of its leg's chord
+const ARROW_COS = Math.cos((28 * Math.PI) / 180); // arms open 28 degrees either side
+const ARROW_SIN = Math.sin((28 * Math.PI) / 180);
+const DASH_PX = 11; // dash period on screen, in pixels, up to twice that
+
+/**
+ * Writes every relation set as line segments into flat vertex arrays,
+ * relative to an origin. A set is { color, dashed, lift, arrows, segments,
+ * legs }, where legs holds six world coordinates per leg: ax ay az bx by bz.
+ * A lifted leg is a quadratic arc whose control point rises `lift` times
+ * the chord above the higher end, which is how the duplicate ties were
+ * always drawn; an unlifted leg is one straight segment. Distance along a
+ * dashed leg starts at 0 at its first end; a solid leg and every chevron
+ * carry -1, which the shader never breaks. When the sets need more room
+ * than `capacity` vertices, the smallest sets are drawn whole and the rest
+ * share what is left, first with fewer arc segments, then by leaving their
+ * last legs out.
+ *
+ * @returns {{ count: number, legs: number, leftOut: number }} vertices
+ *   written, legs drawn, legs left out
+ */
+export function relationVertices(sets, origin, pos, col, dist, capacity) {
+  const plan = [];
+  for (const s of sets) {
+    const m = Math.floor(s.legs.length / 6);
+    if (!m) continue;
+    const lifted = s.lift > 0;
+    const seg = lifted ? arcSegments(s.segments) : 1;
+    const extra = s.arrows ? 2 : 0;
+    plan.push({ s, m, lifted, seg, extra, need: m * (seg + extra), take: 0 });
+  }
+  plan.sort((a, b) => a.need - b.need);
+  let room = Math.floor(capacity / 2);
+  plan.forEach((p, i) => {
+    const budget = Math.min(p.need, Math.floor(room / (plan.length - i)));
+    if (p.need > budget && p.lifted) p.seg = Math.max(MIN_ARC, Math.min(p.seg, Math.floor(budget / p.m) - p.extra));
+    p.take = Math.min(p.m, Math.floor(budget / (p.seg + p.extra)));
+    room -= p.take * (p.seg + p.extra);
+  });
+
+  const { x: ox, y: oy, z: oz } = origin;
+  let v = 0;
+  let legs = 0;
+  let leftOut = 0;
+  let r = 0, g = 0, b = 0;
+  const put = (x, y, z, d) => {
+    pos[v * 3] = x - ox; pos[v * 3 + 1] = y - oy; pos[v * 3 + 2] = z - oz;
+    col[v * 3] = r; col[v * 3 + 1] = g; col[v * 3 + 2] = b;
+    dist[v++] = d;
+  };
+  // Largest first, so the small sets (a selection's ties) draw on top.
+  for (let k = plan.length - 1; k >= 0; k--) {
+    const { s, m, seg, extra, take } = plan[k];
+    leftOut += m - take;
+    [r, g, b] = linear(s.color);
+    const L = s.legs;
+    const lift = s.lift > 0 ? s.lift : 0;
+    for (let i = 0, o = 0; i < take; i++, o += 6) {
+      const ax = L[o], ay = L[o + 1], az = L[o + 2], bx = L[o + 3], by = L[o + 4], bz = L[o + 5];
+      const chord = Math.hypot(bx - ax, by - ay, bz - az);
+      if (!(chord > 0 && chord < Infinity)) continue;
+      const mx = (ax + bx) / 2, my = Math.max(ay, by) + chord * lift, mz = (az + bz) / 2;
+      let px = ax, py = ay, pz = az, d = 0;
+      for (let j = 1; j <= seg; j++) {
+        const t = j / seg, u = 1 - t;
+        const qx = u * u * ax + 2 * u * t * mx + t * t * bx;
+        const qy = u * u * ay + 2 * u * t * my + t * t * by;
+        const qz = u * u * az + 2 * u * t * mz + t * t * bz;
+        const nd = d + Math.hypot(qx - px, qy - py, qz - pz);
+        put(px, py, pz, s.dashed ? d : -1);
+        put(qx, qy, qz, s.dashed ? nd : -1);
+        px = qx; py = qy; pz = qz; d = nd;
+      }
+      if (extra) {
+        // A chevron at the middle of the leg, pointing from a to b, flat to
+        // the ground so it reads from above.
+        const cx = mx, cz = mz;
+        const cy = seg > 1 ? 0.25 * ay + 0.5 * my + 0.25 * by : (ay + by) / 2;
+        const ux = (bx - ax) / chord, uy = (by - ay) / chord, uz = (bz - az) / chord;
+        let sx = -uz, sz = ux;
+        const sl = Math.hypot(sx, sz);
+        if (sl > 1e-9) { sx /= sl; sz /= sl; } else { sx = 1; sz = 0; }
+        const h = chord * ARROW;
+        const tx = cx + ux * h * 0.5, ty = cy + uy * h * 0.5, tz = cz + uz * h * 0.5;
+        const back = h * ARROW_COS, wide = h * ARROW_SIN;
+        for (const side of [1, -1]) {
+          put(tx, ty, tz, -1);
+          put(tx - ux * back + sx * wide * side, ty - uy * back, tz - uz * back + sz * wide * side, -1);
+        }
+      }
+      legs++;
+    }
+  }
+  return { count: v, legs, leftOut };
+}
+
+/**
+ * The relation lines' material: LineDashedMaterial with vertex colours,
+ * its world-unit dash replaced by one of a constant size on screen. The
+ * period is the world length of DASH_PX pixels where the fragment is,
+ * rounded up to a power of two, so it changes by octaves instead of
+ * crawling while the eye moves, and keeps its phase at each leg's start.
+ * A negative distance is a solid line. If the expression it replaces is
+ * ever missing, the dash defaults below make every line solid.
+ */
+function relationMaterial() {
+  const mat = new THREE.LineDashedMaterial({
+    color: 0xffffff, vertexColors: true, dashSize: 1e30, gapSize: 0,
+    transparent: true, opacity: 0.9, depthTest: false, fog: false,
+  });
+  mat.onBeforeCompile = (shader) => {
+    shader.fragmentShader = shader.fragmentShader
+      .replace('#include <common>', `#include <common>
+        bool relationGap( float d ) {
+          float fw = fwidth( d );
+          float per = exp2( ceil( log2( max( fw, 1e-30 ) * ${DASH_PX.toFixed(1)} ) ) );
+          return d >= 0.0 && fw > 0.0 && fract( d / per ) > 0.5;
+        }`)
+      .replace('mod( vLineDistance, totalSize ) > dashSize', 'relationGap( vLineDistance )');
+  };
+  return mat;
+}
+
+const sameRelation = (a, b) => a && a.color === b.color && a.dashed === b.dashed && a.lift === b.lift
+  && a.arrows === b.arrows && a.segments === b.segments && a.legs.length === b.legs.length
+  && a.legs.every((x, i) => x === b.legs[i]);
+
+// GLSL test for one STYLE code. aStyle is a whole number per box; bounding
+// each branch on both sides means a code with no branch draws plain
+// instead of borrowing another convention.
+const styleIs = (code) => `(vStyle > ${code - 0.5} && vStyle < ${code + 0.5})`;
 const reduceMotion = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 const ease = (t) => (t < 0.5 ? 4 * t * t * t : 1 - (-2 * t + 2) ** 3 / 2);
 const srgb = (hex) => new THREE.Vector3(((hex >> 16) & 255) / 255, ((hex >> 8) & 255) / 255, (hex & 255) / 255);
@@ -133,20 +330,20 @@ function boxMaterial() {
           float hw = max(fwidth(hc), 1e-5);
           float per = exp2(ceil(log2(hw * 7.0)));
           float edgeW = 1.0;
-          if (vStyle > 0.5 && vStyle < 1.5) {
+          if ${styleIs(STYLE.HATCH)} {
             float t = abs(fract(hc / per) - 0.5);
             col = mix(col, uInk, (1.0 - smoothstep(0.09, 0.09 + hw / per, t)) * 0.7);
-          } else if (vStyle > 1.5 && vStyle < 2.5) {
+          } else if ${styleIs(STYLE.HOLLOW)} {
             col = mix(uPaper, col, 0.1);
             edgeW = 2.0;
-          } else if (vStyle > 2.5 && vStyle < 3.5) {
+          } else if ${styleIs(STYLE.STIPPLE)} {
             vec2 cell = fract(vWorldP.xz / per) - 0.5;
             col = mix(col, uInk, (1.0 - smoothstep(0.14, 0.14 + hw / per, length(cell))) * 0.5);
-          } else if (vStyle > 3.5 && vStyle < 4.5) {
+          } else if ${styleIs(STYLE.BANDS)} {
             float h2 = vWorldP.x - vWorldP.z + vWorldP.y;
             float t = abs(fract(h2 / (per * 2.0)) - 0.5);
             col = mix(col, uPaper, (1.0 - smoothstep(0.12, 0.12 + hw / per, t)) * 0.85);
-          } else if (vStyle > 4.5) {
+          } else if ${styleIs(STYLE.HALF_BANDS)} {
             float t = fract(hc / (per * 2.0));
             col = mix(col, uPaper, smoothstep(0.5 - hw / per, 0.5, t) * (1.0 - smoothstep(1.0 - hw / per, 1.0, t)) * 0.6);
           }
@@ -171,6 +368,7 @@ export class Viewport {
     this.on = {};
     this.layout = null;
     this.n = 0;
+    this.leftOut = 0;
 
     const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance', logarithmicDepthBuffer: true });
     renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
@@ -270,6 +468,12 @@ export class Viewport {
     scene.add(pins);
     this.pins = pins;
     this.pinList = [];
+    // three.js makes each buffer from the whole array on first use but
+    // leaves a range marked before then in place; clearing it there keeps
+    // the next upload to what changed since.
+    for (const a of [mesh.instanceMatrix, mesh.instanceColor, this.aStyle, this.aDim, pins.instanceMatrix, pins.instanceColor]) {
+      a.onUpload(() => a.clearUpdateRanges());
+    }
 
     const frameGeo = new THREE.EdgesGeometry(new THREE.BoxGeometry(1, 1, 1));
     const mkFrame = (color, opacity, depthTest = true) => {
@@ -287,10 +491,23 @@ export class Viewport {
     this.selIndex = -1;
     this.hoverIndex = -1;
 
-    this.ties = new THREE.LineSegments(new THREE.BufferGeometry(), new THREE.LineBasicMaterial({ color: THEME.garnet, depthTest: false, transparent: true, opacity: 0.9, fog: false }));
-    this.ties.renderOrder = 9;
-    this.ties.frustumCulled = false;
-    scene.add(this.ties);
+    // One layer for every set of relation lines. Its buffers are made once
+    // and uploaded by range; endpoints are kept per set in 64-bit world
+    // coordinates and written relative to the floating origin.
+    const relGeo = new THREE.BufferGeometry();
+    for (const [name, size] of [['position', 3], ['color', 3], ['lineDistance', 1]]) {
+      const a = new THREE.BufferAttribute(new Float32Array(REL_CAPACITY * size), size).setUsage(THREE.DynamicDrawUsage);
+      a.onUpload(() => a.clearUpdateRanges());
+      relGeo.setAttribute(name, a);
+    }
+    relGeo.setDrawRange(0, 0);
+    this.relations = new THREE.LineSegments(relGeo, relationMaterial());
+    this.relations.renderOrder = 9;
+    this.relations.frustumCulled = false;
+    scene.add(this.relations);
+    this.relationSets = new Map();
+    this.relationsLeftOut = 0;
+    this.relationsStale = false;
 
     this.camera = new THREE.PerspectiveCamera(FOV, 1, 0.01, 30000);
     this.cam = { x: 0, y: 900, z: 1200, yaw: 0, pitch: -0.6 };
@@ -298,6 +515,9 @@ export class Viewport {
     this.step = 9;
     this.flight = null;
     this.transition = null;
+    // Frames drawn since the shadow map was last rendered, counted up to
+    // SHADOW_EVERY.
+    this.shadowAge = SHADOW_EVERY;
     this.keys = new Set();
     this.lastTick = 0;
     this.raf = 0;
@@ -469,7 +689,8 @@ export class Viewport {
 
   /** Flies to a vantage in front of a box, keeping the current heading. */
   frame(index) {
-    if (index < 0 || !this.layout || index >= this.layout.n) return this.overview();
+    // Bounded by what is drawn: a clamped layout holds boxes that are not on screen.
+    if (index < 0 || !this.layout || index >= this.n) return this.overview();
     const g = this.layout.geo;
     const o = index * 6;
     const topY = Math.max(this.layout.top[index], g[o + 1] + g[o + 4] / 2);
@@ -492,18 +713,27 @@ export class Viewport {
 
   setLayout(layout, paint, { animate = true } = {}) {
     const prev = this.layout;
-    const n = layout.n;
+    const prevN = this.n;
+    // The buffers hold CAPACITY boxes. A larger layout draws the first
+    // CAPACITY and says so, rather than throwing from a typed-array copy.
+    const n = Math.min(layout.n, CAPACITY);
+    const left = layout.n - n;
     const g = layout.geo;
     const from = this.from;
     const doAnim = animate && prev && !reduceMotion();
     this.origin = { x: this.cam.x, y: this.cam.y, z: this.cam.z };
+    // A box index from the previous layout, if that box was drawn.
+    const drawnBefore = (k) => {
+      const j = prev.index.get(k);
+      return j < prevN ? j : undefined;
+    };
     if (doAnim) {
       // Where each box is right now (mid-transition included).
-      const prevCur = this.cur.slice(0, prev.n * 6);
+      const prevCur = this.cur.slice(0, prevN * 6);
       let moved = false;
       for (let i = 0; i < n; i++) {
         const o = i * 6;
-        let j = prev.index.get(layout.key[i]);
+        let j = drawnBefore(layout.key[i]);
         if (j !== undefined) {
           for (let k = 0; k < 6; k++) {
             from[o + k] = prevCur[j * 6 + k];
@@ -518,7 +748,7 @@ export class Viewport {
         j = undefined;
         let a = -1;
         while (anc && j === undefined) {
-          j = prev.index.get(anc);
+          j = drawnBefore(anc);
           a = layout.index.get(anc) ?? -1;
           anc = anc.p;
         }
@@ -538,8 +768,13 @@ export class Viewport {
           from[o + 3] = g[o + 3]; from[o + 4] = g[o + 4] * 0.001; from[o + 5] = g[o + 5];
         }
       }
-      if (moved || prev.n !== n) this.transition = { start: performance.now(), ms: 460 };
-      else {
+      if (moved || prevN !== n) {
+        // Starting from rest, the first frame redraws the shadow map, so
+        // the shadows of boxes that left go with them; a transition that
+        // replaces a running one keeps the running one's cadence.
+        if (!this.transition) this.shadowAge = SHADOW_EVERY;
+        this.transition = { start: performance.now(), ms: 460 };
+      } else {
         this.transition = null;
         this.cur.set(g.subarray(0, n * 6));
         this.#writeMatrices(n);
@@ -550,12 +785,19 @@ export class Viewport {
       this.#writeMatrices(n);
     }
     this.shadowStale = true;
+    // The origin moved, so the relation lines are written again around it.
+    this.relationsStale = true;
     this.layout = layout;
     this.n = n;
     this.mesh.count = n;
     this.selIndex = -1;
     this.hoverIndex = -1;
     this.setPaint(paint);
+    // Said once when it starts, not at every rebuild while it lasts.
+    if (left > 0 && !this.leftOut) {
+      this.on.notice?.(`Only ${fmtCount(CAPACITY)} of the ${fmtCount(layout.n)} blocks in this view can be drawn, so ${fmtCount(left)} are left out. A coarser grain or a higher view draws them all.`);
+    }
+    this.leftOut = left;
   }
 
   #writeMatrices(n) {
@@ -572,7 +814,7 @@ export class Viewport {
     }
     this.mesh.position.set(ox, oy, oz);
     this.mesh.updateMatrixWorld();
-    this.mesh.instanceMatrix.needsUpdate = true;
+    upload(this.mesh.instanceMatrix, n * 16);
   }
 
   setPaint({ color, style, dim }) {
@@ -584,20 +826,21 @@ export class Viewport {
     }
     this.aStyle.array.set(style.subarray(0, n));
     this.aDim.array.set(dim.subarray(0, n));
-    this.mesh.instanceColor.needsUpdate = true;
-    this.aStyle.needsUpdate = true;
-    this.aDim.needsUpdate = true;
+    upload(this.mesh.instanceColor, n * 3);
+    upload(this.aStyle, n);
+    upload(this.aDim, n);
     this.invalidate();
   }
 
   setPins(list) {
-    this.pinList = list.slice(0, PIN_CAPACITY);
+    const drawn = this.leftOut ? list.filter((p) => p.i < this.n) : list;
+    this.pinList = drawn.slice(0, PIN_CAPACITY);
     const col = this.pins.instanceColor.array;
     this.pinList.forEach((p, k) => {
       const v = linear(p.color);
       col[k * 3] = v[0]; col[k * 3 + 1] = v[1]; col[k * 3 + 2] = v[2];
     });
-    this.pins.instanceColor.needsUpdate = true;
+    upload(this.pins.instanceColor, this.pinList.length * 3);
     this.pins.count = this.pinList.length;
     this.invalidate();
   }
@@ -615,29 +858,67 @@ export class Viewport {
       this.pins.setMatrixAt(k, m);
     });
     this.pins.position.set(this.origin.x, this.origin.y, this.origin.z);
-    this.pins.instanceMatrix.needsUpdate = true;
+    upload(this.pins.instanceMatrix, this.pinList.length * 16);
   }
 
-  setTies(fromIndex, toIndices) {
-    const pts = [];
-    if (fromIndex >= 0 && this.layout) {
-      const g = this.layout.geo;
-      const og = this.origin;
-      this.ties.position.set(og.x, og.y, og.z);
-      const top = (i) => new THREE.Vector3(g[i * 6] - og.x, g[i * 6 + 1] + g[i * 6 + 4] / 2 - og.y, g[i * 6 + 2] - og.z);
-      const a = top(fromIndex);
-      for (const j of toIndices) {
-        const b = top(j);
-        const lift = Math.max(a.y, b.y) + a.distanceTo(b) * 0.3;
-        const mid = new THREE.Vector3((a.x + b.x) / 2, lift, (a.z + b.z) / 2);
-        const curve = new THREE.QuadraticBezierCurve3(a, mid, b).getPoints(28);
-        for (let k = 0; k < curve.length - 1; k++) pts.push(curve[k].x, curve[k].y, curve[k].z, curve[k + 1].x, curve[k + 1].y, curve[k + 1].z);
-      }
-    }
-    this.ties.geometry.dispose();
-    this.ties.geometry = new THREE.BufferGeometry();
-    this.ties.geometry.setAttribute('position', new THREE.Float32BufferAttribute(pts, 3));
+  /**
+   * Draws a named set of relation lines, replacing what the set held.
+   * `legs` holds six world coordinates per leg (ax ay az bx by bz); `lift`
+   * raises each leg into an arc by that share of its chord; `dashed` breaks
+   * it into dashes of a constant size on screen; `arrows` puts a chevron at
+   * its middle pointing from a to b. Every set shares one draw call. The
+   * layer is hidden while boxes travel, because endpoints are where boxes
+   * end up, not where they are mid-way.
+   */
+  setRelation(key, { color = THEME.ink, dashed = false, lift = 0, arrows = false, segments = ARC_SEGMENTS, legs = [] } = {}) {
+    const m = Math.floor(legs.length / 6);
+    if (!m) return this.clearRelation(key);
+    const flat = Float64Array.from(legs);
+    const h = Number(lift);
+    const set = { color, dashed: !!dashed, lift: Number.isFinite(h) ? h : 0, arrows: !!arrows, segments: arcSegments(segments), legs: flat.length === m * 6 ? flat : flat.slice(0, m * 6) };
+    // A repaint hands the same set again; nothing is rewritten for it.
+    if (sameRelation(this.relationSets.get(key), set)) return m;
+    this.relationSets.set(key, set);
+    this.relationsStale = true;
     this.invalidate();
+    return m;
+  }
+
+  clearRelation(key) {
+    if (this.relationSets.delete(key)) {
+      this.relationsStale = true;
+      this.invalidate();
+    }
+    return 0;
+  }
+
+  #writeRelations() {
+    const geo = this.relations.geometry;
+    const { position, color, lineDistance } = geo.attributes;
+    const r = relationVertices(this.relationSets.values(), this.origin, position.array, color.array, lineDistance.array, REL_CAPACITY);
+    geo.setDrawRange(0, r.count);
+    upload(position, r.count * 3);
+    upload(color, r.count * 3);
+    upload(lineDistance, r.count);
+    this.relations.position.set(this.origin.x, this.origin.y, this.origin.z);
+    this.relationsLeftOut = r.leftOut;
+    this.relationsStale = false;
+  }
+
+  /** Top centre of a box where the layout puts it, in world coordinates. */
+  #topOf(i) {
+    const g = this.layout.geo;
+    const o = i * 6;
+    return [g[o], g[o + 1] + g[o + 4] / 2, g[o + 2]];
+  }
+
+  /** Duplicate ties: garnet arcs from one box to others, the relation set 'dup'. */
+  setTies(fromIndex, toIndices) {
+    if (!this.layout || fromIndex < 0 || fromIndex >= this.n) return this.clearRelation('dup');
+    const a = this.#topOf(fromIndex);
+    const legs = [];
+    for (const j of toIndices) if (j >= 0 && j < this.n && j !== fromIndex) legs.push(...a, ...this.#topOf(j));
+    return this.setRelation('dup', { color: THEME.garnet, lift: 0.3, legs });
   }
 
   setSelected(index) {
@@ -827,7 +1108,7 @@ export class Viewport {
       const files = [];
       const limit = this.w * 1.6;
       const hazeLimit = this.scene.fog.far * 0.55;
-      for (let i = 1, o = 6; i < L.n; i++, o += 6) {
+      for (let i = 1, o = 6; i < this.n; i++, o += 6) {
         if (L.type[i] === BOX.SCREE) continue;
         const dist = this.#distTo(g[o], g[o + 1], g[o + 2]);
         if (dist > hazeLimit) continue;
@@ -881,11 +1162,12 @@ export class Viewport {
 
   /** Screen position of the top of a box, for anchoring menus. */
   screenOf(index) {
+    const r0 = this.canvas.getBoundingClientRect();
+    if (index < 0 || !this.layout || index >= this.n) return { x: r0.left + r0.width / 2, y: r0.top + r0.height / 2 };
     const g = this.layout.geo;
     const o = index * 6;
     const v = new THREE.Vector3(g[o], g[o + 1] + g[o + 4] / 2, g[o + 2]).project(this.camera);
-    const r = this.canvas.getBoundingClientRect();
-    return { x: r.left + (v.x * 0.5 + 0.5) * r.width, y: r.top + (-v.y * 0.5 + 0.5) * r.height };
+    return { x: r0.left + (v.x * 0.5 + 0.5) * r0.width, y: r0.top + (-v.y * 0.5 + 0.5) * r0.height };
   }
 
   /* ---------- loop ---------- */
@@ -912,8 +1194,12 @@ export class Viewport {
     const tz = Math.max(-500, Math.min(500, c.z + f[2] * reach * 0.6));
     const key = `${Math.round(tx / (reach * 0.15))}|${Math.round(tz / (reach * 0.15))}|${Math.round(Math.log2(reach) * 3)}`;
     if (key === this.sunKey && !this.shadowStale) return;
+    // While boxes travel, the sun and its shadow map wait their turn. The
+    // frame they arrive on has no transition left, so it always redraws.
+    if (this.transition && this.shadowAge < SHADOW_EVERY) return;
     this.sunKey = key;
     this.shadowStale = false;
+    this.shadowAge = 0;
     const sun = this.sun;
     const half = reach * 1.25;
     sun.target.position.set(tx, c.y - this.alt, tz);
@@ -965,7 +1251,10 @@ export class Viewport {
     this.#placeFrame(this.selFrame, this.selIndex, 3);
     this.#placeFrame(this.selFrame2, this.selIndex, 8);
     this.#placeFrame(this.hoverFrame, this.hoverIndex === this.selIndex ? -1 : this.hoverIndex, 2);
+    if (this.relationsStale) this.#writeRelations();
+    this.relations.visible = !this.transition;
     this.renderer.render(this.scene, this.camera);
+    if (this.shadowAge < SHADOW_EVERY) this.shadowAge++;
     this.#updateLabels();
     this.on.moved?.(!again);
     if (again) this.invalidate();

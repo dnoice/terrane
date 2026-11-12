@@ -15,6 +15,7 @@
     "snapshot": "node tools/snapshot.mjs",
     "thumbs": "python tools/thumbs.py",
     "test": "node tools/smoke-test.mjs",
+    "ui-check": "node tools/ui-check.mjs",
     "fixture": "node tools/make-fixture.mjs"
   }
 }
