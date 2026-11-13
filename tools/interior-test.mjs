@@ -2,16 +2,24 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Interior Test (Terrane Edition - v1.0)
+ *     - Title: Interior Test (Terrane Edition - v1.1)
  *     - File Name: interior-test.mjs
  *     - Relative Path: tools/interior-test.mjs
  *     - Artifact Type: test
- *     - Version: 1.0.0
+ *     - Version: 1.1.0
  *     - Date: 11/13/2026
  *     - Update: Friday, November 13, 2026
  *     - Author: Dennis 'dendogg' Smaltz
  *     - A.I. Acknowledgement: Anthropic - Claude Opus 5.5
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
+ *
+ * ✒ Changelog:
+ *     - 1.1.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] —
+ *       Twins after a refresh equal a whole walk and walk only the
+ *       folders read again; time inside an open archive is counted from
+ *       its own entries (tableOf, figures, crossedAt).
+ *     - 1.0.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] —
+ *       Initial release.
  *
  * ✒ Description:
  *     Runs the browser's archive interiors module (web/js/interior.js) in
@@ -579,6 +587,102 @@ section('install(api): open, lock, close');
   S.info.snapshot = null;
   const said = [...log.notices, ...log.said];
   check(`what it said uses "changed", never "created", "arrived" or "added" (${said.length} sentences)`, !said.some((s) => WORDS.test(s)), said.filter((s) => WORDS.test(s)).join(' | '));
+}
+
+/* ---------- twins after a refresh, and time inside an archive ---------- */
+
+section('Twins after a refresh: the folders read again, not the whole tree');
+{
+  // 200,000 files in 2,000 folders, site.zip at the root, and copies of
+  // its files (by name and size) in d3 and d5.
+  const big = new Model('big');
+  const recs = [[0, -1, 'big', NOW, 0, ['site.zip', 1708, NOW, 0]]];
+  for (let d = 1; d <= 2000; d++) {
+    const files = [];
+    for (let k = 0; k < 100; k++) files.push(`f${k}.bin`, 1000 + ((d * 7 + k) % 5000), NOW - k * DAY, 0);
+    if (d === 3 || d === 5) for (const [n, s] of SITE) files.push(n.split('/').pop(), s, NOW, 0);
+    recs.push([d, 0, `d${d}`, NOW, 0, files]);
+  }
+  big.ingest(recs, [], big.root);
+  const host = find(big, 'site.zip');
+  const listing = (p) => {
+    const t = siteListing('site.zip');
+    return { format: 'zip', name: 'site.zip', size: host.s, mtime: host.m, files: t.files, folders: t.folders, unpacked: t.unpacked, packed: t.packed,
+      locked: 0, escapes: 0, escaped: [], renamed: 0, partial: null, records: t.records, path: p };
+  };
+  const { api, S, lists } = standIn(big, listing);
+  X.install(api);
+  S.primary = host;
+  S.sel = new Set([host]);
+  await lists.KEYS[0].run({ inList: false });
+  const I = S.interior;
+  const shape = (t) => JSON.stringify([...t.twinOf].map(([f, es]) => [relPath(f), es.map((e) => e.n)]).sort()) + JSON.stringify([...t.twins].map(([e, fs]) => [e.n, fs.map(relPath).sort()]).sort());
+  // A twin leaves d5 for d9, and d3 loses one.
+  const d3 = find(big, 'd3');
+  const d5 = find(big, 'd5');
+  const d9 = find(big, 'd9');
+  const moving = d5.c.find((c) => c.n === 'about.html');
+  d5.c.splice(d5.c.indexOf(moving), 1);
+  moving.p = d9;
+  d9.c.push(moving);
+  const lost = d3.c.find((c) => c.n === 'README.md');
+  d3.c.splice(d3.c.indexOf(lost), 1);
+  for (const d of [d3, d5, d9]) big.recompute(d);
+  const dirs = new Set([d3, d5, d9]);
+  let after = null;
+  let incr = Infinity;
+  for (let i = 0; i < 3; i++) {
+    S.interior = I;
+    const t0 = performance.now();
+    lists.AFTER_REFRESH[0].run(dirs);
+    incr = Math.min(incr, performance.now() - t0);
+    after = S.interior;
+  }
+  let whole = Infinity;
+  let full = null;
+  for (let i = 0; i < 3; i++) {
+    const t0 = performance.now();
+    full = findTwins(big.root, I.root);
+    whole = Math.min(whole, performance.now() - t0);
+  }
+  check('after a refresh the twins equal a whole walk: the one that moved is found in d9, the one removed is gone',
+    shape(after) === shape(full) && after.listing.twins === full.twins.size && after.twinOf.has(moving) && !after.twinOf.has(lost), `${after.twinOf.size} / ${full.twinOf.size}`);
+  check(`and only the folders read again were walked: ${incr.toFixed(2)} ms against ${whole.toFixed(1)} ms for the whole tree of 200,000 files (under a quarter)`,
+    incr * 4 < whole, `${incr} vs ${whole}`);
+  // A new folder that came with the refresh is walked whole.
+  const fresh = new Model('fresh');
+  fresh.ingest([[0, -1, 'fresh', NOW, 0, []], [1, 0, 'inner', NOW, 0, ['index.html', 47, NOW, 0]]], [], fresh.root);
+  const inner = fresh.root.c[0];
+  inner.p = d9;
+  d9.c.push(inner);
+  big.recompute(d9);
+  S.interior = after;
+  lists.AFTER_REFRESH[0].run(new Set([d9]));
+  check('a folder new since the last walk is walked whole: its copy of index.html is a twin',
+    S.interior.twinOf.has(inner.c[0]) && shape(S.interior) === shape(findTwins(big.root, I.root)));
+}
+
+section('Time inside an open archive: figures from its own entries');
+{
+  const { buildAgeTable, LADDER_DAYS } = await import(new URL('../web/js/timeline.js', import.meta.url).href);
+  const { tableOf, figures, crossedAt } = await import(new URL('../web/js/time.js', import.meta.url).href);
+  const model = build({ 'a.zip': [5000, NOW - 2 * DAY], old: { 'x.txt': [10, NOW - 900 * DAY] } });
+  const host = find(model, 'a.zip');
+  const ents = [entry('inner/', 0, { dir: true })];
+  for (let i = 0; i < 9; i++) ents.push(entry(`inner/old${i}.txt`, 1000, { mtime: NOW - 700 * DAY }));
+  ents.push(entry('inner/new.txt', 1000, { mtime: NOW - 2 * 3600000 }));
+  const root = graft(host, toRecords(ents, { rootName: 'a.zip' }).records);
+  const innerDir = root.c.find((c) => c.n === 'inner');
+  const A = buildAgeTable(model.root, NOW);
+  const B = buildAgeTable(root, NOW);
+  const k = LADDER_DAYS.indexOf(30);
+  const T = tableOf(A, B, innerDir);
+  const f = figures(T, k, innerDir);
+  check('an archive folder is counted from its own entries: 1 of 10 files changed in the last month, 10% of its bytes (not all of them)',
+    T === B && f.cf === 1 && f.tf === 10 && Math.abs(f.share - 0.1) < 1e-9 && figures(A, k, innerDir).cf === 10, JSON.stringify(f));
+  check('so it is not crossed, and it keeps 90% of its height, where the shared table alone would cross it whole',
+    !crossedAt(T, k, innerDir) && Math.abs(T.kept(innerDir, k) - 0.9) < 1e-9 && A.kept(innerDir, k) === 0 && crossedAt(A, k, innerDir));
+  check('a folder on disk and a file keep the shared table', tableOf(A, B, find(model, 'old')) === A && tableOf(A, B, host) === A && tableOf(A, null, innerDir) === A);
 }
 
 /* ---------- no DOM ---------- */

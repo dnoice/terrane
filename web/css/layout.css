@@ -1,16 +1,25 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Application Shell (Terrane Edition - v1.0)
+ *     - Title: Application Shell (Terrane Edition - v1.1)
  *     - File Name: layout.css
  *     - Relative Path: web/css/layout.css
  *     - Artifact Type: stylesheet
- *     - Version: 1.0.0
- *     - Date: 11/12/2026
- *     - Update: Thursday, November 12, 2026
+ *     - Version: 1.1.0
+ *     - Date: 11/13/2026
+ *     - Update: Friday, November 13, 2026
  *     - Author: Dennis 'dendogg' Smaltz
  *     - A.I. Acknowledgement: Anthropic - Claude Opus 5.5
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
+ *
+ * ✒ Changelog:
+ *     - 1.1.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] —
+ *       Below 860 px the inspector opens as a drawer over the world
+ *       (body.show-inspector) instead of being unreachable; the title
+ *       block's breakpoints moved to block.css, where they apply; the
+ *       unused .panel-tool is gone.
+ *     - 1.0.0 (11/12/2026) [dendogg + Anthropic - Claude Opus 5.5] —
+ *       Initial release.
  *
  * ✒ Description:
  *     The drawing sheet the world sits in: location bar on top, ledger
@@ -26,14 +35,16 @@
  *       to the panel's width, not the window's
  *     - Lettered panel heads, the drawing-sheet reference motif
  *     - Breakpoints at 1320, 1100 and 860 px: narrower panels, icon-only
- *       bar buttons, then the inspector folds away
+ *       bar buttons, then the inspector folds away into a drawer that ]
+ *       opens over the world
  *
  * ✒ Other Important Information:
  *     - Dependencies: tokens.css, base.css
  *     - Compatible platforms: current evergreen browsers (container
  *       queries, animatable grid tracks)
- *     - Limitations: designed for 1180 px and wider; below 860 px only
- *       the ledger and the world are shown
+ *     - Limitations: designed for 1180 px and wider; below 860 px the
+ *       ledger and the world share the width and the inspector is a
+ *       drawer
  * ----------------------------------------------------------------------------
  */
 
@@ -88,19 +99,6 @@ body:not(.no-ledger) #ledger, body:not(.no-inspector) #inspector { transition-de
   font-size: 11px;
   letter-spacing: 0;
 }
-.panel-tool {
-  appearance: none;
-  display: grid;
-  place-items: center;
-  width: var(--panel-head-h);
-  border: 0;
-  border-left: var(--border-2);
-  background: none;
-  color: var(--text-3);
-  transition: color var(--dur-fast), background-color var(--dur-fast);
-}
-.panel-tool:hover { background: var(--select); color: var(--text); }
-
 .panel-sub {
   display: flex;
   align-items: center;
@@ -133,7 +131,20 @@ body:not(.no-ledger) #ledger, body:not(.no-inspector) #inspector { transition-de
 @media (max-width: 860px) {
   main { --inspector-w: 0px; }
   #inspector { visibility: hidden; }
-  .cell-grow, .cell-alt { display: none; }
+  /* ] or the view tools' toggle opens it as a drawer over the world. */
+  body.show-inspector #inspector {
+    position: fixed;
+    top: var(--bar-h);
+    right: 0;
+    bottom: var(--block-h);
+    z-index: var(--z-drawer);
+    width: min(var(--side-w), 100vw - var(--s-8) * 2);
+    visibility: visible;
+    opacity: 1;
+    border-left: var(--border);
+    box-shadow: var(--shadow-3);
+    transition-delay: 0s;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

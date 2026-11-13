@@ -1,18 +1,22 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Tree Model (Terrane Edition - v1.2)
+ *     - Title: Tree Model (Terrane Edition - v1.3)
  *     - File Name: model.js
  *     - Relative Path: web/js/model.js
  *     - Artifact Type: javascript
- *     - Version: 1.2.0
- *     - Date: 11/12/2026
- *     - Update: Thursday, November 12, 2026
+ *     - Version: 1.3.0
+ *     - Date: 11/13/2026
+ *     - Update: Friday, November 13, 2026
  *     - Author: Dennis 'dendogg' Smaltz
  *     - A.I. Acknowledgement: Anthropic - Claude Opus 5.5
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
  *
  * ✒ Changelog:
+ *     - 1.3.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] —
+ *       fmtDay (MM/DD/YYYY) and plural are the one date formatter and
+ *       count wording every module imports; fmtDate builds on fmtDay.
+ *       isDir, which nothing used, is gone.
  *     - 1.2.0 (11/12/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
  *       search grammar takes is: words and name:value tokens from the
  *       caller, so a feature can make itself searchable; is: looks up
@@ -127,12 +131,20 @@ export function fmtBytes(n) {
   return `${v >= 100 || u === 0 ? Math.round(v) : v >= 10 ? v.toFixed(1) : v.toFixed(2)} ${UNITS[u]}`;
 }
 export const fmtCount = (n) => n.toLocaleString('en-US');
+const p2 = (x) => String(x).padStart(2, '0');
+/** A date as the house writes it: MM/DD/YYYY. The one formatter every module uses. */
+export const fmtDay = (ms) => {
+  const d = new Date(ms);
+  return `${p2(d.getMonth() + 1)}/${p2(d.getDate())}/${d.getFullYear()}`;
+};
+/** The same with the time of day: MM/DD/YYYY HH:MM, or "unknown" without one. */
 export function fmtDate(ms) {
   if (!ms) return 'unknown';
   const d = new Date(ms);
-  const p = (x) => String(x).padStart(2, '0');
-  return `${p(d.getMonth() + 1)}/${p(d.getDate())}/${d.getFullYear()} ${p(d.getHours())}:${p(d.getMinutes())}`;
+  return `${fmtDay(ms)} ${p2(d.getHours())}:${p2(d.getMinutes())}`;
 }
+/** A count and its noun: "1 file", "3 files", "2 entries"; a negative count reads as its size. */
+export const plural = (n, one, many = `${one}s`) => `${fmtCount(Math.abs(n))} ${Math.abs(n) === 1 ? one : many}`;
 export function fmtAge(ms, now = Date.now()) {
   if (!ms) return 'unknown';
   const days = (now - ms) / 86400000;
@@ -158,8 +170,6 @@ function newDir(name, parent) {
     c: [], fc: 0, dc: 0, ks: new Float64Array(9), mm: 0, h: 0, e: 0, dirty: true, stub: false,
   };
 }
-
-export const isDir = (node) => node.d === true;
 
 export function depthOf(node) {
   let d = 0;

@@ -1,16 +1,22 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Strata (Terrane Edition - v1.0)
+ *     - Title: Strata (Terrane Edition - v1.1)
  *     - File Name: strata.js
  *     - Relative Path: web/js/strata.js
  *     - Artifact Type: javascript
- *     - Version: 1.0.0
+ *     - Version: 1.1.0
  *     - Date: 11/13/2026
  *     - Update: Friday, November 13, 2026
  *     - Author: Dennis 'dendogg' Smaltz
  *     - A.I. Acknowledgement: Anthropic - Claude Opus 5.5
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
+ *
+ * ✒ Changelog:
+ *     - 1.1.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] —
+ *       fmtDay comes from model.js, the one MM/DD/YYYY formatter.
+ *     - 1.0.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] —
+ *       Initial release.
  *
  * ✒ Description:
  *     Bytes by last change. A folder's bytes fall into six strata by when
@@ -69,7 +75,7 @@
  * ----------------------------------------------------------------------------
  */
 
-import { fmtBytes, fmtCount, fmtAge, freshness } from './model.js';
+import { fmtBytes, fmtCount, fmtAge, fmtDay, freshness } from './model.js';
 import { THEME, mixHex, ramp, cssHex } from './theme.js';
 import { LADDER_DAYS, BAND_STEPS, BANDS, STEPS, DAY } from './timeline.js';
 import { BOX } from './layout.js';
@@ -81,13 +87,6 @@ const OWNER = 'strata';
 const RAMP_DAYS = 3650;
 // Any moment but 0, which freshness() reads as undated.
 const REF = Date.UTC(2000, 0, 1);
-
-const p2 = (x) => String(x).padStart(2, '0');
-/** A date as the house writes it: MM/DD/YYYY. */
-const fmtDay = (ms) => {
-  const d = new Date(ms);
-  return `${p2(d.getMonth() + 1)}/${p2(d.getDate())}/${d.getFullYear()}`;
-};
 
 /** Where an age in days sits on the age ramp: 1 fresh, 0 ten years or more (model.js freshness). */
 export const freshOfDays = (days) => freshness(REF - Math.max(0, days) * DAY, REF);

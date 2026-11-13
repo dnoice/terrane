@@ -1,16 +1,23 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Stage and Instruments (Terrane Edition - v1.0)
+ *     - Title: Stage and Instruments (Terrane Edition - v1.1)
  *     - File Name: stage.css
  *     - Relative Path: web/css/components/stage.css
  *     - Artifact Type: stylesheet
- *     - Version: 1.0.0
- *     - Date: 11/12/2026
- *     - Update: Thursday, November 12, 2026
+ *     - Version: 1.1.0
+ *     - Date: 11/13/2026
+ *     - Update: Friday, November 13, 2026
  *     - Author: Dennis 'dendogg' Smaltz
  *     - A.I. Acknowledgement: Anthropic - Claude Opus 5.5
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
+ *
+ * ✒ Changelog:
+ *     - 1.1.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] —
+ *       Without WebGL the travel tools step aside; the explanation a
+ *       page the service did not serve shows (#veil.is-elsewhere).
+ *     - 1.0.0 (11/12/2026) [dendogg + Anthropic - Claude Opus 5.5] —
+ *       Initial release.
  *
  * ✒ Description:
  *     The middle of the sheet: the WebGL canvas, the labels laid over it,
@@ -267,5 +274,26 @@
 
 #stage { container: stage / inline-size; }
 
-/* Without WebGL there is no world to measure: the instruments step aside. */
+/* Without WebGL there is no world to measure or travel: the instruments
+   and the travel tools step aside. Go to selection and the panel toggles
+   stay, since they work without it. */
 body.no-gl .hud, body.no-gl .frame { display: none; }
+body.no-gl :is(#v-in, #v-out, #v-left, #v-right, #v-down, #v-over, .view-tools .group-sep) { display: none; }
+
+/* A page the service did not serve (elsewhere.js): how to start Terrane. */
+#veil.is-elsewhere { background: var(--tex-grid), var(--surface-ground); }
+#veil .elsewhere {
+  display: grid;
+  justify-items: center;
+  gap: var(--s-3);
+  max-width: 64ch;
+  padding: var(--s-6);
+  border: var(--border);
+  background: var(--surface-control);
+  box-shadow: var(--shadow-2);
+  color: var(--text-2);
+  font: 400 var(--fs-base) / var(--lh-base) var(--sans);
+}
+#veil .elsewhere p { margin: 0; text-wrap: pretty; }
+#veil .elsewhere code { padding: var(--s-1) var(--s-2); border: var(--border-2); background: var(--surface-field); color: var(--text); font: 500 var(--fs-md) / 1.4 var(--mono); }
+#veil .elsewhere a { color: var(--text); }

@@ -1,11 +1,11 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: 3D Viewport (Terrane Edition - v1.4)
+ *     - Title: 3D Viewport (Terrane Edition - v1.5)
  *     - File Name: viewport.js
  *     - Relative Path: web/js/viewport.js
  *     - Artifact Type: javascript
- *     - Version: 1.4.0
+ *     - Version: 1.5.0
  *     - Date: 11/13/2026
  *     - Update: Friday, November 13, 2026
  *     - Author: Dennis 'dendogg' Smaltz
@@ -13,6 +13,11 @@
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
  *
  * ✒ Changelog:
+ *     - 1.5.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] —
+ *       The relation layer is drawn only while it holds a line
+ *       (three.js draws an empty range), and labels are placed again
+ *       only when the eye, the layout, the marks or the canvas change,
+ *       not on a frame redrawn for a hover.
  *     - 1.4.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
  *       walls of an open archive's chamber (BOX.WALL) carry no label; its
  *       floor is labelled with the archive's name, as a folder is. The
@@ -28,21 +33,6 @@
  *       (benchmarks' survey marks, in the same pin mesh); up to 12 mark
  *       tags are placed before every other label (setMarks); pose()
  *       returns the eye and its heading.
- *     - 1.2.0 (11/11/2026) [dendogg + Anthropic - Claude Opus 5.5] — A
- *       layout larger than the instance buffers draws up to their capacity
- *       and says so through on.notice, instead of throwing a RangeError.
- *       Shader style branches take their codes from STYLE and are bounded
- *       on both sides, so an unassigned code draws plain. Box and pin
- *       buffers upload only the part that is drawn, not the whole array,
- *       and during a transition the shadow map is redrawn on every fourth
- *       frame at most and on the frame the boxes arrive. Duplicate ties
- *       become the set 'dup' in one relation-line layer that any named set
- *       can draw into: one preallocated buffer uploaded by range instead of
- *       a new one at every repaint, rewritten around the floating origin at
- *       every layout, hidden while boxes travel, with dashes of a constant
- *       size on screen and chevrons for direction. A set's arc segments
- *       and lift are made whole and finite, so one bad set cannot blank
- *       the others; frame and screenOf stop at the drawn count.
  *     Earlier entries: see CHANGELOG.md
  *
  * ✒ Description:
@@ -1183,6 +1173,15 @@ export class Viewport {
 
   #updateLabels() {
     const L = this.layout;
+    // Labels stand where the eye, the layout, the marks and the canvas put
+    // them: a frame redrawn only for a hover changes none of those, so the
+    // labels placed last stay as they are.
+    const c = this.cam;
+    const state = this.labelState;
+    if (state && state.layout === L && state.n === this.n && state.marks === this.marks && state.transition === !!this.transition
+      && state.w === this.w && state.h === this.h && state.x === c.x && state.y === c.y && state.z === c.z && state.yaw === c.yaw && state.pitch === c.pitch) return;
+    this.labelState = { layout: L, n: this.n, marks: this.marks, transition: !!this.transition, w: this.w, h: this.h, x: c.x, y: c.y, z: c.z, yaw: c.yaw, pitch: c.pitch };
+    this.labelPasses = (this.labelPasses || 0) + 1;
     const pool = this.labelPool;
     let used = 0;
     if (L && !this.transition) {
@@ -1343,7 +1342,9 @@ export class Viewport {
     this.#placeFrame(this.selFrame2, this.selIndex, 8);
     this.#placeFrame(this.hoverFrame, this.hoverIndex === this.selIndex ? -1 : this.hoverIndex, 2);
     if (this.relationsStale) this.#writeRelations();
-    this.relations.visible = !this.transition;
+    // An empty draw range is still a draw call in three.js (only a negative
+    // count is skipped), so the layer is drawn only when it holds a line.
+    this.relations.visible = !this.transition && this.relations.geometry.drawRange.count > 0;
     this.renderer.render(this.scene, this.camera);
     if (this.shadowAge < SHADOW_EVERY) this.shadowAge++;
     this.#updateLabels();

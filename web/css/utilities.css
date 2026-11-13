@@ -1,16 +1,24 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Utilities (Terrane Edition - v1.0)
+ *     - Title: Utilities (Terrane Edition - v1.1)
  *     - File Name: utilities.css
  *     - Relative Path: web/css/utilities.css
  *     - Artifact Type: stylesheet
- *     - Version: 1.0.0
- *     - Date: 11/12/2026
- *     - Update: Thursday, November 12, 2026
+ *     - Version: 1.1.0
+ *     - Date: 11/13/2026
+ *     - Update: Friday, November 13, 2026
  *     - Author: Dennis 'dendogg' Smaltz
  *     - A.I. Acknowledgement: Anthropic - Claude Opus 5.5
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
+ *
+ * ✒ Changelog:
+ *     - 1.1.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] —
+ *       The responsive and motion utilities drop !important: the
+ *       utilities layer already outranks components. .is-search reads
+ *       the search's text colour.
+ *     - 1.0.0 (11/12/2026) [dendogg + Anthropic - Claude Opus 5.5] —
+ *       Initial release.
  *
  * ✒ Description:
  *     Single-purpose classes for the cases a component should not have to
@@ -69,7 +77,7 @@
 .pretty { text-wrap: pretty; }
 .muted { color: var(--text-2); }
 .faint { color: var(--text-3); }
-.is-search { color: var(--search); }
+.is-search { color: var(--search-text); }
 .is-danger { color: var(--danger); }
 .is-live { color: var(--live); }
 
@@ -90,9 +98,9 @@
 
 /* ---------- responsive ---------- */
 
-@media (max-width: 1100px) { .hide-narrow { display: none !important; } }
-@media (min-width: 1101px) { .only-narrow { display: none !important; } }
+@media (max-width: 1100px) { .hide-narrow { display: none; } }
+@media (min-width: 1101px) { .only-narrow { display: none; } }
 
 /* ---------- motion ---------- */
 
-.no-motion, .no-motion * { animation: none !important; transition: none !important; }
+.no-motion, .no-motion * { animation: none; transition: none; }

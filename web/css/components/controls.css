@@ -1,16 +1,24 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Controls (Terrane Edition - v1.0)
+ *     - Title: Controls (Terrane Edition - v1.1)
  *     - File Name: controls.css
  *     - Relative Path: web/css/components/controls.css
  *     - Artifact Type: stylesheet
- *     - Version: 1.0.0
- *     - Date: 11/12/2026
- *     - Update: Thursday, November 12, 2026
+ *     - Version: 1.1.0
+ *     - Date: 11/13/2026
+ *     - Update: Friday, November 13, 2026
  *     - Author: Dennis 'dendogg' Smaltz
  *     - A.I. Acknowledgement: Anthropic - Claude Opus 5.5
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
+ *
+ * ✒ Changelog:
+ *     - 1.1.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] —
+ *       The tab strip can shrink: labels shorten with an ellipsis
+ *       instead of pushing the last tab out of the ledger. Tab counts
+ *       use --search-text.
+ *     - 1.0.0 (11/12/2026) [dendogg + Anthropic - Claude Opus 5.5] —
+ *       Initial release.
  *
  * ✒ Description:
  *     Every control the interface is operated with: buttons, icon buttons,
@@ -173,7 +181,7 @@
 
 /* ---------- tabs with a sliding underline ---------- */
 
-.tabs { position: relative; display: flex; flex: 1; }
+.tabs { position: relative; display: flex; flex: 1; min-width: 0; }
 .tabs button {
   appearance: none;
   display: inline-flex;
@@ -193,9 +201,12 @@
   white-space: nowrap;
 }
 .tabs button:last-child { border-right: 0; }
+/* A narrow ledger shortens the labels instead of pushing a tab out of it. */
+.tabs .tab-label { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.tabs .count, .tabs .icon { flex: none; }
 .tabs button .icon { width: 13px; height: 13px; }
 .tabs button[aria-selected='true'] { color: var(--text); }
-.tabs .count { font-family: var(--mono); font-stretch: 100%; letter-spacing: 0; color: var(--search); }
+.tabs .count { font-family: var(--mono); font-stretch: 100%; letter-spacing: 0; color: var(--search-text); }
 .tabs::after {
   content: '';
   position: absolute;

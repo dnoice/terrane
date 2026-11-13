@@ -1,16 +1,24 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Location Bar (Terrane Edition - v1.0)
+ *     - Title: Location Bar (Terrane Edition - v1.1)
  *     - File Name: bar.css
  *     - Relative Path: web/css/components/bar.css
  *     - Artifact Type: stylesheet
- *     - Version: 1.0.0
- *     - Date: 11/12/2026
- *     - Update: Thursday, November 12, 2026
+ *     - Version: 1.1.0
+ *     - Date: 11/13/2026
+ *     - Update: Friday, November 13, 2026
  *     - Author: Dennis 'dendogg' Smaltz
  *     - A.I. Acknowledgement: Anthropic - Claude Opus 5.5
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
+ *
+ * ✒ Changelog:
+ *     - 1.1.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] —
+ *       Find's clear button is hidden, not only transparent, while Find
+ *       is empty, so Tab passes it; the count and the clear button's
+ *       hover use --search-text.
+ *     - 1.0.0 (11/12/2026) [dendogg + Anthropic - Claude Opus 5.5] —
+ *       Initial release.
  *
  * ✒ Description:
  *     The strip across the top of the sheet: the strata wordmark, the
@@ -150,17 +158,19 @@
   color: var(--text-3);
   opacity: 0;
   scale: 0.6;
+  /* Hidden, not only transparent: out of the tab order while Find is empty. */
+  visibility: hidden;
   pointer-events: none;
-  transition: opacity var(--dur-fast), scale var(--dur-base) var(--ease-spring), color var(--dur-fast);
+  transition: opacity var(--dur-fast), scale var(--dur-base) var(--ease-spring), color var(--dur-fast), visibility 0s linear var(--dur-fast);
 }
 .search-clear .icon { width: var(--icon-sm); height: var(--icon-sm); }
-.search input:not(:placeholder-shown) ~ .search-clear { opacity: 1; scale: 1; pointer-events: auto; }
-.search-clear:hover { color: var(--search); }
+.search input:not(:placeholder-shown) ~ .search-clear { visibility: visible; opacity: 1; scale: 1; pointer-events: auto; transition-delay: 0s; }
+.search-clear:hover { color: var(--search-text); }
 #q-count {
   position: absolute;
   right: 32px;
   font: 500 var(--fs-xs) / 1 var(--mono);
-  color: var(--search);
+  color: var(--search-text);
   pointer-events: none;
 }
 #q-count:not(:empty) { animation: pop-in var(--dur-base) var(--ease-spring); }

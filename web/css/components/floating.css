@@ -1,16 +1,24 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Floating Surfaces (Terrane Edition - v1.0)
+ *     - Title: Floating Surfaces (Terrane Edition - v1.1)
  *     - File Name: floating.css
  *     - Relative Path: web/css/components/floating.css
  *     - Artifact Type: stylesheet
- *     - Version: 1.0.0
- *     - Date: 11/12/2026
- *     - Update: Thursday, November 12, 2026
+ *     - Version: 1.1.0
+ *     - Date: 11/13/2026
+ *     - Update: Friday, November 13, 2026
  *     - Author: Dennis 'dendogg' Smaltz
  *     - A.I. Acknowledgement: Anthropic - Claude Opus 5.5
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
+ *
+ * ✒ Changelog:
+ *     - 1.1.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] —
+ *       The keyboard's menu item is edged in ink, not marked by the
+ *       highlighter alone; the guide's setting for single-key
+ *       shortcuts.
+ *     - 1.0.0 (11/12/2026) [dendogg + Anthropic - Claude Opus 5.5] —
+ *       Initial release.
  *
  * ✒ Description:
  *     Everything that floats above the sheet: the context menu, the hover
@@ -82,6 +90,8 @@
 }
 .menu-item .icon { width: var(--icon-sm); height: var(--icon-sm); color: var(--text-2); }
 .menu-item:hover, .menu-item:focus { --sweep: 100%; outline: none; }
+/* The keyboard's item is edged in ink, not marked by the highlighter alone. */
+.menu-item:focus-visible { outline: var(--focus-ring); outline-offset: calc(var(--focus-offset) * -1); }
 .menu-item.is-danger { --sweep-color: var(--danger); color: var(--danger); }
 .menu-item.is-danger .icon { color: inherit; }
 .menu-item.is-danger:hover, .menu-item.is-danger:focus { color: var(--on-ink); }
@@ -168,6 +178,16 @@ dialog.is-wide { width: min(880px, 94vw); }
 .guide > div:nth-child(2) { animation-delay: 40ms; }
 .guide > div:nth-child(3) { animation-delay: 80ms; }
 .guide > div:nth-child(n + 4) { animation-delay: 120ms; }
+.guide-pref {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--s-2);
+  margin-top: var(--s-4);
+  padding-top: var(--s-3);
+  border-top: var(--border-2);
+  color: var(--text-2);
+}
+.guide-pref input { flex: none; margin-top: var(--s-1); accent-color: var(--ink); }
 .guide h3 { margin: 14px 0 7px; padding-bottom: 5px; border-bottom: var(--border-2); color: var(--text-3); }
 .guide dl { display: grid; grid-template-columns: auto 1fr; gap: 6px 12px; margin: 0; font-size: 12px; }
 .guide dt {

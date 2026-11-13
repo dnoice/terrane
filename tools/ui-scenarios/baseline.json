@@ -1,17 +1,18 @@
 {
   "_meta": {
-    "title": "Draw-Call Baseline (Terrane Edition - v1.0)",
+    "title": "Draw-Call Baseline (Terrane Edition - v1.1)",
     "file_name": "baseline.json",
     "relative_path": "tools/ui-scenarios/baseline.json",
     "artifact_type": "data",
-    "version": "1.0.0",
-    "date": "11/11/2026",
-    "update": "Wednesday, November 11, 2026",
+    "version": "1.1.0",
+    "date": "11/13/2026",
+    "update": "Friday, November 13, 2026",
     "author": "Dennis 'dendogg' Smaltz",
     "ai_acknowledgement": "Anthropic - Claude Opus 5.5",
     "signature": "︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!",
     "description": "renderer.info.render.calls measured by tools/ui-check.mjs in four fixed states of the page. Features compare their own states against these numbers to show they add no draw call. Written by the tool; re-record only when a draw call is added on purpose.",
     "changelog": [
+      "1.1.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — Re-recorded with tools/ui-check.mjs --record-baseline: overview 6, selected 8, search 7, dupTies 9 draw calls.",
       "1.0.0 (11/11/2026) [dendogg + Anthropic - Claude Opus 5.5] — Initial recording with tools/ui-check.mjs --record-baseline: overview 7, selected 9, search 8, dupTies 9 draw calls."
     ],
     "key_features": [
@@ -21,7 +22,7 @@
     ],
     "dependencies": "tools/ui-check.mjs writes and reads it"
   },
-  "recordedAt": "2026-11-12T06:40:19.507Z",
+  "recordedAt": "2026-11-13T21:31:16.927Z",
   "params": {
     "data": "fixture",
     "files": 3000,
@@ -31,34 +32,18 @@
   "states": {
     "overview": {
       "what": "the home view after the survey, nothing selected, Kind lens",
-      "calls": 7,
+      "calls": 6,
       "drawn": [
         "Mesh ShaderMaterial",
         "Mesh MeshBasicMaterial",
         "Mesh ShadowMaterial",
         "LineSegments LineBasicMaterial",
         "LineSegments LineBasicMaterial",
-        "Mesh MeshLambertMaterial x292",
-        "LineSegments LineBasicMaterial (empty)"
+        "Mesh MeshLambertMaterial x292"
       ]
     },
     "selected": {
       "what": "the first item of the focus selected with ArrowDown on the canvas (selection frames)",
-      "calls": 9,
-      "drawn": [
-        "Mesh ShaderMaterial",
-        "Mesh MeshBasicMaterial",
-        "Mesh ShadowMaterial",
-        "LineSegments LineBasicMaterial",
-        "LineSegments LineBasicMaterial",
-        "Mesh MeshLambertMaterial x292",
-        "LineSegments LineBasicMaterial",
-        "LineSegments LineBasicMaterial",
-        "LineSegments LineBasicMaterial (empty)"
-      ]
-    },
-    "search": {
-      "what": "Find \"copy-\" with matches, nothing selected (search pins)",
       "calls": 8,
       "drawn": [
         "Mesh ShaderMaterial",
@@ -67,8 +52,21 @@
         "LineSegments LineBasicMaterial",
         "LineSegments LineBasicMaterial",
         "Mesh MeshLambertMaterial x292",
-        "Mesh MeshBasicMaterial x1",
-        "LineSegments LineBasicMaterial (empty)"
+        "LineSegments LineBasicMaterial",
+        "LineSegments LineBasicMaterial"
+      ]
+    },
+    "search": {
+      "what": "Find \"copy-\" with matches, nothing selected (search pins)",
+      "calls": 7,
+      "drawn": [
+        "Mesh ShaderMaterial",
+        "Mesh MeshBasicMaterial",
+        "Mesh ShadowMaterial",
+        "LineSegments LineBasicMaterial",
+        "LineSegments LineBasicMaterial",
+        "Mesh MeshLambertMaterial x292",
+        "Mesh MeshBasicMaterial x1"
       ]
     },
     "dupTies": {
@@ -83,7 +81,7 @@
         "Mesh MeshLambertMaterial x969",
         "LineSegments LineBasicMaterial",
         "LineSegments LineBasicMaterial",
-        "LineSegments LineBasicMaterial"
+        "LineSegments LineDashedMaterial"
       ]
     }
   }

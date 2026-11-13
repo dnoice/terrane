@@ -1,16 +1,26 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Archive Interiors (Terrane Edition - v1.0)
+ *     - Title: Archive Interiors (Terrane Edition - v1.1)
  *     - File Name: interior.js
  *     - Relative Path: web/js/interior.js
  *     - Artifact Type: javascript
- *     - Version: 1.0.0
+ *     - Version: 1.1.0
  *     - Date: 11/13/2026
  *     - Update: Friday, November 13, 2026
  *     - Author: Dennis 'dendogg' Smaltz
  *     - A.I. Acknowledgement: Anthropic - Claude Opus 5.5
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
+ *
+ * ✒ Changelog:
+ *     - 1.1.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] —
+ *       Twins after a refresh are worked out from the folders read
+ *       again and any new since (twinIndex, addTwins), not the whole
+ *       tree; a whole walk only when a capped list loses a file. A
+ *       Rescan all also forgets the file a change closed. plural comes
+ *       from model.js.
+ *     - 1.0.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] —
+ *       Initial release.
  *
  * ✒ Description:
  *     Looks inside a zip archive without unpacking it. I reads the
@@ -65,6 +75,7 @@
  *     I            look inside the selected zip; I again closes it
  *     graft(host, res.records)          -> the archive's root, hung from host
  *     findTwins(S.model.root, root)     -> { twins, twinOf }
+ *     addTwins(dir, twinIndex(root), maps, { known, onlyNew: true })
  *     lockedBody({ type: 'rename', path: 'a/x.zip/x.zip/b' }, 'a/x.zip')
  *                                       -> true
  *
@@ -82,7 +93,7 @@
  * ----------------------------------------------------------------------------
  */
 
-import { Model, FLAG_LINK, extOf, fmtBytes, fmtCount, relPath } from './model.js';
+import { Model, FLAG_LINK, extOf, fmtBytes, fmtCount, plural, relPath } from './model.js';
 import { BOX, STYLE } from './layout.js';
 
 export const name = 'Interiors';
@@ -104,7 +115,6 @@ const ZIP = new Set(ZIP_FAMILY);
 /** A file Terrane can look inside, by its name. */
 export const isZipFamily = (node) => !!node && !node.d && ZIP.has(extOf(node.n));
 
-const plural = (n, one, many) => `${fmtCount(n)} ${n === 1 ? one : many}`;
 
 /**
  * Reads listing records (the scanner's shape) into a model of their own,
@@ -126,6 +136,17 @@ export function graft(host, records) {
  * files, at most cap each), twinOf: Map(file -> entries) }.
  */
 export function findTwins(main, root, { cap = TWIN_CAP } = {}) {
+  const index = twinIndex(root);
+  const maps = { twins: new Map(), twinOf: new Map() };
+  if (index.size) addTwins(main, index, maps, { cap });
+  return maps;
+}
+
+/**
+ * The archive's files by size, then by name: Map(size -> Map(name ->
+ * entries)). Made once when it opens, since a listing never changes.
+ */
+export function twinIndex(root) {
   const bySize = new Map();
   const stack = [root];
   while (stack.length) {
@@ -141,18 +162,30 @@ export function findTwins(main, root, { cap = TWIN_CAP } = {}) {
       }
     }
   }
-  const twins = new Map();
-  const twinOf = new Map();
-  if (!bySize.size) return { twins, twinOf };
-  const walk = [main];
+  return bySize;
+}
+
+/**
+ * Adds the twins of the files under start to maps ({ twins, twinOf }).
+ * With known (a WeakSet), every folder walked is added to it, and with
+ * onlyNew a child folder already in it is passed over: after a refresh
+ * only the folders read again and the ones that came with them are
+ * walked, not the whole tree.
+ */
+export function addTwins(start, index, maps, { cap = TWIN_CAP, known = null, onlyNew = false } = {}) {
+  const { twins, twinOf } = maps;
+  const walk = [start];
+  known?.add(start);
   while (walk.length) {
     const dir = walk.pop();
     for (const ch of dir.c) {
       if (ch.d) {
+        if (onlyNew && known?.has(ch)) continue;
+        known?.add(ch);
         walk.push(ch);
         continue;
       }
-      const entries = bySize.get(ch.s)?.get(ch.n);
+      const entries = index.get(ch.s)?.get(ch.n);
       if (!entries || ch.f & FLAG_LINK) continue;
       twinOf.set(ch, entries);
       for (const e of entries) {
@@ -162,7 +195,7 @@ export function findTwins(main, root, { cap = TWIN_CAP } = {}) {
       }
     }
   }
-  return { twins, twinOf };
+  return maps;
 }
 
 /**
@@ -237,14 +270,60 @@ export function install(api) {
   /* ---------- opening and closing ---------- */
 
   /**
+   * Twins against the whole tree: the archive's index is made once and
+   * kept with the open archive (work.index), with the folders walked
+   * (work.known).
+   */
+  function allTwins(I) {
+    const { index } = I.work;
+    const maps = { twins: new Map(), twinOf: new Map() };
+    const known = new WeakSet();
+    if (index.size) addTwins(S.model.root, index, maps, { known });
+    // work is a holder the frozen copies share: the index never changes,
+    // and the folders walked are those of the latest whole walk.
+    I.work.known = known;
+    return maps;
+  }
+
+  /**
+   * Twins after a refresh that read dirs again: a twin no longer in the
+   * tree, or among those folders' own files, is dropped, and those
+   * folders' files and any folder new since are matched again. The rest
+   * of the tree is not walked. When a list at its cap loses a file, one
+   * past the cap may now belong, so the tree is walked whole.
+   */
+  function againAfter(I, dirs) {
+    const { index, known } = I.work;
+    const twins = new Map([...I.twins].map(([e, list]) => [e, [...list]]));
+    const twinOf = new Map(I.twinOf);
+    let capped = false;
+    for (const [file, entries] of twinOf) {
+      if (!dirs.has(file.p) && api.isAttached(file)) continue;
+      twinOf.delete(file);
+      for (const e of entries) {
+        const list = twins.get(e);
+        const at = list ? list.indexOf(file) : -1;
+        if (at < 0) continue;
+        if (list.length >= TWIN_CAP) capped = true;
+        list.splice(at, 1);
+        if (!list.length) twins.delete(e);
+      }
+    }
+    if (capped) return allTwins(I);
+    const maps = { twins, twinOf };
+    if (index.size) for (const dir of dirs) if (dir.d && api.isAttached(dir) && !api.hostOf(dir)) addTwins(dir, index, maps, { known, onlyNew: true });
+    return maps;
+  }
+
+  /**
    * The open archive as S.interior holds it, frozen, with its twins worked
    * out against the tree as it is now: twins, twinOf, the listing's twin
    * count, twinsOf and styleOf. Everything else in I is kept as it is,
    * the chamber's wall keys included, so the layout does not see a new
    * archive. Called on opening and after every refresh it outlives.
    */
-  function withTwins(I) {
-    const { twins, twinOf } = findTwins(S.model.root, I.root);
+  function withTwins(I, dirs = null) {
+    const { twins, twinOf } = dirs ? againAfter(I, dirs) : allTwins(I);
     const { root } = I;
     return Object.freeze({
       ...I,
@@ -298,7 +377,7 @@ export function install(api) {
     const root = graft(host, res.records);
     const lock = lockSentence(host.n);
     S.interior = withTwins({
-      host, root, size: res.size, mtime: res.mtime, lock,
+      host, root, size: res.size, mtime: res.mtime, lock, work: { index: twinIndex(root), known: null },
       listing: {
         name: host.n, files: res.files, folders: res.folders, unpacked: res.unpacked, packed: res.packed,
         locked: res.locked, escapes: res.escapes, escaped: res.escaped || [], renamed: res.renamed, partial: res.partial || null,
@@ -479,16 +558,25 @@ export function install(api) {
   // its twins are worked out again; app.js repaints after every refresh.
   api.AFTER_REFRESH.add({
     id: 'interior', owner: OWNER,
-    run: () => {
+    run: (dirs) => {
       const I = S.interior;
       if (!I) return;
       if (!api.isAttached(I.host)) close('gone');
       else if (I.host.s !== I.size || I.host.m !== I.mtime) close('changed');
-      else S.interior = withTwins(I);
+      else S.interior = withTwins(I, dirs instanceof Set ? dirs : null);
     },
   });
 
-  api.AFTER_SURVEY.add({ id: 'interior', order: 60, owner: OWNER, run: (_sv, { full } = {}) => { if (full && S.interior) close('rescan'); } });
+  // A Rescan all reads a new tree: the open archive closes, and the file a
+  // change closed is of the old tree, so I no longer reads it again.
+  api.AFTER_SURVEY.add({
+    id: 'interior', order: 60, owner: OWNER,
+    run: (_sv, { full } = {}) => {
+      if (!full) return;
+      again = null;
+      if (S.interior) close('rescan');
+    },
+  });
 
   api.MENU.add({
     id: 'interior', order: 20, owner: OWNER,

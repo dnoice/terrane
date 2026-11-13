@@ -1,16 +1,23 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Session Traverse Scenario (Terrane Edition - v1.0)
+ *     - Title: Session Traverse Scenario (Terrane Edition - v1.1)
  *     - File Name: traverse.mjs
  *     - Relative Path: tools/ui-scenarios/traverse.mjs
  *     - Artifact Type: test
- *     - Version: 1.0.0
+ *     - Version: 1.1.0
  *     - Date: 11/13/2026
  *     - Update: Friday, November 13, 2026
  *     - Author: Dennis 'dendogg' Smaltz
  *     - A.I. Acknowledgement: Anthropic - Claude Opus 5.5
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
+ *
+ * ✒ Changelog:
+ *     - 1.1.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] —
+ *       The traverse costs the search baseline and the one shared
+ *       relation layer, which is drawn only while it holds a line.
+ *     - 1.0.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] —
+ *       Initial release.
  *
  * ✒ Description:
  *     Checks working sessions and the traverse in the real page. The
@@ -431,8 +438,8 @@ const traverse = {
       t.check('each leg runs from the top of one stop to the top of the next, at most 1,000', r.tops && r.legs <= 1000 && !r.route.truncated && first.legs === r.legs, JSON.stringify(r));
       const calls = await t.drawCalls();
       const want = t.recorded?.search?.calls ?? t.baseline?.search?.calls;
-      t.check(`the traverse costs no draw call of its own: ${calls.calls}, as the search baseline (${want})`,
-        calls.calls === want && calls.drawn.filter((d) => d.startsWith('LineSegments LineDashedMaterial')).length === 1, calls.drawn.join(', '));
+      t.check(`the traverse costs only the shared relation layer, which is drawn only while it holds a line: ${calls.calls}, the search baseline (${want}) and one`,
+        calls.calls === want + 1 && calls.drawn.filter((d) => d.startsWith('LineSegments LineDashedMaterial')).length === 1, calls.drawn.join(', '));
       await t.shot('session-1');
 
       // The eye moves in: boxes travel, the layer hides, the route follows.

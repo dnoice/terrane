@@ -1,27 +1,37 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Theme Constants (Terrane Edition - v1.0)
+ *     - Title: Theme Constants (Terrane Edition - v1.1)
  *     - File Name: theme.js
  *     - Relative Path: web/js/theme.js
  *     - Artifact Type: javascript
- *     - Version: 1.0.0
- *     - Date: 11/09/2026
- *     - Update: Monday, November 9, 2026
+ *     - Version: 1.1.0
+ *     - Date: 11/13/2026
+ *     - Update: Friday, November 13, 2026
  *     - Author: Dennis 'dendogg' Smaltz
- *     - A.I. Acknowledgement: Anthropic - Claude Fable 5.2
+ *     - A.I. Acknowledgement: Anthropic - Claude Opus 5.5
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
+ *
+ * ✒ Changelog:
+ *     - 1.1.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] —
+ *       The header points at web/css/tokens.css, where the twins of
+ *       these colours live since the layered stylesheet, and names the
+ *       benchmarks among what verdigris marks.
+ *     - 1.0.0 (11/09/2026) [dendogg + Anthropic - Claude Fable 5.2] —
+ *       Initial release.
  *
  * ✒ Description:
  *     The colours the 3D viewport needs as numbers. They mirror the custom
- *     properties in web/css/terrane.css so the world and the sheet around
- *     it are drawn from one palette. Change a value here and
- *     its twin there together.
+ *     properties in web/css/tokens.css (the age ramp's twins are
+ *     --ramp-age-0 to -5; plaster's and clay's, --plaster-0, -2, -5 and
+ *     --clay) so the world and the sheet around it are drawn from one
+ *     palette. Change a value here and its twin there together.
  *
  * ✒ Key Features:
  *     - Ground, ink and paper values shared with the stylesheet
  *     - Semantic colours: mark (selection), signal (search), garnet
- *       (duplicates and destructive), verdigris (destination and live)
+ *       (duplicates and destructive), verdigris (destination, live and
+ *       benchmarks)
  *     - Plaster ramp for plateaus, lighter with each level of elevation
  *     - Sequential ramps for the Age and Size lenses
  *

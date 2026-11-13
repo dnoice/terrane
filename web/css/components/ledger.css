@@ -1,16 +1,24 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Ledger (Terrane Edition - v1.0)
+ *     - Title: Ledger (Terrane Edition - v1.1)
  *     - File Name: ledger.css
  *     - Relative Path: web/css/components/ledger.css
  *     - Artifact Type: stylesheet
- *     - Version: 1.0.0
- *     - Date: 11/12/2026
- *     - Update: Thursday, November 12, 2026
+ *     - Version: 1.1.0
+ *     - Date: 11/13/2026
+ *     - Update: Friday, November 13, 2026
  *     - Author: Dennis 'dendogg' Smaltz
  *     - A.I. Acknowledgement: Anthropic - Claude Opus 5.5
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
+ *
+ * ✒ Changelog:
+ *     - 1.1.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — A
+ *       selected row is edged in ink as well as highlighted, and its
+ *       small text uses --text-2, which reads on yellow; the unused
+ *       .row-meta is gone.
+ *     - 1.0.0 (11/12/2026) [dendogg + Anthropic - Claude Opus 5.5] —
+ *       Initial release.
  *
  * ✒ Description:
  *     Panel A, the non-spatial twin of the world: the virtual list of a
@@ -58,10 +66,14 @@
   transition: background-color var(--dur-instant) linear;
 }
 @media (hover: hover) { .row:hover { background-color: var(--mark-wash); } }
-.row.is-selected { background-color: var(--select); }
+/* Selected: the highlighter, edged in ink so the state does not rest on
+   the yellow alone; its small text in --text-2, which reads on yellow. */
+.row.is-selected { background-color: var(--select); box-shadow: inset 0 0 0 var(--hair) var(--ink); }
+.row.is-selected .row-name small { color: var(--text-2); }
 .row.is-cursor { box-shadow: inset 3px 0 0 var(--ink); }
+.row.is-selected.is-cursor { box-shadow: inset 3px 0 0 var(--ink), inset 0 0 0 var(--hair) var(--ink); }
 .row.is-drop { background-color: var(--live); color: var(--on-ink); }
-.row.is-drop .row-meta, .row.is-drop .row-size, .row.is-drop small { color: var(--on-ink); }
+.row.is-drop .row-size, .row.is-drop small { color: var(--on-ink); }
 .vl.is-entering .row {
   animation: row-in var(--dur-base) var(--ease-out-expo) both;
   animation-delay: calc(min(var(--i, 0), 24) * var(--stagger) * 0.7);
@@ -94,7 +106,6 @@
   transform-origin: right;
 }
 .vl.is-entering .row-size i { animation: grow-x var(--dur-slow) var(--ease-out-expo) both; animation-delay: inherit; }
-.row-meta { font: 400 var(--fs-xs) / 1 var(--mono); color: var(--text-3); }
 
 /* ---------- swatches: the drawing conventions in miniature ---------- */
 

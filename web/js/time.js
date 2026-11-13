@@ -1,16 +1,26 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Time as a Dimension (Terrane Edition - v1.0)
+ *     - Title: Time as a Dimension (Terrane Edition - v1.1)
  *     - File Name: time.js
  *     - Relative Path: web/js/time.js
  *     - Artifact Type: javascript
- *     - Version: 1.0.0
- *     - Date: 11/12/2026
- *     - Update: Thursday, November 12, 2026
+ *     - Version: 1.1.0
+ *     - Date: 11/13/2026
+ *     - Update: Friday, November 13, 2026
  *     - Author: Dennis 'dendogg' Smaltz
  *     - A.I. Acknowledgement: Anthropic - Claude Opus 5.5
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
+ *
+ * ✒ Changelog:
+ *     - 1.1.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] —
+ *       Inside an open archive a folder is counted from its own
+ *       entries, in a table built from its listing on the same ladder
+ *       (tableOf), for the Since section, the hover line, the sentence,
+ *       T and the layout's lowering; a rebuilt table redraws the
+ *       inspector and Contents. fmtDay comes from model.js.
+ *     - 1.0.0 (11/12/2026) [dendogg + Anthropic - Claude Opus 5.5] —
+ *       Initial release.
  *
  * ✒ Description:
  *     The date scrub. It looks the world back to a date on the age table's
@@ -37,7 +47,9 @@
  *       and Where the change is (up to eight entries that reveal)
  *     - Crossed swatches on Contents rows, a hover line for every block,
  *       and a Reading the world row for the convention
- *     - Uses the shared age table (S.ages); it builds none of its own
+ *     - Uses the shared age table (S.ages); inside an open archive,
+ *       which that table does not hold, a folder is counted from the
+ *       archive's own entries, in a table built once per archive
  *
  * ✒ Usage Instructions:
  *     Listed in features.js and installed by app.js. S.time is null at
@@ -64,8 +76,8 @@
  * ----------------------------------------------------------------------------
  */
 
-import { fmtBytes, fmtCount, fmtAge } from './model.js';
-import { STEPS } from './timeline.js';
+import { fmtBytes, fmtCount, fmtAge, fmtDay } from './model.js';
+import { STEPS, buildAgeTable } from './timeline.js';
 import { BOX, AUX } from './layout.js';
 
 export const name = 'Time';
@@ -75,12 +87,8 @@ const SAY_MS = 250;
 const WHERE_MAX = 8;
 const EARLIEST = STEPS - 1;
 
-const p2 = (x) => String(x).padStart(2, '0');
-/** A date as the house writes it: MM/DD/YYYY. */
-export const fmtDay = (ms) => {
-  const d = new Date(ms);
-  return `${p2(d.getMonth() + 1)}/${p2(d.getDate())}/${d.getFullYear()}`;
-};
+/** A date as the house writes it, MM/DD/YYYY: model.js's, offered here too. */
+export { fmtDay };
 
 /**
  * Whether a node is drawn crossed at step k of the age table A, by the
@@ -96,8 +104,15 @@ export function crossedAt(A, k, node) {
   return node.mm > t && A.kept(node, k) <= 0;
 }
 
+/**
+ * The age table that counts node: B, an open archive's own table, for a
+ * folder B holds and A (the shared table of the tree on disk) does not;
+ * A for everything else. A file needs no row, so A answers for it.
+ */
+export const tableOf = (A, B, node) => (!A || !node?.d || A.has(node) || !B?.has(node) ? A : B);
+
 /** Changed and total figures for a node at step k; shares by bytes, or by files when it holds none. */
-function figures(A, k, node) {
+export function figures(A, k, node) {
   const tb = A.totalBytes(node);
   const tf = A.totalFiles(node);
   const cb = A.changedBytes(node, k);
@@ -116,11 +131,35 @@ export function install(api) {
   const earlierBtn = $('time-earlier');
   const laterBtn = $('time-later');
 
+  /**
+   * The open archive's own table: S.ages holds only the tree on disk, so
+   * an archive's folders are counted from its listing, on the same ladder
+   * (the same anchor). Built once per archive and table.
+   */
+  let inner = null;
+  const archiveTable = () => {
+    const I = S.interior;
+    const A = S.ages;
+    if (!I || !A) {
+      inner = null;
+      return null;
+    }
+    if (!inner || inner.root !== I.root || inner.anchor !== A.anchor) inner = { root: I.root, anchor: A.anchor, table: buildAgeTable(I.root, A.anchor) };
+    return inner.table;
+  };
+
+  /** The table that counts node: the archive's for a folder inside it, S.ages otherwise. */
+  const tableFor = (node) => {
+    const A = S.ages;
+    if (!A || !node?.d || A.has(node)) return A;
+    return tableOf(A, archiveTable(), node);
+  };
+
   /** S.time for step k of the current table; null at the present. */
   const stateFor = (k) => {
     if (!k || !S.ages) return null;
     const t = S.ages.T[k];
-    return Object.freeze({ k, t, date: fmtDay(t), crossed: (node) => !!S.ages && !!node && crossedAt(S.ages, k, node) });
+    return Object.freeze({ k, t, date: fmtDay(t), crossed: (node) => !!S.ages && !!node && crossedAt(tableFor(node), k, node) });
   };
 
   /* ---------- what is said ---------- */
@@ -144,7 +183,7 @@ export function install(api) {
     const st = S.time;
     if (!st || !S.ages) return 'Back to the present.';
     const f = S.focus;
-    const { tb, tf, cb, cf, share } = figures(S.ages, st.k, f);
+    const { tb, tf, cb, cf, share } = figures(tableFor(f), st.k, f);
     const where = f.p ? f.n : `${f.n} (the root)`;
     let text = `As of ${st.date}: `;
     if (!tf) text += `${where} holds no files.`;
@@ -198,7 +237,7 @@ export function install(api) {
     if (!S.ages) return speak('not-ready');
     // Half of the folder you are in changed since this step; a folder
     // with no files looks to the root's.
-    let k = S.ages.medianStep(S.focus);
+    let k = tableFor(S.focus).medianStep(S.focus);
     if (k < 1) k = S.ages.medianStep(S.model.root);
     return go(Math.max(1, k), 'enter');
   }
@@ -221,8 +260,8 @@ export function install(api) {
   /** "Since MM/DD/YYYY": what changed after the date, what did not, and where. */
   function since(node) {
     const st = S.time;
-    const A = S.ages;
-    if (!st || !A) return null;
+    if (!st || !S.ages) return null;
+    const A = tableFor(node);
     const k = st.k;
     const title = el('div', { class: 'section-title', text: `Since ${st.date}` });
     if (!node.d) {
@@ -238,14 +277,15 @@ export function install(api) {
     // Where the change is: the entries here holding the most changed bytes.
     const where = [];
     for (const ch of node.c) {
-      const f = ch.d ? A.changedFiles(ch, k) : ch.m > st.t ? 1 : 0;
+      const C = tableFor(ch);
+      const f = ch.d ? C.changedFiles(ch, k) : ch.m > st.t ? 1 : 0;
       const empty = ch.d && !ch.e && !ch.c.length && ch.m > st.t;
-      if (f || empty) where.push({ ch, b: A.changedBytes(ch, k), f });
+      if (f || empty) where.push({ ch, b: C.changedBytes(ch, k), f });
     }
     where.sort((a, b) => b.b - a.b || b.f - a.f || a.ch.n.localeCompare(b.ch.n));
     const rows = where.slice(0, WHERE_MAX).map(({ ch, b, f }) => {
       const row = api.itemButton(ch, ch.d ? `${fmtBytes(b)} · ${fmtCount(f)}` : fmtBytes(b));
-      if (crossedAt(A, k, ch)) row.querySelector('.swatch')?.classList.add('is-crossed');
+      if (crossedAt(tableFor(ch), k, ch)) row.querySelector('.swatch')?.classList.add('is-crossed');
       row.setAttribute('aria-label', `${ch.n}: ${ch.d ? `${fmtCount(f)} file${f === 1 ? '' : 's'}, ${fmtBytes(b)}` : fmtBytes(b)} changed since ${st.date}. Reveal it.`);
       return row;
     });
@@ -271,12 +311,14 @@ export function install(api) {
       const A = S.ages;
       const k = S.time?.k;
       if (!k || !A) return null;
-      return { asOf: { t: A.T[k], kept: (dir) => A.kept(dir, k) } };
+      // A folder inside an open archive keeps what its own entries kept.
+      return { asOf: { t: A.T[k], kept: (dir) => tableFor(dir).kept(dir, k) } };
     },
   });
 
   // A rebuilt table moves the ladder with the moment it was built: the
-  // date shown follows it, and the layout is redrawn from its figures.
+  // date shown follows it, and the layout, the inspector's Since section
+  // and the Contents swatches are drawn again from its figures.
   api.AFTER_SURVEY.add({
     id: 'time', order: 20, owner: OWNER,
     run: () => {
@@ -284,6 +326,8 @@ export function install(api) {
       S.time = stateFor(S.time.k);
       drawCell();
       api.queueLayout(0);
+      api.drawInspector();
+      api.drawLedger(true);
     },
   });
 
@@ -295,7 +339,7 @@ export function install(api) {
       if (!st || !A || c.type === BOX.SCREE || node.e) return null;
       const mark = c.L.aux[c.i] === AUX.CROSSED ? ' · flat and crossed' : c.L.aux[c.i] === AUX.SUNK ? ' · lowered to what it kept' : '';
       if (!node.d) return node.m > st.t ? `Changed since ${st.date}${mark}` : `Unchanged since ${st.date}`;
-      const { tf, cb, cf, share } = figures(A, st.k, node);
+      const { tf, cb, cf, share } = figures(tableFor(node), st.k, node);
       if (!tf) return node.m > st.t ? `Changed since ${st.date}${mark}` : `Unchanged since ${st.date}`;
       if (!cf) return `Unchanged since ${st.date}`;
       return `${fmtCount(cf)} of ${fmtCount(tf)} files changed since ${st.date} · ${fmtBytes(cb)}, ${pctOf(share)}${mark}`;

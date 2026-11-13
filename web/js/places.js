@@ -1,16 +1,23 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Places Store (Terrane Edition - v1.0)
+ *     - Title: Places Store (Terrane Edition - v1.1)
  *     - File Name: places.js
  *     - Relative Path: web/js/places.js
  *     - Artifact Type: javascript
- *     - Version: 1.0.0
+ *     - Version: 1.1.0
  *     - Date: 11/13/2026
  *     - Update: Friday, November 13, 2026
  *     - Author: Dennis 'dendogg' Smaltz
  *     - A.I. Acknowledgement: Anthropic - Claude Opus 5.5
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
+ *
+ * ✒ Changelog:
+ *     - 1.1.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] —
+ *       resolve(model) without dirs, a whole survey, empties the detail
+ *       cache, which held the old tree. plural comes from model.js.
+ *     - 1.0.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] —
+ *       Initial release.
  *
  * ✒ Description:
  *     The memory behind landmarks: benchmarks (a folder's size, counts and
@@ -72,7 +79,7 @@
  * ----------------------------------------------------------------------------
  */
 
-import { relPath, fmtBytes, fmtCount } from './model.js';
+import { relPath, fmtBytes, fmtCount, plural } from './model.js';
 
 /** The most benchmarks one directory keeps. */
 export const MAX_BENCHMARKS = 64;
@@ -157,7 +164,6 @@ export function compare(m, node) {
 
 const MINUS = '−';
 const signed = (v, text) => `${v < 0 ? MINUS : '+'}${text}`;
-const plural = (n, one, many = `${one}s`) => `${fmtCount(Math.abs(n))} ${Math.abs(n) === 1 ? one : many}`;
 
 /**
  * A summary in words: "+1 file, +12 B", "−2 folders", "changed inside" or
@@ -603,6 +609,9 @@ export class Places {
     const lost = [];
     const found = [];
     const first = !this.resolved;
+    // A whole survey is a new tree: the details worked out against the old
+    // one would keep it reachable, and are of folders no longer shown.
+    if (!dirs) this.cache.clear();
     for (const b of this.benchmarks) {
       const had = b.node;
       if (dirs && had && !under(had, dirs)) continue;
