@@ -1,11 +1,11 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Filesystem Operations (Terrane Edition - v1.2)
+ *     - Title: Filesystem Operations (Terrane Edition - v1.3)
  *     - File Name: ops.mjs
  *     - Relative Path: server/ops.mjs
  *     - Artifact Type: javascript
- *     - Version: 1.2.0
+ *     - Version: 1.3.0
  *     - Date: 11/13/2026
  *     - Update: Friday, November 13, 2026
  *     - Author: Dennis 'dendogg' Smaltz
@@ -13,6 +13,18 @@
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
  *
  * ✒ Changelog:
+ *     - 1.3.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
+ *       holding index is untrusted data: a record is kept only when its
+ *       id has the shape hold() mints and its name is one entry name
+ *       (validHold), so the Journal never lists, and restore or Undo never
+ *       moves or deletes, anything outside the slot a record names.
+ *       restore also checks the slot and the item path by their parents.
+ *       The holding area and its items folder must be plain folders, not
+ *       links, before anything is held, restored, purged or journaled
+ *       there. Open launches, and Reveal shows, only a link whose end is
+ *       inside the root. A relative link carried to another folder by a
+ *       move, or written by a copy, is refused when from its new place it
+ *       would point outside the root.
  *     - 1.2.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — Undo
  *       of a rename or move answers with moved, the paths it carried back
  *       as [where it was, where it is now] pairs, so the page can follow
@@ -40,6 +52,9 @@
  *       the caller asks for "keep both", which picks a free "name copy" name
  *     - No direct delete: remove moves items into .terrane-trash inside the
  *       root (same volume, so the move is atomic and instantly reversible)
+ *     - The holding index is read as untrusted data: records whose id or
+ *       name could climb out of their slot are dropped (validHold), and
+ *       the holding area must be a plain folder, not a link
  *     - Persistent undo journal in .terrane-trash/journal.json, written
  *       atomically after every change. Paths are stored root-relative and
  *       pass through the guard again on undo, so an edited journal cannot
@@ -60,7 +75,10 @@
  *     - One mutation at a time through a queue, so operations cannot
  *       interleave
  *     - Open and reveal hand the path to the operating system's own
- *       handler, detached and without a console window
+ *       handler, detached and without a console window, once a link's
+ *       end is proved inside the root
+ *     - A relative link is never carried to a folder from which it would
+ *       point outside the root
  *     - Read-only mode refuses every mutation with an explanation
  *
  * ✒ Usage Instructions:
@@ -87,9 +105,11 @@
  *       back without progress or cancellation. A same-volume move is one
  *       rename per item and cannot be interrupted partway through an item
  *     - Security: purge is the only permanent deletion of user data and
- *       only ever acts inside .terrane-trash. Cleanup after a cancelled
- *       copy deletes only paths that copy created, newest first, and
- *       removes folders only when empty
+ *       only ever acts inside .terrane-trash. A relative link inside a
+ *       moved folder keeps its text; anything that reads or launches what
+ *       a link leads to checks its real location first. Cleanup after a
+ *       cancelled copy deletes only paths that copy created, newest
+ *       first, and removes folders only when empty
  * ----------------------------------------------------------------------------
  */
 
@@ -102,6 +122,24 @@ import { measure, copyTree, removeCreated, isCancel } from './transfer.mjs';
 const JOURNAL_MAX = 500;
 const JOURNAL_FORMAT = 1;
 const JOB_ID = /^[A-Za-z0-9_-]{6,64}$/;
+/** The shape of a slot id hold() mints: base-36 time, a dash, base-36 sequence. */
+const HOLD_ID = /^[0-9a-z]{1,16}-[0-9a-z]{1,16}$/;
+
+/**
+ * Whether a holding-area record can be trusted as data: the index is a file
+ * inside the directory, so anything could have written it. Its id must be
+ * one hold() could mint and its name a single entry name, so neither can
+ * climb out of the slot they name.
+ */
+export function validHold(r) {
+  if (!r || typeof r !== 'object') return false;
+  if (typeof r.id !== 'string' || !HOLD_ID.test(r.id)) return false;
+  if (typeof r.origin !== 'string' || typeof r.name !== 'string') return false;
+  const n = r.name;
+  if (!n || n === '.' || n === '..' || n.includes('/') || n.includes('\0')) return false;
+  if (process.platform === 'win32' && (n.includes('\\') || n.includes(':'))) return false;
+  return true;
+}
 const JOBBED = new Set(['move', 'copy', 'trash']);
 const PROGRESS_MS = 150;
 
@@ -154,10 +192,10 @@ async function writeAtomic(file, text) {
 }
 
 /** Copies with progress; on any failure removes what it created. */
-async function copyOwned(from, to, job) {
+async function copyOwned(from, to, job, linkCheck) {
   const created = [];
   try {
-    await copyTree(from, to, { signal: job?.signal, created, onBytes: job?.addBytes, onFile: job?.addFile });
+    await copyTree(from, to, { signal: job?.signal, created, onBytes: job?.addBytes, onFile: job?.addFile, linkCheck });
   } catch (err) {
     err.leftover = await removeCreated(created);
     throw err;
@@ -222,19 +260,65 @@ export function makeOps(guard, { readOnly = false, onJob } = {}) {
   let seq = 0;
   let warned = false;
   const holdRoot = path.join(guard.root, HOLD_DIR);
+  const itemsDir = path.join(holdRoot, 'items');
   const holdIndexPath = path.join(holdRoot, 'index.json');
   const journalPath = path.join(holdRoot, 'journal.json');
 
+  /**
+   * Proves the holding area is a plain folder where it should be, and so
+   * is its items folder: a link or a junction in their place would carry
+   * every hold, restore, purge and journal write somewhere else.
+   */
+  const holdArea = async () => {
+    for (const p of [holdRoot, itemsDir]) {
+      let st;
+      try {
+        st = await fs.lstat(p);
+      } catch (err) {
+        if (err.code === 'ENOENT') continue;
+        throw err;
+      }
+      if (!st.isDirectory() || st.isSymbolicLink()) {
+        throw new GuardError('EHOLD', `${guard.rel(p)} is not a plain folder, so Terrane will not use it as its holding area. Move it aside and try again.`, 409);
+      }
+    }
+  };
+
+  /** The holding index, trusted entries only: one that could climb out of its slot is left out. */
   const readHold = async () => {
     try {
-      return JSON.parse(await fs.readFile(holdIndexPath, 'utf8'));
+      await holdArea();
+      const data = JSON.parse(await fs.readFile(holdIndexPath, 'utf8'));
+      return Array.isArray(data) ? data.filter(validHold) : [];
     } catch {
       return [];
     }
   };
   const writeHold = async (items) => {
+    await holdArea();
     await fs.mkdir(holdRoot, { recursive: true });
     await writeAtomic(holdIndexPath, JSON.stringify(items, null, 1));
+  };
+
+  /**
+   * Whether a link copied or moved to `to` still leads inside the root.
+   * A relative link keeps its text, so from another folder it points
+   * somewhere else; one that would then point outside is refused.
+   */
+  const linkStays = async (to, text) => {
+    if (path.isAbsolute(text)) return true;
+    let parent;
+    try {
+      parent = await fs.realpath(path.dirname(to));
+    } catch {
+      parent = path.dirname(to);
+    }
+    return guard.contains(path.resolve(parent, text));
+  };
+  const linkRefused = (name) => new GuardError('ELINK', `"${name}" is a relative link that would point outside the authorized directory from its new place, so it was not carried there.`, 403);
+  /** For copyTree: refuses a link whose copy would lead outside the root. */
+  const linkCheck = async (to, text) => {
+    if (!(await linkStays(to, text))) throw linkRefused(path.basename(to));
   };
 
   const parentRel = (abs) => guard.rel(path.dirname(abs));
@@ -267,6 +351,7 @@ export function makeOps(guard, { readOnly = false, onJob } = {}) {
     if (readOnly) return;
     while (journal.length > JOURNAL_MAX) journal.shift();
     try {
+      await holdArea();
       await fs.mkdir(holdRoot, { recursive: true });
       await writeAtomic(journalPath, JSON.stringify({ format: JOURNAL_FORMAT, entries: journal }));
     } catch (err) {
@@ -287,12 +372,13 @@ export function makeOps(guard, { readOnly = false, onJob } = {}) {
 
   /** Moves entries into the holding area; stops early when the job is cancelled. */
   const hold = async (absList, job) => {
+    await holdArea();
     const items = await readHold();
     const added = [];
     for (const abs of absList) {
       if (job?.signal.aborted) break;
       const id = `${Date.now().toString(36)}-${(seq++).toString(36)}`;
-      const slot = path.join(holdRoot, 'items', id);
+      const slot = path.join(itemsDir, id);
       await fs.mkdir(slot, { recursive: true });
       const held = path.join(slot, path.basename(abs));
       if (job) job.current = guard.rel(abs);
@@ -317,11 +403,14 @@ export function makeOps(guard, { readOnly = false, onJob } = {}) {
   };
 
   const restore = async (ids, { skipMissing = false } = {}) => {
+    await holdArea();
+    // Only records that passed validHold are here, so an id and a name
+    // from the index can each name one entry and no more.
     const items = await readHold();
     const affected = new Set();
     const names = [];
-    for (const id of ids) {
-      const rec = items.find((r) => r.id === id);
+    for (const id of Array.isArray(ids) ? ids : []) {
+      const rec = typeof id === 'string' ? items.find((r) => r.id === id) : undefined;
       if (!rec && skipMissing) continue;
       if (!rec) throw new GuardError('ENOENT', 'That item is no longer in the holding area.', 404);
       const to = guard.resolve(rec.origin, { allowRoot: false });
@@ -329,8 +418,14 @@ export function makeOps(guard, { readOnly = false, onJob } = {}) {
       if (await exists(to)) {
         throw new GuardError('EEXIST', `Cannot restore "${rec.name}": something else now has that name.`, 409);
       }
-      const slot = path.join(holdRoot, 'items', id);
-      await moveEntry(path.join(slot, rec.name), to);
+      const slot = path.join(itemsDir, rec.id);
+      const from = path.join(slot, rec.name);
+      // Belt and braces: the slot is one folder in items, the item one entry in the slot.
+      if (path.dirname(slot) !== itemsDir || path.dirname(from) !== slot) {
+        throw new GuardError('EHOLD', 'That holding-area record does not name an item Terrane put there.', 400);
+      }
+      if (!(await exists(from))) throw new GuardError('ENOENT', `"${rec.name}" is no longer in the holding area.`, 404);
+      await moveEntry(from, to);
       await fs.rm(slot, { recursive: true, force: true });
       items.splice(items.indexOf(rec), 1);
       await writeHold(items);
@@ -384,6 +479,13 @@ export function makeOps(guard, { readOnly = false, onJob } = {}) {
         }
         if (type === 'move' && path.dirname(from) === dir) {
           throw new GuardError('ESAME', `"${path.basename(from)}" is already in that folder.`);
+        }
+        // A link carried to another folder keeps its text, so a relative
+        // one would point somewhere else: refused before anything moves
+        // when that would be outside the root. (A copy checks every link
+        // it writes, the ones inside folders included.)
+        if (st.isSymbolicLink() && path.dirname(from) !== dir && !(await linkStays(path.join(dir, path.basename(from)), await fs.readlink(from)))) {
+          throw linkRefused(path.basename(from));
         }
         let name = path.basename(from);
         if ((await exists(path.join(dir, name))) || taken.has(name)) {
@@ -440,7 +542,7 @@ export function makeOps(guard, { readOnly = false, onJob } = {}) {
             await moveEntry(from, to, job);
             affected.add(parentRel(from));
           } else {
-            await copyOwned(from, to, job);
+            await copyOwned(from, to, job, linkCheck);
           }
         } catch (err) {
           leftover += err.leftover || 0;
@@ -598,6 +700,7 @@ export function makeOps(guard, { readOnly = false, onJob } = {}) {
   const loadJournal = async () => {
     let text;
     try {
+      await holdArea();
       text = await fs.readFile(journalPath, 'utf8');
     } catch {
       return;
@@ -661,8 +764,22 @@ export function makeOps(guard, { readOnly = false, onJob } = {}) {
     run(op) {
       if (op.type === 'open' || op.type === 'reveal') {
         return (async () => {
-          const abs = op.path === '' ? guard.root : await target(op.path);
+          let abs = op.path === '' ? guard.root : await target(op.path);
           const reveal = op.type === 'reveal';
+          // The system handler follows a link to its end, so the end must
+          // be inside the root, as for a preview. Open launches what the
+          // link leads to; Reveal shows the link where it stands, so a
+          // dangling one can still be revealed.
+          if (abs !== guard.root) {
+            if (!reveal) abs = await guard.realInside(abs);
+            else {
+              let real = null;
+              try {
+                real = await fs.realpath(abs);
+              } catch { /* a dangling link stays where it is */ }
+              if (real && !guard.contains(real)) throw new GuardError('EOUTSIDE', 'This link points outside the authorized directory.', 403);
+            }
+          }
           if (process.platform === 'win32') await launch('explorer.exe', reveal ? [`/select,${abs}`] : [abs]);
           else if (process.platform === 'darwin') await launch('open', reveal ? ['-R', abs] : [abs]);
           else await launch('xdg-open', [reveal ? path.dirname(abs) : abs]);
@@ -736,8 +853,9 @@ export function makeOps(guard, { readOnly = false, onJob } = {}) {
     purge() {
       if (readOnly) return Promise.reject(new GuardError('EREADONLY', 'Read-only mode.', 403));
       return serial(async () => {
+        await holdArea();
         const items = await readHold();
-        await fs.rm(path.join(holdRoot, 'items'), { recursive: true, force: true });
+        await fs.rm(itemsDir, { recursive: true, force: true });
         await fs.rm(holdIndexPath, { force: true });
         for (const e of journal) {
           if (e.undo.kind === 'restore' && !e.undone) {

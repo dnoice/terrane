@@ -2,11 +2,11 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Terrane Service (Terrane Edition - v1.3)
+ *     - Title: Terrane Service (Terrane Edition - v1.4)
  *     - File Name: terrane.mjs
  *     - Relative Path: server/terrane.mjs
  *     - Artifact Type: CLI
- *     - Version: 1.3.0
+ *     - Version: 1.4.0
  *     - Date: 11/13/2026
  *     - Update: Friday, November 13, 2026
  *     - Author: Dennis 'dendogg' Smaltz
@@ -14,6 +14,17 @@
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
  *
  * ✒ Changelog:
+ *     - 1.4.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — POST
+ *       /api/hash reads a file only once its real location is proved
+ *       inside the root and outside the holding area, as /api/raw and
+ *       /api/inside do (guard.realInside), so a link no longer hands out
+ *       the hash of a file outside. The scan routes write through
+ *       pump(), which waits for 'drain' or 'close': a survey the page
+ *       drops while the socket is full no longer leaves its scan, or in
+ *       snapshot mode its open database, suspended for good. The
+ *       thumbnail cookie is named for the port and holds a secret of its
+ *       own that opens /api/thumbs and /api/thumb only, never the session
+ *       token.
  *     - 1.3.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
  *       interface's files are revalidated instead of fetched again on
  *       every use: each carries a weak ETag from its size and change time
@@ -60,7 +71,8 @@
  *     - Ctrl+C cancels running jobs and lets them remove their partial
  *       output before the process exits
  *     - Duplicate verification by content hash (full SHA-1 up to 16 MB,
- *       three sampled megabytes plus size beyond that, reported as such)
+ *       three sampled megabytes plus size beyond that, reported as such),
+ *       of files whose real location is inside the root
  *     - Sandboxed raw-file endpoint for previews: capped length, nosniff,
  *       and a CSP sandbox so a previewed HTML or SVG file cannot run
  *     - Archive interiors: a zip's central directory read without
@@ -72,7 +84,8 @@
  *       announced
  *     - Thumbnails from the thumbnail dataset, in both modes: one gzipped
  *       index, and versioned images cached as immutable; image URLs carry
- *       no token and authenticate with a SameSite=Strict cookie
+ *       no token and authenticate with a SameSite=Strict cookie named for
+ *       the port, whose secret opens thumbnails and nothing else
  *     - Interface files revalidated by a weak ETag (no-cache, 304 when
  *       unchanged); the page, which holds the token, is never stored
  *     - Zero npm dependencies; three.js and the fonts are vendored in web/
@@ -110,7 +123,10 @@
  *     - Compatible platforms: Node.js 22.5+ on Windows, macOS, Linux
  *     - Security: the token defends against other web pages, not against
  *       other programs running as the same user, which already have the
- *       same filesystem access the service has
+ *       same filesystem access the service has. The token never leaves the
+ *       page's meta tag and the X-Terrane-Token header; the cookie, which
+ *       the browser sends to every port on this host, carries only the
+ *       thumbnail secret
  *     - Limitations: on Linux the recursive watcher is skipped above 15,000
  *       folders, where its setup cost stops being reasonable; the interface
  *       then offers manual refresh
@@ -125,7 +141,7 @@ import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { spawn } from 'node:child_process';
 import { makeGuard, GuardError, HOLD_DIR, relParts } from './guard.mjs';
-import { scan } from './scan.mjs';
+import { scan, pump } from './scan.mjs';
 import { makeOps } from './ops.mjs';
 import { openSnapshots, listSnapshots, datasetHome, slugOf } from './snapshot.mjs';
 import { openThumbs } from './thumbs.mjs';
@@ -187,6 +203,10 @@ const thumbsFile = option('--thumbs', null)
 let thumbs = null;
 const getThumbs = () => thumbs || (thumbs = openThumbs(thumbsFile, { root: snap ? snapMeta.root : guard.root }));
 const token = crypto.randomBytes(24).toString('base64url');
+// The thumbnail cookie's own secret, good for nothing but thumbnails: a
+// cookie reaches every service on this host whatever its port, so it
+// must never be the session token.
+const thumbKey = crypto.randomBytes(24).toString('base64url');
 let port = Number(option('--port', 4173));
 
 const MIME = {
@@ -299,11 +319,17 @@ async function snapshotApi(req, res, route, q) {
       throw new GuardError(err.code || 'ENOENT', err.message, 404);
     }
     res.writeHead(200, { 'Content-Type': 'application/x-ndjson', 'Cache-Control': 'no-store' });
-    for (let step = first; !step.done; step = await it.next()) {
-      if (ac.signal.aborted) break;
-      if (!res.write(JSON.stringify(step.value) + '\n')) await new Promise((r) => res.once('drain', r));
-    }
-    return res.end();
+    // The first batch was read to tell a missing folder from an empty
+    // one; the rest follow it. Returning this generator returns the
+    // snapshot's, whose finally closes the database.
+    const rest = async function* () {
+      try {
+        for (let step = first; !step.done; step = await it.next()) yield step.value;
+      } finally {
+        await it.return();
+      }
+    };
+    return pump(res, rest(), ac.signal);
   }
   if (route === 'stat') {
     const parts = relParts(q.get('path') || '');
@@ -423,15 +449,26 @@ function thumbApi(req, res, route, q) {
 
 /* ---------- routes ---------- */
 
+/** This service's thumbnail cookie from a request, or undefined. Other ports' cookies are ignored. */
+const cookieOf = (req) => {
+  const name = `terrane-${port}=`;
+  for (const part of String(req.headers.cookie || '').split(';')) {
+    const p = part.trim();
+    if (p.startsWith(name)) return p.slice(name.length);
+  }
+  return undefined;
+};
+
 async function api(req, res, url) {
   const route = url.pathname.slice(5);
   const q = url.searchParams;
   const isThumb = req.method === 'GET' && (route === 'thumb' || route === 'thumbs');
   // Thumbnail URLs carry no token so they stay identical across restarts
-  // and the browser cache survives; a SameSite=Strict cookie stands in.
-  const cookie = /(?:^|;\s*)terrane=([^;]+)/.exec(req.headers.cookie || '')?.[1];
-  const supplied = req.headers['x-terrane-token'] || q.get('t') || (isThumb ? cookie : undefined);
-  if (supplied !== token) throw new GuardError('ETOKEN', 'Missing or wrong session token. Reload the page from the address Terrane printed.', 401);
+  // and the browser cache survives; a SameSite=Strict cookie stands in,
+  // named for this port and holding a secret that opens thumbnails only.
+  const cookie = isThumb ? cookieOf(req) : undefined;
+  const supplied = req.headers['x-terrane-token'] || q.get('t');
+  if (supplied !== token && !(isThumb && !supplied && cookie === thumbKey)) throw new GuardError('ETOKEN', 'Missing or wrong session token. Reload the page from the address Terrane printed.', 401);
   if (isThumb) return thumbApi(req, res, route, q);
   if (snap) return snapshotApi(req, res, route, q);
 
@@ -450,11 +487,7 @@ async function api(req, res, url) {
       const ac = new AbortController();
       res.on('close', () => ac.abort());
       res.writeHead(200, { 'Content-Type': 'application/x-ndjson', 'Cache-Control': 'no-store' });
-      for await (const batch of scan(abs, { depth, signal: ac.signal, isRoot: rel === '' })) {
-        if (ac.signal.aborted) break;
-        if (!res.write(JSON.stringify(batch) + '\n')) await new Promise((r) => res.once('drain', r));
-      }
-      return res.end();
+      return pump(res, scan(abs, { depth, signal: ac.signal, isRoot: rel === '' }), ac.signal);
     }
     if (route === 'stat') {
       const abs = guard.resolve(q.get('path') || '');
@@ -474,10 +507,7 @@ async function api(req, res, url) {
     if (route === 'raw') {
       const abs = guard.resolve(q.get('path') || '', { allowRoot: false });
       await guard.assertParentInside(abs);
-      const real = await fsp.realpath(abs);
-      if (!guard.contains(real)) {
-        throw new GuardError('EOUTSIDE', 'This link points outside the authorized directory.', 403);
-      }
+      const real = await guard.realInside(abs);
       const st = await fsp.stat(real);
       if (!st.isFile()) throw new GuardError('ENOTFILE', 'Not a regular file.');
       const max = Math.min(Number(q.get('max')) || 262144, 32 * 1024 * 1024);
@@ -498,14 +528,9 @@ async function api(req, res, url) {
       const abs = guard.resolve(rel, { allowRoot: false });
       await guard.assertParentInside(abs);
       const name = path.basename(abs);
-      let real;
       let st;
-      try {
-        real = await fsp.realpath(abs);
-      } catch (err) {
-        throw new GuardError(err.code || 'ENOENT', `${name} is no longer there.`, 404);
-      }
-      if (real === guard.root || !guard.contains(real)) throw new GuardError('EOUTSIDE', 'This link points outside the authorized directory.', 403);
+      const real = await guard.realInside(abs, { gone: `${name} is no longer there.` });
+      if (real === guard.root) throw new GuardError('EOUTSIDE', 'This link points outside the authorized directory.', 403);
       try {
         st = await fsp.stat(real);
       } catch (err) {
@@ -557,7 +582,9 @@ async function api(req, res, url) {
           try {
             const abs = guard.resolve(paths[i], { allowRoot: false });
             await guard.assertParentInside(abs);
-            results[i] = await hashFile(abs);
+            // Reading follows a link, so its end must be inside the root,
+            // as for a preview.
+            results[i] = await hashFile(await guard.realInside(abs));
           } catch (err) {
             results[i] = { error: err.code || 'EIO' };
           }
@@ -615,8 +642,11 @@ async function serveStatic(req, res, url) {
     data = Buffer.from(data.toString('utf8').replace('__TERRANE_TOKEN__', token));
     headers['Content-Security-Policy'] = "default-src 'self'; img-src 'self' blob: data:; style-src 'self' 'unsafe-inline'; frame-ancestors 'none'";
     headers['Referrer-Policy'] = 'no-referrer';
-    // Lets thumbnail images authenticate without a token in their URL.
-    headers['Set-Cookie'] = `terrane=${token}; Path=/api/; HttpOnly; SameSite=Strict`;
+    // Lets thumbnail images authenticate without a token in their URL:
+    // a secret of its own, named for this port, so another service on this
+    // host never sees the session token and a second Terrane never
+    // overwrites this one's cookie.
+    headers['Set-Cookie'] = `terrane-${port}=${thumbKey}; Path=/api/; HttpOnly; SameSite=Strict`;
   }
   res.writeHead(200, headers);
   res.end(data);

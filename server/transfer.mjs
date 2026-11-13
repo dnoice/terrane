@@ -1,16 +1,24 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Measured Transfer (Terrane Edition - v1.0)
+ *     - Title: Measured Transfer (Terrane Edition - v1.1)
  *     - File Name: transfer.mjs
  *     - Relative Path: server/transfer.mjs
  *     - Artifact Type: javascript
- *     - Version: 1.0.0
- *     - Date: 11/11/2026
- *     - Update: Wednesday, November 11, 2026
+ *     - Version: 1.1.0
+ *     - Date: 11/13/2026
+ *     - Update: Friday, November 13, 2026
  *     - Author: Dennis 'dendogg' Smaltz
  *     - A.I. Acknowledgement: Anthropic - Claude Opus 5.5
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
+ *
+ * ✒ Changelog:
+ *     - 1.1.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] —
+ *       copyTree takes linkCheck(to, text), called before each link is
+ *       written, so the caller can refuse a relative link whose copy
+ *       would point outside the authorized directory from its new place.
+ *     - 1.0.0 (11/11/2026) [dendogg + Anthropic - Claude Opus 5.5] —
+ *       Initial release.
  *
  * ✒ Description:
  *     The copy engine behind Terrane's copy and cross-volume move. It
@@ -35,7 +43,7 @@
  *     - Modification and access times are carried over, as the system
  *       file managers do
  *     - Symbolic links are copied as links (target text verbatim), never
- *       followed
+ *       followed; linkCheck may refuse one before it is written
  *     - File handles are closed before cleanup, so Windows can remove a
  *       partial file immediately
  *
@@ -44,7 +52,8 @@
  *     const { bytes, files } = await measure(src, { signal });
  *     const created = [];
  *     try {
- *       await copyTree(src, dst, { signal, created, onBytes: (n) => {} });
+ *       await copyTree(src, dst, { signal, created, onBytes: (n) => {},
+ *         linkCheck: async (to, text) => {} });
  *     } catch (err) {
  *       await removeCreated(created);
  *       throw err;
@@ -161,7 +170,11 @@ export async function copyTree(from, to, opts) {
   const st = await fs.lstat(from);
 
   if (st.isSymbolicLink()) {
-    await fs.symlink(await fs.readlink(from), to);
+    // A link keeps its text; linkCheck(to, text) may refuse one that
+    // would lead somewhere it should not from its new place.
+    const text = await fs.readlink(from);
+    await opts.linkCheck?.(to, text);
+    await fs.symlink(text, to);
     created.push(to);
     onFile?.(from);
     return;

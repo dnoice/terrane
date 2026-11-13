@@ -2,11 +2,11 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Service Smoke Test (Terrane Edition - v1.4)
+ *     - Title: Service Smoke Test (Terrane Edition - v1.5)
  *     - File Name: smoke-test.mjs
  *     - Relative Path: tools/smoke-test.mjs
  *     - Artifact Type: test
- *     - Version: 1.4.0
+ *     - Version: 1.5.0
  *     - Date: 11/13/2026
  *     - Update: Friday, November 13, 2026
  *     - Author: Dennis 'dendogg' Smaltz
@@ -14,6 +14,20 @@
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
  *
  * ✒ Changelog:
+ *     - 1.5.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
+ *       hardening checks. Through the service: the holding area refused
+ *       under every other spelling (case, a trailing dot, NTFS stream
+ *       names), its 8.3 short name, a junction that leads into it, as a
+ *       rename and as a parent; its name reserved in any case; hashing
+ *       and Open refusing a link that leads outside; the thumbnail cookie
+ *       named for the port, holding no session token and opening
+ *       thumbnails only. In-process: planted holding records (an id that
+ *       climbs out, a name with separators) neither listed, restored nor
+ *       undone, with the folder outside untouched; a holding area that is
+ *       a link left unused; relative links refused where a copy or move
+ *       would aim them outside the root, and copied where they still
+ *       point inside; and the scan writer settling when the page goes
+ *       away while it waits for drain.
  *     - 1.4.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — A
  *       static-files section: interface files carry a weak ETag with
  *       no-cache and answer 304 to it, the page is no-store with no ETag,
@@ -82,6 +96,12 @@
  * ✒ Key Features:
  *     - Boundary checks: missing token, foreign Host header, traversal,
  *       holding-area access, and a write through an escaping symbolic link
+ *     - The holding area by any name (case, stream names, 8.3, a
+ *       junction), links that lead outside refused for hashing and Open,
+ *       and a thumbnail cookie that is not the token
+ *     - Planted holding-area records and a holding area that is a link,
+ *       in-process; relative links refused where a move or copy would aim
+ *       them outside the root; the scan writer when the page goes away
  *     - Every mutation verified on disk: mkdir, rename, move, copy,
  *       duplicate, remove to holding, restore
  *     - Collision checks: nothing is overwritten and nothing moves when a
@@ -387,7 +407,7 @@ async function boot(extra, port, env = {}, { withRoot = true } = {}) {
     child.kill();
   });
   return {
-    child, token, request, events, stop,
+    child, token, request, events, stop, port: actual,
     get: (route) => request('GET', route, { token }),
     op: (body) => request('POST', '/api/op', { token, body }),
     post: (route, body = {}) => request('POST', route, { token, body }),
@@ -485,6 +505,72 @@ check('restore puts a held item back', r.status === 200 && has('media', 'z.bin')
 console.log('\nDuplicates');
 r = await s.post('/api/hash', { paths: ['media/x.bin', 'media/y.bin', 'media/z.bin'] });
 check('hashing separates true copies from same-size files', r.body.results[0].hash === r.body.results[1].hash && r.body.results[0].hash !== r.body.results[2].hash);
+
+console.log('\nThe holding area by any name, links and the thumbnail cookie');
+{
+  const hold = path.join(root, '.terrane-trash');
+  const folds = process.platform === 'win32' || process.platform === 'darwin';
+  check('the holding area exists after a removal (the case these checks need)', fs.existsSync(path.join(hold, 'journal.json')));
+  const refusedAll = [];
+  for (const spelling of ['.TERRANE-TRASH', '.Terrane-Trash', ...(process.platform === 'win32' ? ['.terrane-trash.', '.terrane-trash::$INDEX_ALLOCATION', '.terrane-trash:$I30:$INDEX_ALLOCATION'] : [])]) {
+    const raw = await s.get(`/api/raw?path=${encodeURIComponent(`${spelling}/journal.json`)}`);
+    const sc = await s.get(`/api/scan?path=${encodeURIComponent(spelling)}`);
+    refusedAll.push(`${spelling}: raw ${raw.status}, scan ${sc.status}`);
+    if (raw.status === 200 || sc.status === 200) refusedAll.push('LEAK');
+  }
+  check(`no other spelling reaches the holding area (${folds ? 'case folded here' : 'case sensitive here'})`, !refusedAll.includes('LEAK'), refusedAll.join('; '));
+  // An 8.3 short name, where the volume makes them: found with dir /x.
+  if (process.platform === 'win32') {
+    const { spawnSync } = await import('node:child_process');
+    const listing = spawnSync('cmd.exe', ['/d', '/c', 'dir', '/x', '/a:d', root], { encoding: 'utf8' }).stdout || '';
+    const short = listing.split(/\r?\n/).map((l) => l.match(/\s(\S+~\d+)\s+\.terrane-trash\s*$/i)?.[1]).find(Boolean);
+    if (short) {
+      const viaShort = await s.get(`/api/raw?path=${encodeURIComponent(`${short}/journal.json`)}`);
+      const renameShort = await s.op({ type: 'rename', path: short, name: 'not-held-anymore' });
+      check(`its 8.3 short name ${short} is refused for reading and renaming`, viaShort.status === 403 && renameShort.status === 403 && fs.existsSync(hold) && !has('not-held-anymore'),
+        `${viaShort.status} ${renameShort.status}`);
+    } else console.log('  note  this volume makes no 8.3 short names; that check is left out');
+  }
+  const renamed = await s.op({ type: 'rename', path: '.TERRANE-TRASH', name: 'not-held-anymore' });
+  check('the holding area cannot be renamed away under another spelling', renamed.status >= 400 && fs.existsSync(hold) && !has('not-held-anymore'), JSON.stringify(renamed.body));
+  const planted = await s.op({ type: 'mkdir', parent: '.TERRANE-TRASH/items', name: 'planted' });
+  check('nothing can be created in it under another spelling', planted.status >= 400 && !fs.existsSync(path.join(hold, 'items', 'planted')), JSON.stringify(planted.body));
+  const named = await s.op({ type: 'mkdir', parent: '', name: '.Terrane-Trash' });
+  check('its name is reserved in any case', named.status === 400 && named.body.code === 'ENAME', JSON.stringify(named.body));
+  if (linked) {
+    // A link (a junction on Windows) inside the root that leads into it.
+    const hj = path.join(root, 'media', 'hj');
+    fs.symlinkSync(hold, hj, 'junction');
+    const viaLink = await s.get('/api/raw?path=media/hj/journal.json');
+    const scanLink = await s.get('/api/scan?path=media/hj');
+    const intoLink = await s.op({ type: 'move', paths: ['media/x copy.bin'], dest: 'media/hj' });
+    check('a link that leads into the holding area is refused for reading, scanning and as a destination',
+      viaLink.status === 403 && scanLink.status === 403 && intoLink.status === 403 && has('media', 'x copy.bin'), `${viaLink.status} ${scanLink.status} ${intoLink.status}`);
+    fs.rmSync(hj, { force: true });
+    fs.writeFileSync(path.join(outside, 'secret.txt'), 'OUTSIDE SECRET');
+    fs.symlinkSync(path.join(outside, 'secret.txt'), path.join(root, 'media', 'ln.txt'), 'file');
+    const hashed = await s.post('/api/hash', { paths: ['media/ln.txt', 'media/x.bin'] });
+    const outsideSha = crypto.createHash('sha1').update('OUTSIDE SECRET').digest('hex');
+    check('hashing refuses a link that leads outside, as a preview does, and still hashes the rest',
+      hashed.body.results[0].error === 'EOUTSIDE' && !JSON.stringify(hashed.body).includes(outsideSha) && hashed.body.results[1].hash === sha('media', 'x.bin'), JSON.stringify(hashed.body));
+    const opened = await s.op({ type: 'open', path: 'media/ln.txt' });
+    check('open refuses a link that leads outside before anything is launched', opened.status === 403 && opened.body.code === 'EOUTSIDE', JSON.stringify(opened.body));
+    fs.unlinkSync(path.join(root, 'media', 'ln.txt'));
+  }
+  const page = await s.request('GET', '/');
+  const set = String(page.headers['set-cookie'] || '');
+  const m = set.match(/^terrane-(\d+)=([^;]+);/);
+  check('the thumbnail cookie is named for the port and does not hold the session token',
+    !!m && m[1] === String(s.port) && m[2] !== s.token && !set.includes(s.token), set);
+  const jar = m ? `terrane-${m[1]}=${m[2]}` : '';
+  const asToken = await s.request('POST', '/api/op', { token: m?.[2], body: { type: 'mkdir', parent: '', name: 'by-cookie' } });
+  const cookieOnly = await s.request('GET', '/api/info', { headers: { Cookie: jar } });
+  const thumbsByCookie = await s.request('GET', '/api/thumbs', { headers: { Cookie: jar } });
+  const otherPort = await s.request('GET', '/api/thumbs', { headers: { Cookie: `terrane-1=${m?.[2]}` } });
+  check('the cookie opens the thumbnail index and nothing else: not as the token, not alone, not under another port\'s name',
+    asToken.status === 401 && !has('by-cookie') && cookieOnly.status === 401 && thumbsByCookie.status === 200 && otherPort.status === 401,
+    `${asToken.status} ${cookieOnly.status} ${thumbsByCookie.status} ${otherPort.status}`);
+}
 
 const firstJournal = (await s.get('/api/journal')).body.journal;
 await s.stop();
@@ -623,6 +709,136 @@ console.log('\nUndo answers and changes that stop part way (no service)');
     err?.status === 500 && JSON.stringify(err.results) === JSON.stringify(['three']) && !at('three') && at('four'), JSON.stringify(err && { results: err.results, message: err.message }));
   u = await o.undo();
   check('an undo that moved nothing by path answers without moved', u.moved === undefined && at('three'), JSON.stringify(u));
+}
+
+console.log('\nHolding-area records, the holding area itself and links that move (no service)');
+{
+  const { makeGuard, relParts } = await import('../server/guard.mjs');
+  const { makeOps, validHold } = await import('../server/ops.mjs');
+  const base = path.join(work, 'hold-probe');
+  const hroot = path.join(base, 'root');
+  const away = path.join(base, 'outside');
+  const victim = path.join(away, 'victim');
+  fs.mkdirSync(path.join(hroot, 'pkg'), { recursive: true });
+  fs.mkdirSync(victim, { recursive: true });
+  fs.writeFileSync(path.join(victim, 'keep.txt'), 'OUTSIDE FILE');
+  fs.writeFileSync(path.join(victim, 'other.txt'), 'another outside file');
+  const hold = path.join(hroot, '.terrane-trash');
+  fs.mkdirSync(path.join(hold, 'items'), { recursive: true });
+  // An index and a journal planted by whatever wrote the directory: the
+  // record's id climbs out of the items folder to a folder outside.
+  const planted = [
+    { id: '../../../outside/victim', name: 'keep.txt', origin: 'notes.txt', at: 1 },
+    { id: 'abc-1', name: '../../../outside/victim/keep.txt', origin: 'pulled-in.txt', at: 1 },
+    { id: 'abc-2', name: '..', origin: 'up.txt', at: 1 },
+  ];
+  fs.writeFileSync(path.join(hold, 'index.json'), JSON.stringify(planted));
+  fs.writeFileSync(path.join(hold, 'journal.json'), JSON.stringify({ format: 1, entries: [
+    { id: 1, type: 'trash', label: 'Removed 1 item to the holding area', at: 1, session: 'x', undone: false, undo: { kind: 'restore', ids: planted.map((p) => p.id) } },
+  ] }));
+  const g = await makeGuard(hroot);
+  const o = makeOps(g, {});
+  check('validHold keeps only ids hold() could mint and single entry names',
+    !planted.some(validHold) && validHold({ id: 'mjx3k2-1a', name: 'a.txt', origin: 'a.txt' }) && !validHold({ id: 'mjx3k2-1a', name: 'a/b', origin: 'x' }), '');
+  check('the Journal never lists a planted record', (await o.holding()).length === 0);
+  let threw = null;
+  try {
+    await o.restore(['../../../outside/victim']);
+  } catch (e) {
+    threw = e;
+  }
+  const intact = () => fs.existsSync(path.join(victim, 'keep.txt')) && fs.existsSync(path.join(victim, 'other.txt'));
+  check('restore of a planted id is refused and moves or deletes nothing outside', threw?.status === 404 && intact() && !fs.existsSync(path.join(hroot, 'notes.txt')), threw?.message);
+  const u = await o.undo();
+  check('Undo of a planted journal entry restores nothing and deletes nothing outside',
+    u.ok && intact() && !fs.existsSync(path.join(hroot, 'notes.txt')) && !fs.existsSync(path.join(hroot, 'pulled-in.txt')), JSON.stringify(u));
+  // A real removal and its restore still work beside the planted records.
+  fs.writeFileSync(path.join(hroot, 'pkg', 'real.txt'), 'real');
+  await o.run({ type: 'trash', paths: ['pkg/real.txt'] });
+  const held = await o.holding();
+  const back = await o.restore([held[0]?.id]);
+  check('an ordinary removal is still held and restored', held.length === 1 && back.ok && fs.readFileSync(path.join(hroot, 'pkg', 'real.txt'), 'utf8') === 'real', JSON.stringify(held));
+  check('relParts refuses the holding area in any case where case does not matter, and stream names on Windows', (() => {
+    const refused = (p) => { try { relParts(p); return false; } catch { return true; } };
+    const folds = process.platform === 'win32' || process.platform === 'darwin';
+    return refused('.terrane-trash/x') && refused('.TERRANE-TRASH/x') === folds && refused('a/.Terrane-Trash') === folds
+      && refused('x:y') === (process.platform === 'win32') && !refused('docs/a.txt');
+  })());
+  // The holding area as a link to a folder outside: nothing is held there.
+  if (linked) {
+    fs.rmSync(hold, { recursive: true, force: true });
+    const elsewhere = path.join(away, 'catch');
+    fs.mkdirSync(elsewhere);
+    fs.symlinkSync(elsewhere, hold, 'junction');
+    fs.writeFileSync(path.join(hroot, 'pkg', 'b.txt'), 'b');
+    const o2 = makeOps(g, {});
+    let refused = null;
+    try {
+      await o2.run({ type: 'trash', paths: ['pkg/b.txt'] });
+    } catch (e) {
+      refused = e;
+    }
+    check('a holding area that is a link is not used: the removal is refused and nothing lands outside',
+      refused?.code === 'EHOLD' && fs.existsSync(path.join(hroot, 'pkg', 'b.txt')) && fs.readdirSync(elsewhere).length === 0, refused?.message);
+    fs.rmSync(hold, { force: true });
+    // A relative link that resolves inside the root from where it is, and
+    // outside it from the root.
+    fs.mkdirSync(path.join(hroot, 'd1', 'd2'), { recursive: true });
+    fs.mkdirSync(path.join(hroot, 'deep', 'er'), { recursive: true });
+    fs.writeFileSync(path.join(hroot, 'fx-target.txt'), 'inside');
+    fs.symlinkSync(path.join('..', '..', 'fx-target.txt'), path.join(hroot, 'd1', 'd2', 'rl'), 'file');
+    const o3 = makeOps(g, {});
+    const attempt = async (op) => {
+      try {
+        return await o3.run(op);
+      } catch (e) {
+        return { error: e };
+      }
+    };
+    const copied = await attempt({ type: 'copy', paths: ['d1/d2/rl'], dest: '' });
+    const moved = await attempt({ type: 'move', paths: ['d1/d2/rl'], dest: '' });
+    check('a relative link is not copied or moved to where it would point outside the root',
+      copied.error?.code === 'ELINK' && moved.error?.code === 'ELINK' && !fs.existsSync(path.join(hroot, 'rl')) && fs.lstatSync(path.join(hroot, 'd1', 'd2', 'rl')).isSymbolicLink(),
+      `${copied.error?.message} | ${moved.error?.message}`);
+    const folder = await attempt({ type: 'copy', paths: ['d1/d2'], dest: '' });
+    check('a folder whose copy would carry such a link stops with the reason and leaves nothing of itself', !!folder.error && /relative link/.test(folder.error.message) && !fs.existsSync(path.join(hroot, 'd2')), folder.error?.message);
+    const deeper = await attempt({ type: 'copy', paths: ['d1'], dest: 'deep/er' });
+    check('a link whose copy still points inside the root is copied as before', deeper.ok && fs.lstatSync(path.join(hroot, 'deep', 'er', 'd1', 'd2', 'rl')).isSymbolicLink(), JSON.stringify(deeper.error?.message || ''));
+  }
+}
+
+console.log('\nA survey the page drops while the socket is full (no service)');
+{
+  const { EventEmitter } = await import('node:events');
+  const { pump } = await import('../server/scan.mjs');
+  // A response whose buffer stays full: write() answers false and 'drain'
+  // never comes. The page then goes away, which emits 'close' only.
+  const res = new EventEmitter();
+  res.destroyed = false;
+  res.writableEnded = false;
+  res.writes = 0;
+  res.write = () => { res.writes++; return false; };
+  res.end = () => { res.writableEnded = true; };
+  let finished = false;
+  let produced = 0;
+  async function* source() {
+    try {
+      for (;;) {
+        produced++;
+        yield [produced];
+      }
+    } finally {
+      finished = true;
+    }
+  }
+  const ac = new AbortController();
+  const done = pump(res, source(), ac.signal).then(() => 'settled');
+  await wait(20);
+  res.destroyed = true;
+  ac.abort();
+  res.emit('close');
+  const outcome = await Promise.race([done, wait(2000).then(() => 'stuck')]);
+  check('the writer stops when the page goes away while it waits for drain, and the source\'s finally runs', outcome === 'settled' && finished && res.writes === 1 && res.writableEnded, `${outcome}, ${res.writes} writes, finally ${finished}`);
 }
 
 console.log('\nSnapshot mode');
