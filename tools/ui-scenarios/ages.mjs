@@ -1,16 +1,24 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Age Table Scenario (Terrane Edition - v1.0)
+ *     - Title: Age Table Scenario (Terrane Edition - v1.1)
  *     - File Name: ages.mjs
  *     - Relative Path: tools/ui-scenarios/ages.mjs
  *     - Artifact Type: test
- *     - Version: 1.0.0
+ *     - Version: 1.1.0
  *     - Date: 11/12/2026
  *     - Update: Thursday, November 12, 2026
  *     - Author: Dennis 'dendogg' Smaltz
  *     - A.I. Acknowledgement: Anthropic - Claude Opus 5.5
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
+ *
+ * ✒ Changelog:
+ *     - 1.1.0 (11/12/2026) [dendogg + Anthropic - Claude Opus 5.5] — With
+ *       feature modules installed, the table is checked to be the first of
+ *       all survey hooks, and the probe's removal against the controller's
+ *       own hooks, leaving out entries a feature owns.
+ *     - 1.0.0 (11/12/2026) [dendogg + Anthropic - Claude Opus 5.5] —
+ *       Initial release.
  *
  * ✒ Description:
  *     Checks the shared age table in the real page: the survey builds it
@@ -95,7 +103,9 @@ function audit(T) {
     folders: all.length, held: A.folders, files: root.fc, miss, missed, sums, foreign: [...foreign],
     anchor: A.anchor, T0: A.T[0], steps, ms: A.ms, frozen: Object.isFrozen(A),
     rootTotals: A.totalBytes(root) === root.s && A.totalFiles(root) === root.fc,
+    // Every survey hook, and the controller's own (a feature's carry its owner).
     hooks: T.api.AFTER_SURVEY.ids(),
+    ownHooks: [...T.api.AFTER_SURVEY].filter((x) => !x.owner || x.owner === 'core').map((x) => x.id),
   };
 }
 
@@ -157,7 +167,7 @@ const ages = {
     t.check('F5 re-read the folder you are in without reloading the page', scans.length >= 1, JSON.stringify(t.requests(mark)));
     t.check('the survey that followed rebuilt the table before a feature\'s survey hook ran', after.seen[0][0] === true && after.seen[0][1] === true && after.seen[0][2] > after.prevAnchor, JSON.stringify(after));
     const b = await t.app(audit);
-    t.check('the rebuilt table still equals a brute-force walk, and holds every folder', b.miss === 0 && b.sums === 0 && b.held === b.folders && b.hooks.join() === 'ages', JSON.stringify({ miss: b.miss, sums: b.sums, held: b.held, folders: b.folders, hooks: b.hooks }));
+    t.check('the rebuilt table still equals a brute-force walk, and holds every folder', b.miss === 0 && b.sums === 0 && b.held === b.folders && b.ownHooks.join() === 'ages' && b.hooks[0] === 'ages', JSON.stringify({ miss: b.miss, sums: b.sums, held: b.held, folders: b.folders, hooks: b.hooks }));
   },
 };
 

@@ -2,16 +2,23 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Vendor Fetcher (Terrane Edition - v1.0)
+ *     - Title: Vendor Fetcher (Terrane Edition - v1.1)
  *     - File Name: vendor.mjs
  *     - Relative Path: tools/vendor.mjs
  *     - Artifact Type: CLI
- *     - Version: 1.0.0
+ *     - Version: 1.1.0
  *     - Date: 11/12/2026
  *     - Update: Thursday, November 12, 2026
  *     - Author: Dennis 'dendogg' Smaltz
  *     - A.I. Acknowledgement: Anthropic - Claude Opus 5.5
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
+ *
+ * ✒ Changelog:
+ *     - 1.1.0 (11/12/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
+ *       icon list gains calendar-clock, chevron-left and chevron-right for
+ *       the As of stepper in the title block.
+ *     - 1.0.0 (11/12/2026) [dendogg + Anthropic - Claude Opus 5.5] —
+ *       Initial release.
  *
  * ✒ Description:
  *     Fetches the pinned third-party browser libraries from the jsDelivr
@@ -85,6 +92,8 @@ export const ICONS = [
   'list-tree', 'list-filter', 'scroll-text', 'shapes', 'ruler-dimension-line', 'layers', 'chevron-down', 'chevron-up',
   'arrow-down-wide-narrow', 'arrow-up-narrow-wide', 'folder', 'folder-open', 'file', 'hard-drive', 'minus', 'plus',
   'sparkles', 'scale', 'binoculars', 'map', 'grip-vertical', 'circle-help',
+  // the title block's As of stepper (time)
+  'calendar-clock', 'chevron-left', 'chevron-right',
 ];
 
 const PINS = [

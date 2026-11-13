@@ -2,11 +2,11 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Service Smoke Test (Terrane Edition - v1.2)
+ *     - Title: Service Smoke Test (Terrane Edition - v1.3)
  *     - File Name: smoke-test.mjs
  *     - Relative Path: tools/smoke-test.mjs
  *     - Artifact Type: test
- *     - Version: 1.2.0
+ *     - Version: 1.3.0
  *     - Date: 11/12/2026
  *     - Update: Thursday, November 12, 2026
  *     - Author: Dennis 'dendogg' Smaltz
@@ -14,6 +14,14 @@
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
  *
  * ✒ Changelog:
+ *     - 1.3.0 (11/12/2026) [dendogg + Anthropic - Claude Opus 5.5] — A
+ *       time-view section lays out the age-table tree from four eyes at
+ *       every ladder step: the present's box count, key order and
+ *       footprints; changed files and empty folders as crossed slabs no
+ *       taller than their slab; closed masses lowered by what they kept;
+ *       no box rising as the date goes back; the time module's crossed
+ *       rule agreeing with the layout; and no asOf giving the present
+ *       layout exactly.
  *     - 1.2.0 (11/11/2026) [dendogg + Anthropic - Claude Opus 5.5] — A
  *       layout section runs the browser's layout module in Node: a tree
  *       shaped to overflow the old folder-entry check stays within the
@@ -77,6 +85,9 @@
  *       and takes is: words and name:value tokens from its caller
  *     - The age table, without the service: changed bytes and files per
  *       folder and step equal a brute-force walk, and the strata add up
+ *     - The time view, without the service: the layout looked back to
+ *       every ladder step keeps the present's boxes and lowers only what
+ *       changed after the date
  *
  * ✒ Usage Instructions:
  *     node tools/smoke-test.mjs
@@ -86,8 +97,8 @@
  * ✒ Other Important Information:
  *     - Dependencies: Node.js built-ins only; server/terrane.mjs,
  *       server/snapshot.mjs, web/js/layout.js, web/js/model.js,
- *       web/js/timeline.js, and web/js/viewport.js with the vendored
- *       three.js
+ *       web/js/timeline.js, web/js/time.js, and web/js/viewport.js with
+ *       the vendored three.js
  *     - Compatible platforms: Node.js 22.5+; the symbolic-link checks are
  *       skipped where links cannot be created
  *     - Performance: about 10 seconds; the second service runs with
@@ -704,6 +715,70 @@ for (const k of [-1, 20, 1.5, NaN, '2']) {
 check('a file answers from its own date and size; steps off the ladder are refused; the table is frozen',
   et.changedBytes(file, 0) === 0 && et.changedBytes(file, 1) === 1000 && et.kept(file, 1) === 0 && et.medianStep(file) === 1 && !et.has(file)
   && JSON.stringify(et.bands(file).bytes) === '[1000,0,0,0,0,0]' && refused === 5 && Object.isFrozen(et) && Object.isFrozen(et.T) && et.T[1] === AT - DAY);
+
+console.log('\nTime view (no service)');
+const { AUX } = await import(new URL('../web/js/layout.js', import.meta.url));
+const { crossedAt, fmtDay } = await import(new URL('../web/js/time.js', import.meta.url));
+check('AUX names the time view\'s marks, frozen: NONE 0, SUNK 1, CROSSED 2', Object.isFrozen(AUX) && JSON.stringify(AUX) === '{"NONE":0,"SUNK":1,"CROSSED":2}');
+check('dates are written MM/DD/YYYY', fmtDay(new Date(2026, 8, 28, 23, 59).getTime()) === '09/28/2026' && fmtDay(new Date(1996, 0, 2).getTime()) === '01/02/1996');
+const timeEyes = [
+  ['overview', { x: 0, y: 900, z: 1200 }, 0.0062],
+  ['close', { x: -40, y: 25, z: 60 }, 0.0024],
+  ['low', { x: 120, y: 4, z: -90 }, 0.0024],
+  ['forced', { x: 0, y: 900, z: 1200 }, 1e-7, new Set(allDirs.filter((d) => { let n = 0; for (let x = d; x.p; x = x.p) n++; return n <= 4; }))],
+];
+const sameLayout = (a, b) => a.n === b.n && a.key.every((k, i) => k === b.key[i]) && a.geo.every((x, i) => Object.is(x, b.geo[i]))
+  && a.aux.every((x, i) => x === b.aux[i]) && a.type.every((x, i) => x === b.type[i]);
+let timeProblems = [];
+const presentProblems = [];
+let timeCounts = { crossed: 0, sunk: 0, steps: 0, boxes: 0 };
+for (const [label, cam, grain, force] of timeEyes) {
+  const opts = { cam, grain, now: AT, force: force || null };
+  const present = buildLayout(am.root, opts);
+  const again = buildLayout(am.root, { ...opts, asOf: undefined });
+  const nulled = buildLayout(am.root, { ...opts, asOf: null });
+  if (!sameLayout(present, again) || !sameLayout(present, nulled)) presentProblems.push(`${label}: no asOf is not the present layout`);
+  if (present.aux.some((x) => x !== 0)) presentProblems.push(`${label}: the present marks boxes`);
+  let prev = present;
+  for (let k = 1; k < STEPS; k++) {
+    const t = ages.T[k];
+    const L = buildLayout(am.root, { ...opts, asOf: { t, kept: (d) => ages.kept(d, k) } });
+    timeCounts.steps++;
+    timeCounts.boxes += L.n;
+    const bad = (why) => { if (timeProblems.length < 6) timeProblems.push(`${label} step ${k}: ${why}`); };
+    if (L.n !== present.n || L.key.some((x, i) => x !== present.key[i])) { bad('box count or key order'); continue; }
+    const riser = new Map();
+    for (let i = 0; i < L.n; i++) if (L.type[i] === BOX.DIR) riser.set(L.node[i], L.geo[i * 6 + 4]);
+    for (let i = 0; i < L.n; i++) {
+      const o = i * 6;
+      const node = L.node[i];
+      const h = L.geo[o + 4];
+      const side = Math.min(L.geo[o + 3], L.geo[o + 5]);
+      if ([0, 2, 3, 5].some((q) => !Object.is(L.geo[o + q], present.geo[o + q]))) bad(`footprint of ${node.n}`);
+      if (h > prev.geo[o + 4]) bad(`${node.n} rose`);
+      if (Math.abs(L.geo[o + 1] - h / 2 - (present.geo[o + 1] - present.geo[o + 4] / 2)) > 1e-9 * Math.max(1, Math.abs(present.geo[o + 1]))) bad(`${node.n} left its plateau`);
+      const slab = Math.min(riser.get(node.p) * 0.08, side * 0.05);
+      const ax = L.aux[i];
+      if (ax === AUX.CROSSED) timeCounts.crossed++;
+      if (ax === AUX.SUNK) timeCounts.sunk++;
+      if (L.type[i] === BOX.FILE) {
+        if (node.m > t ? ax !== AUX.CROSSED || h > slab : ax !== AUX.NONE || !Object.is(h, present.geo[o + 4])) bad(`file ${node.n}`);
+      } else if (L.type[i] === BOX.CAP) {
+        const kept = ages.kept(node, k);
+        const want = node.e ? AUX.NONE : !node.c.length ? (node.m > t ? AUX.CROSSED : AUX.NONE) : node.mm > t ? (kept > 0 ? AUX.SUNK : AUX.CROSSED) : AUX.NONE;
+        if (ax !== want) bad(`mass ${node.n}: aux ${ax}, want ${want}`);
+        if (want === AUX.CROSSED && h > slab) bad(`mass ${node.n} above its slab`);
+        if (want === AUX.SUNK && Math.abs(h - Math.max(slab, present.geo[o + 4] * kept)) > 1e-12 * present.geo[o + 4]) bad(`mass ${node.n} not lowered to what it kept`);
+        if (want === AUX.NONE && !Object.is(h, present.geo[o + 4])) bad(`unchanged mass ${node.n} moved`);
+      } else if (ax !== AUX.NONE) bad(`a ${L.type[i] === BOX.DIR ? 'plateau' : 'scree tile'} is marked`);
+      if ((L.type[i] === BOX.FILE || L.type[i] === BOX.CAP) && crossedAt(ages, k, node) !== (ax === AUX.CROSSED)) bad(`time.js and the layout disagree on ${node.n}`);
+    }
+    prev = L;
+  }
+}
+check(`looked back to each of the 19 steps from four eyes, every layout keeps the present's boxes, keys and footprints; changed files and empty folders are crossed slabs, closed masses are lowered by what they kept, nothing rises going back, and time.js agrees (${timeCounts.boxes.toLocaleString('en-US')} boxes: ${timeCounts.crossed.toLocaleString('en-US')} crossed, ${timeCounts.sunk.toLocaleString('en-US')} lowered)`,
+  timeProblems.length === 0 && timeCounts.crossed > 0 && timeCounts.sunk > 0, timeProblems.join(' | '));
+check('without asOf, or with asOf null or undefined, the layout is the present one and marks nothing', presentProblems.length === 0, presentProblems.join(' | '));
 
 fs.rmSync(work, { recursive: true, force: true });
 console.log(`\n${passed} passed, ${failed} failed\n`);

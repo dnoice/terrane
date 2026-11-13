@@ -1,11 +1,11 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Controller Seams Scenario (Terrane Edition - v1.2)
+ *     - Title: Controller Seams Scenario (Terrane Edition - v1.3)
  *     - File Name: seams.mjs
  *     - Relative Path: tools/ui-scenarios/seams.mjs
  *     - Artifact Type: test
- *     - Version: 1.2.0
+ *     - Version: 1.3.0
  *     - Date: 11/12/2026
  *     - Update: Thursday, November 12, 2026
  *     - Author: Dennis 'dendogg' Smaltz
@@ -13,6 +13,12 @@
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
  *
  * ✒ Changelog:
+ *     - 1.3.0 (11/12/2026) [dendogg + Anthropic - Claude Opus 5.5] — With
+ *       features installed: the controller's own entries are told from a
+ *       feature's by owner and compared as before, the guide and Reading
+ *       rows are compared without the features' sections and rows, an
+ *       owner's reserved key may already be held by its own feature, and
+ *       the dispatch tests use the free keys K, Y and U.
  *     - 1.2.0 (11/12/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
  *       survey hooks start with the controller's own age-table hook, and
  *       S.ages holds that table once the first survey is done.
@@ -31,8 +37,11 @@
  *     - The guide, the Reading rows and the tab buttons are compared with
  *       the text the hard-coded versions produced
  *     - The fixed key allocation: reserved and taken keys are refused,
- *       owners may bind theirs, inList is honoured, and a run() that
- *       returns false leaves the key to the browser
+ *       owners may bind theirs (or already hold them through their
+ *       feature), inList is honoured, and a run() that returns false
+ *       leaves the key to the browser
+ *     - Entries a feature module adds carry its owner and are left out of
+ *       the comparisons with the controller's own
  *     - Escape order (a date-scrub slot between kind filter and search),
  *       and typing: false entries stay out of text fields
  *     - Pins add up in source order and stop at 3,000; hover lines,
@@ -115,11 +124,17 @@ export default {
       const a = T.api;
       const regs = ['KEYS', 'ESCAPE', 'PIN_SOURCES', 'TIP_LINES', 'READING', 'TABS', 'LAYOUT_OPTS', 'AFTER_LAYOUT', 'AFTER_REFRESH', 'AFTER_SURVEY'];
       const mod = await import(new URL('js/features.js', document.baseURI).href);
+      // A feature's entries carry its owner; the controller's carry none, or 'core'.
+      const own = (reg) => [...reg].filter((x) => !x.owner || x.owner === 'core').map((x) => x.id);
+      const byFeature = (reg) => [...reg].filter((x) => x.owner && x.owner !== 'core');
       return {
         frozen: Object.isFrozen(a) && regs.every((n) => Object.isFrozen(a[n])) && Object.isFrozen(a.INSPECTOR) && Object.isFrozen(a.QUERY),
         slots: ['time', 'interior', 'places', 'sessions'].every((k) => k in T.S && T.S[k] === null)
           && 'ages' in T.S && typeof T.S.ages?.kept === 'function' && T.S.ages.folders === T.S.model.root.dc + 1,
-        ids: Object.fromEntries([...regs.map((n) => [n, a[n].ids()]), ['focus', a.INSPECTOR.focus.ids()], ['node', a.INSPECTOR.node.ids()]]),
+        ids: Object.fromEntries([...regs.map((n) => [n, own(a[n])]), ['focus', own(a.INSPECTOR.focus)], ['node', own(a.INSPECTOR.node)]]),
+        all: Object.fromEntries([...regs.map((n) => [n, a[n].ids()]), ['focus', a.INSPECTOR.focus.ids()], ['node', a.INSPECTOR.node.ids()]]),
+        featureSections: [...new Set(byFeature(a.KEYS).filter((x) => x.guide).map((x) => x.guide[0]))],
+        featureReading: byFeature(a.READING).map((x) => x.title),
         tokens: Object.keys(a.QUERY.is).length + Object.keys(a.QUERY.prefix).length,
         owners: { ...a.KEY_OWNERS },
         ownersFrozen: Object.isFrozen(a.KEY_OWNERS),
@@ -128,6 +143,9 @@ export default {
       };
     });
     const ids = start.ids;
+    const ownGuide = (g) => g.filter(([title]) => !start.featureSections.includes(title));
+    const featureIds = Object.entries(start.all).map(([n, list]) => [n, list.filter((id) => !ids[n].includes(id))]).filter(([, l]) => l.length);
+    t.note(`feature entries left out of the comparisons: ${featureIds.map(([n, l]) => `${n} ${l.join(' ')}`).join('; ') || 'none'}`);
     t.check('the api and every registry are frozen', start.frozen);
     t.check('S declares time, interior, places and sessions as null; ages holds the age table the survey built', start.slots);
     t.check('features.js exports the FEATURES list', start.features);
@@ -147,7 +165,8 @@ export default {
     await t.key('?');
     await t.waitFor(() => document.getElementById('dialog').open);
     const guide = await t.eval(readGuide);
-    t.check('the guide made from KEYS lists the same sections and rows as before', same(guide, GUIDE), JSON.stringify(guide).slice(0, 400));
+    t.check('the guide made from KEYS lists the same sections and rows as before, any feature sections after them',
+      same(ownGuide(guide), GUIDE) && same(guide.slice(0, GUIDE.length), GUIDE), JSON.stringify(guide).slice(0, 400));
     await t.key('Escape');
     await t.waitFor(() => !document.getElementById('dialog').open);
 
@@ -195,8 +214,15 @@ export default {
         nothing: tryAdd({ id: 'seam-nothing' }),
         badMod: tryAdd({ id: 'seam-mod', mod: 'shift', keys: ['k'], run }),
         ctrlB: tryAdd({ id: 'seam-ctrl-b', mod: 'ctrl', keys: ['b'], run }),
+        // A reserved key is either free for its owner or already held by
+        // an entry of that owner (its feature is installed).
         owned: ['i:interiors', 't:time', ',:time', '.:time', '<:time', '>:time', 'b:landmarks', 'h:landmarks', 'j:landmarks']
-          .map((s) => { const [k, owner] = [s.slice(0, s.indexOf(':')), s.slice(s.indexOf(':') + 1)]; return tryAdd({ id: `seam-own-${owner}`, owner, keys: [k], run }); }),
+          .map((s) => {
+            const [k, owner] = [s.slice(0, s.indexOf(':')), s.slice(s.indexOf(':') + 1)];
+            const held = [...K].find((x) => !x.mod && x.keys?.some((z) => (z.length === 1 ? z.toLowerCase() : z) === k));
+            if (held) return held.owner === owner ? 'ok' : `held by ${held.owner}`;
+            return tryAdd({ id: `seam-own-${owner}`, owner, keys: [k], run });
+          }),
         free: tryAdd({ id: 'seam-free', owner: 'anyone', keys: ['k'], run }),
       };
     });
@@ -211,25 +237,26 @@ export default {
     await t.app((T) => {
       const K = T.api.KEYS;
       const where = () => (document.activeElement?.id || document.activeElement?.className || 'body');
-      K.add({ id: 'seam-t', owner: 'time', keys: ['t'], run: () => { window.__seam.t.push(where()); }, guide: ['Seams', 'T', 'A test row'] });
-      K.add({ id: 'seam-h', owner: 'landmarks', keys: ['h'], inList: false, run: () => { window.__seam.h++; } });
-      K.add({ id: 'seam-j', owner: 'landmarks', keys: ['j'], run: () => false });
-      window.__seamListen = (e) => { if ('thjTHJ'.includes(e.key)) window.__seam.prevented.push(`${e.key}:${e.defaultPrevented}`); };
+      K.add({ id: 'seam-t', owner: 'seams', keys: ['k'], run: () => { window.__seam.t.push(where()); }, guide: ['Seams', 'K', 'A test row'] });
+      K.add({ id: 'seam-h', owner: 'seams', keys: ['y'], inList: false, run: () => { window.__seam.h++; } });
+      K.add({ id: 'seam-j', owner: 'seams', keys: ['u'], run: () => false });
+      window.__seamListen = (e) => { if ('kyuKYU'.includes(e.key)) window.__seam.prevented.push(`${e.key}:${e.defaultPrevented}`); };
       window.addEventListener('keydown', window.__seamListen);
     });
     await t.tabTo('#view');
-    await t.keys('t', 'h', 'j');
+    await t.keys('k', 'y', 'u');
     await t.tabTo('#ledger-list', { back: true });
-    await t.keys('T', 'h');
+    await t.keys('K', 'y');
     const disp = await t.app(() => window.__seam);
     t.check('a registered key runs from the canvas and, with inList, from the ledger list, in either case', same(disp.t, ['view', 'ledger-list']), JSON.stringify(disp.t));
     t.check('inList: false keeps a key from acting while the ledger list has focus', disp.h === 1, `h ran ${disp.h} times`);
     t.check('a used key is kept from the browser; run() returning false leaves it to the browser',
-      same(disp.prevented, ['t:true', 'h:true', 'j:false', 'T:true', 'h:false']), JSON.stringify(disp.prevented));
+      same(disp.prevented, ['k:true', 'y:true', 'u:false', 'K:true', 'y:false']), JSON.stringify(disp.prevented));
     await t.key('?');
     await t.waitFor(() => document.getElementById('dialog').open);
     const guide2 = await t.eval(readGuide);
-    t.check('a feature row appears in the guide under its own section', same(guide2.slice(0, 3), GUIDE) && same(guide2[3], ['Seams', [['T', 'A test row']]]), JSON.stringify(guide2.slice(3)));
+    const own2 = ownGuide(guide2);
+    t.check('a feature row appears in the guide under its own section', same(own2.slice(0, 3), GUIDE) && same(own2[3], ['Seams', [['K', 'A test row']]]) && own2.length === 4, JSON.stringify(guide2.slice(3)));
     await t.key('Escape');
     await t.waitFor(() => !document.getElementById('dialog').open);
     await t.app((T) => {
@@ -237,7 +264,7 @@ export default {
       window.removeEventListener('keydown', window.__seamListen);
     });
     await t.tabTo('#view');
-    await t.key('t');
+    await t.key('k');
     t.check('a removed key does nothing', (await t.app(() => window.__seam.t.length)) === 2);
 
     // Escape: a slot between the kind filter and search, and text fields.
@@ -293,8 +320,9 @@ export default {
       return v && v !== '…' && v;
     });
     const ierrs = await t.eval(muteErrors, false);
+    const ownRows = insp.rows.filter((r) => !start.featureReading.includes(r[1]));
     t.check('the Reading rows are the ones the inspector listed before, then registered rows in order',
-      same(insp.rows.slice(0, 8), READING) && same(insp.rows.slice(8).map((r) => r[1]), ['Seam', 'Installed']), JSON.stringify(insp.rows.slice(6)));
+      same(ownRows.slice(0, 8), READING) && same(ownRows.slice(8).map((r) => r[1]), ['Seam', 'Installed']), JSON.stringify(insp.rows.slice(6)));
     t.check('a focus section takes its place between Composition and Reading the world',
       insp.focus.at(-2) === `Seam focus ${(await t.app((T) => T.S.focus.n))}` && insp.focus.at(-1) === 'Reading the world', JSON.stringify(insp.focus));
     t.check('a node section takes its place before Actions, nested arrays flattened', insp.node.indexOf('Seam node') === insp.node.indexOf('Actions') - 1 && insp.nested, JSON.stringify(insp.node));
@@ -481,6 +509,6 @@ export default {
       return Object.fromEntries([...['KEYS', 'ESCAPE', 'PIN_SOURCES', 'TIP_LINES', 'READING', 'TABS', 'LAYOUT_OPTS', 'AFTER_LAYOUT', 'AFTER_REFRESH', 'AFTER_SURVEY'].map((n) => [n, a[n].ids()]),
         ['focus', a.INSPECTOR.focus.ids()], ['node', a.INSPECTOR.node.ids()]]);
     });
-    t.check('every test entry is gone again', same(end, ids), JSON.stringify(end).slice(0, 300));
+    t.check('every test entry is gone again', same(end, start.all), JSON.stringify(end).slice(0, 300));
   },
 };

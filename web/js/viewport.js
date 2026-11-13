@@ -1,11 +1,11 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: 3D Viewport (Terrane Edition - v1.2)
+ *     - Title: 3D Viewport (Terrane Edition - v1.3)
  *     - File Name: viewport.js
  *     - Relative Path: web/js/viewport.js
  *     - Artifact Type: javascript
- *     - Version: 1.2.0
+ *     - Version: 1.3.0
  *     - Date: 11/12/2026
  *     - Update: Thursday, November 12, 2026
  *     - Author: Dennis 'dendogg' Smaltz
@@ -13,6 +13,12 @@
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
  *
  * ✒ Changelog:
+ *     - 1.3.0 (11/12/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
+ *       crossed convention (STYLE.CROSSED, the time view): the two
+ *       diagonals of a box's footprint in ink on its top and bottom faces,
+ *       measured in the box's own coordinates so a re-based origin cannot
+ *       move them, thin at any distance, and faded with the haze and as
+ *       the box shrinks on screen. The colour is washed once, by paint.
  *     - 1.2.0 (11/11/2026) [dendogg + Anthropic - Claude Opus 5.5] — A
  *       layout larger than the instance buffers draws up to their capacity
  *       and says so through on.notice, instead of throwing a RangeError.
@@ -41,9 +47,9 @@
  * ✒ Key Features:
  *     - One instanced mesh for every box: a single draw call regardless of
  *       how many thousand entries are in view
- *     - Ink edges, hatching, stipple and banding are computed in the
- *       fragment shader from each box's own dimensions, so drawing
- *       conventions cost no extra geometry
+ *     - Ink edges, hatching, stipple, banding and the crossed footprint
+ *       are computed in the fragment shader from each box's own
+ *       dimensions, so drawing conventions cost no extra geometry
  *     - A place, not a diagram: perspective camera inside the scene, with
  *       sky, horizon, haze, a surveyed ground plane and sun shadows that
  *       follow the eye down to any scale
@@ -330,6 +336,7 @@ function boxMaterial() {
           float hw = max(fwidth(hc), 1e-5);
           float per = exp2(ceil(log2(hw * 7.0)));
           float edgeW = 1.0;
+          float crossInk = 0.0;
           if ${styleIs(STYLE.HATCH)} {
             float t = abs(fract(hc / per) - 0.5);
             col = mix(col, uInk, (1.0 - smoothstep(0.09, 0.09 + hw / per, t)) * 0.7);
@@ -346,12 +353,29 @@ function boxMaterial() {
           } else if ${styleIs(STYLE.HALF_BANDS)} {
             float t = fract(hc / (per * 2.0));
             col = mix(col, uPaper, smoothstep(0.5 - hw / per, 0.5, t) * (1.0 - smoothstep(1.0 - hw / per, 1.0, t)) * 0.6);
+          } else if ${styleIs(STYLE.CROSSED)} {
+            // The footprint's two diagonals on the top and bottom faces, in
+            // the box's own coordinates: the floating origin never moves
+            // them. Distances are in world units, so the line keeps about
+            // a pixel's width at any depth. No wash here: paint has done it.
+            vec2 q = vBoxLocal.xz;
+            vec2 sz = vBoxScale.xz;
+            float k = sz.x * sz.y / max(length(sz), 1e-30);
+            // Signed distances: their screen rate is exact, where the rate
+            // of an abs() halves across the line and breaks it into dashes.
+            float s1 = (q.x - q.y) * k;
+            float s2 = (q.x + q.y) * k;
+            float c1 = 1.0 - smoothstep(0.55, 1.45, abs(s1) / max(fwidth(s1), 1e-30));
+            float c2 = 1.0 - smoothstep(0.55, 1.45, abs(s2) / max(fwidth(s2), 1e-30));
+            crossInk = max(c1, c2) * step(0.499, abs(vBoxLocal.y));
           }
           float haze = 0.0;
           #ifdef USE_FOG
             haze = smoothstep(fogNear, fogFar, vFogDepth);
           #endif
           col = mix(col, uPaper, vDim * 0.88 * (1.0 - haze));
+          crossInk *= smoothstep(3.0, 16.0, smid / fw) * (1.0 - 0.8 * vDim) * (1.0 - haze);
+          col = mix(col, uInk, crossInk * 0.85);
           float edge = 1.0 - smoothstep(fw * 0.7 * edgeW, fw * (0.7 * edgeW + 1.0), mid);
           edge *= smoothstep(3.0, 16.0, smid / fw) * 0.74 + 0.06;
           col = mix(col, uInk, edge * (1.0 - 0.8 * vDim) * (1.0 - haze));

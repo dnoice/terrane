@@ -1,16 +1,24 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Design Tokens (Terrane Edition - v1.0)
+ *     - Title: Design Tokens (Terrane Edition - v1.1)
  *     - File Name: tokens.css
  *     - Relative Path: web/css/tokens.css
  *     - Artifact Type: stylesheet
- *     - Version: 1.0.0
+ *     - Version: 1.1.0
  *     - Date: 11/12/2026
  *     - Update: Thursday, November 12, 2026
  *     - Author: Dennis 'dendogg' Smaltz
  *     - A.I. Acknowledgement: Anthropic - Claude Opus 5.5
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
+ *
+ * ✒ Changelog:
+ *     - 1.1.0 (11/12/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
+ *       crossed convention as tokens: --crossed-wash (the 60% paper wash
+ *       the world gives a crossed block) and --tex-crossed (the two
+ *       diagonals of a footprint).
+ *     - 1.0.0 (11/12/2026) [dendogg + Anthropic - Claude Opus 5.5] —
+ *       Initial release.
  *
  * ✒ Description:
  *     Every value the interface is built from, defined once: colour
@@ -30,7 +38,8 @@
  *     - Motion tokens, including a spring curve written with linear()
  *     - Registered custom properties (@property) so progress, heading
  *       and sweep values animate as numbers and angles
- *     - Drawing textures (stipple, hatch, grid, paper grain) as tokens
+ *     - Drawing textures (stipple, hatch, grid, paper grain, the crossed
+ *       footprint) as tokens
  *     - Overrides for prefers-contrast and forced-colors
  *
  * ✒ Other Important Information:
@@ -201,6 +210,11 @@
   --tex-stipple: radial-gradient(var(--ink) 0.9px, transparent 1.2px) 0 0 / 5px 5px;
   --tex-hatch: repeating-linear-gradient(135deg, var(--ink) 0 1.5px, transparent 1.5px 4px);
   --tex-hatch-live: repeating-linear-gradient(135deg, var(--verdigris-deep) 0 3px, var(--verdigris) 3px 8px);
+  /* Corner to corner: a "to top right" gradient's middle runs through the
+     other two corners, whatever the box's proportions. */
+  --tex-crossed: linear-gradient(to top right, transparent calc(50% - 0.7px), var(--ink) calc(50% - 0.7px) calc(50% + 0.7px), transparent calc(50% + 0.7px)),
+    linear-gradient(to bottom right, transparent calc(50% - 0.7px), var(--ink) calc(50% - 0.7px) calc(50% + 0.7px), transparent calc(50% + 0.7px));
+  --crossed-wash: color-mix(in oklch, var(--paper) 60%, transparent);
   --tex-grid: linear-gradient(var(--ink-ghost) 1px, transparent 1px) 0 0 / 24px 24px,
     linear-gradient(90deg, var(--ink-ghost) 1px, transparent 1px) 0 0 / 24px 24px;
   --tex-grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .09 0 0 0 0 .12 0 0 0 0 .11 0 0 0 .05 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");

@@ -1,18 +1,25 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Terrace Layout (Terrane Edition - v1.2)
+ *     - Title: Terrace Layout (Terrane Edition - v1.3)
  *     - File Name: layout.js
  *     - Relative Path: web/js/layout.js
  *     - Artifact Type: javascript
- *     - Version: 1.2.0
- *     - Date: 11/11/2026
- *     - Update: Wednesday, November 11, 2026
+ *     - Version: 1.3.0
+ *     - Date: 11/12/2026
+ *     - Update: Thursday, November 12, 2026
  *     - Author: Dennis 'dendogg' Smaltz
  *     - A.I. Acknowledgement: Anthropic - Claude Opus 5.5
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
  *
  * ✒ Changelog:
+ *     - 1.3.0 (11/12/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
+ *       time view: given asOf, a file changed after that date lies flat as
+ *       a crossed slab, an empty folder changed after it does too, and a
+ *       closed mass is lowered by the share of its bytes kept unchanged,
+ *       down to a crossed slab when nothing was kept. Footprints, the box
+ *       count and key order stay those of the present. AUX names the
+ *       per-box marks.
  *     - 1.2.0 (11/11/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
  *       box budget is checked before every box, so a layout never holds
  *       more than 70,000 and cannot overflow the viewport. Options reach
@@ -51,6 +58,9 @@
  *       one folder draws at most 5,000 entries individually
  *     - Every entry gets a small base footprint so zero-byte files and
  *       empty folders stay visible
+ *     - Time view (asOf): heights look back to a date while footprints,
+ *       the box count and key order stay as they are now; whatever
+ *       changed after the date lies flat, crossed corner to corner
  *     - One table of box types (BOX) and one of drawing conventions
  *       (STYLE), so every code has a single owner
  *
@@ -59,13 +69,17 @@
  *     Options travel to the layout as one object: cam, grain, now, force,
  *     aliases (pairs [node, key]: the node resolves in index to the box
  *     with that key), and any key a feature reads, such as asOf or inside.
+ *     asOf is { t, kept(dir) }: t a date (ms), kept(dir) the share of a
+ *     folder's bytes unchanged since t, from 0 to 1 (timeline.js answers
+ *     it). Without asOf the layout is exactly the present one.
  *     layout.n          number of boxes, never more than MAX_BOXES
  *     layout.geo        Float64Array, 6 per box: cx, cy, cz, sx, sy, sz
  *     layout.type[i]    a BOX code
  *     layout.node[i]    model node (for scree: the folder it belongs to)
  *     layout.key[i]     identity used to animate between layouts
  *     layout.top[i]     highest point of everything standing on box i
- *     layout.aux[i]     a feature's mark for box i, 0 when unmarked
+ *     layout.aux[i]     a feature's mark for box i, 0 when unmarked: an
+ *                       AUX code (SUNK, CROSSED) in the time view
  *     layout.scree      Map of box index to { count, size }
  *     layout.coarsened  the grain was raised to fit the budget
  *     layout.over       even the coarsest grain did not fit: the boxes
@@ -99,11 +113,23 @@ export const BOX = Object.freeze({ DIR: 0, FILE: 1, CAP: 2, SCREE: 3, WALL: 4 })
  */
 export const STYLE = Object.freeze({ PLAIN: 0, HATCH: 1, HOLLOW: 2, STIPPLE: 3, BANDS: 4, HALF_BANDS: 5, CROSSED: 6 });
 
+/**
+ * Marks in layout.aux, allocated here like the tables above. The time view
+ * sets SUNK on a closed mass lowered to the share it kept unchanged, and
+ * CROSSED on a box that changed after the date it looks back to, which
+ * paint draws as STYLE.CROSSED. 3 and up are free.
+ */
+export const AUX = Object.freeze({ NONE: 0, SUNK: 1, CROSSED: 2 });
+
 export const WORLD = 1000;
 export const RISER_MAX = 9;
 const RISER_RATIO = 0.045;
 const OPEN_AT = 0.135;
 const PER_FOLDER_MAX = 5000;
+// A crossed slab: a share of its plateau's step, or of its own short side
+// when that is smaller, so it reads the same at every scale.
+const SLAB_RISER = 0.08;
+const SLAB_SIDE = 0.05;
 /** The most boxes one layout holds; the viewport's capacity is above it. */
 export const MAX_BOXES = 70000;
 
@@ -176,7 +202,10 @@ function distToRect(cam, x, z, w, d, y) {
  * whole, so a feature reads its own key from it without a new parameter.
  */
 function attempt(root, opts) {
-  const { cam, grain, now, force } = opts;
+  const { cam, grain, now, force, asOf } = opts;
+  // The time view: entries changed after asOfT lie flat; a closed mass
+  // keeps the share of its height that it kept unchanged.
+  const asOfT = asOf ? asOf.t : 0;
   const key = [];
   const node = [];
   const type = [];
@@ -277,15 +306,27 @@ function attempt(root, opts) {
       }
       const ch = kids[i];
       let t;
+      // Heights keep their freshness from now; only what changed after
+      // the date looked back to is lowered.
       if (!ch.d) {
         const fresh = freshness(ch.m, now);
-        const h = Math.min(riser * (0.35 + 3.4 * fresh * fresh), side * 1.8 + riser * 0.15);
+        let h = Math.min(riser * (0.35 + 3.4 * fresh * fresh), side * 1.8 + riser * 0.15);
+        let ax = AUX.NONE;
+        if (asOf && ch.m > asOfT) {
+          h = Math.min(riser * SLAB_RISER, side * SLAB_SIDE);
+          ax = AUX.CROSSED;
+        }
         t = base + h;
-        push(ch, ch, BOX.FILE, lvl + 1, cx, base + h / 2, cz, rw, h, rd);
+        push(ch, ch, BOX.FILE, lvl + 1, cx, base + h / 2, cz, rw, h, rd, ax);
       } else if (ch.e || ch.c.length === 0) {
-        const h = Math.min(ch.e ? riser : riser * 0.3, side);
+        let h = Math.min(ch.e ? riser : riser * 0.3, side);
+        let ax = AUX.NONE;
+        if (asOf && !ch.e && ch.m > asOfT) {
+          h = Math.min(riser * SLAB_RISER, side * SLAB_SIDE);
+          ax = AUX.CROSSED;
+        }
         t = base + h;
-        push(ch, ch, BOX.CAP, lvl + 1, cx, base + h / 2, cz, rw, h, rd);
+        push(ch, ch, BOX.CAP, lvl + 1, cx, base + h / 2, cz, rw, h, rd, ax);
       } else {
         // A folder opens when the eye is near enough for its contents to
         // read; it closes again a little further out, so it cannot flicker.
@@ -294,9 +335,22 @@ function attempt(root, opts) {
         ch._open = open;
         if (open) t = place(ch, rx, rz, rw, rd, base, lvl + 1);
         else {
-          const h = Math.min(side * RISER_RATIO * (1.6 + 1.1 * Math.min(ch.h + 1, 8)), side * 0.9);
+          let h = Math.min(side * RISER_RATIO * (1.6 + 1.1 * Math.min(ch.h + 1, 8)), side * 0.9);
+          let ax = AUX.NONE;
+          if (asOf && ch.mm > asOfT) {
+            // Never below a slab, so stepping further back never raises it.
+            const slab = Math.min(riser * SLAB_RISER, side * SLAB_SIDE);
+            const kept = Math.min(1, asOf.kept(ch));
+            if (kept > 0) {
+              h = Math.max(slab, h * kept);
+              ax = AUX.SUNK;
+            } else {
+              h = slab;
+              ax = AUX.CROSSED;
+            }
+          }
           t = base + h;
-          push(ch, ch, BOX.CAP, lvl + 1, cx, base + h / 2, cz, rw, h, rd);
+          push(ch, ch, BOX.CAP, lvl + 1, cx, base + h / 2, cz, rw, h, rd, ax);
         }
       }
       if (t > peak) peak = t;

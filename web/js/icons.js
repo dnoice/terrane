@@ -1,16 +1,23 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Icons (Terrane Edition - v1.0)
+ *     - Title: Icons (Terrane Edition - v1.1)
  *     - File Name: icons.js
  *     - Relative Path: web/js/icons.js
  *     - Artifact Type: javascript
- *     - Version: 1.0.0
+ *     - Version: 1.1.0
  *     - Date: 11/12/2026
  *     - Update: Thursday, November 12, 2026
  *     - Author: Dennis 'dendogg' Smaltz
  *     - A.I. Acknowledgement: Anthropic - Claude Opus 5.5
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
+ *
+ * ✒ Changelog:
+ *     - 1.1.0 (11/12/2026) [dendogg + Anthropic - Claude Opus 5.5] — Names
+ *       for the As of stepper: time (calendar-clock), earlier and later
+ *       (the left and right chevrons).
+ *     - 1.0.0 (11/12/2026) [dendogg + Anthropic - Claude Opus 5.5] —
+ *       Initial release.
  *
  * ✒ Description:
  *     The one way the page draws an icon: an <svg> that uses a symbol from
@@ -100,6 +107,9 @@ export const ICON = Object.freeze({
   restore: 'history',
   selectAll: 'list-filter',
   clear: 'x',
+  time: 'calendar-clock',
+  earlier: 'chevron-left',
+  later: 'chevron-right',
 });
 
 /**

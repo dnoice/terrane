@@ -1,11 +1,11 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Terrane Application (Terrane Edition - v1.3)
+ *     - Title: Terrane Application (Terrane Edition - v1.4)
  *     - File Name: app.js
  *     - Relative Path: web/js/app.js
  *     - Artifact Type: javascript
- *     - Version: 1.3.0
+ *     - Version: 1.4.0
  *     - Date: 11/12/2026
  *     - Update: Thursday, November 12, 2026
  *     - Author: Dennis 'dendogg' Smaltz
@@ -13,6 +13,11 @@
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
  *
  * ✒ Changelog:
+ *     - 1.4.0 (11/12/2026) [dendogg + Anthropic - Claude Opus 5.5] — Paint
+ *       draws a box the layout marks AUX.CROSSED (the time view) in the
+ *       crossed convention, its colour washed 60% toward paper unless it
+ *       is selected; a Contents row whose entry is crossed carries a
+ *       crossed swatch and says so to assistive technology.
  *     - 1.3.0 (11/12/2026) [dendogg + Anthropic - Claude Opus 5.5] — Icons
  *       on menus, tabs, sort keys, actions and operations; the north arrow
  *       and storage scale over the world (hud.js); tab and lens indicators
@@ -31,11 +36,6 @@
  *       Every survey rebuilds a shared table of each folder's bytes and
  *       files by last change (S.ages), and Rescan all drops the old one.
  *       The Menu key opens the menu without WebGL instead of throwing.
- *     - 1.1.0 (11/11/2026) [dendogg + Anthropic - Claude Opus 5.5] — A
- *       progress panel with Cancel for copy, move and remove; snapshot mode
- *       (status, refusals, newer-snapshot notice); thumbnails in the
- *       inspector and the hover tip in place of original files; the
- *       journal tab marks earlier-session and purged entries.
  *     Earlier entries: see CHANGELOG.md
  *
  * ✒ Description:
@@ -108,7 +108,7 @@ import {
   Model, KINDS, FLAG_LINK, FLAG_HIDDEN, extOf, fmtBytes, fmtCount, fmtDate, fmtAge, freshness, relPath, depthOf,
   isAncestor, parseQuery, runSearch,
 } from './model.js';
-import { buildLayout, BOX, STYLE } from './layout.js';
+import { buildLayout, BOX, STYLE, AUX } from './layout.js';
 import { Viewport } from './viewport.js';
 import { THEME, mixHex, ramp, cssHex } from './theme.js';
 import { el, openMenu, closeFloating, floatingOpen, ask, notice, tip, hideTip, slideIndicator, VirtualList } from './ui.js';
@@ -690,6 +690,13 @@ function paint() {
       } else c = 0xd3d9d4;
       if (node.f & FLAG_LINK) s = STYLE.BANDS;
       if (node.f & FLAG_HIDDEN && S.lens === 'kind') c = mixHex(c, THEME.paper, 0.4);
+    }
+    // Changed after the date the time view looks back to: washed toward
+    // paper once, here, and crossed by the shader. A selection keeps its
+    // highlighter colour below, with the cross over it.
+    if (L.aux[i] === AUX.CROSSED) {
+      s = STYLE.CROSSED;
+      c = mixHex(c, THEME.paper, 0.6);
     }
 
     let d = 0;
@@ -1291,11 +1298,14 @@ function drawCrumbs() {
 let list;
 
 function rowFor(node, { showPath = false, total } = {}) {
-  const cls = node.d ? (node.e ? 'swatch is-sealed' : node.c.length ? 'swatch is-dir' : 'swatch is-empty') : 'swatch';
+  // S.time.crossed: the time view's answer, by the rules the layout draws with.
+  const crossed = !!S.time?.crossed?.(node);
+  const cls = (node.d ? (node.e ? 'swatch is-sealed' : node.c.length ? 'swatch is-dir' : 'swatch is-empty') : 'swatch') + (crossed ? ' is-crossed' : '');
   const share = total ? Math.max(0, Math.min(1, node.s / total)) : 0;
   const row = el('div', { class: `row${S.sel.has(node) ? ' is-selected' : ''}`, draggable: node.p && !S.info.readOnly ? 'true' : null, 'aria-selected': S.sel.has(node) ? 'true' : 'false', title: showPath ? relPath(node) : node.n },
     el('span', { class: cls, style: node.d ? null : { background: cssHex(KINDS[node.k].color) } }),
-    el('span', { class: 'row-name' }, node.n, node.d ? el('small', { text: node.e ? node.e : fmtCount(node.fc) }) : showPath ? el('small', { text: relPath(node.p) || '/' }) : null),
+    el('span', { class: 'row-name' }, node.n, node.d ? el('small', { text: node.e ? node.e : fmtCount(node.fc) }) : showPath ? el('small', { text: relPath(node.p) || '/' }) : null,
+      crossed ? el('span', { class: 'sr', text: `, changed since ${S.time.date}` }) : null),
     el('span', { class: 'row-size' }, fmtBytes(node.s), total ? el('i', { style: { width: `${share * 100}%` } }) : null));
   row.addEventListener('click', (e) => {
     list.cursor = list.items.indexOf(node);

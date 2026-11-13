@@ -1,0 +1,62 @@
+/*
+ * ============================================================================
+ * ✒ Metadata
+ *     - Title: Time View (Terrane Edition - v1.0)
+ *     - File Name: time.css
+ *     - Relative Path: web/css/components/time.css
+ *     - Artifact Type: stylesheet
+ *     - Version: 1.0.0
+ *     - Date: 11/12/2026
+ *     - Update: Thursday, November 12, 2026
+ *     - Author: Dennis 'dendogg' Smaltz
+ *     - A.I. Acknowledgement: Anthropic - Claude Opus 5.5
+ *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
+ *
+ * ✒ Description:
+ *     The date scrub's part of the sheet: the As of stepper in the title
+ *     block, and the crossed convention in miniature wherever the ledger
+ *     and the inspector name an entry that changed after the date the
+ *     world looks back to.
+ *
+ * ✒ Key Features:
+ *     - As of stepper: the date in figures, wide enough for MM/DD/YYYY;
+ *       ink plate while the world looks back, as a chosen lens is shown
+ *     - Crossed swatch: the kind colour washed toward paper with the two
+ *       diagonals over it, as the world draws a crossed block
+ *     - Reading glyph for the convention, and the inspector's Since rows
+ *
+ * ✒ Other Important Information:
+ *     - Dependencies: tokens.css (--tex-crossed, --crossed-wash),
+ *       controls.css (.stepper), ledger.css (.swatch), inspector.css
+ *       (.glyph, .facts); imported into layer(components) by terrane.css
+ *     - Compatible platforms: current evergreen browsers
+ * ----------------------------------------------------------------------------
+ */
+
+/* ---------- the As of stepper ---------- */
+
+.cell-time .stepper output {
+  min-width: 92px;
+  font-variant-numeric: tabular-nums;
+  transition: background-color var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
+}
+.cell-time.is-on .stepper output { background: var(--ink); color: var(--on-ink); }
+.cell-time.is-on .cell-label { color: var(--text); }
+
+/* ---------- the crossed convention in miniature ---------- */
+
+.swatch.is-crossed { position: relative; }
+.swatch.is-crossed::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: var(--tex-crossed), var(--crossed-wash);
+}
+
+.glyph.g-crossed { height: 9px; margin-top: 7px; background: var(--tex-crossed), var(--crossed-wash), var(--k-document); }
+
+/* ---------- the inspector's Since section ---------- */
+
+.since-where { padding-bottom: var(--s-2); border-bottom: var(--border-2); }
+.since-where .item { padding-left: var(--s-3); }
+.since-none { margin: 0; padding: 0 var(--s-3) var(--s-3); border-bottom: var(--border-2); color: var(--text-2); font-size: var(--fs-md); }

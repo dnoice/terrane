@@ -1,11 +1,11 @@
 <!DOCTYPE html>
 <!--
 ✒ Metadata
-    - Title: Terrane Interface (Terrane Edition - v1.3)
+    - Title: Terrane Interface (Terrane Edition - v1.4)
     - File Name: index.html
     - Relative Path: web/index.html
     - Artifact Type: markup
-    - Version: 1.3.0
+    - Version: 1.4.0
     - Date: 11/12/2026
     - Update: Thursday, November 12, 2026
     - Author: Dennis 'dendogg' Smaltz
@@ -13,6 +13,9 @@
     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
 
 ✒ Changelog:
+    - 1.4.0 (11/12/2026) [dendogg + Anthropic - Claude Opus 5.5] — An As
+      of cell in the title block: a stepper for the date the world looks
+      back to (earlier, the date or Now, later), reachable by Tab.
     - 1.3.0 (11/12/2026) [dendogg + Anthropic - Claude Opus 5.5] — Icons
       on every tool, the survey frame and instruments over the world (north
       arrow, storage scale), panel toggles in the view tools, a clear button
@@ -21,9 +24,6 @@
     - 1.2.0 (11/12/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
       ledger's tab buttons are made by app.js from its tab registry, so a
       feature can add a tab without editing this page.
-    - 1.1.0 (11/11/2026) [dendogg + Anthropic - Claude Opus 5.5] — Adds
-      the panel that holds operations in progress, at the lower left of
-      the world.
     Earlier entries: see CHANGELOG.md
 
 ✒ Description:
@@ -215,6 +215,16 @@
     <div class="cell cell-grow">
       <span class="cell-label" id="legend-label">Legend</span>
       <div id="legend"></div>
+    </div>
+    <div class="cell cell-time" id="time-cell">
+      <span class="cell-label" id="time-label"><svg class="icon" aria-hidden="true"><use href="vendor/lucide/icons.svg#calendar-clock"/></svg>As of</span>
+      <div class="stepper" role="group" aria-labelledby="time-label">
+        <button class="btn btn-small" id="time-earlier" type="button" aria-label="Earlier date (,)" title="Earlier date (,)">
+          <svg class="icon" aria-hidden="true"><use href="vendor/lucide/icons.svg#chevron-left"/></svg></button>
+        <output id="time-val" aria-live="off" title="The date the world looks back to: T looks back, Escape returns to now">Now</output>
+        <button class="btn btn-small" id="time-later" type="button" aria-label="Later date (.)" title="Later date (.)" aria-disabled="true">
+          <svg class="icon" aria-hidden="true"><use href="vendor/lucide/icons.svg#chevron-right"/></svg></button>
+      </div>
     </div>
     <div class="cell">
       <span class="cell-label"><svg class="icon" aria-hidden="true"><use href="vendor/lucide/icons.svg#scale"/></svg>Grain</span>

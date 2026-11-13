@@ -1,11 +1,11 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Terrane Design System (Terrane Edition - v2.0)
+ *     - Title: Terrane Design System (Terrane Edition - v2.1)
  *     - File Name: terrane.css
  *     - Relative Path: web/css/terrane.css
  *     - Artifact Type: stylesheet
- *     - Version: 2.0.0
+ *     - Version: 2.1.0
  *     - Date: 11/12/2026
  *     - Update: Thursday, November 12, 2026
  *     - Author: Dennis 'dendogg' Smaltz
@@ -13,6 +13,9 @@
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
  *
  * ✒ Changelog:
+ *     - 2.1.0 (11/12/2026) [dendogg + Anthropic - Claude Opus 5.5] —
+ *       Imports components/time.css: the As of stepper and the crossed
+ *       swatch and glyph.
  *     - 2.0.0 (11/12/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
  *       one stylesheet becomes the entry to a layered system: tokens,
  *       fonts, base, layout, seven component modules, utilities, motion
@@ -66,6 +69,7 @@
 @import url('components/inspector.css') layer(components);
 @import url('components/block.css') layer(components);
 @import url('components/floating.css') layer(components);
+@import url('components/time.css') layer(components);
 @import url('utilities.css') layer(utilities);
 @import url('motion.css') layer(motion);
 @import url('print.css') layer(print) print;

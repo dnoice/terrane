@@ -54,9 +54,9 @@
         },
         {
           "path": "web/vendor/lucide/icons.svg",
-          "source": "https://cdn.jsdelivr.net/npm/lucide-static@1.72.0/icons/*.svg (62 icons)",
-          "bytes": 12338,
-          "sha256": "5ec939ec179b0093daa5122d49ad4d80b1785bae09faea7f754db20b477e1b3a"
+          "source": "https://cdn.jsdelivr.net/npm/lucide-static@1.72.0/icons/*.svg (65 icons)",
+          "bytes": 12764,
+          "sha256": "387bbf1dddbfc8ae2ce614a3b53fe029094705fd0bbc893ccc662b3dc9eec0c7"
         }
       ]
     },
