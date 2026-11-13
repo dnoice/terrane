@@ -1,16 +1,27 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Stage and Instruments (Terrane Edition - v1.0)
+ *     - Title: Stage and Instruments (Terrane Edition - v1.1)
  *     - File Name: stage.css
  *     - Relative Path: web/css/components/stage.css
  *     - Artifact Type: stylesheet
- *     - Version: 1.0.0
- *     - Date: 11/12/2026
- *     - Update: Thursday, November 12, 2026
+ *     - Version: 1.1.0
+ *     - Date: 11/13/2026
+ *     - Update: Friday, November 13, 2026
  *     - Author: Dennis 'dendogg' Smaltz
  *     - A.I. Acknowledgement: Anthropic - Claude Opus 5.5
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
+ *
+ * ✒ Changelog:
+ *     - 1.1.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] —
+ *       Without WebGL the travel tools step aside; the explanation a
+ *       page the service did not serve shows (#veil.is-elsewhere). The
+ *       instruments take their inset and sizes from tokens; the view
+ *       tools drop their words before they reach the storage scale, and
+ *       in a narrow world the scale rises above them; the placing
+ *       banner wraps its words and keeps clear of the north arrow.
+ *     - 1.0.0 (11/12/2026) [dendogg + Anthropic - Claude Opus 5.5] —
+ *       Initial release.
  *
  * ✒ Description:
  *     The middle of the sheet: the WebGL canvas, the labels laid over it,
@@ -136,13 +147,13 @@
   gap: 10px;
   pointer-events: none;
 }
-.hud-north { top: 24px; right: 24px; }
+.hud-north { top: var(--hud-inset); right: var(--hud-inset); }
 .north {
   position: relative;
   display: grid;
   place-items: center;
-  width: 46px;
-  height: 46px;
+  width: var(--north);
+  height: var(--north);
   padding: 0;
   border: var(--border);
   border-radius: 50%;
@@ -160,8 +171,12 @@
 .north .ring { fill: none; stroke: var(--ink-tick); stroke-width: 1; stroke-dasharray: 1 3.2; }
 .north .letter { font: 800 7px / 1 var(--sans); font-stretch: var(--wdth-max); fill: var(--ink); text-anchor: middle; }
 
-.hud-scale { left: 24px; bottom: 24px; transition: translate var(--dur-base) var(--ease-out-expo); }
-#jobs:not(:empty) ~ .hud-scale { translate: 0 -8px; opacity: 0; }
+.hud-scale {
+  left: var(--hud-inset);
+  bottom: var(--hud-inset);
+  transition: translate var(--dur-base) var(--ease-out-expo), opacity var(--dur-fast) var(--ease-out),
+    bottom var(--dur-base) var(--ease-out-expo);
+}
 .scale {
   display: flex;
   align-items: center;
@@ -174,14 +189,14 @@
 .scale-square { width: 24px; height: 24px; border: var(--border); background: var(--tex-stipple), var(--paper); }
 .scale-text { display: grid; gap: 2px; }
 .scale-text b { font: 500 var(--fs-md) / 1 var(--mono); font-variant-numeric: tabular-nums; }
-.scale-text span { color: var(--text-3); font-size: 8.5px; }
+.scale-text span { color: var(--text-3); font-size: var(--fs-3xs); }
 
 /* ---------- view tools: one ruled instrument strip ---------- */
 
 .view-tools {
   position: absolute;
-  right: 24px;
-  bottom: 24px;
+  right: var(--hud-inset);
+  bottom: var(--hud-inset);
   z-index: var(--z-hud);
   display: flex;
   align-items: stretch;
@@ -190,8 +205,8 @@
   box-shadow: var(--shadow-2);
 }
 .view-tools .btn {
-  height: 32px;
-  min-width: 32px;
+  height: var(--tool-h);
+  min-width: var(--tool-h);
   padding: 0 9px;
   border: 0;
   border-right: var(--border-3);
@@ -200,21 +215,32 @@
 .view-tools .btn:last-child { border-right: 0; }
 .view-tools .btn .icon { width: var(--icon); height: var(--icon); }
 .view-tools .group-sep { width: 1px; background: var(--line); }
-@container stage (max-width: 620px) {
+/* The strip keeps its words only while it and the storage scale both fit
+   along the bottom edge (about 700 px); below that it shows its icons,
+   whose names and keys stay in their titles. */
+@container stage (max-width: 720px) {
   .view-tools .btn .label { display: none; }
+}
+/* Narrower still, the scale rises to the second row, above the strip, and
+   steps aside while operations in progress stand there. */
+@container stage (max-width: 500px) {
+  .hud-scale { bottom: var(--hud-lift); }
+  #jobs:not(:empty) ~ .hud-scale { translate: 0 -8px; opacity: 0; }
 }
 
 /* ---------- placing banner ---------- */
 
 #placing {
   position: absolute;
-  top: 24px;
+  top: var(--hud-inset);
   left: 50%;
   z-index: var(--z-hud);
   display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
   align-items: center;
-  gap: 10px;
-  max-width: 92%;
+  gap: var(--s-2) 10px;
+  max-width: min(92%, 560px);
   padding: 6px 8px 6px 12px;
   border: var(--border);
   background: var(--tex-hatch-live);
@@ -225,7 +251,19 @@
   translate: -50% 0;
   animation: drop-in var(--dur-base) var(--ease-spring), hatch-run 1.2s linear infinite;
 }
-#placing-text { padding: 2px 6px; background: var(--verdigris-deep); }
+#placing-text { flex: 1 1 240px; padding: 2px 6px; background: var(--verdigris-deep); text-wrap: pretty; }
+#placing .btn { flex: none; }
+/* Too narrow to stand centred clear of the north arrow: it runs from the
+   left edge to the arrow instead, and drops in without the centring shift. */
+@container stage (max-width: 740px) {
+  #placing {
+    left: var(--hud-inset);
+    right: calc(var(--hud-inset) + var(--north) + var(--s-3));
+    max-width: none;
+    translate: none;
+    animation-name: fade-down, hatch-run;
+  }
+}
 
 /* ---------- veil: surveying, unavailable, stopped ---------- */
 
@@ -240,7 +278,7 @@
   padding: 30px;
   background: var(--tex-grid), var(--surface-ground);
   color: var(--text-2);
-  font: 500 14px / 1.6 var(--sans);
+  font: 500 var(--fs-lg) / 1.6 var(--sans);
   text-align: center;
   transition: opacity var(--dur-slow) var(--ease-out), scale var(--dur-slow) var(--ease-out);
 }
@@ -252,7 +290,7 @@
 #veil strong {
   display: block;
   color: var(--text);
-  font: 800 22px / 1.2 var(--sans);
+  font: 800 var(--fs-2xl) / 1.2 var(--sans);
   font-stretch: var(--wdth-expanded);
   letter-spacing: var(--track-wide);
   text-transform: uppercase;
@@ -267,5 +305,26 @@
 
 #stage { container: stage / inline-size; }
 
-/* Without WebGL there is no world to measure: the instruments step aside. */
+/* Without WebGL there is no world to measure or travel: the instruments
+   and the travel tools step aside. Go to selection and the panel toggles
+   stay, since they work without it. */
 body.no-gl .hud, body.no-gl .frame { display: none; }
+body.no-gl :is(#v-in, #v-out, #v-left, #v-right, #v-down, #v-over, .view-tools .group-sep) { display: none; }
+
+/* A page the service did not serve (elsewhere.js): how to start Terrane. */
+#veil.is-elsewhere { background: var(--tex-grid), var(--surface-ground); }
+#veil .elsewhere {
+  display: grid;
+  justify-items: center;
+  gap: var(--s-3);
+  max-width: 64ch;
+  padding: var(--s-6);
+  border: var(--border);
+  background: var(--surface-control);
+  box-shadow: var(--shadow-2);
+  color: var(--text-2);
+  font: 400 var(--fs-base) / var(--lh-base) var(--sans);
+}
+#veil .elsewhere p { margin: 0; text-wrap: pretty; }
+#veil .elsewhere code { padding: var(--s-1) var(--s-2); border: var(--border-2); background: var(--surface-field); color: var(--text); font: 500 var(--fs-md) / 1.4 var(--mono); }
+#veil .elsewhere a { color: var(--text); }

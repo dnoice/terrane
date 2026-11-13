@@ -1,16 +1,26 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Session Traverse (Terrane Edition - v1.0)
+ *     - Title: Session Traverse (Terrane Edition - v1.1)
  *     - File Name: traverse.js
  *     - Relative Path: web/js/traverse.js
  *     - Artifact Type: javascript
- *     - Version: 1.0.0
+ *     - Version: 1.1.0
  *     - Date: 11/13/2026
  *     - Update: Friday, November 13, 2026
  *     - Author: Dennis 'dendogg' Smaltz
  *     - A.I. Acknowledgement: Anthropic - Claude Opus 5.5
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
+ *
+ * ✒ Changelog:
+ *     - 1.1.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] —
+ *       Working sessions are found when something reads them (Working
+ *       sessions, a session: search, the traverse), not after every
+ *       survey. The date and plural helpers come from model.js. A row
+ *       for a session that crossed midnight puts its second date under
+ *       the first in a narrow ledger instead of cutting it off.
+ *     - 1.0.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] —
+ *       Initial release.
  *
  * ✒ Description:
  *     Working sessions, found and walked. Files whose last changes follow
@@ -44,8 +54,10 @@
  * ✒ Usage Instructions:
  *     Listed in features.js and installed by app.js. S.sessions is null
  *     until the first survey, then { list, gapMs, built, ms, considered,
- *     skipped, route }: list is sessions() newest first, and route the
- *     last traverse drawn ({ k, count, total, truncated, stops }) or null.
+ *     skipped, found, route }: list is sessions() newest first, found the
+ *     first time it is read (found says whether it has been), and route
+ *     the last traverse drawn ({ k, count, total, truncated, stops }) or
+ *     null.
  *
  * ✒ Examples:
  *     session:1           the newest working session, in Findings
@@ -67,7 +79,7 @@
  * ----------------------------------------------------------------------------
  */
 
-import { fmtBytes, fmtCount, relPath } from './model.js';
+import { fmtBytes, fmtCount, fmtDay as day, plural, relPath } from './model.js';
 import { sessions, sessionFacts, sessionPredicate, route, GAP_MS, MAX_LEGS } from './relations.js';
 import { THEME } from './theme.js';
 
@@ -81,15 +93,10 @@ const TOKEN = /(?:^|\s)session:(\S+)/gi;
 export const TRAVERSE = Object.freeze({ color: THEME.ink, dashed: true, lift: 0.12, arrows: true });
 
 const p2 = (x) => String(x).padStart(2, '0');
-const day = (ms) => {
-  const d = new Date(ms);
-  return `${p2(d.getMonth() + 1)}/${p2(d.getDate())}/${d.getFullYear()}`;
-};
 const hm = (ms) => {
   const d = new Date(ms);
   return `${p2(d.getHours())}:${p2(d.getMinutes())}`;
 };
-const plural = (n, word) => `${fmtCount(n)} ${word}${n === 1 ? '' : 's'}`;
 
 /** A session's time as the house writes it: MM/DD/YYYY HH:MM–HH:MM, a second date when it crossed midnight. */
 export function when(start, end) {
@@ -190,7 +197,10 @@ export function install(api) {
 
   function row(s, k) {
     const f = sessionFacts(s);
-    const time = when(f.start, f.end);
+    // A session that crossed midnight carries two dates: in a narrow ledger
+    // the second goes under the first, rather than being cut off.
+    const [from, to] = when(f.start, f.end).split(' – ');
+    const time = to ? el('span', { class: 'when' }, el('span', { text: `${from} – ` }), el('span', { text: to })) : from;
     const place = `${plural(f.places, 'place')} · ${relPath(f.common) || '/'}`;
     const label = `Session ${k}: ${plural(f.count, 'file')} in ${plural(f.places, 'place')} changed ${spoken(f.start, f.end)}${f.bulk ? ', written at once' : ''}, ${where(f)}. Find them.`;
     return el('button', { class: 'item session-row', type: 'button', 'data-session': String(k), 'aria-label': label, title: `session:${k}`, onclick: () => find(k) },
@@ -222,14 +232,42 @@ export function install(api) {
     return list ? sessionPredicate(list, numberOf(value)) : null;
   }, { owner: OWNER });
 
-  // Found again after every survey, after the age table; a session search
-  // is run again with them, so its window is never the one before.
+  /**
+   * The sessions of the tree as it is at this survey, found the first time
+   * something reads them: the Survey tab's Working sessions, a session:
+   * search or the traverse. A survey nobody asks about costs nothing here.
+   */
+  function lazySessions(root) {
+    let list = null;
+    let ms = 0;
+    const get = () => {
+      if (!list) {
+        const t0 = performance.now();
+        list = sessions(root);
+        ms = performance.now() - t0;
+      }
+      return list;
+    };
+    return {
+      get list() { return get(); },
+      get gapMs() { return get().gapMs; },
+      get considered() { return get().considered; },
+      get skipped() { return get().skipped; },
+      get ms() { get(); return ms; },
+      /** True once the list has been found. */
+      get found() { return list !== null; },
+      built: Date.now(),
+      route: null,
+    };
+  }
+
+  // Marked stale after every survey, after the age table, and found again
+  // when read; a session search is run again with them, so its window is
+  // never the one before.
   api.AFTER_SURVEY.add({
     id: 'traverse', order: 30, owner: OWNER,
     run: () => {
-      const t0 = performance.now();
-      const list = sessions(S.model.root);
-      S.sessions = { list, gapMs: list.gapMs, built: Date.now(), ms: performance.now() - t0, considered: list.considered, skipped: list.skipped, route: null };
+      S.sessions = lazySessions(S.model.root);
       if (tokensOf(S.query).length) {
         api.runQuery();
         // The survey redraws its own tab; any other shows the new matches here.

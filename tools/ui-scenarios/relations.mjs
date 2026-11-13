@@ -1,16 +1,24 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Relation Lines Scenario (Terrane Edition - v1.0)
+ *     - Title: Relation Lines Scenario (Terrane Edition - v1.1)
  *     - File Name: relations.mjs
  *     - Relative Path: tools/ui-scenarios/relations.mjs
  *     - Artifact Type: test
- *     - Version: 1.0.0
- *     - Date: 11/11/2026
- *     - Update: Wednesday, November 11, 2026
+ *     - Version: 1.1.0
+ *     - Date: 11/13/2026
+ *     - Update: Friday, November 13, 2026
  *     - Author: Dennis 'dendogg' Smaltz
  *     - A.I. Acknowledgement: Anthropic - Claude Opus 5.5
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
+ *
+ * ✒ Changelog:
+ *     - 1.1.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] —
+ *       The relation layer is drawn only while it holds a line: idle at
+ *       the overview, and its shader is read once the probe has drawn
+ *       it.
+ *     - 1.0.0 (11/11/2026) [dendogg + Anthropic - Claude Opus 5.5] —
+ *       Initial release.
  *
  * ✒ Description:
  *     Checks the viewport's relation-line layer in the real page. Duplicate
@@ -204,19 +212,32 @@ export default {
         return {
           mat: v.relations.material.type, vc: v.relations.material.vertexColors, dashed, ties: 'ties' in v,
           cap: g.attributes.position.count, attrs: Object.keys(g.attributes).sort().join(' '),
-          gap: src.includes('relationGap( vLineDistance )'), mod: src.includes('mod( vLineDistance, totalSize )'), fw: src.includes('fwidth( d )'),
+          // Drawn only while it holds a line: at the overview it costs nothing.
+          idle: !v.relations.visible && g.drawRange.count === 0 && !src,
         };
       });
       t.check('one relation layer, a LineDashedMaterial with vertex colours, replaces the tie lines',
         layer.mat === 'LineDashedMaterial' && layer.vc && layer.dashed === 1 && !layer.ties, JSON.stringify(layer));
       t.check(`its buffers are made once for ${layer.cap.toLocaleString('en-US')} vertices (${layer.attrs})`,
         layer.cap === 40000 && layer.attrs === 'color lineDistance position');
-      t.check('the compiled line shader breaks dashes by screen size, not world units',
-        layer.gap && layer.fw && !layer.mod, JSON.stringify(layer));
-
+      t.check('with no relation set showing the layer is not drawn, so it costs no draw call (and its program is not even compiled yet)', layer.idle, JSON.stringify(layer));
       await t.settle();
       const top = await t.app(probe, true, PROBE);
       overviewAlt = top.alt;
+      // The layer is drawn only while it holds a line, so its program is
+      // compiled once the probe has drawn it.
+      const compiled = await t.app((T) => {
+        const v = T.S.view;
+        const gl = v.renderer.getContext();
+        let src = '';
+        for (const p of v.renderer.info.programs || []) {
+          const s = p.fragmentShader && gl.getShaderSource(p.fragmentShader);
+          if (s && s.includes('vLineDistance')) src = s;
+        }
+        return { gap: src.includes('relationGap( vLineDistance )'), mod: src.includes('mod( vLineDistance, totalSize )'), fw: src.includes('fwidth( d )') };
+      });
+      t.check('the compiled line shader breaks dashes by screen size, not world units',
+        compiled.gap && compiled.fw && !compiled.mod, JSON.stringify(compiled));
       t.note(`overview: altitude ${top.alt.toPrecision(3)}, dash periods ${top.min} to ${top.max} px (median ${top.median}) over ${top.runs} dashes, ${(top.share * 100).toFixed(0)}% inked`);
       t.check('a dashed probe across the overview is drawn while the view rests', top.vis && top.count === 2 && !top.left, JSON.stringify(top));
       t.check(`its dashes repeat every ${11 * top.ratio} to ${22 * top.ratio} device pixels at the overview (median ${top.median})`,

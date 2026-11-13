@@ -2,16 +2,22 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Places Store Test (Terrane Edition - v1.0)
+ *     - Title: Places Store Test (Terrane Edition - v1.1)
  *     - File Name: places-test.mjs
  *     - Relative Path: tools/places-test.mjs
  *     - Artifact Type: test
- *     - Version: 1.0.0
+ *     - Version: 1.1.0
  *     - Date: 11/13/2026
  *     - Update: Friday, November 13, 2026
  *     - Author: Dennis 'dendogg' Smaltz
  *     - A.I. Acknowledgement: Anthropic - Claude Opus 5.5
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
+ *
+ * ✒ Changelog:
+ *     - 1.1.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — A
+ *       whole survey empties the detail cache.
+ *     - 1.0.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] —
+ *       Initial release.
  *
  * ✒ Description:
  *     Runs the browser's places store (web/js/places.js) in Node against
@@ -188,6 +194,11 @@ section('Detail and cache');
   check('the same folder unchanged again: the cached answer', store.detail(b) === d1);
   store.set(work, T0 + 2 * DAY);
   check('measuring again drops the cached answer', store.detail(b) !== d1 && !store.detail(b).gone.length);
+  // A whole survey (Rescan all) is a new tree: the cache keeps nothing of the old one.
+  const kept = store.cache.size;
+  store.resolve(build({ work: { 'keep.txt': [100] } }));
+  check('a whole survey empties the cache, which would otherwise hold the old tree', kept > 0 && store.cache.size === 0, `${kept} then ${store.cache.size}`);
+  store.resolve(model, new Set([work]));
 
   // More than KEEP_ENTRIES direct entries: the rest are summed, and a
   // newcomer can only be said not to have been among the largest.

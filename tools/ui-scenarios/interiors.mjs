@@ -1,11 +1,11 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Archive Interiors Scenario (Terrane Edition - v1.1)
+ *     - Title: Archive Interiors Scenario (Terrane Edition - v1.2)
  *     - File Name: interiors.mjs
  *     - Relative Path: tools/ui-scenarios/interiors.mjs
  *     - Artifact Type: test
- *     - Version: 1.1.0
+ *     - Version: 1.2.0
  *     - Date: 11/13/2026
  *     - Update: Friday, November 13, 2026
  *     - Author: Dennis 'dendogg' Smaltz
@@ -13,6 +13,11 @@
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
  *
  * ✒ Changelog:
+ *     - 1.2.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] —
+ *       The twin ties cost the selection baseline and the one shared
+ *       relation layer; the entry's style waits poll until it is drawn,
+ *       then check it or say it has no box; the inspector reader knows
+ *       aria-disabled actions.
  *     - 1.1.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — Three
  *       scenarios for the client half: 'interior', the walled floor from
  *       the keyboard in both passes (the route, Contents, the Age lens
@@ -226,7 +231,10 @@ function inspector() {
   return {
     titles: [...body.querySelectorAll('.section-title')].map((x) => x.textContent),
     path: body.querySelector('.insp-path code')?.textContent ?? null,
-    buttons: Object.fromEntries([...body.querySelectorAll('button.btn')].map((b) => [b.textContent.trim(), b.disabled ? b.title : 'on'])),
+    // An unavailable action is aria-disabled and carries its reason in a
+    // hidden span: the label is the rest of its text.
+    buttons: Object.fromEntries([...body.querySelectorAll('button.btn')].map((b) => [[...b.childNodes].filter((n) => !n.classList?.contains('sr')).map((n) => n.textContent).join('').trim(),
+      b.disabled || b.getAttribute('aria-disabled') === 'true' ? b.title : 'on'])),
     names: [...body.querySelectorAll('.interior-names li')].map((x) => x.textContent),
     twins: [...body.querySelectorAll('.interior-twins .nm')].map((x) => x.textContent),
     reading: [...body.querySelectorAll('.reading b')].map((x) => x.textContent),
@@ -359,15 +367,29 @@ function twinState(T, rel, want) {
 }
 
 /** In the page: the entry site/about.html's box style, waiting for want ('plain' or 'half'). */
+/**
+ * The entry about.html as drawn now: { drawn, style, half }. With want
+ * ('half' or 'plain'), false until it is drawn that way, so a wait keeps
+ * polling through the moment between a refresh and its relayout.
+ */
 async function entryStyle(T, want) {
   const LY = await import(new URL('js/layout.js', document.baseURI).href);
   const I = T.S.interior;
   const entry = I?.root.c.find((c) => c.n === 'site')?.c.find((c) => c.n === 'about.html');
   const i = entry ? T.S.layout.index.get(entry) : undefined;
-  if (i === undefined || i >= T.S.view.n || T.S.layout.node[i] !== entry) return { drawn: false };
+  if (i === undefined || i >= T.S.view.n || T.S.layout.node[i] !== entry) return want ? false : { drawn: false };
   const s = T.S.view.aStyle.array[i];
   const half = s === LY.STYLE.HALF_BANDS;
+  if (!want) return { drawn: true, style: s, half };
   return (want === 'half' ? half : !half) && { drawn: true, style: s, half };
+}
+
+/** Waits for the entry to be drawn as wanted; checks it, or says it has no box in this view. */
+async function entryDrawn(t, want, claim) {
+  const got = await t.until(entryStyle, { args: [want], timeout: 5000 });
+  const now = got || await t.app(entryStyle, null);
+  if (!now.drawn) t.skip(claim, 'the entry about.html has no box of its own in this view');
+  else t.check(`${claim} (style ${now.style})`, want === 'half' ? now.half : !now.half);
 }
 
 const chamber = {
@@ -457,7 +479,8 @@ const chamber = {
       }, { what: 'the twins relation drawn' });
       t.check(`the twin is tied in the archive kind's colour: relation set 'twins', ${ties.legs} leg, draw range ${ties.count}`, ties.legs >= 1 && ties.count > 0 && ties.color === 0x7b5a41, JSON.stringify(ties));
       // The Duplicates lens pins no heavyweight files, so the frame holds
-      // what the selection baseline holds, the relation layer included.
+      // what the selection baseline holds, and the ties only the shared
+      // relation layer, which is drawn only while it holds a line.
       await t.key('4');
       await t.waitFor((T) => T.S.lens === 'dup' && T.S.view.relationSets.has('twins'));
       const withTies = await t.drawCalls();
@@ -465,8 +488,10 @@ const chamber = {
       await t.waitFor((T) => !T.S.view.relationSets.has('twins'));
       const without = await t.drawCalls();
       const want = t.recorded?.selected?.calls ?? t.baseline?.selected?.calls;
-      t.check(`renderer.info.render.calls with the twin tied equals the selection baseline: ${withTies.calls} with the ties, ${without.calls} without, baseline ${want}`,
-        withTies.calls === want && without.calls === want, JSON.stringify([withTies.drawn, without.drawn]));
+      const layer = (d) => d.drawn.filter((x) => x.startsWith('LineSegments LineDashedMaterial')).length;
+      t.check(`renderer.info.render.calls with the twin tied is the selection baseline and the one shared relation layer: ${withTies.calls} with the ties, ${without.calls} without, baseline ${want}`,
+        withTies.calls === want + 1 && without.calls === want && layer(withTies) === layer(without) + 1 && !withTies.drawn.some((x) => x.endsWith('(empty)')),
+        JSON.stringify([withTies.drawn, without.drawn]));
       await t.app((T, n) => { T.api.select(T.S.focus.c.find((x) => x.n === n)); return true; }, twin);
       await t.key('1');
       await t.waitFor((T) => T.S.lens === 'kind' && T.S.view.relationSets.has('twins'));
@@ -675,19 +700,12 @@ const disk = {
     const gone = await t.waitFor(twinState, { args: [loose, 'gone'], timeout: 15000, what: 'the twins worked out again without the file' });
     t.check('removed on disk, the file is no longer a twin: the entry is not half-banded, twinsOf and both maps hold no detached file, the count is 7 and the inspector lists no twin',
       gone.open && !gone.styled && gone.entryTwins === 0 && gone.detached === 0 && gone.primary && !gone.titles.includes('Already in this directory'), JSON.stringify(gone));
-    if (t.gl) {
-      const plain = await t.waitFor(entryStyle, { args: ['plain'], timeout: 5000, what: 'the entry repainted' });
-      if (plain.drawn) t.check(`and the entry's box is no longer half-banded (style ${plain.style})`, !plain.half);
-      else t.note('the entry about.html has no box of its own in this view, so its style is not read');
-    }
+    if (t.gl) await entryDrawn(t, 'plain', 'and the entry\'s box is no longer half-banded');
     fs.writeFileSync(t.abs(loose), bytes);
     const back = await t.waitFor(twinState, { args: [loose, 'back'], timeout: 15000, what: 'the twins worked out again with the file' });
     t.check('the same bytes written back after opening become the entry\'s twin again, both sides half-banded and listed in the inspector',
       back.open && back.toHere && back.styled && back.hereStyled && back.detached === 0 && back.titles.includes('Already in this directory'), JSON.stringify(back));
-    if (t.gl) {
-      const half = await t.waitFor(entryStyle, { args: ['half'], timeout: 5000, what: 'the entry repainted' });
-      if (half.drawn) t.check(`and the entry's box is half-banded again (style ${half.style})`, half.half);
-    }
+    if (t.gl) await entryDrawn(t, 'half', 'and the entry\'s box is half-banded again');
     await t.key('Escape');
     await t.waitFor((T) => !T.S.primary);
     await t.key('Escape');

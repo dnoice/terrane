@@ -2,11 +2,11 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Interface Check (Terrane Edition - v1.2)
+ *     - Title: Interface Check (Terrane Edition - v1.3)
  *     - File Name: ui-check.mjs
  *     - Relative Path: tools/ui-check.mjs
  *     - Artifact Type: test
- *     - Version: 1.2.0
+ *     - Version: 1.3.0
  *     - Date: 11/13/2026
  *     - Update: Friday, November 13, 2026
  *     - Author: Dennis 'dendogg' Smaltz
@@ -14,6 +14,13 @@
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
  *
  * ✒ Changelog:
+ *     - 1.3.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — t.key
+ *       sends every key as a keyDown event, a key that types nothing
+ *       without text. Headless Edge 157 can stop delivering rawKeyDown
+ *       events to the page part way through a scenario (after focus has
+ *       moved a few times), so an arrow key or Home pressed then never
+ *       reached it, the original page included; keyDown events of the same
+ *       keys arrive.
  *     - 1.2.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] —
  *       t.reload() reloads the page and waits for it as for the first load,
  *       until the survey is done and the loading sheet has gone, so a
@@ -592,7 +599,9 @@ function context(page, env) {
       const k = keyOf(spec);
       if (k.insert) return page.send('Input.insertText', { text: k.insert });
       const base = { key: k.key, code: k.code, windowsVirtualKeyCode: k.vk, nativeVirtualKeyCode: k.vk, modifiers: k.mods };
-      await page.send('Input.dispatchKeyEvent', k.text ? { type: 'keyDown', ...base, text: k.text, unmodifiedText: k.text } : { type: 'rawKeyDown', ...base });
+      // keyDown for every key: headless Edge can drop rawKeyDown events
+      // part way through a run, and a keyDown without text types nothing.
+      await page.send('Input.dispatchKeyEvent', k.text ? { type: 'keyDown', ...base, text: k.text, unmodifiedText: k.text } : { type: 'keyDown', ...base });
       await page.send('Input.dispatchKeyEvent', { type: 'keyUp', ...base });
       // A person never presses two keys in the same instant. Waiting one
       // frame lets tasks the key queued (a dialog's close event, a

@@ -1,16 +1,28 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Controls (Terrane Edition - v1.0)
+ *     - Title: Controls (Terrane Edition - v1.1)
  *     - File Name: controls.css
  *     - Relative Path: web/css/components/controls.css
  *     - Artifact Type: stylesheet
- *     - Version: 1.0.0
- *     - Date: 11/12/2026
- *     - Update: Thursday, November 12, 2026
+ *     - Version: 1.1.0
+ *     - Date: 11/13/2026
+ *     - Update: Friday, November 13, 2026
  *     - Author: Dennis 'dendogg' Smaltz
  *     - A.I. Acknowledgement: Anthropic - Claude Opus 5.5
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
+ *
+ * ✒ Changelog:
+ *     - 1.1.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] —
+ *       The tab strip can shrink: labels shorten with an ellipsis
+ *       instead of pushing the last tab out of the ledger. Tab counts
+ *       use --search-text. Tabs are sized by their labels; in a ledger
+ *       too narrow for every label each tab shows its icon and the
+ *       chosen one its label too. Tabs and legend chips draw their
+ *       focus ring inside; a button carrying a name wraps inside its
+ *       border; sizes come from the type scale.
+ *     - 1.0.0 (11/12/2026) [dendogg + Anthropic - Claude Opus 5.5] —
+ *       Initial release.
  *
  * ✒ Description:
  *     Every control the interface is operated with: buttons, icon buttons,
@@ -67,7 +79,7 @@
   border-radius: var(--radius);
   background-color: var(--surface-control);
   color: var(--text);
-  font: 600 12px / 1 var(--sans);
+  font: 600 var(--fs-row) / 1 var(--sans);
   font-stretch: 104%;
   letter-spacing: 0.01em;
   white-space: nowrap;
@@ -89,6 +101,20 @@
 /* A raised button: the drafting-card shadow, which flattens when pressed. */
 .btn-raised { box-shadow: var(--shadow-1); }
 .btn-raised:active:not(:disabled) { translate: 2px 2px; box-shadow: none; }
+
+/* Buttons in a panel's flow can carry a name (Set benchmark on "a folder",
+   Close an archive): a long one wraps inside the border instead of
+   spilling past the panel's edge. One line keeps the usual height. */
+.rich .actions .btn, .bench-none .btn, .actions-grid .btn {
+  max-width: 100%;
+  height: auto;
+  padding-block: var(--s-1);
+  line-height: var(--lh-tight);
+  white-space: normal;
+  text-align: left;
+}
+.rich .actions .btn, .bench-none .btn { min-height: var(--control-h-sm); }
+.actions-grid .btn { min-height: var(--control-h); }
 
 .btn:disabled, .btn[aria-disabled='true'] {
   --sweep: 0%;
@@ -146,7 +172,7 @@
   height: var(--control-h-sm);
   border-block: var(--border);
   background: var(--surface-control);
-  font: 500 12px / var(--control-h-sm) var(--mono);
+  font: 500 var(--fs-row) / var(--control-h-sm) var(--mono);
   text-align: center;
 }
 .stepper .btn { min-width: var(--control-h-sm); padding: 0; width: var(--control-h-sm); }
@@ -168,19 +194,22 @@
   white-space: nowrap;
 }
 .chip[aria-pressed='true'] { border-color: var(--line); background-color: var(--surface-control); box-shadow: var(--shadow-1); }
+/* The legend clips at its edges; the ring sits inside the chip. */
+.chip:focus-visible { outline-offset: calc(var(--focus-offset) * -1); }
 .chip .swatch { width: 11px; height: 11px; transition: scale var(--dur-fast) var(--ease-spring); }
 .chip:hover .swatch { scale: 1.18; }
 
 /* ---------- tabs with a sliding underline ---------- */
 
-.tabs { position: relative; display: flex; flex: 1; }
+.tabs { position: relative; display: flex; flex: 1; min-width: 0; }
 .tabs button {
   appearance: none;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 5px;
-  flex: 1;
+  /* Sized by their labels, so a long one is not cut while a short one has room to spare. */
+  flex: 1 1 auto;
   min-width: 0;
   padding: 0 4px;
   border: 0;
@@ -193,9 +222,14 @@
   white-space: nowrap;
 }
 .tabs button:last-child { border-right: 0; }
+/* The strip runs along the panel's top edge, which would cut a ring drawn outside. */
+.tabs button:focus-visible { outline-offset: calc(var(--focus-offset) * -1); }
+/* A narrow ledger shortens the labels instead of pushing a tab out of it. */
+.tabs .tab-label { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.tabs .count, .tabs .icon { flex: none; }
 .tabs button .icon { width: 13px; height: 13px; }
 .tabs button[aria-selected='true'] { color: var(--text); }
-.tabs .count { font-family: var(--mono); font-stretch: 100%; letter-spacing: 0; color: var(--search); }
+.tabs .count { font-family: var(--mono); font-stretch: 100%; letter-spacing: 0; color: var(--search-text); }
 .tabs::after {
   content: '';
   position: absolute;
@@ -213,6 +247,20 @@
 /* Icons join the tab labels only when the panel has room for both. */
 @container ledger (max-width: 420px) {
   .tabs button .icon { display: none; }
+}
+/* Too narrow for every label (the side panels of a window under 1,320 px):
+   each tab shows its icon and only the chosen one its label as well. The
+   others keep their label as their name, and as their title. */
+@container ledger (max-width: 300px) {
+  .tabs button .icon { display: inline-block; }
+  .tabs button:not([aria-selected='true']) .tab-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
 }
 
 /* ---------- sort toggles ---------- */

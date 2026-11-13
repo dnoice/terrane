@@ -1,11 +1,11 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Landmarks (Terrane Edition - v1.1)
+ *     - Title: Landmarks (Terrane Edition - v1.2)
  *     - File Name: landmarks.js
  *     - Relative Path: web/js/landmarks.js
  *     - Artifact Type: javascript
- *     - Version: 1.1.0
+ *     - Version: 1.2.0
  *     - Date: 11/13/2026
  *     - Update: Friday, November 13, 2026
  *     - Author: Dennis 'dendogg' Smaltz
@@ -13,6 +13,11 @@
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
  *
  * ✒ Changelog:
+ *     - 1.2.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — A
+ *       Find that asks is:benchmark runs again whenever the benchmarks
+ *       change, so Findings, its count, the pins and the dimming
+ *       follow; J opens a folded return point through api.forceOpen, so
+ *       the overview ends that unfold.
  *     - 1.1.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — A
  *       folder inside an open archive takes no benchmark: B says why, the
  *       menu item is unavailable and the inspector has no Benchmark
@@ -154,7 +159,16 @@ export function install(api) {
   // When a measurement is of: a snapshot's is when it was taken.
   const when = (at) => (snapshot ? `in the snapshot taken ${fmtDate(at)}` : `at ${fmtDate(at)}`);
 
+  /** True when the query in Find asks for benchmarks, whose answer changes with the store. */
+  const asksForBenchmarks = () => S.search && /(?:^|\s)is:benchmark(?:\s|$)/i.test(S.query);
+
   function redraw() {
+    // is:benchmark answers from the store, which just changed: the search
+    // runs again, so Findings, its count, the pins and the dimming agree.
+    if (asksForBenchmarks()) {
+      api.runQuery();
+      api.repaint();
+    }
     api.drawPins();
     drawMarks();
     api.drawLedger(true);
@@ -407,9 +421,9 @@ export function install(api) {
     }
     let i = S.layout.index.get(node);
     if (i === undefined || i >= S.view.n) {
-      // Open the way to the folder, as going there does, so its box exists.
-      S.force = new Set();
-      for (let a = node; a; a = a.p) S.force.add(a);
+      // Open the way to the folder, as going there does, so its box
+      // exists; the unfold ends at the overview or off this branch.
+      api.forceOpen(node);
       api.relayout();
       i = S.layout.index.get(node);
     }

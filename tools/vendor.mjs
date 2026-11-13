@@ -2,18 +2,25 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Vendor Fetcher (Terrane Edition - v1.1)
+ *     - Title: Vendor Fetcher (Terrane Edition - v1.2)
  *     - File Name: vendor.mjs
  *     - Relative Path: tools/vendor.mjs
  *     - Artifact Type: CLI
- *     - Version: 1.1.0
- *     - Date: 11/12/2026
- *     - Update: Thursday, November 12, 2026
+ *     - Version: 1.2.0
+ *     - Date: 11/13/2026
+ *     - Update: Friday, November 13, 2026
  *     - Author: Dennis 'dendogg' Smaltz
  *     - A.I. Acknowledgement: Anthropic - Claude Opus 5.5
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
  *
  * ✒ Changelog:
+ *     - 1.2.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
+ *       icon list holds only what the interface draws: command, compass,
+ *       chevron-down, chevron-up, map, grip-vertical, circle-help,
+ *       keyboard, hard-drive, radar, move, navigation-2, folder and file
+ *       are gone (Move draws folder-input, the north arrow is drawn
+ *       inline), and the sprite was written again from the same pinned
+ *       Lucide (55 icons).
  *     - 1.1.0 (11/12/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
  *       icon list gains calendar-clock, chevron-left and chevron-right for
  *       the As of stepper in the title block, and map-pinned, flag,
@@ -81,19 +88,19 @@ const MANIFEST = path.join(VENDOR, 'manifest.json');
 /** Every icon the interface draws, by Lucide name. Add here, then rerun. */
 export const ICONS = [
   // bar and navigation
-  'corner-left-up', 'folder-plus', 'undo-2', 'refresh-cw', 'book-open', 'search', 'x', 'keyboard', 'command',
+  'corner-left-up', 'folder-plus', 'undo-2', 'refresh-cw', 'book-open', 'search', 'x',
   // view tools and the stage
   'zoom-in', 'zoom-out', 'rotate-ccw', 'rotate-cw', 'person-standing', 'locate-fixed', 'scan', 'panel-left',
-  'panel-right', 'navigation-2', 'mountain', 'ruler', 'compass',
+  'panel-right', 'mountain', 'ruler',
   // operations
   'corner-down-right', 'square-arrow-out-up-right', 'folder-search', 'clipboard-copy', 'pencil-line', 'folder-input',
-  'copy', 'copy-plus', 'trash-2', 'circle-stop', 'move',
+  'copy', 'copy-plus', 'trash-2', 'circle-stop',
   // state and notices
-  'check', 'triangle-alert', 'info', 'loader-circle', 'eye', 'radar', 'history',
+  'check', 'triangle-alert', 'info', 'loader-circle', 'eye', 'history',
   // ledger, lenses and inspector
-  'list-tree', 'list-filter', 'scroll-text', 'shapes', 'ruler-dimension-line', 'layers', 'chevron-down', 'chevron-up',
-  'arrow-down-wide-narrow', 'arrow-up-narrow-wide', 'folder', 'folder-open', 'file', 'hard-drive', 'minus', 'plus',
-  'sparkles', 'scale', 'binoculars', 'map', 'grip-vertical', 'circle-help',
+  'list-tree', 'list-filter', 'scroll-text', 'shapes', 'ruler-dimension-line', 'layers',
+  'arrow-down-wide-narrow', 'arrow-up-narrow-wide', 'folder-open', 'minus', 'plus',
+  'sparkles', 'scale', 'binoculars',
   // the title block's As of stepper (time)
   'calendar-clock', 'chevron-left', 'chevron-right',
   // landmarks: the Places tab, benchmarks and the return point

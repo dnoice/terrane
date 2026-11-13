@@ -1,16 +1,27 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Inspector (Terrane Edition - v1.0)
+ *     - Title: Inspector (Terrane Edition - v1.1)
  *     - File Name: inspector.css
  *     - Relative Path: web/css/components/inspector.css
  *     - Artifact Type: stylesheet
- *     - Version: 1.0.0
- *     - Date: 11/12/2026
- *     - Update: Thursday, November 12, 2026
+ *     - Version: 1.1.0
+ *     - Date: 11/13/2026
+ *     - Update: Friday, November 13, 2026
  *     - Author: Dennis 'dendogg' Smaltz
  *     - A.I. Acknowledgement: Anthropic - Claude Opus 5.5
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
+ *
+ * ✒ Changelog:
+ *     - 1.1.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] —
+ *       The Reading the world glyphs take plaster, clay and mass from
+ *       tokens.css instead of raw colours; .actions-why, the line that
+ *       says why actions are unavailable. A fact's two-line label keeps
+ *       its lines together; a path fills each line of its block instead
+ *       of breaking ragged at its hyphens; sizes come from the type
+ *       scale.
+ *     - 1.0.0 (11/12/2026) [dendogg + Anthropic - Claude Opus 5.5] —
+ *       Initial release.
  *
  * ✒ Description:
  *     Panel B: everything known about the selection or about the folder
@@ -47,7 +58,7 @@
   align-items: center;
   gap: 7px;
   margin-bottom: 8px;
-  font: 500 11px / 1 var(--mono);
+  font: 500 var(--fs-fig) / 1 var(--mono);
   color: var(--text-2);
 }
 .insp-name {
@@ -58,7 +69,9 @@
   text-wrap: balance;
 }
 .insp-path { display: flex; align-items: flex-start; gap: var(--s-2); padding: 9px 12px; border-bottom: var(--border-2); }
-.insp-path code { flex: 1; font: 400 11px / 1.45 var(--mono); color: var(--text-2); overflow-wrap: anywhere; }
+/* A path fills each line of its block, as a reference on a drawing sheet,
+   rather than breaking ragged at its hyphens and leaving a word alone. */
+.insp-path code { flex: 1; min-width: 0; font: 400 var(--fs-fig) / 1.45 var(--mono); color: var(--text-2); word-break: break-all; }
 
 /* ---------- facts ---------- */
 
@@ -72,8 +85,9 @@
   border-bottom: var(--border-3);
 }
 .facts > div:last-child { border-bottom: 0; }
-.facts dt { color: var(--text-3); }
-.facts dd { margin: 0; font: 400 12px / 1.4 var(--mono); font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+/* A label of two words that takes two lines keeps the lines apart. */
+.facts dt { color: var(--text-3); line-height: var(--lh-snug); }
+.facts dd { margin: 0; font: 400 var(--fs-row) / 1.4 var(--mono); font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
 .facts dd b { font-weight: 500; }
 
 .share { position: relative; display: block; height: 4px; margin-top: 5px; background: var(--rule-soft); }
@@ -110,7 +124,7 @@
   margin: 8px 12px 12px;
   padding: 0;
   list-style: none;
-  font: 400 11px / 1.3 var(--mono);
+  font: 400 var(--fs-fig) / 1.3 var(--mono);
 }
 .comp-key li { display: flex; align-items: center; gap: 6px; }
 .comp-key span:last-child { margin-left: auto; color: var(--text-2); font-variant-numeric: tabular-nums; }
@@ -126,6 +140,9 @@
 }
 .actions-grid .btn { justify-content: flex-start; width: 100%; }
 .actions-grid .wide { grid-column: 1 / -1; }
+/* Why some actions above are unavailable, where a sighted keyboard user can read it. */
+.actions-why { margin: 0; padding: 0 var(--s-3) var(--s-3); border-bottom: var(--border-2); color: var(--text-2); font: 400 var(--fs-xs) / var(--lh-snug) var(--mono); }
+.actions-grid:has(+ .actions-why) { padding-bottom: var(--s-2); border-bottom: 0; }
 
 /* ---------- preview ---------- */
 
@@ -146,7 +163,7 @@
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
-.preview .none { padding: 10px; background: var(--paper); color: var(--text-3); font-size: 12px; }
+.preview .none { padding: 10px; background: var(--paper); color: var(--text-3); font-size: var(--fs-row); }
 
 /* ---------- reading the world ---------- */
 
@@ -157,22 +174,22 @@
   gap: 10px;
   padding: 8px 0;
   border-bottom: var(--border-3);
-  font-size: 12px;
+  font-size: var(--fs-row);
   line-height: 1.4;
   text-wrap: pretty;
 }
 .reading li b { display: block; font-weight: 700; }
 .glyph { width: 26px; height: 20px; margin-top: 2px; border: var(--border); background: var(--paper); }
 .glyph.g-foot { box-shadow: inset 9px 0 0 var(--k-code), inset 0 -8px 0 var(--k-image); }
-.glyph.g-elev { background: linear-gradient(to top, #cdd4cf 0 33%, #e2e7e2 33% 66%, #f8faf7 66%); }
+.glyph.g-elev { background: linear-gradient(to top, var(--plaster-0) 0 33%, var(--plaster-2) 33% 66%, var(--plaster-5) 66%); }
 .glyph.g-height {
   border: 0;
   background: linear-gradient(to right, var(--ink) 0 22%, transparent 22% 39%, var(--ink) 39% 61%, transparent 61% 78%, var(--ink) 78%);
   clip-path: polygon(0 100%, 0 20%, 22% 20%, 22% 100%, 39% 100%, 39% 50%, 61% 50%, 61% 100%, 78% 100%, 78% 80%, 100% 80%, 100% 100%);
 }
-.glyph.g-mass { background: #8fa09a; }
+.glyph.g-mass { background: var(--mass); }
 .glyph.g-scree { background: var(--tex-stipple), var(--paper); }
-.glyph.g-seal { background: repeating-linear-gradient(135deg, var(--ink) 0 1.5px, #b4bcb7 1.5px 5px); }
+.glyph.g-seal { background: repeating-linear-gradient(135deg, var(--ink) 0 1.5px, var(--clay) 1.5px 5px); }
 .glyph.g-empty { border: 2px solid var(--ink); background: var(--chalk); }
 .glyph.g-pin { border: 0; background: var(--signal); clip-path: polygon(15% 0, 85% 0, 50% 100%); }
 

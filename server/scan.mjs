@@ -1,16 +1,26 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Progressive Scanner (Terrane Edition - v1.0)
+ *     - Title: Progressive Scanner (Terrane Edition - v1.1)
  *     - File Name: scan.mjs
  *     - Relative Path: server/scan.mjs
  *     - Artifact Type: javascript
- *     - Version: 1.0.0
- *     - Date: 11/09/2026
- *     - Update: Monday, November 9, 2026
+ *     - Version: 1.1.0
+ *     - Date: 11/13/2026
+ *     - Update: Friday, November 13, 2026
  *     - Author: Dennis 'dendogg' Smaltz
- *     - A.I. Acknowledgement: Anthropic - Claude Fable 5.2
+ *     - A.I. Acknowledgement: Anthropic - Claude Opus 5.5
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
+ *
+ * ✒ Changelog:
+ *     - 1.1.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] —
+ *       pump(res, source, signal) writes a stream of records as NDJSON and
+ *       waits for 'drain' or 'close', whichever comes first, then returns
+ *       the source. A survey the page drops while the socket is full no
+ *       longer leaves its scan, or a snapshot's open database, suspended
+ *       for good.
+ *     - 1.0.0 (11/09/2026) [dendogg + Anthropic - Claude Fable 5.2] —
+ *       Initial release.
  *
  * ✒ Description:
  *     Walks a directory breadth-first and reports each folder the moment it
@@ -30,6 +40,8 @@
  *       instead of aborting the scan
  *     - Depth limit (depth=1 lists a single folder and stubs its children)
  *     - Cancels cleanly through an AbortSignal when the client disconnects
+ *     - pump(): the NDJSON writer for the scan routes, with backpressure
+ *       that also ends when the page goes away
  *
  * ✒ Usage Instructions:
  *     Record shape, one JSON array per folder:
@@ -43,6 +55,7 @@
  * ✒ Examples:
  *     for await (const batch of scan('/data', { signal })) send(batch);
  *     for await (const batch of scan('/data/a', { depth: 1 })) send(batch);
+ *     await pump(res, scan('/data', { signal }), signal);
  *
  * ✒ Other Important Information:
  *     - Dependencies: Node.js built-ins only (node:fs, node:path)
@@ -160,4 +173,40 @@ export async function* scan(rootAbs, { depth = Infinity, signal, isRoot = false 
     }
   }
   if (out.length) yield out;
+}
+
+/**
+ * Writes each item of source to res as one line of JSON and ends res.
+ * When res is full it waits for 'drain' or 'close', whichever comes first:
+ * a socket destroyed by the page emits 'close' and never 'drain', so a
+ * wait for 'drain' alone would hold the generator, and whatever it has
+ * open, for good. Leaving the loop early returns the generator, so its
+ * finally blocks run.
+ */
+export async function pump(res, source, signal) {
+  let closed = res.destroyed;
+  const onClose = () => { closed = true; };
+  res.once('close', onClose);
+  const gone = () => closed || res.destroyed || !!signal?.aborted;
+  try {
+    for await (const item of source) {
+      if (gone()) break;
+      if (!res.write(JSON.stringify(item) + '\n')) {
+        await new Promise((resolve) => {
+          const done = () => {
+            res.off('drain', done);
+            res.off('close', done);
+            resolve();
+          };
+          res.on('drain', done);
+          res.on('close', done);
+          if (gone()) done();
+        });
+        if (gone()) break;
+      }
+    }
+  } finally {
+    res.off('close', onClose);
+    if (!res.writableEnded) res.end();
+  }
 }

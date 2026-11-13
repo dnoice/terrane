@@ -1,11 +1,11 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Terrane Application (Terrane Edition - v1.6)
+ *     - Title: Terrane Application (Terrane Edition - v1.7)
  *     - File Name: app.js
  *     - Relative Path: web/js/app.js
  *     - Artifact Type: javascript
- *     - Version: 1.6.0
+ *     - Version: 1.7.0
  *     - Date: 11/13/2026
  *     - Update: Friday, November 13, 2026
  *     - Author: Dennis 'dendogg' Smaltz
@@ -13,6 +13,17 @@
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
  *
  * ✒ Changelog:
+ *     - 1.7.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] —
+ *       Hardening: a folder gone from disk no longer stalls every
+ *       refresh; Rescan all lets go of the old tree and runs the search
+ *       again; the forced unfold ends at the overview or off its
+ *       branch; focus survives a redraw or a hidden panel; a narrow
+ *       inspector drawer and a single-key setting; a page the service
+ *       did not serve asks it nothing. Counts say "1 item" and "1
+ *       match"; an empty folder, a search with no match and a legend
+ *       with nothing to colour each say so, with no sort keys over an
+ *       empty list; Copy, Create and Rename carry icons as their
+ *       neighbours do.
  *     - 1.6.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] —
  *       Findings sorts by Size or Changed; a search opens in the order it
  *       asks for and keeps the one chosen until the query changes, and
@@ -33,20 +44,6 @@
  *       walls it in the file's colour, hatches locked entries and
  *       half-bands twins, tied as the relation set 'twins'. The api gains
  *       hostOf and listCursor.
- *     - 1.5.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — Paint
- *       draws a box the layout marks AUX.CROSSED (the time view) in the
- *       crossed convention, its colour washed 60% toward paper unless it
- *       is selected; a Contents row whose entry is crossed carries a
- *       crossed swatch and says so to assistive technology. Two seams for
- *       features: AFTER_OP hooks hear every change the service carried
- *       out (Undo included, with the paths it moved back) before the
- *       folders are re-read, and a change that stopped part way with what
- *       it finished; MENU entries add a group of context menu items;
- *       window.__terrane.places is the landmarks store.
- *     - 1.4.0 (11/12/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
- *       loading sheet (splash.js) covers the page from start until the
- *       service answers and the first survey batch is drawn, naming each
- *       stage; it leaves early on either failure so the veil can explain.
  *     Earlier entries: see CHANGELOG.md
  *
  * ✒ Description:
@@ -74,7 +71,7 @@
  *       its bytes have not changed since
  *     - Search that dims everything else, pins the matches, and marks
  *       closed masses and scree that contain matches; Findings lists them
- *       by size or by last change
+ *       by size or by last change, and says so when nothing matches
  *     - Real operations through the service: open, reveal, copy path, new
  *       folder, rename, move, copy, duplicate, remove to holding, restore,
  *       undo; every result or refusal is reported in words
@@ -151,6 +148,12 @@ import { preloadFloat } from './float.js';
 
 const $ = (id) => document.getElementById(id);
 const TOKEN = document.querySelector('meta[name="terrane-token"]').content;
+/**
+ * True on a page the service did not serve (opened from disk, from another
+ * server or from GitHub Pages): it still holds the placeholder the service
+ * fills in. elsewhere.js says why; nothing here may ask the service.
+ */
+const ELSEWHERE = TOKEN === ['__TERRANE', 'TOKEN__'].join('_');
 const GRAINS = [{ label: 'Coarse', v: 0.0105 }, { label: 'Medium', v: 0.0062 }, { label: 'Fine', v: 0.0038 }, { label: 'Finest', v: 0.0024 }];
 
 const S = {
@@ -530,13 +533,23 @@ function refreshDirs(rels) {
       if (node && !node.d && path !== rel) node = node.p;
       if (node && node.d) dirs.add(node);
     }
-    for (const dir of dirs) {
+    // A folder gone from disk is read again through its parent, in this
+    // same pass: waiting on another refresh from inside the chain would
+    // wait on itself, and every later refresh would wait behind it.
+    const queue = [...dirs];
+    for (let q = 0; q < queue.length; q++) {
+      const dir = queue[q];
       if (!isAttached(dir)) continue;
       const records = [];
       try {
         await scanStream(relPath(dir), 1, (batch) => records.push(...batch));
       } catch (err) {
-        if (err.code === 'ENOENT' && dir.p) await refreshDirs([relPath(dir.p)]);
+        let up = dir.p;
+        if (up && !up.d) up = up.p;
+        if (err.code === 'ENOENT' && up && !dirs.has(up)) {
+          dirs.add(up);
+          queue.push(up);
+        }
         continue;
       }
       const { added } = S.model.reconcile(dir, records);
@@ -596,6 +609,7 @@ function connectEvents() {
 
 async function fullScan() {
   S.scanning = true;
+  stopPlacing();
   const name = S.info.name;
   S.model = new Model(name);
   S.focus = S.model.root;
@@ -604,6 +618,15 @@ async function fullScan() {
   S.trail = [];
   S.survey = null;
   S.ages = null;
+  // Nothing may keep the old tree reachable or on screen: the forced
+  // unfold, the search and its sorted copy, the sessions and a held
+  // flight all hold its nodes. The query stays in Find and runs again on
+  // the new tree once it has been surveyed.
+  S.force = null;
+  S.search = null;
+  S.sessions = null;
+  findCache = { search: null, key: '', items: [] };
+  hold = null;
   drawAll();
   thumbs.reload(TOKEN);
   try {
@@ -614,6 +637,8 @@ async function fullScan() {
   S.scanning = false;
   S.survey = S.model.survey();
   runHooks(AFTER_SURVEY, S.survey, { full: true });
+  // A hook may have run it already (a session: search).
+  if (S.query && !S.search) runQuery();
   relayout();
   drawAll();
 }
@@ -703,6 +728,10 @@ function updateWhere() {
 
 /** Makes dir the folder you are in and redraws everything that shows it. */
 function moveFocus(dir) {
+  // Once the eye has landed somewhere off the branch a flight opened, the
+  // branch may fold again as distance says (checked even when the
+  // location already moved there during the flight).
+  if (S.force && (S.noGL || !S.view.flight) && !onForcedBranch(dir)) releaseForce();
   if (dir === S.focus) return;
   S.focus = dir;
   drawCrumbs();
@@ -743,13 +772,18 @@ function drawAltitude() {
   // Stated in the unit that matters here: roughly how much storage one
   // screen-width of ground stands for from this height.
   const p = S.view.look();
-  if (!p.point) {
-    $('alt-val').textContent = 'Horizon';
-    return;
+  let text = 'Horizon';
+  if (p.point) {
+    const width = p.dist * 0.82 * (S.view.w / S.view.h);
+    const share = Math.min(1, (width * width) / 1e6);
+    text = share >= 1 ? 'Overview · everything' : `≈ ${fmtBytes(S.model.root.s * share)} across the view`;
   }
-  const width = p.dist * 0.82 * (S.view.w / S.view.h);
-  const share = Math.min(1, (width * width) / 1e6);
-  $('alt-val').textContent = share >= 1 ? 'Overview · everything' : `≈ ${fmtBytes(S.model.root.s * share)} across the view`;
+  setText($('alt-val'), text);
+}
+
+/** Writes text only when it differs, so an unchanged value is never announced again. */
+function setText(node, text) {
+  if (node && node.textContent !== text) node.textContent = text;
 }
 
 function repaint() {
@@ -998,6 +1032,39 @@ function select(node, { add = false, quiet = false } = {}) {
 }
 
 /**
+ * Opens the way to node whatever the distance: it and every folder above
+ * it stand open (S.force) so a flight has a box to land on. The unfold
+ * ends when the view returns to the overview (overview()) or the location
+ * settles off that branch (moveFocus).
+ */
+function forceOpen(node) {
+  S.force = new Set();
+  for (let a = node; a; a = a.p) S.force.add(a);
+}
+
+/** Ends the forced unfold, and lays the world out again without it. */
+function releaseForce() {
+  if (!S.force) return;
+  S.force = null;
+  queueLayout();
+}
+
+/** True when dir is on the forced chain, or under the folder it opened. */
+function onForcedBranch(dir) {
+  if (S.force.has(dir)) return true;
+  const target = S.force.values().next().value;
+  for (let a = dir; a; a = a.p) if (a === target) return true;
+  return false;
+}
+
+/** Rises to the overview; whatever was forced open folds as distance says. */
+function overview() {
+  hold = null;
+  releaseForce();
+  S.view.overview();
+}
+
+/**
  * Flies to a folder. "Where you are" then follows from the camera, or,
  * without a 3D view, moves to the folder at once.
  */
@@ -1005,11 +1072,19 @@ function setFocus(dir, { remember = true } = {}) {
   if (!dir || !dir.d) return;
   if (remember && S.focus !== dir) S.trail.push(S.focus);
   hold = null;
-  S.force = new Set();
-  for (let a = dir; a; a = a.p) S.force.add(a);
+  if (!dir.p) {
+    // The root: going there is rising to the overview.
+    S.force = null;
+    relayout();
+    S.view.overview();
+    if (S.noGL || !S.view.look()) moveFocus(dir);
+    say(`Travelling to ${dir.n}, ${fmtCount(dir.c.length)} items`);
+    return;
+  }
+  forceOpen(dir);
   relayout();
   const i = S.layout.index.get(dir);
-  if (!dir.p || i === undefined) S.view.overview();
+  if (i === undefined) S.view.overview();
   else S.view.frame(i);
   // With a 3D view the location follows the camera when the flight lands.
   // Without one there is no camera to follow, so the location moves here.
@@ -1037,8 +1112,7 @@ const goBack = () => {
 /** Makes a node visible (changing focus if it must) and flies to it. */
 function reveal(node) {
   if (!S.layout.index.has(node)) {
-    S.force = new Set();
-    for (let a = node; a; a = a.p) S.force.add(a);
+    forceOpen(node);
     relayout();
   }
   select(node);
@@ -1248,7 +1322,7 @@ const nameProblem = (v) => {
 async function newFolder(dir = S.focus) {
   if (refuseInside([dir])) return;
   const v = await ask({
-    title: 'New folder', body: `Inside ${relPath(dir) || S.info.name}`, confirm: 'Create',
+    title: 'New folder', body: `Inside ${relPath(dir) || S.info.name}`, confirm: 'Create', confirmIcon: 'newFolder',
     fields: [{ name: 'name', label: 'Folder name', value: 'New folder' }], validate: nameProblem,
   });
   if (!v) return;
@@ -1262,7 +1336,7 @@ async function newFolder(dir = S.focus) {
 async function rename(node = S.primary) {
   if (!node || !node.p || refuseInside([node])) return;
   const v = await ask({
-    title: 'Rename', confirm: 'Rename', validate: nameProblem,
+    title: 'Rename', confirm: 'Rename', confirmIcon: 'rename', validate: nameProblem,
     fields: [{ name: 'name', label: node.d ? 'Folder name' : 'File name', value: node.n, selectStem: !node.d }],
   });
   if (!v || v.name === node.n) return;
@@ -1427,7 +1501,7 @@ function menuFor(node, x, y) {
       { label: 'Reveal in file manager', icon: 'reveal', run: () => runOp({ type: 'reveal', path: relPath(S.focus) }), ...(here ? shut(true) : {}) },
       'sep',
       { label: 'Up one level', icon: 'up', hint: 'Backspace', run: goUp, disabled: !S.focus.p, reason: 'already at the root' },
-      { label: 'Rise to the overview', icon: 'overview', hint: '0', run: () => S.view.overview() },
+      { label: 'Rise to the overview', icon: 'overview', hint: '0', run: overview },
       { label: 'Re-read this folder', icon: 'refresh', hint: 'F5', run: () => refreshDirs([relPath(S.focus)]) },
       ...menuExtras(null, { ro }),
     ];
@@ -1562,6 +1636,9 @@ function sortedContents() {
   return items;
 }
 
+/** A tab's label, in a span that can shorten with an ellipsis when the ledger is narrow. */
+const tabLabel = (tab) => el('span', { class: 'tab-label', text: tab.label });
+
 /** Icons for the built-in tabs; a feature's tab may name its own as tab.icon. */
 const TAB_ICON = { contents: 'contents', findings: 'findings', survey: 'survey', journal: 'journal' };
 const tabIcon = (tab) => icon(tab.icon || TAB_ICON[tab.id] || 'list-tree');
@@ -1575,17 +1652,51 @@ function slideIndicators() {
 /** The tab buttons, made from TABS. */
 function drawTabs() {
   document.querySelector('.tabs').replaceChildren(...[...TABS].map((tab) => el('button', {
-    role: 'tab', type: 'button', 'data-tab': tab.id, 'aria-selected': String(tab.id === S.tab),
+    role: 'tab', type: 'button', 'data-tab': tab.id, 'aria-selected': String(tab.id === S.tab), title: tab.label,
     onclick: () => {
       S.tab = tab.id;
       drawLedger();
     },
-  }, tabIcon(tab), tab.label)));
+  }, tabIcon(tab), tabLabel(tab))));
   requestAnimationFrame(slideIndicators);
+}
+
+/**
+ * What identifies a control across a redraw: its data-k, or its tag,
+ * class and name. A control rebuilt with the same signature is the same
+ * control to the person using it.
+ */
+const signature = (node) => node.dataset?.k || `${node.tagName}.${node.className}|${node.getAttribute('aria-label') || node.textContent.trim().slice(0, 120)}`;
+const FOCUSABLE = 'button, summary, a[href], input, select, textarea, [tabindex]';
+
+/**
+ * Runs draw(), which rebuilds what host holds, and keeps keyboard focus
+ * where it was: on the control with the same signature (the same one of
+ * several), else on fallback (the container), so the next Tab goes on
+ * from there instead of from the top of the page. A draw that put focus
+ * somewhere itself is left alone.
+ */
+function keepFocus(host, draw, fallback = host) {
+  const was = document.activeElement;
+  const inside = was && was !== document.body && host.contains(was);
+  const sig = inside ? signature(was) : null;
+  const nth = inside ? [...host.querySelectorAll(FOCUSABLE)].filter((x) => signature(x) === sig).indexOf(was) : -1;
+  draw();
+  if (!inside || was.isConnected) return;
+  const now = document.activeElement;
+  if (now && now !== document.body && host.contains(now)) return;
+  const same = [...host.querySelectorAll(FOCUSABLE)].filter((x) => signature(x) === sig);
+  const to = same[Math.max(0, Math.min(nth, same.length - 1))];
+  to?.focus({ preventScroll: true });
+  if (document.activeElement !== to) fallback?.focus({ preventScroll: true });
 }
 
 let ledgerKey = null;
 function drawLedger(keepScroll = false) {
+  keepFocus($('ledger'), () => drawLedgerNow(keepScroll), $('ledger-rich').hidden ? $('ledger-list') : $('ledger-rich'));
+}
+
+function drawLedgerNow(keepScroll) {
   let tab = TABS.get(S.tab);
   if (!tab) {
     S.tab = 'contents';
@@ -1601,7 +1712,7 @@ function drawLedger(keepScroll = false) {
     const t = TABS.get(b.dataset.tab);
     if (t?.count) {
       const n = t.count();
-      b.replaceChildren(tabIcon(t), t.label, n != null ? el('span', { class: 'count', text: fmtCount(n) }) : '');
+      b.replaceChildren(tabIcon(t), tabLabel(t), n != null ? el('span', { class: 'count', text: fmtCount(n) }) : '');
     }
   });
   slideIndicators();
@@ -1612,6 +1723,11 @@ function drawLedger(keepScroll = false) {
   const useList = !!tab.list;
   listHost.hidden = !useList;
   rich.hidden = useList;
+  if (useList) {
+    // A tab that has no sentence for an empty list shows none, never another tab's.
+    list.setEmpty('');
+    list.setLabel(tab.id === 'contents' ? `Contents of ${S.focus.n}` : tab.label);
+  }
   tab.draw(sub, useList ? listHost : rich, keepScroll);
 }
 
@@ -1629,9 +1745,14 @@ function drawContents(sub, _host, keepScroll) {
     S.sort = { key, dir: S.sort.key === key ? -S.sort.dir : key === 'name' ? 1 : -1 };
     drawLedger();
   });
-  sub.replaceChildren(el('span', { class: 'grow', text: `${fmtCount(S.focus.c.length)} items · ${fmtBytes(S.focus.s)}` }), sortBtn('name', 'Name'), sortBtn('size', 'Size'), sortBtn('date', 'Changed'));
+  const n = S.focus.c.length;
+  // The sort keys stay together: in a narrow ledger they move under the
+  // count as one. An empty folder has nothing to sort, so it shows none.
+  sub.replaceChildren(el('span', { class: 'sub-count', text: `${fmtCount(n)} item${n === 1 ? '' : 's'} · ${fmtBytes(S.focus.s)}` }),
+    ...(n ? [el('span', { class: 'sorts' }, sortBtn('name', 'Name'), sortBtn('size', 'Size'), sortBtn('date', 'Changed'))] : []));
   list.render = (node) => rowFor(node, { total: S.focus.s });
-  list.setItems(sortedContents(), keepScroll);
+  list.setEmpty(S.focus.e ? `This folder could not be read (${S.focus.e}).` : S.focus.stub ? 'This folder has not been read yet.' : 'This folder is empty.');
+  list.setItems(sortedContents(), keepScroll, { follow: S.primary });
 }
 
 /**
@@ -1657,7 +1778,8 @@ function findingsItems() {
 
 function drawFindings(sub, _host, keepScroll) {
   if (!S.search) {
-    sub.replaceChildren(el('span', { class: 'grow', text: 'Type in the Find field to search every level.' }));
+    sub.replaceChildren(el('span', { class: 'grow', text: S.query && S.scanning ? 'The search runs again once the survey has finished.' : 'Type in the Find field to search every level.' }));
+    list.setEmpty('');
     list.setItems([]);
     return;
   }
@@ -1668,23 +1790,36 @@ function drawFindings(sub, _host, keepScroll) {
     drawLedger();
   });
   const note = S.search.note || '';
+  const n = S.search.list.length;
   sub.classList.add('is-rows');
-  sub.replaceChildren(
-    el('div', { class: 'sub-row' }, el('span', { class: 'grow', text: `${fmtCount(S.search.list.length)} matches · ${fmtBytes(S.search.bytes)}` }),
-      el('button', { class: 'sort', type: 'button', title: 'Select every match (up to 5,000)', onclick: () => {
+  // With no match there is nothing to select or sort: the list says so.
+  // (replaceChildren would print a null argument as the text "null".)
+  sub.replaceChildren(...[
+    el('div', { class: 'sub-row' }, el('span', { class: 'sub-count', text: `${fmtCount(n)} match${n === 1 ? '' : 'es'} · ${fmtBytes(S.search.bytes)}` }),
+      n ? el('button', { class: 'sort', type: 'button', title: 'Select every match (up to 5,000)', onclick: () => {
         S.sel = new Set(items.slice(0, 5000));
         S.primary = items[0] || null;
         repaint();
         drawInspector();
         drawLedger(true);
-      } }, icon('selectAll'), 'Select all')),
-    el('div', { class: 'sub-row' }, el('span', { class: 'grow sub-note', text: note, title: note || null }), sortBtn('size', 'Size'), sortBtn('date', 'Changed')));
+      } }, icon('selectAll'), 'Select all') : null),
+    n || note ? el('div', { class: 'sub-row' }, el('span', { class: 'sub-note', text: note, title: note || null }),
+      n ? el('span', { class: 'sorts' }, sortBtn('size', 'Size'), sortBtn('date', 'Changed')) : null) : null,
+  ].filter(Boolean));
   list.render = (node) => rowFor(node, { showPath: true });
-  list.setItems(items, keepScroll);
+  list.setEmpty('Nothing on any level matches this search.');
+  list.setItems(items, keepScroll, { follow: S.primary });
 }
 
-/** A collapsible section of the rich ledger panel. */
-const section = (title, count, open, ...body) => el('details', { open }, el('summary', {}, title, el('span', { class: 'n', text: count })), ...body);
+/** Which rich-panel sections a person opened or closed, by title: a redraw keeps them so. */
+const sectionOpen = new Map();
+
+/** A collapsible section of the rich ledger panel; open is its state until someone toggles it. */
+const section = (title, count, open, ...body) => {
+  const d = el('details', { open: sectionOpen.get(title) ?? open }, el('summary', {}, title, el('span', { class: 'n', text: count })), ...body);
+  d.addEventListener('toggle', () => sectionOpen.set(title, d.open));
+  return d;
+};
 
 function itemButton(node, figure) {
   return el('button', { class: 'item', type: 'button', onclick: () => reveal(node) },
@@ -1798,9 +1933,23 @@ function composition(dir) {
   ];
 }
 
+/**
+ * An inspector action. One that cannot run here stays in the tab order,
+ * marked aria-disabled, and says why in its name, so a keyboard or
+ * screen-reader user learns that it exists and what stops it; the
+ * section's note says the same where it can be seen.
+ */
 function actionButton(label, run, { off, danger, wide, title, icon: name } = {}) {
-  return el('button', { class: `btn${danger ? ' btn-danger' : ''}${wide ? ' wide' : ''}`, type: 'button', disabled: !!off, title: off ? `Unavailable: ${off}` : title, onclick: run },
-    name ? icon(name) : null, label);
+  return el('button', {
+    class: `btn${danger ? ' btn-danger' : ''}${wide ? ' wide' : ''}`, type: 'button', 'aria-disabled': off ? 'true' : null,
+    title: off ? `Unavailable: ${off}` : title, onclick: (e) => { if (!off) run(e); },
+  }, name ? icon(name) : null, label, off ? el('span', { class: 'sr', text: `, unavailable: ${off}` }) : null);
+}
+
+/** One line under a grid of actions naming why some are unavailable; null when none is. */
+function offNote(...reasons) {
+  const why = [...new Set(reasons.filter(Boolean))];
+  return why.length ? el('p', { class: 'actions-why', text: `Unavailable here: ${why.join('; ')}.` }) : null;
 }
 
 let inspected = null;
@@ -1819,6 +1968,11 @@ function settleInspector(host, subject) {
 
 function drawInspector() {
   const host = $('inspector-body');
+  keepFocus(host, drawInspectorNow, host);
+}
+
+function drawInspectorNow() {
+  const host = $('inspector-body');
   const ro = writable();
   queueMicrotask(() => settleInspector(host, S.sel.size > 1 ? `sel:${S.sel.size}` : S.primary || S.focus));
   if (S.sel.size > 1) {
@@ -1833,6 +1987,7 @@ function drawInspector() {
       el('div', { class: 'actions-grid' }, actionButton('Move to…', () => startPlacing('move'), { off, icon: 'move' }), actionButton('Copy to…', () => startPlacing('copy'), { off, icon: 'copy' }),
         actionButton('Duplicate', () => duplicate(), { off, icon: 'duplicate' }), actionButton('Copy paths', () => copyPaths(), { icon: 'copyPath' }),
         actionButton('Remove…', () => remove(), { off, danger: true, icon: 'remove' }), actionButton('Clear selection', () => select(null), { icon: 'clear' })),
+      offNote(off),
     );
     return;
   }
@@ -1932,6 +2087,7 @@ function nodeActions(node, { ro, lockRoot, visible, inside }) {
       node.d ? actionButton('New folder inside…', () => newFolder(node), { off: shut || ro || (node.e ? 'cannot be read' : null), wide: true, icon: 'newFolder' }) : null,
       actionButton(visible ? 'Fly to it' : 'Find it in the world', () => reveal(node), { wide: true, title: 'G', icon: 'fly' }),
       actionButton('Remove…', () => remove([node]), { off: lockRoot, danger: true, wide: true, icon: 'remove' })),
+    offNote(node.d ? (node.e ? 'cannot be read' : null) : S.info.snapshot ? 'snapshot mode' : shut, lockRoot, node.d ? shut || ro : null),
   ];
 }
 
@@ -1979,12 +2135,20 @@ function setLens(lens) {
 }
 
 function drawLegend() {
+  keepFocus($('block'), drawLegendNow, document.querySelector('#lens [aria-checked=true]'));
+}
+
+function drawLegendNow() {
   const host = $('legend');
   if (!S.focus) return;
   const gradient = (stops) => `linear-gradient(to right, ${stops.map(cssHex).join(', ')})`;
   if (S.lens === 'kind') {
     $('legend-label').textContent = 'Kind · click to isolate';
     const kinds = KINDS.map((k, i) => ({ k, i, bytes: S.focus.ks[i] })).filter((x) => x.bytes > 0).sort((a, b) => b.bytes - a.bytes);
+    if (!kinds.length) {
+      host.replaceChildren(el('span', { class: 'legend-none', text: S.focus.fc ? 'Only empty files here.' : 'No files here.' }));
+      return;
+    }
     host.replaceChildren(...kinds.map((x) => el('button', {
       class: 'chip', type: 'button', 'aria-pressed': String(S.kindFilter === x.i), title: `${x.k.label}: ${fmtBytes(x.bytes)} here`,
       onclick: () => {
@@ -2036,7 +2200,7 @@ function drawStatus() {
   else if (S.watch === 'lost') { cls += ' is-off'; label = 'Service stopped'; }
   else { cls += ' is-off'; label = 'Manual refresh'; }
   const fit = S.layout?.over ? ' · grain raised, some blocks left out' : S.layout?.coarsened ? ' · grain raised to fit' : '';
-  $('status-label').textContent = `${label}${S.info.readOnly && !S.info.snapshot ? ' · read-only' : ''}${fit}`;
+  setText($('status-label'), `${label}${S.info.readOnly && !S.info.snapshot ? ' · read-only' : ''}${fit}`);
   const parts = statusLine();
   parts.lamp.className = cls;
   countTo(parts.dirs, r.dc, fmtCount);
@@ -2101,9 +2265,17 @@ async function showGuide() {
   const keys = (title, rows) => el('div', {}, el('h3', { text: title }), el('dl', {}, rows.flatMap(([k, d]) => [el('dt', { text: k }), el('dd', { text: d })])));
   const dlg = $('dialog');
   dlg.classList.add('is-wide');
+  // The setting for single-key shortcuts, under the keys it governs.
+  const box = el('input', { type: 'checkbox', id: 'pref-single-keys', checked: singleKeysEverywhere() || null });
+  box.addEventListener('change', () => {
+    prefs.singleKeys = box.checked;
+    say(box.checked ? 'Single-key shortcuts act wherever focus is.' : 'Single-key shortcuts act only in the world and the ledger list. Ctrl and Alt shortcuts act everywhere.');
+  });
   await ask({
-    title: 'Guide', confirm: 'Close', cancel: false,
-    body: el('div', { class: 'guide' }, [...KEYS.guide()].map(([title, rows]) => keys(title, rows))),
+    title: 'Guide', confirm: 'Close', cancel: false, focusConfirm: true,
+    body: el('div', {}, el('div', { class: 'guide' }, [...KEYS.guide()].map(([title, rows]) => keys(title, rows))),
+      el('label', { class: 'guide-pref', for: 'pref-single-keys' }, box,
+        el('span', { text: 'Single-key shortcuts act wherever focus is. Off, letters, digits and signs act only in the world and the ledger list; Ctrl and Alt shortcuts always act.' }))),
   });
   dlg.classList.remove('is-wide');
 }
@@ -2237,11 +2409,42 @@ function wireViewport() {
   });
 }
 
-/** Shows or hides a side panel; the view tools' toggles say which are shown. */
+/** Below this width the inspector folds away and ] opens it as a drawer over the world. */
+const NARROW = matchMedia('(max-width: 860px)');
+
+/** Whether a side panel is shown now, the narrow drawer included. */
+function panelShown(which) {
+  const b = document.body.classList;
+  if (which === 'ledger') return !b.contains('no-ledger');
+  return NARROW.matches ? b.contains('show-inspector') : !b.contains('no-inspector');
+}
+
+/** The view tools' toggles say what is actually shown. */
+function syncPanelToggles() {
+  $('v-ledger').setAttribute('aria-pressed', String(panelShown('ledger')));
+  $('v-inspector').setAttribute('aria-pressed', String(panelShown('inspector')));
+}
+
+/**
+ * Shows or hides a side panel. Below the breakpoint the inspector is a
+ * drawer over the world, which ] opens and closes. A panel that holds
+ * keyboard focus hands it to its toggle before it goes, and says so.
+ */
 function togglePanel(which) {
-  document.body.classList.toggle(which === 'ledger' ? 'no-ledger' : 'no-inspector');
-  $('v-ledger').setAttribute('aria-pressed', String(!document.body.classList.contains('no-ledger')));
-  $('v-inspector').setAttribute('aria-pressed', String(!document.body.classList.contains('no-inspector')));
+  const panel = $(which);
+  const shown = panelShown(which);
+  if (shown && panel.contains(document.activeElement)) {
+    const toggle = $(which === 'ledger' ? 'v-ledger' : 'v-inspector');
+    (toggle.checkVisibility?.() !== false ? toggle : $('view')).focus({ preventScroll: true });
+  }
+  const b = document.body.classList;
+  if (which === 'ledger') b.toggle('no-ledger', shown);
+  else if (NARROW.matches) b.toggle('show-inspector', !shown);
+  else b.toggle('no-inspector', shown);
+  syncPanelToggles();
+  const name = which === 'ledger' ? 'Ledger' : 'Inspector';
+  const key = which === 'ledger' ? '[' : ']';
+  say(shown ? `${name} hidden. ${key} shows it again.` : `${name} shown. ${key} hides it.`);
 }
 
 function wireControls() {
@@ -2267,11 +2470,13 @@ function wireControls() {
   $('v-out').onclick = () => S.view.zoomAt(1.6);
   $('v-left').onclick = () => S.view.turn(-Math.PI / 8);
   $('v-right').onclick = () => S.view.turn(Math.PI / 8);
-  $('v-over').onclick = () => S.view.overview();
+  $('v-over').onclick = overview;
   $('v-down').onclick = () => S.view.descend();
   $('v-go').onclick = () => (S.primary ? reveal(S.primary) : notice('Select something first, then fly to it.', { kind: 'info', ms: 2500 }));
   $('v-ledger').onclick = () => togglePanel('ledger');
   $('v-inspector').onclick = () => togglePanel('inspector');
+  NARROW.addEventListener('change', syncPanelToggles);
+  syncPanelToggles();
   $('q-clear').onclick = () => { clearQuery(); $('q').focus(); };
   // Tabs and the lens switch are flexible; their indicators follow resizes.
   const ro = new ResizeObserver(() => slideIndicators());
@@ -2296,6 +2501,32 @@ function onEscape(typing) {
   }
 }
 
+/**
+ * Whether single-character shortcuts (T, B, 1, [, ? and the rest) act
+ * wherever focus is. Off, they act only while the world or the ledger
+ * list has focus, so a stray key on a button or a word said to speech
+ * input starts nothing (WCAG 2.1.4); Ctrl and Alt chords act everywhere
+ * either way. Kept in this browser; on unless turned off in the guide.
+ */
+const PREF_KEY = 'terrane.single-keys';
+const prefs = {
+  get singleKeys() {
+    try {
+      return localStorage.getItem(PREF_KEY) !== 'focused';
+    } catch {
+      return true;
+    }
+  },
+  set singleKeys(on) {
+    try {
+      localStorage.setItem(PREF_KEY, on ? 'everywhere' : 'focused');
+    } catch { /* not kept: the choice lasts until the page closes */ }
+    prefs.session = on;
+  },
+  session: null,
+};
+const singleKeysEverywhere = () => prefs.session ?? prefs.singleKeys;
+
 function wireKeys() {
   window.addEventListener('keydown', (e) => {
     const t = e.target;
@@ -2307,6 +2538,7 @@ function wireKeys() {
     }
     if (typing || floatingOpen()) return;
     const c = { e, k: e.key, t, ctrl: e.ctrlKey || e.metaKey, alt: e.altKey, inList: !!t.closest?.('.vl'), onCanvas: t === $('view') };
+    if (c.k.length === 1 && !c.ctrl && !c.alt && !c.inList && !c.onCanvas && !singleKeysEverywhere()) return;
     const entry = KEYS.match(c);
     if (entry && entry.run(c) !== false) e.preventDefault();
   });
@@ -2331,7 +2563,7 @@ function wireKeys() {
   core({ id: 'guide-turn', guide: [GO, 'Q  E', 'Turn'] });
   core({ id: 'guide-rise', guide: [GO, 'R  F', 'Rise / descend'] });
   core({ id: 'descend', keys: ['v'], run: () => { S.view.descend(); }, guide: [GO, 'V', 'Drop to eye level'] });
-  core({ id: 'overview', keys: ['0', 'Home'], run: () => { S.view.overview(); }, guide: [GO, '0', 'Rise to the overview'] });
+  core({ id: 'overview', keys: ['0', 'Home'], run: () => { overview(); }, guide: [GO, '0', 'Rise to the overview'] });
   core({ id: 'fly-to-selection', keys: ['g'], run: () => { if (S.primary) reveal(S.primary); }, guide: [GO, 'G', 'Fly to the selection'] });
   core({ id: 'closer', keys: ['+', '='], run: () => { S.view.zoomAt(0.7); } });
   core({ id: 'farther', keys: ['-', '_'], run: () => { S.view.zoomAt(1.45); } });
@@ -2441,7 +2673,7 @@ function wireKeys() {
   INSPECTOR.focus.add({ id: 'reading', order: 90, build: () => [el('div', { class: 'section-title', text: 'Reading the world' }), el('ul', { class: 'reading' }, [...READING].map(readingRow))] });
 
   INSPECTOR.node.add({ id: 'title', order: 0, build: nodeTitle });
-  INSPECTOR.node.add({ id: 'path', order: 5, build: (node) => el('div', { class: 'insp-path' }, el('code', { text: absPath(node) }), el('button', { class: 'btn btn-small', type: 'button', text: 'Copy', onclick: () => copyPaths([node]) })) });
+  INSPECTOR.node.add({ id: 'path', order: 5, build: (node) => el('div', { class: 'insp-path' }, el('code', { text: absPath(node) }), el('button', { class: 'btn btn-small', type: 'button', title: 'Copy path (Ctrl+C)', onclick: () => copyPaths([node]) }, icon('copyPath'), 'Copy')) });
   INSPECTOR.node.add({ id: 'facts', order: 10, build: nodeFacts });
   INSPECTOR.node.add({ id: 'composition', order: 20, build: (node) => (node.d ? composition(node) : null) });
   INSPECTOR.node.add({ id: 'copies', order: 30, build: nodeCopies });
@@ -2499,7 +2731,7 @@ const API = Object.freeze({
   // The ledger row the keyboard cursor is on, or null.
   listCursor: () => (list?.items.length ? list.items[list.cursor] ?? null : null),
   relayout, queueLayout, repaint, drawPins, visibleIndexOf,
-  select, setFocus, reveal, activate, describe, say,
+  select, setFocus, reveal, activate, describe, say, forceOpen, overview,
   drawAll, drawTabs, drawLedger, drawInspector, drawLegend, drawStatus, runQuery, setQuery,
   el, notice, section, itemButton, actionButton, fact, shareBar, pct,
 });
@@ -2531,6 +2763,15 @@ function endSplash() {
 }
 
 async function start() {
+  // Not served by the service: elsewhere.js has said so and sent the
+  // loading sheet away. Should it not have run, the veil says it here.
+  if (ELSEWHERE) {
+    if (!document.documentElement.hasAttribute('data-elsewhere')) {
+      $('splash').hidden = true;
+      fatal('Terrane runs from its local service', 'Open the address npm start prints. Terrane, and how to start it: https://github.com/dnoice/terrane');
+    }
+    return;
+  }
   try {
     splash = startSplash({
       cover: [document.querySelector('.skip'), $('bar'), document.querySelector('main'), $('block')],
@@ -2558,6 +2799,9 @@ async function start() {
     S.view = noop;
     S.noGL = true;
     document.body.classList.add('no-gl');
+    // The canvas keeps its keys (the arrows, Enter, Backspace and the
+    // letters) but no longer promises travel it cannot do.
+    $('view').setAttribute('aria-label', 'The 3D world is unavailable in this browser. Arrow keys still move between items, Enter goes to a folder or opens a file, Backspace goes up. The ledger lists the same items.');
     fatal('3D view unavailable', `This browser could not start WebGL (${err.message}). The ledger, inspector, search and every operation still work.`, 'quiet');
     $('veil').style.pointerEvents = 'none';
   }
@@ -2568,6 +2812,7 @@ async function start() {
   }
   preloadFloat();
   list = new VirtualList($('ledger-list'), {
+    label: 'Contents', multiple: true,
     render: (n) => rowFor(n),
     onKey: (e, node) => {
       if (!node) return;

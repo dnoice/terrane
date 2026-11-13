@@ -1,18 +1,27 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Interface Primitives (Terrane Edition - v1.2)
+ *     - Title: Interface Primitives (Terrane Edition - v1.3)
  *     - File Name: ui.js
  *     - Relative Path: web/js/ui.js
  *     - Artifact Type: javascript
- *     - Version: 1.2.0
- *     - Date: 11/12/2026
- *     - Update: Thursday, November 12, 2026
+ *     - Version: 1.3.0
+ *     - Date: 11/13/2026
+ *     - Update: Friday, November 13, 2026
  *     - Author: Dennis 'dendogg' Smaltz
  *     - A.I. Acknowledgement: Anthropic - Claude Opus 5.5
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
  *
  * ✒ Changelog:
+ *     - 1.3.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] —
+ *       Unavailable menu items are reached by the arrows and carry
+ *       their reason as their description; the menu stops the browser's
+ *       own context menu the Menu key would open over it. The virtual
+ *       list keeps its cursor on its item when the list is redrawn, has
+ *       a name and says several rows can be selected; ask() can start
+ *       on its confirm button. A closed menu keeps its items while it
+ *       fades out; an empty list shows the sentence setEmpty gives it,
+ *       and its name carries the same words.
  *     - 1.2.0 (11/12/2026) [dendogg + Anthropic - Claude Opus 5.5] — Menu
  *       items and notices carry icons; the menu and tip are placed by
  *       Floating UI and unfold from the pointer's corner; notices show
@@ -22,8 +31,7 @@
  *       ink plate of a tab strip or segmented switch.
  *     - 1.1.0 (11/11/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
  *       hover tip can carry a picture below its lines.
- *     - 1.0.0 (11/09/2026) [dendogg + Anthropic - Claude Fable 5.2] —
- *       Initial release.
+ *     Earlier entries: see CHANGELOG.md
  *
  * ✒ Description:
  *     The small set of interface parts every Terrane panel is built from:
@@ -37,14 +45,17 @@
  *       closes whichever other one is open
  *     - Context menu with icons and full keyboard operation (arrows, Home,
  *       End, Enter, Escape), focus returned to where it came from
- *     - Unavailable menu items are inert, are not styled as clickable, and
- *       state the reason they are unavailable
+ *     - Unavailable menu items are reached by the arrows, do nothing, are
+ *       not styled as clickable, and give their reason as their
+ *       description
  *     - Dialogs use the native dialog element, so focus trapping and
  *       Escape handling come from the browser
  *     - Notices are announced through a polite live region, can carry one
  *       action (Undo, Keep both), and wait while the pointer rests on them
- *     - Virtual list renders only visible rows, supports roving keyboard
- *       focus, and marks a fresh list so its rows can cascade in
+ *     - Virtual list renders only visible rows, keeps its cursor on its
+ *       item across a redraw, has a name, supports roving keyboard
+ *       focus, and marks a fresh list so its rows can cascade in; empty,
+ *       it says so in a sentence (setEmpty) and in its name
  *     - slideIndicator(container, item) for tab strips and switches
  *
  * ✒ Usage Instructions:
@@ -52,6 +63,7 @@
  *     openMenu(x, y, [{ label: 'Rename', icon: 'rename', hint: 'F2', run }, 'sep']);
  *     const values = await ask({ title, fields: [{ name, label, value }] });
  *     notice('Moved 3 items', { action: { label: 'Undo', run: undo } });
+ *     list.setEmpty('This folder is empty.');
  *
  * ✒ Other Important Information:
  *     - Dependencies: icons.js, float.js, motion.js
@@ -96,40 +108,58 @@ export const floatingOpen = () => closeCurrent !== null;
 
 /* ---------- context menu ---------- */
 
+// How long a closed menu keeps its items: a little over its fade out
+// (--dur-instant in floating.css).
+const MENU_FADE = 160;
+let menuSeq = 0;
+
 export function openMenu(x, y, items, { title } = {}) {
   const host = document.getElementById('menu');
   const returnTo = document.activeElement;
   hideTip();
+  // Closing keeps the items while the stylesheet fades the menu out, then
+  // lets them go, unless another menu has opened in the meantime.
   const close = () => {
     host.hidden = true;
-    host.replaceChildren();
+    const ticket = ++menuSeq;
+    setTimeout(() => { if (ticket === menuSeq && host.hidden) host.replaceChildren(); }, MENU_FADE);
     document.removeEventListener('pointerdown', outside, true);
     if (closeCurrent === close) closeCurrent = null;
     returnTo?.focus?.({ preventScroll: true });
   };
   const outside = (e) => { if (!host.contains(e.target)) close(); };
   claim(close);
+  menuSeq++;
   host.replaceChildren();
   if (title) host.append(el('div', { class: 'menu-title', text: title }));
+  let seq = 0;
   for (const item of items) {
     if (item === 'sep') {
       host.append(el('div', { class: 'menu-sep', role: 'separator' }));
       continue;
     }
     const off = !!item.disabled;
+    // An unavailable item is still reached by the arrow keys, as the menu
+    // pattern asks, and its reason is its description, so a screen reader
+    // hears that the action exists and why it is off. It does nothing.
+    const why = off && item.reason ? el('span', { class: 'menu-why', id: `menu-why-${++seq}`, text: item.reason }) : null;
     const row = el('button', {
       class: `menu-item${item.danger ? ' is-danger' : ''}`, role: 'menuitem', type: 'button',
-      'aria-disabled': off ? 'true' : null, tabindex: '-1', title: off ? item.reason || '' : null,
-    }, item.icon ? icon(item.icon) : null, el('span', { class: 'menu-label', text: item.label }), off && item.reason
-      ? el('span', { class: 'menu-why', text: item.reason }) : item.hint ? el('kbd', { text: item.hint }) : null);
+      'aria-disabled': off ? 'true' : null, 'aria-describedby': why ? why.id : null, tabindex: '-1', title: off ? item.reason || '' : null,
+    }, item.icon ? icon(item.icon) : null, el('span', { class: 'menu-label', text: item.label }), why || (item.hint ? el('kbd', { text: item.hint }) : null));
     if (!off) row.addEventListener('click', () => { close(); item.run(); });
     host.append(row);
   }
   host.hidden = false;
   placeAt(host, x, y, { placement: 'bottom-start', gap: 2, cross: 2 });
+  // The Menu key and Shift+F10 also send the browser's own contextmenu
+  // event, to the element focused by then: one of these items. Left alone
+  // it would open the browser's menu over this one and take the keys.
+  host.oncontextmenu = (e) => e.preventDefault();
+  const every = () => [...host.querySelectorAll('.menu-item')];
   const live = () => [...host.querySelectorAll('.menu-item:not([aria-disabled])')];
   host.onkeydown = (e) => {
-    const list = live();
+    const list = every();
     const i = list.indexOf(document.activeElement);
     if (e.key === 'ArrowDown') list[(i + 1) % list.length]?.focus();
     else if (e.key === 'ArrowUp') list[(i - 1 + list.length) % list.length]?.focus();
@@ -140,7 +170,8 @@ export function openMenu(x, y, items, { title } = {}) {
     e.preventDefault();
     e.stopPropagation();
   };
-  live()[0]?.focus();
+  // The first item that can act takes focus; the arrows reach every one.
+  (live()[0] || every()[0])?.focus();
   setTimeout(() => document.addEventListener('pointerdown', outside, true), 0);
 }
 
@@ -150,7 +181,7 @@ export function openMenu(x, y, items, { title } = {}) {
  * Modal question. Resolves to an object of field values (empty object when
  * there are no fields) or null when dismissed.
  */
-export function ask({ title, body, fields = [], confirm = 'Confirm', danger = false, validate, cancel = true, confirmIcon }) {
+export function ask({ title, body, fields = [], confirm = 'Confirm', danger = false, validate, cancel = true, confirmIcon, focusConfirm = false }) {
   return new Promise((resolve) => {
     closeFloating();
     const dlg = document.getElementById('dialog');
@@ -163,7 +194,7 @@ export function ask({ title, body, fields = [], confirm = 'Confirm', danger = fa
       error,
       el('div', { class: 'dialog-actions' },
         cancel ? el('button', { type: 'button', class: 'btn', text: 'Cancel', onclick: () => dlg.close('cancel') }) : null,
-        el('button', { type: 'submit', class: `btn btn-raised ${danger ? 'btn-danger' : 'btn-primary'}` },
+        el('button', { type: 'submit', class: `btn btn-raised ${danger ? 'btn-danger' : 'btn-primary'}`, autofocus: focusConfirm || null },
           confirmIcon || danger ? icon(confirmIcon || 'remove') : null, confirm)));
     form.addEventListener('submit', (e) => {
       const values = Object.fromEntries(inputs.map((i) => [i.name, i.value]));
@@ -270,19 +301,26 @@ export function slideIndicator(container, item) {
 /* ---------- virtual list ---------- */
 
 export class VirtualList {
-  constructor(host, { rowHeight = 30, render, onKey }) {
+  constructor(host, { rowHeight = 30, render, onKey, label = '', multiple = false }) {
     this.host = host;
     this.rowHeight = rowHeight;
     this.render = render;
     this.items = [];
     this.cursor = 0;
     this.entering = 0;
+    this.empty = '';
+    this.label = label || null;
     this.spacer = el('div', { class: 'vl-spacer' });
     this.rows = el('div', { class: 'vl-rows' });
+    // What an empty list says where its rows would be. It is drawn for the
+    // eye only: the list's name carries the same sentence (setEmpty).
+    this.note = el('p', { class: 'vl-empty', 'aria-hidden': 'true', hidden: true });
     host.classList.add('vl');
     host.tabIndex = 0;
     host.setAttribute('role', 'listbox');
-    host.replaceChildren(this.spacer, this.rows);
+    if (label) host.setAttribute('aria-label', label);
+    if (multiple) host.setAttribute('aria-multiselectable', 'true');
+    host.replaceChildren(this.spacer, this.rows, this.note);
     host.addEventListener('scroll', () => this.draw(true));
     new ResizeObserver(() => this.draw()).observe(host);
     host.addEventListener('keydown', (e) => {
@@ -306,11 +344,22 @@ export class VirtualList {
     });
   }
 
-  setItems(items, keepScroll = false) {
+  /**
+   * Shows items. The cursor stays on the item it was on wherever that item
+   * now stands, else on `follow` (the selection) when given and listed,
+   * else at the same row as near as the list allows: a list reordered
+   * under the cursor never leaves it on another item unseen.
+   */
+  setItems(items, keepScroll = false, { follow = null } = {}) {
     const fresh = !keepScroll && items !== this.items;
+    const was = this.items[this.cursor];
     this.items = items;
-    this.cursor = Math.min(this.cursor, Math.max(0, items.length - 1));
+    let at = was === undefined ? -1 : items.indexOf(was);
+    if (at < 0 && follow != null) at = items.indexOf(follow);
+    this.cursor = at >= 0 ? at : Math.min(this.cursor, Math.max(0, items.length - 1));
     this.spacer.style.height = `${items.length * this.rowHeight}px`;
+    this.note.hidden = !!items.length || !this.empty;
+    if (this.label != null) this.setLabel(this.label);
     if (!keepScroll) this.host.scrollTop = 0;
     // A new list cascades in; a redraw of the same one does not.
     if (fresh && items.length) {
@@ -319,6 +368,24 @@ export class VirtualList {
       this.entering = setTimeout(() => this.host.classList.remove('is-entering'), 520);
     }
     this.draw();
+  }
+
+  /** Names the list for assistive technology, as what it shows changes. */
+  setLabel(label) {
+    this.label = label;
+    const name = !this.items.length && this.empty ? `${label}: ${this.empty}` : label;
+    if (this.host.getAttribute('aria-label') !== name) this.host.setAttribute('aria-label', name);
+  }
+
+  /**
+   * The sentence the list shows while it holds no items, such as "This
+   * folder is empty."; '' shows nothing. It is kept until set again.
+   */
+  setEmpty(text = '') {
+    this.empty = text;
+    this.note.textContent = text;
+    this.note.hidden = !!this.items.length || !text;
+    if (this.label != null) this.setLabel(this.label);
   }
 
   setCursor(i, scroll) {

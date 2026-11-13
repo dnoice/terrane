@@ -5,12 +5,19 @@
  *     - File Name: relations.js
  *     - Relative Path: web/js/relations.js
  *     - Artifact Type: javascript
- *     - Version: 1.0.0
+ *     - Version: 1.0.1
  *     - Date: 11/13/2026
  *     - Update: Friday, November 13, 2026
  *     - Author: Dennis 'dendogg' Smaltz
  *     - A.I. Acknowledgement: Anthropic - Claude Opus 5.5
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
+ *
+ * ✒ Changelog:
+ *     - 1.0.1 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] —
+ *       The performance note refers to the dated measurement in
+ *       docs/ARCHITECTURE.md instead of giving a figure of its own.
+ *     - 1.0.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] —
+ *       Initial release.
  *
  * ✒ Description:
  *     Relations between files that the tree does not hold: which files
@@ -62,8 +69,9 @@
  *       files, so it reads as a session of its own. A symbolic link counts
  *       by its own time, when the link itself last changed, as a search
  *       for the window matches it
- *     - Performance: 40 to 75 ms for 400,000 files on the 16-core dev
- *       box; the walk is linear and the sort n log n with no callback
+ *     - Performance: the walk is linear and the sort n log n with no
+ *       callback; docs/ARCHITECTURE.md section 4 keeps the dated figure
+ *       for 400,000 files, and relations-test checks a ceiling
  *     - Limitations: folders are not stops of their own; a session's
  *       window is fixed when it is found, so a later change is counted at
  *       the next survey

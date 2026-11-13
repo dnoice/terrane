@@ -1,16 +1,28 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Application Shell (Terrane Edition - v1.0)
+ *     - Title: Application Shell (Terrane Edition - v1.1)
  *     - File Name: layout.css
  *     - Relative Path: web/css/layout.css
  *     - Artifact Type: stylesheet
- *     - Version: 1.0.0
- *     - Date: 11/12/2026
- *     - Update: Thursday, November 12, 2026
+ *     - Version: 1.1.0
+ *     - Date: 11/13/2026
+ *     - Update: Friday, November 13, 2026
  *     - Author: Dennis 'dendogg' Smaltz
  *     - A.I. Acknowledgement: Anthropic - Claude Opus 5.5
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
+ *
+ * ✒ Changelog:
+ *     - 1.1.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] —
+ *       Below 860 px the inspector opens as a drawer over the world
+ *       (body.show-inspector) instead of being unreachable; the title
+ *       block's breakpoints moved to block.css, where they apply; the
+ *       unused .panel-tool is gone. The drawer slides in from the right
+ *       edge and back out; a ledger caption wraps instead of losing its
+ *       last words, and a count and its sort keys share the sub-line
+ *       while both fit, the keys moving under the count when not.
+ *     - 1.0.0 (11/12/2026) [dendogg + Anthropic - Claude Opus 5.5] —
+ *       Initial release.
  *
  * ✒ Description:
  *     The drawing sheet the world sits in: location bar on top, ledger
@@ -26,14 +38,16 @@
  *       to the panel's width, not the window's
  *     - Lettered panel heads, the drawing-sheet reference motif
  *     - Breakpoints at 1320, 1100 and 860 px: narrower panels, icon-only
- *       bar buttons, then the inspector folds away
+ *       bar buttons, then the inspector folds away into a drawer that ]
+ *       opens over the world
  *
  * ✒ Other Important Information:
  *     - Dependencies: tokens.css, base.css
  *     - Compatible platforms: current evergreen browsers (container
  *       queries, animatable grid tracks)
- *     - Limitations: designed for 1180 px and wider; below 860 px only
- *       the ledger and the world are shown
+ *     - Limitations: designed for 1180 px and wider; below 860 px the
+ *       ledger and the world share the width and the inspector is a
+ *       drawer
  * ----------------------------------------------------------------------------
  */
 
@@ -85,34 +99,29 @@ body:not(.no-ledger) #ledger, body:not(.no-inspector) #inspector { transition-de
   width: var(--panel-head-h);
   background: var(--ink);
   color: var(--on-ink);
-  font-size: 11px;
+  font-size: var(--fs-fig);
   letter-spacing: 0;
 }
-.panel-tool {
-  appearance: none;
-  display: grid;
-  place-items: center;
-  width: var(--panel-head-h);
-  border: 0;
-  border-left: var(--border-2);
-  background: none;
-  color: var(--text-3);
-  transition: color var(--dur-fast), background-color var(--dur-fast);
-}
-.panel-tool:hover { background: var(--select); color: var(--text); }
-
 .panel-sub {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   flex: none;
-  gap: var(--s-1);
+  gap: 0 var(--s-1);
   min-height: var(--control-h);
   padding: 0 var(--s-2) 0 10px;
   border-bottom: var(--border-2);
   font: 500 var(--fs-xs) / 1 var(--mono);
   color: var(--text-2);
 }
-.panel-sub .grow { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* A caption wraps in a narrow ledger rather than losing its last words. */
+.panel-sub .grow { flex: 1; min-width: 0; padding-block: var(--s-1); line-height: var(--lh-snug); text-wrap: pretty; }
+/* A count and the sort keys share the line while both fit; in a narrow
+   ledger the keys move under the count together, to the right, so the
+   count is never cut short. */
+.panel-sub .sub-count { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; line-height: var(--control-h-sm); }
+.panel-sub .sorts { display: flex; flex: none; margin-left: auto; }
+.panel-sub .sub-count + .sort { margin-left: auto; }
 
 .ledger-body { flex: 1; min-height: 0; overflow: auto; overscroll-behavior: contain; scrollbar-gutter: stable; }
 #inspector-body { flex: 1; min-height: 0; overflow: auto; overscroll-behavior: contain; scrollbar-gutter: stable; }
@@ -132,8 +141,34 @@ body:not(.no-ledger) #ledger, body:not(.no-inspector) #inspector { transition-de
 
 @media (max-width: 860px) {
   main { --inspector-w: 0px; }
-  #inspector { visibility: hidden; }
-  .cell-grow, .cell-alt { display: none; }
+  /* ] or the view tools' toggle opens it as a drawer over the world. It
+     stays a drawer while closed, so it slides in from the right edge and
+     back out again, as the side panels open and close at full width. These
+     rules match the specificity of the full-width ones above, and follow
+     them, so their timing wins. */
+  #inspector {
+    position: fixed;
+    top: var(--bar-h);
+    right: 0;
+    bottom: var(--block-h);
+    z-index: var(--z-drawer);
+    width: min(var(--side-w), 100vw - var(--s-8) * 2);
+    box-shadow: var(--shadow-3);
+  }
+  body:not(.show-inspector) #inspector {
+    visibility: hidden;
+    opacity: 0;
+    translate: var(--s-6) 0;
+    transition: visibility 0s linear var(--dur-base), opacity var(--dur-fast) var(--ease-out),
+      translate var(--dur-base) var(--ease-out-expo);
+  }
+  body.show-inspector #inspector {
+    visibility: visible;
+    opacity: 1;
+    translate: 0 0;
+    border-left: var(--border);
+    transition: visibility 0s, opacity var(--dur-fast) var(--ease-out), translate var(--dur-base) var(--ease-out-expo);
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

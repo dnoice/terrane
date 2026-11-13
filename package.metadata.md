@@ -1,10 +1,10 @@
 <!--
 ✒ Metadata
-    - Title: Package Manifest (Terrane Edition - v1.7)
+    - Title: Package Manifest (Terrane Edition - v1.8)
     - File Name: package.json
     - Relative Path: package.json
     - Artifact Type: config
-    - Version: 1.7.0
+    - Version: 1.8.0
     - Date: 11/13/2026
     - Update: Friday, November 13, 2026
     - Author: Dennis 'dendogg' Smaltz
@@ -12,6 +12,10 @@
     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
 
 ✒ Changelog:
+    - 1.8.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — Raises
+      the package version to 1.3.0: every Stage 5 candidate has its
+      first increment, and the Audit, Hardening pass, Enhancement and
+      polish and Sanity sweeps are merged.
     - 1.7.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
       test script also runs tools/relations-test.mjs, the Node check of
       working sessions and the traverse route, after the places test,
