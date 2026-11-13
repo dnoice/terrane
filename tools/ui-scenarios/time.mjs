@@ -204,7 +204,7 @@ const quiet = (t) => t.eval(() => { document.getElementById('live').textContent 
 
 /** Waits for the live region to say something matching re, and returns it. */
 async function said(t, re) {
-  return t.waitFor((src) => {
+  return t.waitFor((_T, src) => {
     const s = document.getElementById('live').textContent;
     return new RegExp(src).test(s) && s;
   }, { args: [re.source], what: `the live region to say ${re}` });
