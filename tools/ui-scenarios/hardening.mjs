@@ -33,8 +33,11 @@
  *       location settles off its branch (WebGL pass)
  *     - The page opened from disk and from another server says how to
  *       start the service, and asks the service for nothing
+ *     - Frames redrawn only for a hover place no labels (WebGL pass)
  *     - On disk: the refresh chain survives a folder deleted from outside,
+ *       the time view's Since section follows the table a change rebuilt,
  *       the cursor follows its item, Rescan all leaves no old node behind
+ *       and the sessions are found only when read
  *
  * ✒ Usage Instructions:
  *     node tools/ui-check.mjs hardening hardening-disk [--pass webgl|nogl]
@@ -291,6 +294,32 @@ const hardening = {
       await t.settle();
     }
 
+    /* ---- labels are not placed again for a hover (WebGL) ---- */
+    if (t.gl) {
+      await t.settle();
+      const lp = await t.app(async (T) => {
+        const v = T.S.view;
+        const frame = () => new Promise((r) => requestAnimationFrame(() => r()));
+        await frame();
+        await frame();
+        const before = v.labelPasses;
+        for (let i = 0; i < 6; i++) {
+          v.setHover(i % 2 ? 3 : 4);
+          await frame();
+        }
+        v.setHover(-1);
+        await frame();
+        const hovered = v.labelPasses;
+        v.turn(0.05);
+        await new Promise((r) => setTimeout(r, 500));
+        return { before, hovered, turned: v.labelPasses };
+      });
+      t.check(`frames redrawn only for a hover place no labels (${lp.hovered - lp.before} passes over 7 frames); a turn does (${lp.turned - lp.hovered})`,
+        lp.hovered === lp.before && lp.turned > lp.hovered, JSON.stringify(lp));
+      await t.key('0');
+      await t.settle();
+    }
+
     /* ---- a narrow window: 800 by 500, as 200% zoom ---- */
     await narrow(t, true);
     const n0 = await t.eval(() => {
@@ -395,6 +424,30 @@ const disk = {
     });
     t.check(`the refresh chain still settles (${chain})`, chain === 'settled');
 
+    /* ---- the time view follows the age table a change rebuilt ---- */
+    const bulk = t.manifest.bulk.dir;
+    await t.app((T, r) => { T.api.setFocus(T.S.model.find(r).p || T.S.model.root); T.api.select(T.S.model.find(r)); return true; }, bulk);
+    await t.settle();
+    await t.tabTo('#view', { max: 120 });
+    await t.key('T');
+    await t.waitFor((T) => !!T.S.time && !!document.querySelector('#inspector-body .facts.since'), { what: 'the Since section' });
+    const since = () => t.app((T, r) => {
+      const node = T.S.model.find(r);
+      const cf = T.S.ages.changedFiles(node, T.S.time.k);
+      return { cf, anchor: T.S.ages.anchor, text: document.querySelector('#inspector-body .facts.since dd')?.textContent || '' };
+    }, bulk);
+    const s0 = await since();
+    for (let k = 0; k < 3; k++) fs.writeFileSync(t.abs(`${bulk}/hz-since-${k}.txt`), `since ${k}`);
+    // The survey that counts the new files rebuilds the table; then the inspector must follow it.
+    await t.waitFor((T, r, n) => T.S.ages.changedFiles(T.S.model.find(r), T.S.time.k) === n, { args: [bulk, s0.cf + 3], timeout: 10000, what: 'the survey that counts the new files' });
+    await t.sleep(300);
+    const s1 = await since();
+    const files = (n) => `${n.toLocaleString('en-US')} file${n === 1 ? '' : 's'}`;
+    t.check(`after a change and the survey it brings, the Since section reads the new table: ${files(s1.cf)} changed (it said ${files(s0.cf)})`,
+      s1.cf === s0.cf + 3 && s1.text.includes(files(s1.cf)), JSON.stringify({ s0, s1 }));
+    await t.key('Escape');
+    await t.waitFor((T) => !T.S.time);
+
     /* ---- the cursor stays on its item when the list reorders ---- */
     await t.app((T) => { T.api.setFocus(T.S.model.root); return true; });
     await t.settle();
@@ -433,7 +486,7 @@ const disk = {
         rowsAttached: T.list.items.filter((x) => T.api.isAttached(x)).length,
         q: document.getElementById('q-count').textContent,
         force: S.force,
-        sessions: S.sessions === null || !S.sessions.found,
+        sessions: !!S.sessions && S.sessions.found === false,
       };
     });
     t.check(`after Rescan all the search is of the new tree: ${r.found} found, all attached, as Findings and the count say (${r.q})`,
