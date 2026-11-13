@@ -14,7 +14,8 @@
 ✒ Changelog:
     - 1.2.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — Records app.js 1.6.0 and
       terrane.css 2.3.0: the Findings sort keys, the Survey and query seams, and the
-      session traverse's stylesheet.
+      session traverse's stylesheet; the Age lens's typical age for closed masses and the
+      strata stylesheet.
     - 1.1.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — Records the Wave 1 releases of
       app.js (1.5.0), index.html (1.5.0) and terrane.css (2.2.0): the time
       view, landmarks and their seams.
@@ -49,7 +50,9 @@ here unchanged in the same edit.
   Changed; a search opens in the order it asks for and keeps the one chosen until the query
   changes, and Select all follows the order shown. The Survey tab's sections are a registry
   (SURVEY), AFTER_QUERY hooks hear every run of the search and may give Findings its order and a
-  note, and setQuery puts a query in Find and runs it at once.
+  note, and setQuery puts a query in Find and runs it at once. Under the Age lens a closed mass
+  shows its typical age, the median step of its bytes in the age table (strata.js), instead of
+  its newest change; the legend says so.
 - 1.5.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — Paint draws a box the layout marks
   AUX.CROSSED (the time view) in the crossed convention, its colour washed 60% toward paper unless
   it is selected; a Contents row whose entry is crossed carries a crossed swatch and says so to
@@ -101,7 +104,8 @@ here unchanged in the same edit.
 
 - 2.3.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — Imports components/traverse.css:
   the Findings sub-line in two rows with its sort keys and note, the Working sessions rows and the
-  traverse glyph.
+  traverse glyph; and components/strata.css: the inspector's Bytes by last change and the
+  typical-age glyph.
 - 2.2.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — Imports components/time.css: the
   As of stepper and the crossed swatch and glyph; and components/places.css: benchmark tags in the
   world, the Places tab and the Benchmark section.

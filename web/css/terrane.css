@@ -16,7 +16,8 @@
  *     - 2.3.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] —
  *       Imports components/traverse.css: the Findings sub-line in two rows
  *       with its sort keys and note, the Working sessions rows and the
- *       traverse glyph.
+ *       traverse glyph; and components/strata.css: the inspector's Bytes
+ *       by last change and the typical-age glyph.
  *     - 2.2.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] —
  *       Imports components/time.css: the As of stepper and the crossed
  *       swatch and glyph; and components/places.css: benchmark tags in
@@ -71,6 +72,7 @@
 @import url('components/time.css') layer(components);
 @import url('components/places.css') layer(components);
 @import url('components/traverse.css') layer(components);
+@import url('components/strata.css') layer(components);
 @import url('utilities.css') layer(utilities);
 @import url('motion.css') layer(motion);
 @import url('print.css') layer(print) print;

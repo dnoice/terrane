@@ -15,7 +15,8 @@
  * ✒ Changelog:
  *     - 1.2.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
  *       third: Session traverse, working sessions as a search and a route
- *       (traverse.js).
+ *       (traverse.js). The fourth: Strata, bytes by last change and the
+ *       Age lens's typical age for closed masses (strata.js).
  *     - 1.1.0 (11/12/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
  *       first feature: Time, the date scrub (time.js). The second:
  *       Landmarks, benchmarks and the return point (landmarks.js).
@@ -53,7 +54,7 @@
  *
  * ✒ Other Important Information:
  *     - Dependencies: the feature modules it lists: time.js, landmarks.js,
- *       traverse.js
+ *       traverse.js, strata.js
  *     - Registry entries a feature adds carry owner: '<feature>', so a
  *       check can tell them from the controller's own
  *     - Compatible platforms: any browser with ES2022 modules
@@ -66,6 +67,7 @@
 import * as time from './time.js';
 import * as landmarks from './landmarks.js';
 import * as traverse from './traverse.js';
+import * as strata from './strata.js';
 
 /** Feature modules in install order. */
-export const FEATURES = [time, landmarks, traverse];
+export const FEATURES = [time, landmarks, traverse, strata];

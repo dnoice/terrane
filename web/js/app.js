@@ -19,7 +19,10 @@
  *       Select all follows the order shown. The Survey tab's sections are
  *       a registry (SURVEY), AFTER_QUERY hooks hear every run of the
  *       search and may give Findings its order and a note, and setQuery
- *       puts a query in Find and runs it at once.
+ *       puts a query in Find and runs it at once. Under the Age lens a
+ *       closed mass shows its typical age, the median step of its bytes
+ *       in the age table (strata.js), instead of its newest change; the
+ *       legend says so.
  *     - 1.5.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — Paint
  *       draws a box the layout marks AUX.CROSSED (the time view) in the
  *       crossed convention, its colour washed 60% toward paper unless it
@@ -56,7 +59,9 @@
  *       WebGL there is no camera, and going to a folder sets it directly
  *     - World management: the layout is rebuilt around the eye whenever
  *       it has moved more than a fraction of its altitude
- *     - Four lenses over one geometry: kind, age, size, duplicates
+ *     - Four lenses over one geometry: kind, age, size, duplicates; under
+ *       the Age lens a closed mass shows its typical age, the date half
+ *       its bytes have not changed since
  *     - Search that dims everything else, pins the matches, and marks
  *       closed masses and scree that contain matches; Findings lists them
  *       by size or by last change
@@ -104,8 +109,8 @@
  *
  * ✒ Other Important Information:
  *     - Dependencies: model.js, layout.js, viewport.js, theme.js, ui.js,
- *       thumbs.js, timeline.js, features.js, icons.js, motion.js, hud.js,
- *       float.js, splash.js
+ *       thumbs.js, timeline.js, strata.js (the Age lens's mass colours),
+ *       features.js, icons.js, motion.js, hud.js, float.js, splash.js
  *     - Compatible platforms: current evergreen browsers with WebGL2
  *     - Limitations: when WebGL is unavailable the ledger, inspector,
  *       search and every operation keep working without the 3D world
@@ -122,6 +127,7 @@ import { THEME, mixHex, ramp, cssHex } from './theme.js';
 import { el, openMenu, closeFloating, floatingOpen, ask, notice, tip, hideTip, slideIndicator, VirtualList } from './ui.js';
 import { thumbs } from './thumbs.js';
 import { buildAgeTable } from './timeline.js';
+import { massTones } from './strata.js';
 import { FEATURES } from './features.js';
 import { icon } from './icons.js';
 import { countTo } from './motion.js';
@@ -713,6 +719,11 @@ function paint() {
   const search = S.search;
   const filter = S.kindFilter;
   const placing = S.placing;
+  // Age lens: a closed mass shows its typical age, the median step of its
+  // bytes in the age table (strata.js), one colour per step made here.
+  // Before the first table it shows its newest change, as it always did.
+  const ages = S.lens === 'age' ? S.ages : null;
+  const tones = ages ? massTones(ages, now) : null;
 
   for (let i = 0; i < n; i++) {
     const node = L.node[i];
@@ -729,8 +740,10 @@ function paint() {
       if (node.e) { c = THEME.clay; s = STYLE.HATCH; }
       else if (node.c.length === 0) { c = THEME.paper; s = STYLE.HOLLOW; }
       else if (S.lens === 'kind') c = mixHex(THEME.clay, KINDS[dominantKind(node)].color, 0.42);
-      else if (S.lens === 'age') c = mixHex(THEME.clay, ramp(THEME.ageRamp, freshness(node.mm, now)), 0.7);
-      else if (S.lens === 'size') c = mixHex(THEME.clay, ramp(THEME.sizeRamp, Math.log2(node.s + 2) / maxLog), 0.7);
+      else if (S.lens === 'age') {
+        const k = ages ? ages.medianStep(node) : -1;
+        c = k >= 0 ? tones[k] : mixHex(THEME.clay, ramp(THEME.ageRamp, freshness(node.mm, now)), 0.7);
+      } else if (S.lens === 'size') c = mixHex(THEME.clay, ramp(THEME.sizeRamp, Math.log2(node.s + 2) / maxLog), 0.7);
       else c = THEME.clay;
     } else {
       if (S.lens === 'kind') c = KINDS[node.k].color;
@@ -1834,8 +1847,10 @@ function drawLegend() {
       },
     }, el('span', { class: 'swatch', style: { background: cssHex(x.k.color) } }), x.k.label)));
   } else if (S.lens === 'age') {
-    $('legend-label').textContent = 'Last change';
-    host.replaceChildren(el('div', { class: 'rampbar' }, '10 years +', el('i', { style: { background: gradient(THEME.ageRamp) } }), 'today'));
+    // Files by their last change; a closed mass by its typical age (strata.js).
+    $('legend-label').textContent = 'Last change · closed masses: typical age';
+    host.replaceChildren(el('div', { class: 'rampbar', title: 'A file shows its last change. A closed mass shows its typical age: half its bytes have not changed since then.' },
+      '10 years +', el('i', { style: { background: gradient(THEME.ageRamp) } }), 'today'));
   } else if (S.lens === 'size') {
     $('legend-label').textContent = 'File size · log scale';
     host.replaceChildren(el('div', { class: 'rampbar' }, '0', el('i', { style: { background: gradient(THEME.sizeRamp) } }), fmtBytes(S.survey?.largest[0]?.s || 0)));
