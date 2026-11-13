@@ -17,7 +17,8 @@
  *       folder inside an open archive takes no benchmark: B says why, the
  *       menu item is unavailable and the inspector has no Benchmark
  *       section for it. H there marks the return point in the folder
- *       that holds the archive.
+ *       that holds the archive, and J there keeps that folder as the
+ *       point J again comes back to.
  *     - 1.0.0 (11/12/2026) [dendogg + Anthropic - Claude Opus 5.5] —
  *       Initial release.
  *
@@ -47,7 +48,8 @@
  *     - H marks a return point relative to the box of the folder you are
  *       in (inside an open archive, the folder that holds it); J flies
  *       back to where that box is now, and swaps the two points so J
- *       again comes back; without WebGL, J goes to the folder
+ *       again comes back (from inside an open archive, to the folder
+ *       that holds it); without WebGL, J goes to the folder
  *     - Benchmarks are for folders on disk: none is set inside an open
  *       archive
  *     - Terrane's own renames and moves carry benchmarks along, and so
@@ -387,10 +389,13 @@ export function install(api) {
       api.say(`The return point's folder, ${to.rel || 'the root'}, is no longer there. H marks a new one.`);
       return;
     }
-    store.setReturn(here(S.focus));
+    // Where you were, as H marks it: inside an open archive, the folder
+    // on disk that holds it, so the swapped point is a folder J can find.
+    const archive = api.hostOf(S.focus);
+    store.setReturn(here(archive ? archive.p : S.focus));
     if (S.tab === 'places') api.drawLedger(true);
     travel(to, node);
-    api.say(`Returning to ${named(node)}. J again comes back.`);
+    api.say(`Returning to ${named(node)}. J again comes back${archive ? ` to ${named(archive.p)}, the folder that holds ${archive.n}` : ''}.`);
   }
 
   let settleTimer = 0;

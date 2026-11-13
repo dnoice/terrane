@@ -38,7 +38,9 @@
  *     - install(api) with a stand-in api: open reads the listing, says
  *       what it holds in the words the interface check looks for,
  *       refuses changes inside, closes on Escape, and closes with its
- *       sentence when the file's size or time changes or it is gone
+ *       sentence when the file's size or time changes or it is gone; a
+ *       refresh it outlives works its twins out again, so a twin that
+ *       left is no longer one and a copy that came becomes one
  *     - The sentences say "changed", never "created", "arrived" or
  *       "added"; the module names no browser global
  *
@@ -501,6 +503,38 @@ section('install(api): open, lock, close');
     && I.styleOf(find(model, 'docs/lonely.txt')) === null && I.twinsOf(cafe)?.[0] === find(model, 'archives/site/notes/café.md'));
   const menu = lists.MENU[0].items(cafe, {});
   check('the menu on an entry offers to close the archive', menu.length === 1 && menu[0].label === 'Close site.zip' && menu[0].hint === 'I');
+
+  // A refresh the archive outlives: a twin leaves its folder, then a copy
+  // with its name and size comes into another one.
+  const about = find({ root: I.root }, 'site/about.html');
+  const aboutHere = find(model, 'archives/site/about.html');
+  const loose = aboutHere.p;
+  const docs = find(model, 'docs');
+  loose.c.splice(loose.c.indexOf(aboutHere), 1);
+  model.recompute(loose);
+  lists.AFTER_REFRESH[0].run(new Set([loose]));
+  const gone = S.interior;
+  check('a refresh after a twin left: still open, its twins worked out again (the count, both maps, the styles), the rest kept',
+    !!gone && gone !== I && Object.isFrozen(gone) && gone.host === host && gone.root === I.root && gone.chamber === I.chamber && gone.lock === I.lock
+    && gone.listing.twins === I.listing.twins - 1 && gone.listing.files === I.listing.files
+    && !gone.twins.has(about) && !gone.twinOf.has(aboutHere) && gone.twinsOf(about) === null && gone.styleOf(about) === null
+    && gone.styleOf(cafe) === STYLE.HALF_BANDS && lists.LAYOUT_OPTS[0].options({}).inside === I.chamber,
+    JSON.stringify({ twins: gone?.listing.twins, was: I.listing.twins }));
+  aboutHere.p = docs;
+  docs.c.push(aboutHere);
+  model.recompute(docs);
+  lists.AFTER_REFRESH[0].run(new Set([docs]));
+  const back = S.interior;
+  check('a copy with its name and size that comes after opening becomes its twin at the next refresh',
+    back.listing.twins === I.listing.twins && back.twinsOf(about)?.[0] === aboutHere && back.twinOf.get(aboutHere)?.[0] === about
+    && back.styleOf(about) === STYLE.HALF_BANDS && back.styleOf(aboutHere) === STYLE.HALF_BANDS, JSON.stringify({ twins: back.listing.twins }));
+  // Put back where it was, for what follows.
+  docs.c.splice(docs.c.indexOf(aboutHere), 1);
+  aboutHere.p = loose;
+  loose.c.push(aboutHere);
+  model.recompute(docs);
+  model.recompute(loose);
+  lists.AFTER_REFRESH[0].run(new Set([docs, loose]));
 
   // Escape: the selection first (app.js's own entry, at 70), then the archive.
   check('Escape is active while it is open', esc.active());

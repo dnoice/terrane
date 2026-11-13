@@ -22,14 +22,17 @@
  *       puts a query in Find and runs it at once. Under the Age lens a
  *       closed mass shows its typical age, the median step of its bytes
  *       in the age table (strata.js), instead of its newest change; the
- *       legend says so. An archive opened with I (interior.js) hangs from
- *       its file: isAttached, updateWhere, stepSelection, goUp, refreshDirs,
- *       the crumbs and absPath (x.zip!/inner/file) follow the graft, and a
- *       flight into it lands where it was going. runOp refuses any change
- *       under it before anything is sent; the keys, menu and inspector say
- *       why. Paint walls it in the file's colour, hatches locked entries
- *       and half-bands twins, tied as the relation set 'twins'. The api
- *       gains hostOf and listCursor.
+ *       legend says so. Inside an open archive, which the table does not
+ *       hold, a closed mass keeps its newest change, and while one is
+ *       open the legend's title says that too. An archive opened with I
+ *       (interior.js) hangs from its file: isAttached, updateWhere,
+ *       stepSelection, goUp, refreshDirs, the crumbs and absPath
+ *       (x.zip!/inner/file) follow the graft, and a flight into it lands
+ *       where it was going. runOp refuses any change under it before
+ *       anything is sent; the keys, menu and inspector say why. Paint
+ *       walls it in the file's colour, hatches locked entries and
+ *       half-bands twins, tied as the relation set 'twins'. The api gains
+ *       hostOf and listCursor.
  *     - 1.5.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — Paint
  *       draws a box the layout marks AUX.CROSSED (the time view) in the
  *       crossed convention, its colour washed 60% toward paper unless it
@@ -783,7 +786,9 @@ function paint() {
   const placing = S.placing;
   // Age lens: a closed mass shows its typical age, the median step of its
   // bytes in the age table (strata.js), one colour per step made here.
-  // Before the first table it shows its newest change, as it always did.
+  // Before the first table it shows its newest change, as it always did,
+  // and so does one inside an open archive: the table holds only the
+  // tree on disk, so it knows no median for the archive's folders.
   const ages = S.lens === 'age' ? S.ages : null;
   const tones = ages ? massTones(ages, now) : null;
   // An open archive (S.interior): its chamber's boxes stand outside the
@@ -797,6 +802,7 @@ function paint() {
     const node = L.node[i];
     const type = L.type[i];
     const lvl = L.level[i];
+    const inRoom = room !== null && i >= room.from && i < room.to;
     let c;
     let s = STYLE.PLAIN;
     if (type === BOX.DIR) {
@@ -809,7 +815,7 @@ function paint() {
       else if (node.c.length === 0) { c = THEME.paper; s = STYLE.HOLLOW; }
       else if (S.lens === 'kind') c = mixHex(THEME.clay, KINDS[dominantKind(node)].color, 0.42);
       else if (S.lens === 'age') {
-        const k = ages ? ages.medianStep(node) : -1;
+        const k = ages && !inRoom ? ages.medianStep(node) : -1;
         c = k >= 0 ? tones[k] : mixHex(THEME.clay, ramp(THEME.ageRamp, freshness(node.mm, now)), 0.7);
       } else if (S.lens === 'size') c = mixHex(THEME.clay, ramp(THEME.sizeRamp, Math.log2(node.s + 2) / maxLog), 0.7);
       else c = THEME.clay;
@@ -837,7 +843,6 @@ function paint() {
     }
 
     let d = 0;
-    const inRoom = room !== null && i >= room.from && i < room.to;
     if (search) {
       if (inRoom) d = 0;
       else if (search.set.has(node) && type !== BOX.SCREE) d = 0;
@@ -1989,9 +1994,12 @@ function drawLegend() {
       },
     }, el('span', { class: 'swatch', style: { background: cssHex(x.k.color) } }), x.k.label)));
   } else if (S.lens === 'age') {
-    // Files by their last change; a closed mass by its typical age (strata.js).
+    // Files by their last change; a closed mass by its typical age
+    // (strata.js), except inside an open archive, which the age table
+    // does not hold: there a closed mass shows its newest change.
     $('legend-label').textContent = 'Last change · closed masses: typical age';
-    host.replaceChildren(el('div', { class: 'rampbar', title: 'A file shows its last change. A closed mass shows its typical age: half its bytes have not changed since then.' },
+    const archive = S.interior ? ` Inside ${S.interior.host.n} a closed mass shows its newest change: typical ages are for folders on disk.` : '';
+    host.replaceChildren(el('div', { class: 'rampbar', title: `A file shows its last change. A closed mass shows its typical age: half its bytes have not changed since then.${archive}` },
       '10 years +', el('i', { style: { background: gradient(THEME.ageRamp) } }), 'today'));
   } else if (S.lens === 'size') {
     $('legend-label').textContent = 'File size · log scale';

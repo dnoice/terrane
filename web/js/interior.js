@@ -33,9 +33,14 @@
  *     - Twins: files in this directory with an entry's name and size;
  *       both sides are half-banded while it is open, and a selected twin
  *       is tied to the others in the archive kind's colour (relation set
- *       'twins', drawn by app.js)
+ *       'twins', drawn by app.js). They are worked out again after every
+ *       refresh, so a file that leaves stops being one and a copy that
+ *       comes becomes one
  *     - Locked (encrypted) entries are hatched; names that would land
  *       outside the folder if unpacked are listed by their own name
+ *     - Under the Age lens a closed mass inside keeps its newest change
+ *       (app.js's paint) and its hover tip says so: the age table holds
+ *       only the tree on disk
  *     - One lock: app.js's runOp refuses any change under the archive's
  *       path (S.interior.refuse) before anything reaches the service; the
  *       menu and the inspector show each change as unavailable, inside an
@@ -52,7 +57,9 @@
  *     listing (the service's figures and sentences), twins and twinOf
  *     (Maps both ways), lock (the refusal sentence), chamber (the layout
  *     option), and refuse(body), twinsOf(node), styleOf(node) and
- *     rowMark(node), which app.js asks.
+ *     rowMark(node), which app.js asks. A refresh the archive outlives
+ *     replaces it with a new frozen object whose twins, twinOf, twin
+ *     count, twinsOf and styleOf are worked out again; the rest is kept.
  *
  * ✒ Examples:
  *     I            look inside the selected zip; I again closes it
@@ -229,6 +236,29 @@ export function install(api) {
 
   /* ---------- opening and closing ---------- */
 
+  /**
+   * The open archive as S.interior holds it, frozen, with its twins worked
+   * out against the tree as it is now: twins, twinOf, the listing's twin
+   * count, twinsOf and styleOf. Everything else in I is kept as it is,
+   * the chamber's wall keys included, so the layout does not see a new
+   * archive. Called on opening and after every refresh it outlives.
+   */
+  function withTwins(I) {
+    const { twins, twinOf } = findTwins(S.model.root, I.root);
+    const { root } = I;
+    return Object.freeze({
+      ...I,
+      listing: Object.freeze({ ...I.listing, twins: twins.size }),
+      twins, twinOf,
+      twinsOf: (node) => twins.get(node) || twinOf.get(node) || null,
+      // Locked entries are hatched; twins, inside and out, half-banded.
+      styleOf: (node) => {
+        if (node.f & FLAG_LOCKED && under(node, root)) return STYLE.HATCH;
+        return twins.has(node) || twinOf.has(node) ? STYLE.HALF_BANDS : null;
+      },
+    });
+  }
+
   async function open(host) {
     const why = refusal(host);
     if (why) {
@@ -266,28 +296,21 @@ export function install(api) {
     }
     if (S.interior) close('replaced');
     const root = graft(host, res.records);
-    const { twins, twinOf } = findTwins(S.model.root, root);
     const lock = lockSentence(host.n);
-    const listing = Object.freeze({
-      name: host.n, files: res.files, folders: res.folders, unpacked: res.unpacked, packed: res.packed,
-      locked: res.locked, escapes: res.escapes, escaped: res.escaped || [], renamed: res.renamed, partial: res.partial || null,
-      twins: twins.size,
-    });
-    S.interior = Object.freeze({
-      host, root, size: res.size, mtime: res.mtime, listing, twins, twinOf, lock,
+    S.interior = withTwins({
+      host, root, size: res.size, mtime: res.mtime, lock,
+      listing: {
+        name: host.n, files: res.files, folders: res.folders, unpacked: res.unpacked, packed: res.packed,
+        locked: res.locked, escapes: res.escapes, escaped: res.escaped || [], renamed: res.renamed, partial: res.partial || null,
+      },
       chamber: Object.freeze({ host, root, walls: Object.freeze(['north', 'south', 'west', 'east'].map((wall) => ({ wall }))) }),
       refuse: (body) => (lockedBody(body, relPath(host)) ? lock : null),
-      twinsOf: (node) => twins.get(node) || twinOf.get(node) || null,
-      // Locked entries are hatched; twins, inside and out, half-banded.
-      styleOf: (node) => {
-        if (node.f & FLAG_LOCKED && under(node, root)) return STYLE.HATCH;
-        return twins.has(node) || twinOf.has(node) ? STYLE.HALF_BANDS : null;
-      },
       rowMark: (node) => {
         if (!(node.f & (FLAG_LOCKED | FLAG_ESCAPE)) || !under(node, root)) return null;
         return node.f & FLAG_LOCKED ? { cls: 'is-locked', sr: ', locked' } : { cls: 'is-escape', sr: ', its name climbs out of the folder' };
       },
     });
+    const { listing } = S.interior;
     S.tab = 'contents';
     api.setFocus(root);
     api.drawLedger();
@@ -452,6 +475,8 @@ export function install(api) {
   });
 
   // The archive changed on disk, or is gone: what was listed no longer is.
+  // Otherwise files in the tree may have come, gone or changed size, so
+  // its twins are worked out again; app.js repaints after every refresh.
   api.AFTER_REFRESH.add({
     id: 'interior', owner: OWNER,
     run: () => {
@@ -459,6 +484,7 @@ export function install(api) {
       if (!I) return;
       if (!api.isAttached(I.host)) close('gone');
       else if (I.host.s !== I.size || I.host.m !== I.mtime) close('changed');
+      else S.interior = withTwins(I);
     },
   });
 
@@ -497,9 +523,14 @@ export function install(api) {
       const I = S.interior;
       if (!I || c.type === BOX.SCREE) return null;
       if (c.type === BOX.WALL) return [`The walls of ${I.host.n}: what its directory lists stands inside`, 'I, or Escape with nothing selected, closes it'];
-      if (node === I.root) return `Inside ${I.host.n} · nothing here can be changed`;
+      // The age table holds only the tree on disk (strata.js), so under the
+      // Age lens a closed mass in here keeps its newest change (app.js).
+      const aged = S.lens === 'age' && c.type === BOX.CAP && node.d && !node.e && node.c.length > 0;
+      const AGE = 'Coloured by its newest change: typical ages are for folders on disk';
+      if (node === I.root) return [`Inside ${I.host.n} · nothing here can be changed`, aged ? AGE : null];
       if (api.hostOf(node)) {
         const out = [];
+        if (aged) out.push(AGE);
         if (node.f & FLAG_LOCKED) out.push('Locked: encrypted in the archive');
         if (node.f & FLAG_ESCAPE) out.push('Its name would land outside the folder if unpacked');
         const tw = I.twins.get(node);

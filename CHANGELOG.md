@@ -54,12 +54,14 @@ here unchanged in the same edit.
   (SURVEY), AFTER_QUERY hooks hear every run of the search and may give Findings its order and a
   note, and setQuery puts a query in Find and runs it at once. Under the Age lens a closed mass
   shows its typical age, the median step of its bytes in the age table (strata.js), instead of
-  its newest change; the legend says so. An archive opened with I (interior.js) hangs from its
-  file: isAttached, updateWhere, stepSelection, goUp, refreshDirs, the crumbs and absPath
-  (x.zip!/inner/file) follow the graft, and a flight into it lands where it was going. runOp
-  refuses any change under it before anything is sent; the keys, menu and inspector say why.
-  Paint walls it in the file's colour, hatches locked entries and half-bands twins, tied as the
-  relation set 'twins'. The api gains hostOf and listCursor.
+  its newest change; the legend says so. Inside an open archive, which the table does not hold,
+  a closed mass keeps its newest change, and while one is open the legend's title says that too.
+  An archive opened with I (interior.js) hangs from its file: isAttached, updateWhere,
+  stepSelection, goUp, refreshDirs, the crumbs and absPath (x.zip!/inner/file) follow the graft,
+  and a flight into it lands where it was going. runOp refuses any change under it before
+  anything is sent; the keys, menu and inspector say why. Paint walls it in the file's colour,
+  hatches locked entries and half-bands twins, tied as the relation set 'twins'. The api gains
+  hostOf and listCursor.
 - 1.5.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — Paint draws a box the layout marks
   AUX.CROSSED (the time view) in the crossed convention, its colour washed 60% toward paper unless
   it is selected; a Contents row whose entry is crossed carries a crossed swatch and says so to
