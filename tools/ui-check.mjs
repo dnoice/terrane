@@ -284,6 +284,37 @@ class CDP {
   }
 }
 
+/**
+ * The browser's DevTools WebSocket address, from whichever answers first:
+ * the "DevTools listening on" line on stderr, the profile's
+ * DevToolsActivePort file, or /json/version on the debugging port. Edge
+ * 157.0.4341.46 can relaunch itself in a separate process and let the
+ * launcher exit with 0 at once; the relaunched browser writes neither the
+ * stderr line nor the file, but it does answer on the port it was given.
+ */
+async function devToolsEndpoint(profile, port, child, stderr) {
+  const file = path.join(profile, 'DevToolsActivePort');
+  const until = Date.now() + 20000;
+  for (;;) {
+    const m = stderr().match(/DevTools listening on (ws:\/\/\S+)/);
+    if (m) return m[1];
+    try {
+      const [p, route] = fs.readFileSync(file, 'utf8').split(/\r?\n/);
+      if (Number(p) > 0 && route) return `ws://127.0.0.1:${Number(p)}${route}`;
+    } catch { /* not written yet */ }
+    try {
+      const r = await fetch(`http://127.0.0.1:${port}/json/version`, { signal: AbortSignal.timeout(500) });
+      const url = r.ok ? (await r.json()).webSocketDebuggerUrl : null;
+      if (url) return url;
+    } catch { /* not listening yet */ }
+    if (child.exitCode !== null && child.exitCode !== 0) {
+      throw new Error(`The browser exited (${child.exitCode}): ${stderr().trim().slice(-400)}`);
+    }
+    if (Date.now() > until) throw new Error(`The browser did not open its DevTools endpoint: ${stderr().trim().slice(-400)}`);
+    await wait(100);
+  }
+}
+
 async function launchBrowser(exe, pass) {
   const profile = fs.mkdtempSync(path.join(os.tmpdir(), 'terrane-ui-profile-'));
   const flags = [
@@ -293,41 +324,44 @@ async function launchBrowser(exe, pass) {
     '--disable-background-networking', '--disable-component-update', '--disable-default-apps',
     '--disable-background-timer-throttling', '--disable-renderer-backgrounding', '--disable-backgrounding-occluded-windows',
     '--no-pings', '--mute-audio', '--hide-scrollbars', '--force-color-profile=srgb',
+    // Edge otherwise relaunches itself through its compatibility layer and
+    // the process started here exits at once; Chrome ignores the flag.
+    '--edge-skip-compat-layer-relaunch',
     `--window-size=${VIEWPORT.width},${VIEWPORT.height}`,
     ...(pass === 'nogl' ? ['--disable-3d-apis'] : opt.software ? ['--use-angle=swiftshader', '--enable-unsafe-swiftshader'] : []),
     'about:blank',
   ];
   const child = spawn(exe, flags, { stdio: ['ignore', 'ignore', 'pipe'] });
   let err = '';
-  const wsUrl = await new Promise((resolve, reject) => {
-    const timer = setTimeout(() => reject(new Error(`The browser did not open its DevTools endpoint: ${err.trim().slice(-400)}`)), 20000);
-    child.stderr.on('data', (c) => {
-      err += c;
-      const m = err.match(/DevTools listening on (ws:\/\/\S+)/);
-      if (m) {
-        clearTimeout(timer);
-        resolve(m[1]);
-      }
-    });
-    child.once('exit', (code) => {
-      clearTimeout(timer);
-      reject(new Error(`The browser exited (${code}): ${err.trim().slice(-400)}`));
-    });
-  });
+  child.stderr.on('data', (c) => { err += c; });
+  const wsUrl = await devToolsEndpoint(profile, PORT + 9, child, () => err);
   const cdp = await CDP.connect(wsUrl);
   const version = await cdp.send('Browser.getVersion');
+  // The browser's own process id, for the case where the launcher handed it
+  // off and exited: then killing the child would stop nothing.
+  const browserPid = await cdp.send('SystemInfo.getProcessInfo', {}, undefined, 5000)
+    .then((r) => r.processInfo?.find((p) => p.type === 'browser')?.id).catch(() => undefined);
   let closed = false;
   const close = async () => {
     if (closed) return;
     closed = true;
+    let asked = false;
     try {
       await cdp.send('Browser.close', {}, undefined, 5000);
-    } catch { /* already gone */ }
+      asked = true;
+    } catch { /* already gone, or not answering */ }
     if (child.exitCode === null && !child.signalCode) {
       await Promise.race([new Promise((r) => child.once('exit', r)), wait(5000)]);
       if (child.exitCode === null && !child.signalCode) child.kill();
     }
-    removeDir(profile);
+    if (!asked && browserPid) {
+      try { process.kill(browserPid); } catch { /* already gone */ }
+    }
+    // A browser that was handed off still holds its profile for a moment.
+    for (let i = 0; i < 20 && fs.existsSync(profile); i++) {
+      removeDir(profile);
+      if (fs.existsSync(profile)) await wait(150);
+    }
   };
   cleanups.push(close);
   return { cdp, version, close };
