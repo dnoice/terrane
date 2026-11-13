@@ -1,10 +1,10 @@
 <!--
 ✒ Metadata
-    - Title: Shipped File Changelogs (Terrane Edition - v1.1)
+    - Title: Shipped File Changelogs (Terrane Edition - v1.2)
     - File Name: CHANGELOG.md
     - Relative Path: CHANGELOG.md
     - Artifact Type: docs
-    - Version: 1.1.0
+    - Version: 1.2.0
     - Date: 11/13/2026
     - Update: Friday, November 13, 2026
     - Author: Dennis 'dendogg' Smaltz
@@ -12,6 +12,9 @@
     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
 
 ✒ Changelog:
+    - 1.2.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — Records app.js 1.6.0 and
+      terrane.css 2.3.0: the Findings sort keys, the Survey and query seams, and the
+      session traverse's stylesheet.
     - 1.1.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — Records the Wave 1 releases of
       app.js (1.5.0), index.html (1.5.0) and terrane.css (2.2.0): the time
       view, landmarks and their seams.
@@ -42,6 +45,11 @@ here unchanged in the same edit.
 
 ## web/js/app.js
 
+- 1.6.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — Findings sorts by Size or
+  Changed; a search opens in the order it asks for and keeps the one chosen until the query
+  changes, and Select all follows the order shown. The Survey tab's sections are a registry
+  (SURVEY), AFTER_QUERY hooks hear every run of the search and may give Findings its order and a
+  note, and setQuery puts a query in Find and runs it at once.
 - 1.5.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — Paint draws a box the layout marks
   AUX.CROSSED (the time view) in the crossed convention, its colour washed 60% toward paper unless
   it is selected; a Contents row whose entry is crossed carries a crossed swatch and says so to
@@ -91,6 +99,9 @@ here unchanged in the same edit.
 
 ## web/css/terrane.css
 
+- 2.3.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — Imports components/traverse.css:
+  the Findings sub-line in two rows with its sort keys and note, the Working sessions rows and the
+  traverse glyph.
 - 2.2.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — Imports components/time.css: the
   As of stepper and the crossed swatch and glyph; and components/places.css: benchmark tags in the
   world, the Places tab and the Benchmark section.

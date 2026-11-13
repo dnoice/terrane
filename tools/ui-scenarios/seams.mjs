@@ -1,18 +1,26 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Controller Seams Scenario (Terrane Edition - v1.3)
+ *     - Title: Controller Seams Scenario (Terrane Edition - v1.4)
  *     - File Name: seams.mjs
  *     - Relative Path: tools/ui-scenarios/seams.mjs
  *     - Artifact Type: test
- *     - Version: 1.3.0
- *     - Date: 11/12/2026
- *     - Update: Thursday, November 12, 2026
+ *     - Version: 1.4.0
+ *     - Date: 11/13/2026
+ *     - Update: Friday, November 13, 2026
  *     - Author: Dennis 'dendogg' Smaltz
  *     - A.I. Acknowledgement: Anthropic - Claude Opus 5.5
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
  *
  * ✒ Changelog:
+ *     - 1.4.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
+ *       S.sessions slot may hold what the Session traverse feature fills
+ *       it with after the survey (a list of working sessions), as
+ *       S.places may hold the landmarks store. The SURVEY and AFTER_QUERY
+ *       registries are frozen and compared with the rest: the Survey
+ *       tab's own sections in their old order, a registered section in
+ *       its place and one that throws left out, and AFTER_QUERY empty at
+ *       the start, then hearing each search and its clearing.
  *     - 1.3.0 (11/12/2026) [dendogg + Anthropic - Claude Opus 5.5] — With
  *       features installed: the controller's own entries are told from a
  *       feature's by owner and compared as before, the guide and Reading
@@ -49,8 +57,8 @@
  *     - Escape order (a date-scrub slot between kind filter and search),
  *       and typing: false entries stay out of text fields
  *     - Pins add up in source order and stop at 3,000; hover lines,
- *       inspector sections, tabs, layout options and the after-layout,
- *       refresh and survey hooks each take effect
+ *       inspector sections, tabs, Survey sections, layout options and the
+ *       after-layout, refresh, survey and query hooks each take effect
  *     - The only hook the controller registers itself is the survey hook
  *       that rebuilds the shared age table
  *     - Feature search tokens through parseQuery's is: and prefix tables
@@ -126,16 +134,17 @@ export default {
     await t.settle();
     const start = await t.app(async (T) => {
       const a = T.api;
-      const regs = ['KEYS', 'ESCAPE', 'PIN_SOURCES', 'TIP_LINES', 'READING', 'TABS', 'LAYOUT_OPTS', 'AFTER_LAYOUT', 'AFTER_REFRESH', 'AFTER_SURVEY', 'AFTER_OP', 'MENU'];
+      const regs = ['KEYS', 'ESCAPE', 'PIN_SOURCES', 'TIP_LINES', 'READING', 'TABS', 'LAYOUT_OPTS', 'AFTER_LAYOUT', 'AFTER_REFRESH', 'AFTER_SURVEY', 'AFTER_OP', 'MENU', 'AFTER_QUERY', 'SURVEY'];
       const mod = await import(new URL('js/features.js', document.baseURI).href);
       // A feature's entries carry its owner; the controller's carry none, or 'core'.
       const own = (reg) => [...reg].filter((x) => !x.owner || x.owner === 'core').map((x) => x.id);
       const byFeature = (reg) => [...reg].filter((x) => x.owner && x.owner !== 'core');
       return {
         frozen: Object.isFrozen(a) && regs.every((n) => Object.isFrozen(a[n])) && Object.isFrozen(a.INSPECTOR) && Object.isFrozen(a.QUERY),
-        // places is null, or the store the Landmarks feature keeps there.
-        slots: ['time', 'interior', 'places', 'sessions'].every((k) => k in T.S) && ['time', 'interior', 'sessions'].every((k) => T.S[k] === null)
-          && (T.S.places === null || Array.isArray(T.S.places.benchmarks))
+        // places is null, or the store the Landmarks feature keeps there;
+        // sessions is null, or the working sessions the Session traverse found.
+        slots: ['time', 'interior', 'places', 'sessions'].every((k) => k in T.S) && ['time', 'interior'].every((k) => T.S[k] === null)
+          && (T.S.places === null || Array.isArray(T.S.places.benchmarks)) && (T.S.sessions === null || Array.isArray(T.S.sessions.list))
           && 'ages' in T.S && typeof T.S.ages?.kept === 'function' && T.S.ages.folders === T.S.model.root.dc + 1,
         ids: Object.fromEntries([...regs.map((n) => [n, own(a[n])]), ['focus', own(a.INSPECTOR.focus)], ['node', own(a.INSPECTOR.node)]]),
         all: Object.fromEntries([...regs.map((n) => [n, a[n].ids()]), ['focus', a.INSPECTOR.focus.ids()], ['node', a.INSPECTOR.node.ids()]]),
@@ -163,8 +172,10 @@ export default {
       same(ids.focus, ['title', 'facts', 'composition', 'reading']) && same(ids.node, ['title', 'path', 'facts', 'composition', 'copies', 'actions', 'preview'])
       && ids.READING.length === 8 && same(ids.TABS, ['contents', 'findings', 'survey', 'journal']), JSON.stringify([ids.focus, ids.node, ids.TABS]));
     t.check('layout options, hooks, menu items and search tokens start empty, apart from the age table\'s survey hook',
-      !ids.LAYOUT_OPTS.length && !ids.AFTER_LAYOUT.length && !ids.AFTER_REFRESH.length && !ids.AFTER_OP.length && !ids.MENU.length
+      !ids.LAYOUT_OPTS.length && !ids.AFTER_LAYOUT.length && !ids.AFTER_REFRESH.length && !ids.AFTER_OP.length && !ids.MENU.length && !ids.AFTER_QUERY.length
       && same(ids.AFTER_SURVEY, ['ages']) && start.tokens === 0, JSON.stringify(ids.AFTER_SURVEY));
+    t.check('the Survey tab\'s own sections are a registry, in the order drawSurvey drew them',
+      same(ids.SURVEY, ['largest', 'duplicates', 'empty', 'sealed', 'links']), JSON.stringify(ids.SURVEY));
     t.check('the key allocation is fixed: I Interiors, T , . < > Time, B H J Landmarks, the canvas keeps W A S D Q E R F',
       same(start.owners, OWNERS) && start.ownersFrozen, JSON.stringify(start.owners));
     t.check('the tab buttons are made from TABS, Contents selected', same(start.tabs, ['contents:Contents:true', 'findings:Findings:false', 'survey:Survey:false', 'journal:Journal:false']), JSON.stringify(start.tabs));
@@ -420,6 +431,33 @@ export default {
     t.check('AFTER_SURVEY runs with the new survey after a refresh, full: false', same(hooks.survey, [[true, false]]), JSON.stringify(hooks.survey));
     await t.app((T) => { T.api.AFTER_REFRESH.remove('seam-refresh'); T.api.AFTER_SURVEY.remove('seam-survey'); });
 
+    // A Survey section from the registry, in its place, past one that throws.
+    await t.eval(muteErrors, true);
+    const sv = await t.app((T) => {
+      const a = T.api;
+      a.SURVEY.add({ id: 'seam-survey', order: 35, build: () => a.section('Seam section', '1', false, a.el('p', { class: 'note', text: 'Drawn by a registered section.' })) });
+      a.SURVEY.add({ id: 'seam-survey-broken', order: 36, build: () => { throw new Error('survey section on purpose'); } });
+      T.S.tab = 'survey';
+      a.drawLedger();
+      const titles = [...document.querySelectorAll('#ledger-rich > details > summary')].map((s) => s.firstChild.textContent);
+      a.SURVEY.remove('seam-survey');
+      a.SURVEY.remove('seam-survey-broken');
+      T.S.tab = 'contents';
+      a.drawLedger();
+      return titles;
+    });
+    const serrs = await t.eval(muteErrors, false);
+    const ownSv = sv.filter((s) => ['Largest files', 'Duplicate candidates', 'Empty folders', 'Seam section', 'Sealed folders', 'Symbolic links'].includes(s));
+    t.check('a registered Survey section takes its place by order, and one that throws is reported and left out',
+      same(ownSv, ['Largest files', 'Duplicate candidates', 'Empty folders', 'Seam section', 'Sealed folders', 'Symbolic links']) && serrs.some((e) => /SURVEY "seam-survey-broken" failed/.test(e)),
+      JSON.stringify({ sv, serrs }));
+
+    // AFTER_QUERY hears every run of the search: typed, and cleared.
+    await t.app((T) => {
+      window.__seam.queries = [];
+      T.api.AFTER_QUERY.add({ id: 'seam-query', run: (search, q) => { window.__seam.queries.push([q, search === T.S.search, search ? search.list.length : null]); } });
+    });
+
     // Feature search tokens.
     const first = await t.app((T) => {
       const a = T.api;
@@ -438,6 +476,15 @@ export default {
     const none = await query(t, 'never:x');
     const proto = await query(t, 'is:constructor');
     t.check('a token whose maker returns no predicate matches nothing, and is:constructor is not a word', none.n === 0 && proto.n === 0, JSON.stringify([none, proto]));
+    const heard = await t.app((T) => {
+      T.api.AFTER_QUERY.remove('seam-query');
+      return window.__seam.queries;
+    });
+    // Typing runs the search once per pause; clearing it runs it once more, with no search.
+    const typed = heard.filter(([q]) => q === 'is:seam');
+    t.check('AFTER_QUERY hears each search as it is run, with S.search, and its clearing with null',
+      typed.length >= 1 && typed.every(([, isS, n]) => isS && n === 1) && heard.some(([q, isS, n]) => q === '' && isS && n === null) && heard.every(([, isS]) => isS),
+      JSON.stringify(heard));
     await t.app((T) => {
       for (const k of ['seam']) delete T.api.QUERY.is[k];
       for (const k of ['seam', 'never']) delete T.api.QUERY.prefix[k];
@@ -514,7 +561,7 @@ export default {
 
     const end = await t.app((T) => {
       const a = T.api;
-      return Object.fromEntries([...['KEYS', 'ESCAPE', 'PIN_SOURCES', 'TIP_LINES', 'READING', 'TABS', 'LAYOUT_OPTS', 'AFTER_LAYOUT', 'AFTER_REFRESH', 'AFTER_SURVEY', 'AFTER_OP', 'MENU'].map((n) => [n, a[n].ids()]),
+      return Object.fromEntries([...['KEYS', 'ESCAPE', 'PIN_SOURCES', 'TIP_LINES', 'READING', 'TABS', 'LAYOUT_OPTS', 'AFTER_LAYOUT', 'AFTER_REFRESH', 'AFTER_SURVEY', 'AFTER_OP', 'MENU', 'AFTER_QUERY', 'SURVEY'].map((n) => [n, a[n].ids()]),
         ['focus', a.INSPECTOR.focus.ids()], ['node', a.INSPECTOR.node.ids()]]);
     });
     t.check('every test entry is gone again', same(end, start.all), JSON.stringify(end).slice(0, 300));

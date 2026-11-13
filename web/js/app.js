@@ -1,11 +1,11 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Terrane Application (Terrane Edition - v1.5)
+ *     - Title: Terrane Application (Terrane Edition - v1.6)
  *     - File Name: app.js
  *     - Relative Path: web/js/app.js
  *     - Artifact Type: javascript
- *     - Version: 1.5.0
+ *     - Version: 1.6.0
  *     - Date: 11/13/2026
  *     - Update: Friday, November 13, 2026
  *     - Author: Dennis 'dendogg' Smaltz
@@ -13,6 +13,13 @@
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
  *
  * ✒ Changelog:
+ *     - 1.6.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] —
+ *       Findings sorts by Size or Changed; a search opens in the order it
+ *       asks for and keeps the one chosen until the query changes, and
+ *       Select all follows the order shown. The Survey tab's sections are
+ *       a registry (SURVEY), AFTER_QUERY hooks hear every run of the
+ *       search and may give Findings its order and a note, and setQuery
+ *       puts a query in Find and runs it at once.
  *     - 1.5.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — Paint
  *       draws a box the layout marks AUX.CROSSED (the time view) in the
  *       crossed convention, its colour washed 60% toward paper unless it
@@ -27,12 +34,6 @@
  *       loading sheet (splash.js) covers the page from start until the
  *       service answers and the first survey batch is drawn, naming each
  *       stage; it leaves early on either failure so the veil can explain.
- *     - 1.3.0 (11/12/2026) [dendogg + Anthropic - Claude Opus 5.5] — Icons
- *       on menus, tabs, sort keys, actions and operations; the north arrow
- *       and storage scale over the world (hud.js); tab and lens indicators
- *       that slide; status figures that count to their new values; the
- *       inspector settles in when its subject changes; the veil lifts away
- *       instead of vanishing; panel toggles and a Find clear button.
  *     Earlier entries: see CHANGELOG.md
  *
  * ✒ Description:
@@ -57,7 +58,8 @@
  *       it has moved more than a fraction of its altitude
  *     - Four lenses over one geometry: kind, age, size, duplicates
  *     - Search that dims everything else, pins the matches, and marks
- *       closed masses and scree that contain matches
+ *       closed masses and scree that contain matches; Findings lists them
+ *       by size or by last change
  *     - Real operations through the service: open, reveal, copy path, new
  *       folder, rename, move, copy, duplicate, remove to holding, restore,
  *       undo; every result or refusal is reported in words
@@ -72,10 +74,10 @@
  *     - Snapshot mode is stated in the title block, and every change and
  *       system hand-off is shown as unavailable with the reason
  *     - Seams for features: ordered registries (KEYS, ESCAPE, PIN_SOURCES,
- *       TIP_LINES, INSPECTOR, READING, TABS, LAYOUT_OPTS, MENU) and hook
- *       lists (AFTER_LAYOUT, AFTER_REFRESH, AFTER_SURVEY, AFTER_OP), so a
- *       feature adds entries from its own file instead of editing these
- *       functions
+ *       TIP_LINES, INSPECTOR, READING, TABS, SURVEY, LAYOUT_OPTS, MENU)
+ *       and hook lists (AFTER_LAYOUT, AFTER_REFRESH, AFTER_SURVEY,
+ *       AFTER_OP, AFTER_QUERY), so a feature adds entries from its own
+ *       file instead of editing these functions
  *     - One key table drives the keyboard, the guide and the fixed key
  *       allocation; a reserved key can only be bound by its owner
  *     - One age table per survey (timeline.js) answers how much of any
@@ -95,6 +97,9 @@
  *         api.AFTER_LAYOUT.add({ id: 'route', run: (L) => draw(L) });
  *         api.AFTER_OP.add({ id: 'places', run: (body, res) => follow(body, res) });
  *         api.MENU.add({ id: 'places', items: (node) => [{ label, run }] });
+ *         api.SURVEY.add({ id: 'sessions', order: 15, build: (sv) => el(...) });
+ *         api.AFTER_QUERY.add({ id: 'route', run: (search, query) => {} });
+ *         api.setQuery('session:1');   // into Find, run at once
  *     Every entry has a unique id; order (default 50) places it.
  *
  * ✒ Other Important Information:
@@ -136,6 +141,8 @@ const S = {
   survey: null, scanning: false, watch: 'idle',
   placing: null, drag: null,
   tab: 'contents', sort: { key: 'size', dir: -1 },
+  // The Findings order a person chose; null keeps the search's own default.
+  findSort: null,
   layoutTimer: 0, surveyTimer: 0,
   // Owned by feature modules, null until one fills it: the date scrub,
   // the open archive interior, benchmarks and the return point, and
@@ -355,7 +362,24 @@ const MENU = registry('MENU', needs('MENU', 'items'));
 /** QUERY: search tokens for parseQuery: is.<word>(node) and prefix.<name>(value, raw) -> predicate. */
 const QUERY = Object.freeze({ is: {}, prefix: {} });
 
-for (const reg of [KEYS, ESCAPE, PIN_SOURCES, TIP_LINES, INSPECTOR.focus, INSPECTOR.node, READING, TABS, LAYOUT_OPTS, AFTER_LAYOUT, AFTER_REFRESH, AFTER_SURVEY, AFTER_OP, MENU]) Object.freeze(reg);
+/**
+ * AFTER_QUERY run(search, query) whenever the search has been run again:
+ * typed, cleared, set by setQuery, or re-run after a refresh or a survey.
+ * search is S.search (null when Find is empty). A hook may annotate it for
+ * the Findings tab: search.sort, the order it opens in ({ key: 'size' |
+ * 'date', dir }), and search.note, a sentence under the sort keys.
+ */
+const AFTER_QUERY = registry('AFTER_QUERY', needs('AFTER_QUERY', 'run'));
+
+/**
+ * SURVEY: the sections of the Survey tab: { id, order, build(survey) ->
+ * Element | null }. Orders: largest files 10, duplicate candidates 20,
+ * empty folders 30, sealed folders 40, symbolic links 50; working
+ * sessions sit first, at 5.
+ */
+const SURVEY = registry('SURVEY', needs('SURVEY', 'build'));
+
+for (const reg of [KEYS, ESCAPE, PIN_SOURCES, TIP_LINES, INSPECTOR.focus, INSPECTOR.node, READING, TABS, LAYOUT_OPTS, AFTER_LAYOUT, AFTER_REFRESH, AFTER_SURVEY, AFTER_OP, MENU, AFTER_QUERY, SURVEY]) Object.freeze(reg);
 
 /* ====================================================================== */
 /* service                                                                */
@@ -1433,6 +1457,7 @@ function drawLedger(keepScroll = false) {
   });
   slideIndicators();
   const sub = $('ledger-sub');
+  sub.className = 'panel-sub';
   const rich = $('ledger-rich');
   const listHost = $('ledger-list');
   const useList = !!tab.list;
@@ -1441,21 +1466,44 @@ function drawLedger(keepScroll = false) {
   tab.draw(sub, useList ? listHost : rich, keepScroll);
 }
 
+/** A sort key toggle for the ledger's sub-line; the chosen one shows its direction. */
+function sortToggle(label, on, dir, onclick) {
+  return el('button', {
+    class: 'sort', type: 'button', 'aria-pressed': String(on),
+    title: on ? `Sorted by ${label.toLowerCase()}, ${dir < 0 ? 'descending' : 'ascending'}; click to reverse` : `Sort by ${label.toLowerCase()}`,
+    onclick,
+  }, label, on ? icon(dir < 0 ? 'sortDown' : 'sortUp') : null);
+}
+
 function drawContents(sub, _host, keepScroll) {
-  const sortBtn = (key, label) => {
-    const on = S.sort.key === key;
-    return el('button', {
-      class: 'sort', type: 'button', 'aria-pressed': String(on),
-      title: on ? `Sorted by ${label.toLowerCase()}, ${S.sort.dir < 0 ? 'descending' : 'ascending'}; click to reverse` : `Sort by ${label.toLowerCase()}`,
-      onclick: () => {
-        S.sort = { key, dir: S.sort.key === key ? -S.sort.dir : key === 'name' ? 1 : -1 };
-        drawLedger();
-      },
-    }, label, on ? icon(S.sort.dir < 0 ? 'sortDown' : 'sortUp') : null);
-  };
+  const sortBtn = (key, label) => sortToggle(label, S.sort.key === key, S.sort.dir, () => {
+    S.sort = { key, dir: S.sort.key === key ? -S.sort.dir : key === 'name' ? 1 : -1 };
+    drawLedger();
+  });
   sub.replaceChildren(el('span', { class: 'grow', text: `${fmtCount(S.focus.c.length)} items · ${fmtBytes(S.focus.s)}` }), sortBtn('name', 'Name'), sortBtn('size', 'Size'), sortBtn('date', 'Changed'));
   list.render = (node) => rowFor(node, { total: S.focus.s });
   list.setItems(sortedContents(), keepScroll);
+}
+
+/**
+ * The Findings order: the one chosen with the sort keys, else the one the
+ * search asks for (search.sort, set by a feature), else largest first.
+ */
+const findSort = () => S.findSort || S.search?.sort || { key: 'size', dir: -1 };
+const changedAt = (n) => (n.d ? n.mm : n.m);
+
+let findCache = { search: null, key: '', items: [] };
+/** The matches in the Findings order, sorted once per search and order. */
+function findingsItems() {
+  const s = S.search;
+  const { key, dir } = findSort();
+  const k = `${key}:${dir}`;
+  if (findCache.search === s && findCache.key === k) return findCache.items;
+  // runSearch lists largest first; any other order is a sorted copy.
+  const items = key === 'size' && dir < 0 ? s.list
+    : [...s.list].sort(key === 'date' ? (a, b) => (changedAt(a) - changedAt(b)) * dir : (a, b) => (a.s - b.s) * dir);
+  findCache = { search: s, key: k, items };
+  return items;
 }
 
 function drawFindings(sub, _host, keepScroll) {
@@ -1464,16 +1512,26 @@ function drawFindings(sub, _host, keepScroll) {
     list.setItems([]);
     return;
   }
-  sub.replaceChildren(el('span', { class: 'grow', text: `${fmtCount(S.search.list.length)} matches · ${fmtBytes(S.search.bytes)}` }),
-    el('button', { class: 'sort', type: 'button', title: 'Select every match (up to 5,000)', onclick: () => {
-      S.sel = new Set(S.search.list.slice(0, 5000));
-      S.primary = S.search.list[0] || null;
-      repaint();
-      drawInspector();
-      drawLedger(true);
-    } }, icon('selectAll'), 'Select all'));
+  const items = findingsItems();
+  const order = findSort();
+  const sortBtn = (key, label) => sortToggle(label, order.key === key, order.dir, () => {
+    S.findSort = { key, dir: order.key === key ? -order.dir : key === 'date' ? 1 : -1 };
+    drawLedger();
+  });
+  const note = S.search.note || '';
+  sub.classList.add('is-rows');
+  sub.replaceChildren(
+    el('div', { class: 'sub-row' }, el('span', { class: 'grow', text: `${fmtCount(S.search.list.length)} matches · ${fmtBytes(S.search.bytes)}` }),
+      el('button', { class: 'sort', type: 'button', title: 'Select every match (up to 5,000)', onclick: () => {
+        S.sel = new Set(items.slice(0, 5000));
+        S.primary = items[0] || null;
+        repaint();
+        drawInspector();
+        drawLedger(true);
+      } }, icon('selectAll'), 'Select all')),
+    el('div', { class: 'sub-row' }, el('span', { class: 'grow sub-note', text: note, title: note || null }), sortBtn('size', 'Size'), sortBtn('date', 'Changed')));
   list.render = (node) => rowFor(node, { showPath: true });
-  list.setItems(S.search.list, keepScroll);
+  list.setItems(items, keepScroll);
 }
 
 /** A collapsible section of the rich ledger panel. */
@@ -1494,6 +1552,12 @@ function drawSurvey(sub, host) {
     return;
   }
   sub.replaceChildren(el('span', { class: 'grow', text: 'Noteworthy conditions across every level' }));
+  host.replaceChildren(...buildSections(SURVEY, sv, {}));
+}
+
+/* The Survey tab's own sections, in SURVEY order. */
+
+function surveyDuplicates(sv) {
   const verifiedGroups = sv.dupGroups.filter((g) => g.verified);
   const waste = sv.dupGroups.reduce((a, g) => a + g.waste, 0);
   const dupBody = [];
@@ -1508,18 +1572,7 @@ function drawSurvey(sub, host) {
       for (const f of g.files.slice(0, 12)) dupBody.push(itemButton(f, ''));
     }
   } else dupBody.push(el('p', { class: 'note', text: 'No files of 4 KB or more share a size.' }));
-
-  host.replaceChildren(
-    section('Largest files', fmtCount(sv.largest.length), true, sv.largest.slice(0, 80).map((f) => itemButton(f, fmtBytes(f.s)))),
-    section('Duplicate candidates', fmtCount(sv.dupGroups.length), false, dupBody),
-    section('Empty folders', fmtCount(sv.empty.length), false, sv.empty.length ? sv.empty.slice(0, 300).map((d) => itemButton(d, '')) : el('p', { class: 'note', text: 'None.' })),
-    section('Sealed folders', fmtCount(sv.sealed.length), sv.sealed.length > 0, sv.sealed.length
-      ? [el('p', { class: 'note', text: 'These could not be read, so their contents are not counted.' }), sv.sealed.slice(0, 300).map((d) => itemButton(d, d.e))]
-      : el('p', { class: 'note', text: 'Every folder was readable.' })),
-    section('Symbolic links', fmtCount(sv.links.length), false, sv.links.length
-      ? [el('p', { class: 'note', text: 'Shown but never followed.' }), sv.links.slice(0, 300).map((f) => itemButton(f, 'link'))]
-      : el('p', { class: 'note', text: 'None.' })),
-  );
+  return section('Duplicate candidates', fmtCount(sv.dupGroups.length), false, dupBody);
 }
 
 async function drawJournal(sub, host) {
@@ -1835,20 +1888,39 @@ function runQuery() {
   const pred = parseQuery(S.query, QUERY);
   S.search = pred ? runSearch(S.model, pred) : null;
   $('q-count').textContent = S.search ? `${fmtCount(S.search.list.length)} found` : '';
+  runHooks(AFTER_QUERY, S.search, S.query);
 }
 
 let queryTimer = 0;
+/** Runs what the Find field holds and shows it: Findings for matches, Contents again when cleared. */
+function applyQuery() {
+  clearTimeout(queryTimer);
+  queryTimer = 0;
+  const text = $('q').value;
+  // A different query opens in its own order; a re-run keeps the one chosen.
+  if (text !== S.query) S.findSort = null;
+  S.query = text;
+  const had = !!S.search;
+  runQuery();
+  if (S.search && S.tab !== 'findings') S.tab = 'findings';
+  else if (!S.search && had && S.tab === 'findings') S.tab = 'contents';
+  repaint();
+  drawLedger();
+}
+
 function onQuery() {
   clearTimeout(queryTimer);
-  queryTimer = setTimeout(() => {
-    S.query = $('q').value;
-    const had = !!S.search;
-    runQuery();
-    if (S.search && S.tab !== 'findings') S.tab = 'findings';
-    else if (!S.search && had && S.tab === 'findings') S.tab = 'contents';
-    repaint();
-    drawLedger();
-  }, 160);
+  queryTimer = setTimeout(applyQuery, 160);
+}
+
+/**
+ * Puts text in the Find field and runs it at once, as typing it would
+ * after its pause; the Findings list starts again at its first row.
+ */
+function setQuery(text) {
+  $('q').value = text;
+  if (text !== S.query) list.cursor = 0;
+  applyQuery();
 }
 
 function clearQuery() {
@@ -2218,9 +2290,28 @@ function wireKeys() {
   READING.add({ id: 'pin', order: 80, glyph: 'g-pin', title: 'Pin', text: 'Vermilion marks a search match; ink marks a heavyweight file.' });
 
   TABS.add({ id: 'contents', order: 10, label: 'Contents', list: true, draw: drawContents });
-  TABS.add({ id: 'findings', order: 20, label: 'Findings', list: true, draw: drawFindings, count: () => (S.search ? S.search.list.length : null), enter: (node) => reveal(node) });
+  TABS.add({
+    id: 'findings', order: 20, label: 'Findings', list: true, draw: drawFindings, count: () => (S.search ? S.search.list.length : null), enter: (node) => reveal(node),
+    key: () => { const o = findSort(); return `${o.key}:${o.dir}`; },
+  });
   TABS.add({ id: 'survey', order: 30, label: 'Survey', draw: drawSurvey });
   TABS.add({ id: 'journal', order: 40, label: 'Journal', draw: drawJournal });
+
+  SURVEY.add({ id: 'largest', order: 10, build: (sv) => section('Largest files', fmtCount(sv.largest.length), true, sv.largest.slice(0, 80).map((f) => itemButton(f, fmtBytes(f.s)))) });
+  SURVEY.add({ id: 'duplicates', order: 20, build: surveyDuplicates });
+  SURVEY.add({ id: 'empty', order: 30, build: (sv) => section('Empty folders', fmtCount(sv.empty.length), false, sv.empty.length ? sv.empty.slice(0, 300).map((d) => itemButton(d, '')) : el('p', { class: 'note', text: 'None.' })) });
+  SURVEY.add({
+    id: 'sealed', order: 40,
+    build: (sv) => section('Sealed folders', fmtCount(sv.sealed.length), sv.sealed.length > 0, sv.sealed.length
+      ? [el('p', { class: 'note', text: 'These could not be read, so their contents are not counted.' }), sv.sealed.slice(0, 300).map((d) => itemButton(d, d.e))]
+      : el('p', { class: 'note', text: 'Every folder was readable.' })),
+  });
+  SURVEY.add({
+    id: 'links', order: 50,
+    build: (sv) => section('Symbolic links', fmtCount(sv.links.length), false, sv.links.length
+      ? [el('p', { class: 'note', text: 'Shown but never followed.' }), sv.links.slice(0, 300).map((f) => itemButton(f, 'link'))]
+      : el('p', { class: 'note', text: 'None.' })),
+  });
 }
 
 /* ====================================================================== */
@@ -2235,10 +2326,11 @@ function wireKeys() {
 const API = Object.freeze({
   S, KEY_OWNERS,
   KEYS, ESCAPE, PIN_SOURCES, TIP_LINES, INSPECTOR, READING, TABS, LAYOUT_OPTS, AFTER_LAYOUT, AFTER_REFRESH, AFTER_SURVEY, AFTER_OP, MENU, QUERY,
+  AFTER_QUERY, SURVEY,
   get, post, runOp, refreshDirs, writable, isAttached, relPath, absPath,
   relayout, queueLayout, repaint, drawPins, visibleIndexOf,
   select, setFocus, reveal, activate, describe, say,
-  drawAll, drawTabs, drawLedger, drawInspector, drawLegend, drawStatus, runQuery,
+  drawAll, drawTabs, drawLedger, drawInspector, drawLegend, drawStatus, runQuery, setQuery,
   el, notice, section, itemButton, actionButton, fact, shareBar, pct,
 });
 

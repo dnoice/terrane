@@ -1,11 +1,11 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Terrane Design System (Terrane Edition - v2.2)
+ *     - Title: Terrane Design System (Terrane Edition - v2.3)
  *     - File Name: terrane.css
  *     - Relative Path: web/css/terrane.css
  *     - Artifact Type: stylesheet
- *     - Version: 2.2.0
+ *     - Version: 2.3.0
  *     - Date: 11/13/2026
  *     - Update: Friday, November 13, 2026
  *     - Author: Dennis 'dendogg' Smaltz
@@ -13,6 +13,10 @@
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
  *
  * ✒ Changelog:
+ *     - 2.3.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] —
+ *       Imports components/traverse.css: the Findings sub-line in two rows
+ *       with its sort keys and note, the Working sessions rows and the
+ *       traverse glyph.
  *     - 2.2.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] —
  *       Imports components/time.css: the As of stepper and the crossed
  *       swatch and glyph; and components/places.css: benchmark tags in
@@ -20,12 +24,6 @@
  *     - 2.1.0 (11/12/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
  *       loading sheet joins the components layer (components/splash.css):
  *       the T mark, the TERRANE wordmark and the status line.
- *     - 2.0.0 (11/12/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
- *       one stylesheet becomes the entry to a layered system: tokens,
- *       fonts, base, layout, seven component modules, utilities, motion
- *       and print, each in its own file and cascade layer. Adds icons, the
- *       highlighter sweep, sliding indicators, survey instruments around
- *       the world, entry and exit motion, and a print sheet.
  *     Earlier entries: see CHANGELOG.md
  *
  * ✒ Description:
@@ -72,6 +70,7 @@
 @import url('components/splash.css') layer(components);
 @import url('components/time.css') layer(components);
 @import url('components/places.css') layer(components);
+@import url('components/traverse.css') layer(components);
 @import url('utilities.css') layer(utilities);
 @import url('motion.css') layer(motion);
 @import url('print.css') layer(print) print;

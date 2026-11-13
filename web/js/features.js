@@ -1,18 +1,21 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Feature Modules (Terrane Edition - v1.1)
+ *     - Title: Feature Modules (Terrane Edition - v1.2)
  *     - File Name: features.js
  *     - Relative Path: web/js/features.js
  *     - Artifact Type: javascript
- *     - Version: 1.1.0
- *     - Date: 11/12/2026
- *     - Update: Thursday, November 12, 2026
+ *     - Version: 1.2.0
+ *     - Date: 11/13/2026
+ *     - Update: Friday, November 13, 2026
  *     - Author: Dennis 'dendogg' Smaltz
  *     - A.I. Acknowledgement: Anthropic - Claude Opus 5.5
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
  *
  * ✒ Changelog:
+ *     - 1.2.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
+ *       third: Session traverse, working sessions as a search and a route
+ *       (traverse.js).
  *     - 1.1.0 (11/12/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
  *       first feature: Time, the date scrub (time.js). The second:
  *       Landmarks, benchmarks and the return point (landmarks.js).
@@ -32,8 +35,8 @@
  *     - install(api) adds entries to the controller's registries: KEYS,
  *       ESCAPE, PIN_SOURCES, TIP_LINES, INSPECTOR.focus and .node,
  *       READING, TABS, LAYOUT_OPTS, MENU, AFTER_LAYOUT, AFTER_REFRESH,
- *       AFTER_SURVEY, AFTER_OP, and the QUERY.is and QUERY.prefix search
- *       tokens
+ *       AFTER_SURVEY, AFTER_OP, AFTER_QUERY, SURVEY, and the QUERY.is and
+ *       QUERY.prefix search tokens
  *     - A module that throws while installing is reported in words and
  *       the others still start
  *
@@ -49,7 +52,8 @@
  *     export const FEATURES = [time];
  *
  * ✒ Other Important Information:
- *     - Dependencies: the feature modules it lists: time.js, landmarks.js
+ *     - Dependencies: the feature modules it lists: time.js, landmarks.js,
+ *       traverse.js
  *     - Registry entries a feature adds carry owner: '<feature>', so a
  *       check can tell them from the controller's own
  *     - Compatible platforms: any browser with ES2022 modules
@@ -61,6 +65,7 @@
 
 import * as time from './time.js';
 import * as landmarks from './landmarks.js';
+import * as traverse from './traverse.js';
 
 /** Feature modules in install order. */
-export const FEATURES = [time, landmarks];
+export const FEATURES = [time, landmarks, traverse];
