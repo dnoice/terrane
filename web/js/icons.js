@@ -15,7 +15,9 @@
  * ✒ Changelog:
  *     - 1.1.0 (11/12/2026) [dendogg + Anthropic - Claude Opus 5.5] — Names
  *       for the As of stepper: time (calendar-clock), earlier and later
- *       (the left and right chevrons).
+ *       (the left and right chevrons). Names for landmarks: places (the
+ *       tab, map-pinned), bench (set a benchmark, flag), remeasure
+ *       (ruler), markReturn (bookmark) and returnTo (arrow-left-right).
  *     - 1.0.0 (11/12/2026) [dendogg + Anthropic - Claude Opus 5.5] —
  *       Initial release.
  *
@@ -110,6 +112,11 @@ export const ICON = Object.freeze({
   time: 'calendar-clock',
   earlier: 'chevron-left',
   later: 'chevron-right',
+  places: 'map-pinned',
+  bench: 'flag',
+  remeasure: 'ruler',
+  markReturn: 'bookmark',
+  returnTo: 'arrow-left-right',
 });
 
 /**

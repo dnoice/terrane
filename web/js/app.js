@@ -17,7 +17,11 @@
  *       draws a box the layout marks AUX.CROSSED (the time view) in the
  *       crossed convention, its colour washed 60% toward paper unless it
  *       is selected; a Contents row whose entry is crossed carries a
- *       crossed swatch and says so to assistive technology.
+ *       crossed swatch and says so to assistive technology. Two seams for
+ *       features: AFTER_OP hooks hear every change the service carried
+ *       out (Undo included) before the folders are re-read, and MENU
+ *       entries add a group of context menu items; window.__terrane.places
+ *       is the landmarks store.
  *     - 1.3.0 (11/12/2026) [dendogg + Anthropic - Claude Opus 5.5] — Icons
  *       on menus, tabs, sort keys, actions and operations; the north arrow
  *       and storage scale over the world (hud.js); tab and lens indicators
@@ -72,9 +76,10 @@
  *     - Snapshot mode is stated in the title block, and every change and
  *       system hand-off is shown as unavailable with the reason
  *     - Seams for features: ordered registries (KEYS, ESCAPE, PIN_SOURCES,
- *       TIP_LINES, INSPECTOR, READING, TABS, LAYOUT_OPTS) and hook lists
- *       (AFTER_LAYOUT, AFTER_REFRESH, AFTER_SURVEY), so a feature adds
- *       entries from its own file instead of editing these functions
+ *       TIP_LINES, INSPECTOR, READING, TABS, LAYOUT_OPTS, MENU) and hook
+ *       lists (AFTER_LAYOUT, AFTER_REFRESH, AFTER_SURVEY, AFTER_OP), so a
+ *       feature adds entries from its own file instead of editing these
+ *       functions
  *     - One key table drives the keyboard, the guide and the fixed key
  *       allocation; a reserved key can only be bound by its owner
  *     - One age table per survey (timeline.js) answers how much of any
@@ -92,6 +97,8 @@
  *         api.ESCAPE.add({ id: 'time', order: 40, active, clear });
  *         api.PIN_SOURCES.add({ id: 'places', order: 10, pins: (L) => [] });
  *         api.AFTER_LAYOUT.add({ id: 'route', run: (L) => draw(L) });
+ *         api.AFTER_OP.add({ id: 'places', run: (body, res) => follow(body, res) });
+ *         api.MENU.add({ id: 'places', items: (node) => [{ label, run }] });
  *     Every entry has a unique id; order (default 50) places it.
  *
  * ✒ Other Important Information:
@@ -326,11 +333,29 @@ const LAYOUT_OPTS = registry('LAYOUT_OPTS', needs('LAYOUT_OPTS', 'options'));
 const AFTER_LAYOUT = registry('AFTER_LAYOUT', needs('AFTER_LAYOUT', 'run'));
 const AFTER_REFRESH = registry('AFTER_REFRESH', needs('AFTER_REFRESH', 'run'));
 const AFTER_SURVEY = registry('AFTER_SURVEY', needs('AFTER_SURVEY', 'run'));
+/**
+ * AFTER_OP run(body, res) once the service has carried out a change: body
+ * is what was asked ({ type: 'rename', path, name }, { type: 'move',
+ * paths, dest }, ...; { type: 'undo' } for Undo) and res its answer
+ * (renamed, results, label). It runs before the affected folders are
+ * re-read, so a feature that names places by path can follow Terrane's
+ * own renames and moves (and their undo) before the tree changes.
+ */
+const AFTER_OP = registry('AFTER_OP', needs('AFTER_OP', 'run'));
+
+/**
+ * MENU: context menu items from features: { id, order, items(node, ctx)
+ * -> item[] | null }, where node is the item the menu is for (null for
+ * the folder you are in) and ctx is { ro }. Items take openMenu's shape
+ * and appear as a group after the first one (Open, Reveal, Copy path) or,
+ * for the folder you are in, at the end. A selection of many has none.
+ */
+const MENU = registry('MENU', needs('MENU', 'items'));
 
 /** QUERY: search tokens for parseQuery: is.<word>(node) and prefix.<name>(value, raw) -> predicate. */
 const QUERY = Object.freeze({ is: {}, prefix: {} });
 
-for (const reg of [KEYS, ESCAPE, PIN_SOURCES, TIP_LINES, INSPECTOR.focus, INSPECTOR.node, READING, TABS, LAYOUT_OPTS, AFTER_LAYOUT, AFTER_REFRESH, AFTER_SURVEY]) Object.freeze(reg);
+for (const reg of [KEYS, ESCAPE, PIN_SOURCES, TIP_LINES, INSPECTOR.focus, INSPECTOR.node, READING, TABS, LAYOUT_OPTS, AFTER_LAYOUT, AFTER_REFRESH, AFTER_SURVEY, AFTER_OP, MENU]) Object.freeze(reg);
 
 /* ====================================================================== */
 /* service                                                                */
@@ -1016,6 +1041,7 @@ async function runOp(body, { silent = false } = {}) {
   }
   try {
     const res = await post('op', body);
+    runHooks(AFTER_OP, body, res);
     if (res.cancelled) notice(res.label, { kind: 'info', ...(res.undoable ? { action: { label: 'Undo', run: undo } } : {}) });
     else if (!silent) notice(res.label, res.undoable ? { action: { label: 'Undo', run: undo } } : {});
     if (res.affected?.length) await refreshDirs(res.affected);
@@ -1035,6 +1061,7 @@ async function runOp(body, { silent = false } = {}) {
 async function undo() {
   try {
     const res = await post('undo');
+    runHooks(AFTER_OP, { type: 'undo' }, res);
     notice(res.label);
     await refreshDirs(res.affected);
     if (S.tab === 'journal') drawLedger();
@@ -1200,6 +1227,20 @@ async function verifyDuplicates() {
 /* menus                                                                  */
 /* ====================================================================== */
 
+/** Menu items the MENU entries add for node (null: the folder you are in), as one group. */
+function menuExtras(node, ctx) {
+  const out = [];
+  for (const m of MENU) {
+    try {
+      const got = m.items(node, ctx);
+      if (got?.length) out.push(...got.filter(Boolean));
+    } catch (err) {
+      console.error(`MENU "${m.id}" failed:`, err);
+    }
+  }
+  return out.length ? ['sep', ...out] : [];
+}
+
 function menuFor(node, x, y) {
   const ro = writable();
   const many = S.sel.size > 1 && S.sel.has(node);
@@ -1215,6 +1256,7 @@ function menuFor(node, x, y) {
       { label: 'Up one level', icon: 'up', hint: 'Backspace', run: goUp, disabled: !S.focus.p, reason: 'already at the root' },
       { label: 'Rise to the overview', icon: 'overview', hint: '0', run: () => S.view.overview() },
       { label: 'Re-read this folder', icon: 'refresh', hint: 'F5', run: () => refreshDirs([relPath(S.focus)]) },
+      ...menuExtras(null, { ro }),
     ];
   } else if (many) {
     const nodes = [...S.sel];
@@ -1233,6 +1275,7 @@ function menuFor(node, x, y) {
         : { label: 'Open', icon: 'open', hint: 'Enter', run: () => activate(node) },
       { label: 'Reveal in file manager', icon: 'reveal', run: () => runOp({ type: 'reveal', path: relPath(node) }) },
       { label: 'Copy path', icon: 'copyPath', hint: 'Ctrl+C', run: () => copyPaths([node]) },
+      ...menuExtras(node, { ro }),
       'sep',
       node.d ? { label: 'New folder inside…', icon: 'newFolder', run: () => newFolder(node), ...lock(node.e ? 'cannot be read' : null) } : null,
       { label: 'Rename…', icon: 'rename', hint: 'F2', run: () => rename(node), ...lock(rootLock) },
@@ -2185,7 +2228,7 @@ function wireKeys() {
  */
 const API = Object.freeze({
   S, KEY_OWNERS,
-  KEYS, ESCAPE, PIN_SOURCES, TIP_LINES, INSPECTOR, READING, TABS, LAYOUT_OPTS, AFTER_LAYOUT, AFTER_REFRESH, AFTER_SURVEY, QUERY,
+  KEYS, ESCAPE, PIN_SOURCES, TIP_LINES, INSPECTOR, READING, TABS, LAYOUT_OPTS, AFTER_LAYOUT, AFTER_REFRESH, AFTER_SURVEY, AFTER_OP, MENU, QUERY,
   get, post, runOp, refreshDirs, writable, isAttached, relPath, absPath,
   relayout, queueLayout, repaint, drawPins, visibleIndexOf,
   select, setFocus, reveal, activate, describe, say,
@@ -2277,7 +2320,8 @@ async function start() {
   runHooks(AFTER_SURVEY, S.survey, { full: true });
   relayout();
   drawAll();
-  window.__terrane = { S, list, scanMs: Math.round(performance.now() - t0), api: API, install: installFeatures };
+  // places: the landmarks store (S.places), when that feature is installed.
+  window.__terrane = { S, list, scanMs: Math.round(performance.now() - t0), api: API, install: installFeatures, get places() { return S.places; } };
   if (S.model.root.e) notice(`The root could not be read: ${S.model.root.e}`, { kind: 'error' });
   connectEvents();
 }

@@ -16,7 +16,9 @@
  * ✒ Changelog:
  *     - 1.1.0 (11/12/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
  *       icon list gains calendar-clock, chevron-left and chevron-right for
- *       the As of stepper in the title block.
+ *       the As of stepper in the title block, and map-pinned, flag,
+ *       bookmark and arrow-left-right for the Places tab, benchmarks and
+ *       the return point.
  *     - 1.0.0 (11/12/2026) [dendogg + Anthropic - Claude Opus 5.5] —
  *       Initial release.
  *
@@ -94,6 +96,8 @@ export const ICONS = [
   'sparkles', 'scale', 'binoculars', 'map', 'grip-vertical', 'circle-help',
   // the title block's As of stepper (time)
   'calendar-clock', 'chevron-left', 'chevron-right',
+  // landmarks: the Places tab, benchmarks and the return point
+  'map-pinned', 'flag', 'bookmark', 'arrow-left-right',
 ];
 
 const PINS = [

@@ -1,0 +1,111 @@
+/*
+ * ============================================================================
+ * ✒ Metadata
+ *     - Title: Places (Terrane Edition - v1.0)
+ *     - File Name: places.css
+ *     - Relative Path: web/css/components/places.css
+ *     - Artifact Type: stylesheet
+ *     - Version: 1.0.0
+ *     - Date: 11/12/2026
+ *     - Update: Thursday, November 12, 2026
+ *     - Author: Dennis 'dendogg' Smaltz
+ *     - A.I. Acknowledgement: Anthropic - Claude Opus 5.5
+ *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
+ *
+ * ✒ Description:
+ *     Landmarks' part of the sheet: the benchmark tags that stand over
+ *     the world, the Places tab in the ledger, and the Benchmark section
+ *     of the inspector. A benchmark is drawn as an upright verdigris
+ *     survey mark everywhere it appears, so the tag, the row and the
+ *     Reading glyph name the same thing as the mark in the world.
+ *
+ * ✒ Key Features:
+ *     - Benchmark tags: paper, an ink hairline and a 3 px verdigris rule on
+ *       the left; no shadow; heavier text when the folder changed
+ *     - Places rows: an upright mark, name and path, and the change in
+ *       figures; a missing benchmark's mark goes grey and its figure and
+ *       sentence take the danger role
+ *     - Rows open to their facts, actions and the entries gone, here now,
+ *       grown and shrunk, aligned with the rest of the rich ledger
+ *     - The inspector's Set benchmark block and the Reading glyph
+ *     - Five tabs in a narrow ledger: the labels tighten (normal width,
+ *       less tracking) so the fifth, Places, is not pushed out
+ *
+ * ✒ Other Important Information:
+ *     - Dependencies: tokens.css (--bench, --bench-wash), stage.css
+ *       (.tag), ledger.css (.rich, .item, .note), inspector.css (.facts,
+ *       .glyph), controls.css (.tabs, the ledger container); imported
+ *       into layer(components) by terrane.css
+ *     - Compatible platforms: current evergreen browsers
+ * ----------------------------------------------------------------------------
+ */
+
+/* ---------- benchmark tags in the world ---------- */
+
+.tag-bench {
+  padding: 3px 6px 3px 5px;
+  border: var(--border);
+  border-left: 3px solid var(--bench);
+  background: var(--surface-control);
+  color: var(--text);
+  font: 500 var(--fs-xs) / 1 var(--sans);
+  font-variant-numeric: tabular-nums;
+}
+.tag-bench.is-changed { background: var(--bench-wash); font-weight: 700; }
+
+/* ---------- the mark in miniature ---------- */
+
+.bench-mark {
+  flex: none;
+  width: 10px;
+  height: 10px;
+  background: var(--bench);
+  clip-path: polygon(50% 0, 100% 100%, 0 100%);
+}
+.bench.is-missing .bench-mark { background: var(--line-2); }
+.bench-mark.is-return { background: var(--text); clip-path: polygon(0 0, 100% 0, 100% 100%, 50% 70%, 0 100%); }
+
+.glyph.g-bench { border: 0; background: var(--bench); clip-path: polygon(50% 0, 85% 100%, 15% 100%); }
+
+/* ---------- the Places tab ---------- */
+
+/* A fifth tab: in a narrow ledger the five labels tighten to share the
+   328 px side (about 65 px each) instead of pushing the last one out. */
+@container ledger (max-width: 420px) {
+  .tabs:has(> [data-tab='places']) button { padding: 0 2px; font-stretch: var(--wdth-normal); letter-spacing: 0.03em; }
+}
+
+.rich .bench { border-bottom: 0; border-top: var(--border-3); }
+.rich .bench > summary {
+  height: auto;
+  min-height: var(--row-h);
+  padding: 5px 10px 5px 12px;
+  font: 500 12px / 1.25 var(--sans);
+  font-stretch: var(--wdth-condensed);
+  letter-spacing: 0;
+  text-transform: none;
+}
+.rich .bench[open] > summary { background-color: var(--bench-wash); }
+.bench-name { flex: 1; min-width: 0; }
+.bench-name .nm, .bench-name .path { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bench-name .path { font: 400 var(--fs-xs) / 1.3 var(--mono); color: var(--text-3); }
+.bench > summary .fig {
+  font: 400 11px / 1 var(--mono);
+  font-variant-numeric: tabular-nums;
+  color: var(--text-2);
+  white-space: nowrap;
+}
+.bench.is-changed > summary .fig { color: var(--text); font-weight: 500; }
+.bench.is-missing > summary .fig { color: var(--danger); }
+
+.rich .bench .facts { padding-left: 28px; border-bottom: 0; }
+.rich .bench .actions { padding-top: 0; }
+.bench-missing { margin: 0; padding: 8px 12px 4px 28px; color: var(--danger); font-size: 12px; text-wrap: pretty; }
+.bench-head { padding: 8px 10px 4px 28px; border-top: var(--border-3); font: 500 11px / 1.2 var(--mono); color: var(--text-2); }
+.places-failed { color: var(--danger); }
+
+/* ---------- the inspector ---------- */
+
+.bench-none { display: grid; gap: var(--s-2); padding: 0 12px 12px; border-bottom: var(--border-2); }
+.bench-none p { margin: 0; color: var(--text-2); font-size: var(--fs-md); text-wrap: pretty; }
+.bench-none .btn { justify-self: start; }

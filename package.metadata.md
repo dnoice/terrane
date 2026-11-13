@@ -1,10 +1,10 @@
 <!--
 ✒ Metadata
-    - Title: Package Manifest (Terrane Edition - v1.3)
+    - Title: Package Manifest (Terrane Edition - v1.4)
     - File Name: package.json
     - Relative Path: package.json
     - Artifact Type: config
-    - Version: 1.3.0
+    - Version: 1.4.0
     - Date: 11/12/2026
     - Update: Thursday, November 12, 2026
     - Author: Dennis 'dendogg' Smaltz
@@ -12,6 +12,9 @@
     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
 
 ✒ Changelog:
+    - 1.4.0 (11/12/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
+      test script also runs tools/places-test.mjs, the Node check of the
+      landmarks store, after the service smoke test.
     - 1.3.0 (11/12/2026) [dendogg + Anthropic - Claude Opus 5.5] — Adds
       the vendor script, which fetches the pinned browser libraries once
       and verifies them offline, and raises the package version to 1.2.0
@@ -40,7 +43,8 @@
       the snapshot and thumbnails and touches no real file
     - snapshot: records a directory's structure into a dataset
     - thumbs: builds or updates the thumbnail dataset (Python and Pillow)
-    - test: runs the service smoke test against a throwaway directory
+    - test: runs the service smoke test against a throwaway directory,
+      then the places store test (benchmarks and the return point) in Node
     - vendor: fetches the pinned third-party browser files into
       web/vendor/ from jsDelivr; --check verifies them offline
     - ui-check: drives the page in headless Edge or Chrome, keyboard

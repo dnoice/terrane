@@ -15,7 +15,8 @@
  * ✒ Changelog:
  *     - 2.1.0 (11/12/2026) [dendogg + Anthropic - Claude Opus 5.5] —
  *       Imports components/time.css: the As of stepper and the crossed
- *       swatch and glyph.
+ *       swatch and glyph; and components/places.css: benchmark tags in
+ *       the world, the Places tab and the Benchmark section.
  *     - 2.0.0 (11/12/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
  *       one stylesheet becomes the entry to a layered system: tokens,
  *       fonts, base, layout, seven component modules, utilities, motion
@@ -70,6 +71,7 @@
 @import url('components/block.css') layer(components);
 @import url('components/floating.css') layer(components);
 @import url('components/time.css') layer(components);
+@import url('components/places.css') layer(components);
 @import url('utilities.css') layer(utilities);
 @import url('motion.css') layer(motion);
 @import url('print.css') layer(print) print;

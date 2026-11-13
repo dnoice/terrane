@@ -18,7 +18,11 @@
  *       feature's by owner and compared as before, the guide and Reading
  *       rows are compared without the features' sections and rows, an
  *       owner's reserved key may already be held by its own feature, and
- *       the dispatch tests use the free keys K, Y and U.
+ *       the dispatch tests use the free keys K, Y and U. The tab buttons,
+ *       the S slots and the search tokens are compared without a
+ *       feature's too: its tabs (Places), the slot it fills (S.places)
+ *       and the is: words it adds. The AFTER_OP hooks and MENU items are
+ *       frozen with the rest and hold no controller entry.
  *     - 1.2.0 (11/12/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
  *       survey hooks start with the controller's own age-table hook, and
  *       S.ages holds that table once the first survey is done.
@@ -122,24 +126,27 @@ export default {
     await t.settle();
     const start = await t.app(async (T) => {
       const a = T.api;
-      const regs = ['KEYS', 'ESCAPE', 'PIN_SOURCES', 'TIP_LINES', 'READING', 'TABS', 'LAYOUT_OPTS', 'AFTER_LAYOUT', 'AFTER_REFRESH', 'AFTER_SURVEY'];
+      const regs = ['KEYS', 'ESCAPE', 'PIN_SOURCES', 'TIP_LINES', 'READING', 'TABS', 'LAYOUT_OPTS', 'AFTER_LAYOUT', 'AFTER_REFRESH', 'AFTER_SURVEY', 'AFTER_OP', 'MENU'];
       const mod = await import(new URL('js/features.js', document.baseURI).href);
       // A feature's entries carry its owner; the controller's carry none, or 'core'.
       const own = (reg) => [...reg].filter((x) => !x.owner || x.owner === 'core').map((x) => x.id);
       const byFeature = (reg) => [...reg].filter((x) => x.owner && x.owner !== 'core');
       return {
         frozen: Object.isFrozen(a) && regs.every((n) => Object.isFrozen(a[n])) && Object.isFrozen(a.INSPECTOR) && Object.isFrozen(a.QUERY),
-        slots: ['time', 'interior', 'places', 'sessions'].every((k) => k in T.S && T.S[k] === null)
+        // places is null, or the store the Landmarks feature keeps there.
+        slots: ['time', 'interior', 'places', 'sessions'].every((k) => k in T.S) && ['time', 'interior', 'sessions'].every((k) => T.S[k] === null)
+          && (T.S.places === null || Array.isArray(T.S.places.benchmarks))
           && 'ages' in T.S && typeof T.S.ages?.kept === 'function' && T.S.ages.folders === T.S.model.root.dc + 1,
         ids: Object.fromEntries([...regs.map((n) => [n, own(a[n])]), ['focus', own(a.INSPECTOR.focus)], ['node', own(a.INSPECTOR.node)]]),
         all: Object.fromEntries([...regs.map((n) => [n, a[n].ids()]), ['focus', a.INSPECTOR.focus.ids()], ['node', a.INSPECTOR.node.ids()]]),
         featureSections: [...new Set(byFeature(a.KEYS).filter((x) => x.guide).map((x) => x.guide[0]))],
         featureReading: byFeature(a.READING).map((x) => x.title),
-        tokens: Object.keys(a.QUERY.is).length + Object.keys(a.QUERY.prefix).length,
+        // A feature's search words carry its owner, as its entries do.
+        tokens: [...Object.values(a.QUERY.is), ...Object.values(a.QUERY.prefix)].filter((f) => !f.owner).length,
         owners: { ...a.KEY_OWNERS },
         ownersFrozen: Object.isFrozen(a.KEY_OWNERS),
         features: Array.isArray(mod.FEATURES),
-        tabs: [...document.querySelectorAll('.tabs [role=tab]')].map((b) => `${b.dataset.tab}:${b.textContent}:${b.getAttribute('aria-selected')}`),
+        tabs: [...document.querySelectorAll('.tabs [role=tab]')].filter((b) => !a.TABS.get(b.dataset.tab)?.owner).map((b) => `${b.dataset.tab}:${b.textContent}:${b.getAttribute('aria-selected')}`),
       };
     });
     const ids = start.ids;
@@ -155,8 +162,9 @@ export default {
     t.check('the inspector, Reading and tab registries hold the controller entries in order',
       same(ids.focus, ['title', 'facts', 'composition', 'reading']) && same(ids.node, ['title', 'path', 'facts', 'composition', 'copies', 'actions', 'preview'])
       && ids.READING.length === 8 && same(ids.TABS, ['contents', 'findings', 'survey', 'journal']), JSON.stringify([ids.focus, ids.node, ids.TABS]));
-    t.check('layout options, hooks and search tokens start empty, apart from the age table\'s survey hook',
-      !ids.LAYOUT_OPTS.length && !ids.AFTER_LAYOUT.length && !ids.AFTER_REFRESH.length && same(ids.AFTER_SURVEY, ['ages']) && start.tokens === 0, JSON.stringify(ids.AFTER_SURVEY));
+    t.check('layout options, hooks, menu items and search tokens start empty, apart from the age table\'s survey hook',
+      !ids.LAYOUT_OPTS.length && !ids.AFTER_LAYOUT.length && !ids.AFTER_REFRESH.length && !ids.AFTER_OP.length && !ids.MENU.length
+      && same(ids.AFTER_SURVEY, ['ages']) && start.tokens === 0, JSON.stringify(ids.AFTER_SURVEY));
     t.check('the key allocation is fixed: I Interiors, T , . < > Time, B H J Landmarks, the canvas keeps W A S D Q E R F',
       same(start.owners, OWNERS) && start.ownersFrozen, JSON.stringify(start.owners));
     t.check('the tab buttons are made from TABS, Contents selected', same(start.tabs, ['contents:Contents:true', 'findings:Findings:false', 'survey:Survey:false', 'journal:Journal:false']), JSON.stringify(start.tabs));
@@ -351,7 +359,7 @@ export default {
       a.drawTabs();
       a.drawLedger();
     });
-    const tabs = await t.eval(() => [...document.querySelectorAll('.tabs [role=tab]')].map((b) => `${b.dataset.tab}:${b.textContent}`));
+    const tabs = await t.app((T) => [...document.querySelectorAll('.tabs [role=tab]')].filter((b) => !T.api.TABS.get(b.dataset.tab)?.owner).map((b) => `${b.dataset.tab}:${b.textContent}`));
     t.check('a registered tab gets a button in order, with its figure', same(tabs, ['contents:Contents', 'findings:Findings', 'survey:Survey', 'seam:Seam7', 'journal:Journal']), JSON.stringify(tabs));
     await t.tabTo('[role=tab][data-tab=seam]', { back: true });
     await t.key('Enter');
@@ -367,7 +375,7 @@ export default {
       T.api.TABS.remove('seam');
       T.api.drawTabs();
       T.api.drawLedger();
-      return { tab: T.S.tab, n: document.querySelectorAll('.tabs [role=tab]').length, list: !document.getElementById('ledger-list').hidden };
+      return { tab: T.S.tab, n: [...document.querySelectorAll('.tabs [role=tab]')].filter((b) => !T.api.TABS.get(b.dataset.tab)?.owner).length, list: !document.getElementById('ledger-list').hidden };
     });
     t.check('a tab that goes away leaves the ledger on Contents', gone.tab === 'contents' && gone.n === 4 && gone.list, JSON.stringify(gone));
 
@@ -506,7 +514,7 @@ export default {
 
     const end = await t.app((T) => {
       const a = T.api;
-      return Object.fromEntries([...['KEYS', 'ESCAPE', 'PIN_SOURCES', 'TIP_LINES', 'READING', 'TABS', 'LAYOUT_OPTS', 'AFTER_LAYOUT', 'AFTER_REFRESH', 'AFTER_SURVEY'].map((n) => [n, a[n].ids()]),
+      return Object.fromEntries([...['KEYS', 'ESCAPE', 'PIN_SOURCES', 'TIP_LINES', 'READING', 'TABS', 'LAYOUT_OPTS', 'AFTER_LAYOUT', 'AFTER_REFRESH', 'AFTER_SURVEY', 'AFTER_OP', 'MENU'].map((n) => [n, a[n].ids()]),
         ['focus', a.INSPECTOR.focus.ids()], ['node', a.INSPECTOR.node.ids()]]);
     });
     t.check('every test entry is gone again', same(end, start.all), JSON.stringify(end).slice(0, 300));

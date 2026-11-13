@@ -14,7 +14,7 @@
     "dev": "node tools/dev.mjs",
     "snapshot": "node tools/snapshot.mjs",
     "thumbs": "python tools/thumbs.py",
-    "test": "node tools/smoke-test.mjs",
+    "test": "node tools/smoke-test.mjs && node tools/places-test.mjs",
     "ui-check": "node tools/ui-check.mjs",
     "vendor": "node tools/vendor.mjs",
     "fixture": "node tools/make-fixture.mjs"
