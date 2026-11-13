@@ -2,18 +2,26 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Terrane Service (Terrane Edition - v1.1)
+ *     - Title: Terrane Service (Terrane Edition - v1.2)
  *     - File Name: terrane.mjs
  *     - Relative Path: server/terrane.mjs
  *     - Artifact Type: CLI
- *     - Version: 1.1.0
- *     - Date: 11/11/2026
- *     - Update: Wednesday, November 11, 2026
+ *     - Version: 1.2.0
+ *     - Date: 11/13/2026
+ *     - Update: Friday, November 13, 2026
  *     - Author: Dennis 'dendogg' Smaltz
  *     - A.I. Acknowledgement: Anthropic - Claude Opus 5.5
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
  *
  * ✒ Changelog:
+ *     - 1.2.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — GET
+ *       /api/inside lists what a zip archive holds, as scanner records,
+ *       through the same checks as /api/raw (the file's own real location
+ *       must be inside the root) and stops reading when the page goes
+ *       away. Other formats are refused with 415 naming the format found
+ *       or the one the name suggests; a damaged zip gets 422 with a
+ *       sentence. Snapshot mode refuses it with ESNAPSHOT. Error bodies
+ *       carry format and claimed when an archive is refused.
  *     - 1.1.0 (11/11/2026) [dendogg + Anthropic - Claude Opus 5.5] — Job
  *       progress is broadcast on the change stream and replayed to a page
  *       that connects mid-job; POST /api/cancel stops a job; Ctrl+C
@@ -28,8 +36,8 @@
  *     The local service behind Terrane. It is given exactly one directory on
  *     the command line, serves the interface on the loopback address, and
  *     exposes that directory (and nothing else) to the browser: progressive
- *     scanning, metadata, previews, guarded file operations, undo, and live
- *     change notifications.
+ *     scanning, metadata, previews, archive contents, guarded file
+ *     operations, undo, and live change notifications.
  *
  * ✒ Key Features:
  *     - Explicit authorization: no directory argument, no service
@@ -46,9 +54,13 @@
  *       three sampled megabytes plus size beyond that, reported as such)
  *     - Sandboxed raw-file endpoint for previews: capped length, nosniff,
  *       and a CSP sandbox so a previewed HTML or SVG file cannot run
+ *     - Archive interiors: a zip's central directory read without
+ *       unpacking (server/archive.mjs), bounded in entries, directory
+ *       size and time, with anything left out stated in a sentence
  *     - Snapshot mode: the same scan, stat and event contract served from
- *       a structure database; every change, open, reveal and content read
- *       is refused; a newer snapshot landing beside it is announced
+ *       a structure database; every change, open, reveal, content read and
+ *       archive listing is refused; a newer snapshot landing beside it is
+ *       announced
  *     - Thumbnails from the thumbnail dataset, in both modes: one gzipped
  *       index, and versioned images cached as immutable; image URLs carry
  *       no token and authenticate with a SameSite=Strict cookie
@@ -106,8 +118,9 @@ import { scan } from './scan.mjs';
 import { makeOps } from './ops.mjs';
 import { openSnapshots, listSnapshots, datasetHome, slugOf } from './snapshot.mjs';
 import { openThumbs } from './thumbs.mjs';
+import { inspect } from './archive.mjs';
 
-const VERSION = '1.1.0';
+const VERSION = '1.2.0';
 const WEB = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'web');
 
 const args = process.argv.slice(2);
@@ -189,8 +202,13 @@ const fail = (res, err) => {
     ENOSPC: 'The disk is full.',
     ENOTEMPTY: 'The folder is not empty.',
   }[err.code];
-  if (!res.headersSent) json(res, status, { ok: false, code: err.code || 'EIO', message: explain || err.message, affected: err.affected || [] });
-  else res.end();
+  if (!res.headersSent) {
+    json(res, status, {
+      ok: false, code: err.code || 'EIO', message: explain || err.message, affected: err.affected || [],
+      // An archive refusal names the format found and the one the name suggests.
+      ...(err.format !== undefined ? { format: err.format } : {}), ...(err.claimed ? { claimed: err.claimed } : {}),
+    });
+  } else res.end();
 };
 
 const readBody = (req) => new Promise((resolve, reject) => {
@@ -296,6 +314,7 @@ async function snapshotApi(req, res, route, q) {
   }
   if (route === 'journal') return json(res, 200, { journal: [], holding: [], snapshot: true });
   if (route === 'raw') throw new GuardError('ESNAPSHOT', 'Previews of the original file are not available in snapshot mode: a snapshot holds names, sizes and dates, not contents.', 403);
+  if (route === 'inside') throw new GuardError('ESNAPSHOT', 'Looking inside an archive is not available in snapshot mode: a snapshot holds names, sizes and dates, not what a file contains. Start Terrane on the real directory to do this.', 403);
   throw new GuardError('EROUTE', 'No such endpoint.', 404);
 }
 
@@ -457,6 +476,38 @@ async function api(req, res, url) {
       });
       if (st.size === 0) return res.end();
       return fs.createReadStream(real, { start: 0, end: Math.min(st.size, max) - 1 }).on('error', () => res.end()).pipe(res);
+    }
+    if (route === 'inside') {
+      // The /raw sequence: lexical check, parent's real location, the
+      // file's own real location, then a regular file. Entry names that
+      // come back are data and are never joined to a path on disk.
+      const rel = q.get('path') || '';
+      const abs = guard.resolve(rel, { allowRoot: false });
+      await guard.assertParentInside(abs);
+      const name = path.basename(abs);
+      let real;
+      let st;
+      try {
+        real = await fsp.realpath(abs);
+      } catch (err) {
+        throw new GuardError(err.code || 'ENOENT', `${name} is no longer there.`, 404);
+      }
+      const prefix = guard.root.endsWith(path.sep) ? guard.root : guard.root + path.sep;
+      if (!real.startsWith(prefix)) throw new GuardError('EOUTSIDE', 'This link points outside the authorized directory.', 403);
+      try {
+        st = await fsp.stat(real);
+      } catch (err) {
+        throw new GuardError(err.code || 'ENOENT', `${name} is no longer there.`, 404);
+      }
+      if (!st.isFile()) throw new GuardError('ENOTFILE', st.isDirectory() ? `${name} is a folder, not an archive file.` : `${name} is not a regular file.`);
+      const ac = new AbortController();
+      res.on('close', () => ac.abort());
+      try {
+        return json(res, 200, await inspect(real, { name, signal: ac.signal }));
+      } catch (err) {
+        if (ac.signal.aborted) return undefined;
+        throw err;
+      }
     }
     if (route === 'events') {
       startWatch(Number(q.get('dirs')) || 0);
