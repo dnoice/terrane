@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<!--
+✒ Metadata
+    - Title: Terrane Pages Entry (Terrane Edition - v1.0)
+    - File Name: index.html
+    - Relative Path: index.html
+    - Artifact Type: markup
+    - Version: 1.0.0
+    - Date: 11/13/2026
+    - Update: Friday, November 13, 2026
+    - Author: Dennis 'dendogg' Smaltz
+    - A.I. Acknowledgement: Anthropic - Claude Opus 5.5
+    - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
+
+✒ Changelog:
+    - 1.0.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] —
+      Initial release: the repository root's page for GitHub Pages.
+
+✒ Description:
+    The page GitHub Pages serves at the repository root. It sends the
+    visitor straight on to the interface in web/, so the interface has one
+    page and one copy to maintain.
+
+✒ Key Features:
+    - Forwards to web/ at once, keeping the query string and fragment
+    - A plain link to the same place where forwarding is blocked
+    - Not served by the Terrane service, which serves only web/
+
+✒ Usage Instructions:
+    GitHub Pages: Settings, Pages, Deploy from a branch, main, / (root).
+    The site then opens on this page and continues to web/index.html.
+
+✒ Other Important Information:
+    - Dependencies: none; the root .nojekyll file makes Pages serve the
+      repository as it is, without a Jekyll build
+    - Compatible platforms: any browser
+    - Limitations: a static host can show the interface but cannot run
+      it; the page needs the local service that npm start launches
+---------
+-->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <meta name="theme-color" content="#f1f4f0">
+  <meta name="description" content="Terrane: one directory as a world you travel through.">
+  <meta http-equiv="refresh" content="0; url=web/">
+  <title>Terrane</title>
+  <script>location.replace('web/' + location.search + location.hash);</script>
+  <style>
+    body { margin: 0; min-height: 100vh; display: grid; place-items: center;
+      background: #f1f4f0; color: #18201e; font: 16px/1.5 system-ui, sans-serif; }
+    a { color: inherit; }
+  </style>
+</head>
+<body>
+  <p>Terrane is at <a href="web/">web/</a>.</p>
+</body>
+</html>

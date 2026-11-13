@@ -1,0 +1,17 @@
+# ✒ Metadata
+#     - Title: Pages Without Jekyll (Terrane Edition - v1.0)
+#     - File Name: .nojekyll
+#     - Relative Path: .nojekyll
+#     - Artifact Type: config
+#     - Version: 1.0.0
+#     - Date: 11/13/2026
+#     - Update: Friday, November 13, 2026
+#     - Author: Dennis 'dendogg' Smaltz
+#     - A.I. Acknowledgement: Anthropic - Claude Opus 5.5
+#     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
+#
+# ✒ Description:
+#     Its presence tells GitHub Pages to publish the repository as it is,
+#     with no Jekyll build. Pages reads only that the file exists, never
+#     what it says.
+# ---------

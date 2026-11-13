@@ -1,17 +1,20 @@
 <!--
 ✒ Metadata
-    - Title: Terrane Readme (Terrane Edition - v1.4)
+    - Title: Terrane Readme (Terrane Edition - v1.5)
     - File Name: README.md
     - Relative Path: README.md
     - Artifact Type: docs
-    - Version: 1.4.0
-    - Date: 11/12/2026
-    - Update: Thursday, November 12, 2026
+    - Version: 1.5.0
+    - Date: 11/13/2026
+    - Update: Friday, November 13, 2026
     - Author: Dennis 'dendogg' Smaltz
     - A.I. Acknowledgement: Anthropic - Claude Opus 5.5
     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
 
 ✒ Changelog:
+    - 1.5.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
+      project map lists the root index.html and .nojekyll, which publish
+      the repository on GitHub Pages and forward visitors to web/.
     - 1.4.0 (11/12/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
       framed wordmark and `npm run wordmark`, which builds it from
       Dennis's TER.svg and R-N.svg; the project map lists both
@@ -250,6 +253,8 @@ Windows.
 ## Continuing development
 
 ```text
+index.html           GitHub Pages entry: forwards visitors to web/
+.nojekyll            publishes the repository on Pages without Jekyll
 server/terrane.mjs   entry point, HTTP routes, watcher, hashing, snapshot mode
 server/guard.mjs     the permission boundary
 server/scan.mjs      progressive breadth-first scanner
@@ -298,6 +303,11 @@ There is no build step. Edit a file and reload the page. The design
 decisions and their trade-offs are in `docs/ARCHITECTURE.md`; the staged
 plan, the minimum filesystem scope and the exploration loop are in
 `docs/ROADMAP.md`.
+
+For GitHub Pages (deploy from the `main` branch, root folder), the root
+`index.html` forwards visitors to `web/`, so the interface keeps a
+single page. Pages can show the interface but cannot run it: the page
+needs the local service, so its world stays empty there.
 
 ## License
 
