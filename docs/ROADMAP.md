@@ -1,17 +1,25 @@
 <!--
 ✒ Metadata
-    - Title: Terrane Roadmap (Terrane Edition - v1.1)
+    - Title: Terrane Roadmap (Terrane Edition - v1.2)
     - File Name: ROADMAP.md
     - Relative Path: docs/ROADMAP.md
     - Artifact Type: docs
-    - Version: 1.1.0
-    - Date: 11/11/2026
-    - Update: Wednesday, November 11, 2026
+    - Version: 1.2.0
+    - Date: 11/13/2026
+    - Update: Friday, November 13, 2026
     - Author: Dennis 'dendogg' Smaltz
     - A.I. Acknowledgement: Anthropic - Claude Opus 5.5
     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
 
 ✒ Changelog:
+    - 1.2.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — Stage
+      5 is under way: its first increment (archive interiors, working
+      sessions as a traverse, the date scrub, strata, benchmarks and the
+      return point) is recorded as delivered, with what each deferred
+      and the question each answers. Requirement 1 covers archive
+      entries as the archive's directory lists them; the out-of-scope
+      table says an archive is looked at, never mounted; the
+      exploration loop names what now serves each step.
     - 1.1.0 (11/11/2026) [dendogg + Anthropic - Claude Opus 5.5] —
       Requirements 14 and 15 are met. Stage 6 records progress,
       cancellation and the persistent journal as done. Adds development
@@ -30,8 +38,10 @@
     - Exploration loop with the system that serves each step
     - Minimum filesystem scope: in, out, and why
     - Interaction requirements written as checkable statements
-    - Six stages, each with an exit test; stages 1 to 3 are complete and
-      stage 6 is under way
+    - Six stages, each with an exit test; stages 1 to 3 are complete,
+      and stages 5 and 6 are under way
+    - Stage 5's first increment: what was delivered, what was deferred,
+      and the question each feature answers
     - Development datasets: how to build against real data safely
 
 ✒ Other Important Information:
@@ -49,13 +59,13 @@ One pass through the loop, and what serves each step today.
 | Step | The visitor | Served by |
 | ---- | ----------- | --------- |
 | 1. Arrive | Sees the whole directory from above as a hundred or so masses: where the bytes are, what kind they are | Overview vantage; area is bytes; masses tinted by dominant kind; heavyweight pins |
-| 2. Notice | Something stands out: a large mass, a tall fresh block, a pin, a colour | Lenses (kind, age, size, duplicates); survey tab; search pins |
+| 2. Notice | Something stands out: a large mass, a tall fresh block, a pin, a colour | Lenses (kind, age, size, duplicates), with closed masses at their typical age under the Age lens; survey tab, working sessions included; search pins; benchmark tags that say what changed; the time view, where what changed since a date lies flat |
 | 3. Approach | Flies toward it. It opens as it gets close | Wheel flies to the cursor; distance-driven unfolding; contents rise out of the plateau |
-| 4. Orient | Knows where they are without thinking about it | Breadcrumbs and ledger follow the camera; tags on nearby plateaus; horizon and haze |
-| 5. Inspect | Selects a thing and reads it | Inspector: path, size and shares, dates, composition, preview, duplicates |
+| 4. Orient | Knows where they are without thinking about it | Breadcrumbs and ledger follow the camera; tags on nearby plateaus; benchmarks as survey marks; horizon and haze |
+| 5. Inspect | Selects a thing and reads it | Inspector: path, size and shares, dates, composition, bytes by last change, what changed since a benchmark or a date, preview, duplicates; an archive's contents with I |
 | 6. Act | Opens, renames, moves, removes | Context menu, keys, placing mode, drag and drop; every result stated in words |
 | 7. Confirm | Sees the world change to match the disk | Affected folders re-read; boxes move or rise; Undo offered in the notice |
-| 8. Leave | Goes up, back, or jumps somewhere else | Backspace, Alt+Left, 0, breadcrumbs, search results, survey entries |
+| 8. Leave | Goes up, back, or jumps somewhere else | Backspace, Alt+Left, 0, J to a marked return point, breadcrumbs, search results, survey entries |
 
 The loop has two speeds. On foot (W A S D at eye level) it is browsing. By
 jump (search, survey, breadcrumbs) it is retrieval. Both end in the same
@@ -86,7 +96,7 @@ The smallest scope at which Terrane is a tool and not a demonstration.
 | Permanent delete of live files | Purging the holding area is the only permanent deletion. One irreversible path is enough |
 | Editing file contents | A different product |
 | Permissions, ownership, attributes | Platform-specific and rarely the question a storage explorer answers |
-| Following symbolic links, mounting archives | Each breaks "area is bytes inside this directory" and invites cycles |
+| Following symbolic links, mounting archives | Each breaks "area is bytes inside this directory" and invites cycles. Stage 5 lets a zip archive's directory be looked at, read-only, as a walled floor; it is never mounted, nothing in it counts toward the tree's totals, and nothing in it can be changed |
 | Multiple roots, network authentication, cloud APIs | The single-root boundary is the safety model. A mounted share already works as a directory |
 | Batch rename, sync, compression | Useful, not minimal |
 
@@ -95,7 +105,9 @@ The smallest scope at which Terrane is a tool and not a demonstration.
 Written so each can be checked. All fifteen are met by the current build.
 
 1. Every item drawn in the world corresponds to exactly one real entry,
-   or is an aggregate that states its count and total size.
+   or to one entry of an open archive as the archive's directory lists
+   them, or is an aggregate that states its count and total size. The
+   four walls around an open archive stand for its file.
 2. Any item can be identified by pointing at it: name, size, kind and age
    within one hover.
 3. Any item that search or the survey names can be reached in one action,
@@ -172,7 +184,7 @@ The browser currently holds the whole tree. For trees in the millions:
 Exit test: five million entries with browser memory under 300 MB and no
 frame over 16 ms from script.
 
-### Stage 5. Beyond the ground plane
+### Stage 5. Beyond the ground plane. Under way
 
 The honest gap against the open-world idea. Candidates, in order of how
 much information each adds:
@@ -192,6 +204,37 @@ much information each adds:
 
 Exit test for each: it answers a question about the directory that the
 ledger alone cannot.
+
+Groundwork landed on 11/12/2026: a box budget checked before every box,
+uploads by range, one relation-line layer for named sets, the
+registries feature modules fill, a fixed key allocation, the shared age
+table and the headless interface check. The first increment of every
+candidate followed by 11/13/2026, each in its own module:
+
+| Candidate | Delivered | Deferred |
+| --------- | --------- | -------- |
+| Interiors | A zip archive (and the formats built on zip: jar, war, ear, apk, aab, whl, xpi, nupkg, vsix, ipa) looked inside with I, as a walled floor on its file's footprint. The service lists its directory without unpacking it (`GET /api/inside`), bounded and with locked and escaping names flagged; nothing inside can be changed; entries already in the directory by name and size are half-banded and tied as twins | tar and its compressed forms; CRC-32 verification; search inside an interior; more than one archive open at once; the age table and typical ages for an archive's folders; an image at wall scale; a text file as a readable surface |
+| Relations across the tree | Duplicate ties and archive twins as named sets in one line layer. Working sessions (files changed within 30 minutes of one another) as a search, `session:N`, a Survey section, and a route drawn through the world: the traverse | Stop-stepping keys; a gap selector; a way to include folders whose names start with a dot; "Changed with it" in the inspector and the context menu; folders as stops of their own; same-name siblings; symbolic links as bridges to their targets |
+| Time as a dimension | The date scrub: T , . < > and the As of stepper look back along a ladder of dates; what changed after the date lies flat and crossed, closed masses sink to the share they kept, and the inspector says what changed since and where | Scree taking part; replay; calendar-aligned steps; an "as it looked then" height mode; creation dates |
+| Vertical organisation | Strata, without using the space above: the inspector's Bytes by last change in six strata, and closed masses coloured by their typical age under the Age lens | Staffs above the plateaus; leaders to the largest descendants; an "Untouched" Contents sort |
+| Landmarks and memory | Benchmarks: B measures a folder, a verdigris survey mark and its tag stand on it, and the Places tab says what changed since, including what left it. One return point: H marks where you stand, J flies back and swaps the two | Export and import of places, first; a trail of where you have been, under a name and a drawing convention other than the traverse's; coverage; search over benchmarks beyond `is:benchmark` |
+
+What each answers that the ledger alone cannot:
+
+- **Interiors**: what an archive holds, and which of its files are
+  already in this directory, without unpacking it.
+- **Session traverse**: which files changed together, across folders,
+  and in what order.
+- **Time**: what changed in this place since a date, and where the
+  change is.
+- **Strata**: how much of a folder's bytes have lain untouched, and for
+  how long.
+- **Landmarks**: what changed in a folder since it was measured,
+  including what left it.
+
+Places are kept in this browser for this directory at this address, and
+a snapshot's apart from the live directory's, so export and import come
+before the next landmark feature.
 
 ### Stage 6. Operations at scale. Under way
 
@@ -230,7 +273,8 @@ service in snapshot mode, keeps thumbnails current in the background, and
 re-snapshots every hour while it runs. Both datasets live in
 `%LOCALAPPDATA%\terrane\datasets\<name>`, outside the project and outside
 OneDrive, because they hold real file names and run to hundreds of
-megabytes.
+megabytes. A snapshot holds names, sizes and dates, not what a file
+contains, so in snapshot mode an archive cannot be looked inside.
 
 The rules the image work follows, set by the shape of the real data
 (19,181 images, 35.7 GB, a largest file of 443 MB):

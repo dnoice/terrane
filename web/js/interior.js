@@ -22,9 +22,9 @@
  *     the inspector and said, so the route works without the 3D view.
  *
  * ✒ Key Features:
- *     - I on a zip (or jar, apk, whl and their kin) in the selection, or
- *       with nothing selected on the ledger row the cursor is on, opens
- *       it; I again, or Escape once nothing is selected, closes it
+ *     - I opens a zip (or a jar, apk, whl and their kin): in the ledger
+ *       list, the row the cursor is on; elsewhere, the selection. I
+ *       again, or Escape once nothing is selected, closes it
  *     - The listing is read into a model of its own and only then hung
  *       from the archive's file, so no total in the tree changes
  *     - The chamber: four walls in the archive's lens colour around a

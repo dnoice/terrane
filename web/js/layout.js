@@ -123,9 +123,9 @@ export const BOX = Object.freeze({ DIR: 0, FILE: 1, CAP: 2, SCREE: 3, WALL: 4 })
 
 /**
  * Drawing conventions: the per-box style code the fragment shader in
- * viewport.js draws, allocated here for the same reason. CROSSED is
- * reserved for the time view and draws plain until its branch exists;
- * 7 is free.
+ * viewport.js draws, allocated here for the same reason. CROSSED is the
+ * time view's: the footprint's two diagonals, which paint gives a box the
+ * layout marks AUX.CROSSED. 7 is free.
  */
 export const STYLE = Object.freeze({ PLAIN: 0, HATCH: 1, HOLLOW: 2, STIPPLE: 3, BANDS: 4, HALF_BANDS: 5, CROSSED: 6 });
 
@@ -327,11 +327,12 @@ function attempt(root, opts) {
       }
       const ch = kids[i];
       let t;
-      // Heights keep their freshness from now; only what changed after
-      // the date looked back to is lowered.
       if (!ch.d && inside && ch === inside.host) {
+        // The open archive's file stands as its chamber (below).
         t = chamber(ch, rx, rz, rw, rd, base, lvl + 1);
       } else if (!ch.d) {
+        // Heights keep their freshness from now; only what changed after
+        // the date looked back to is lowered.
         const fresh = freshness(ch.m, now);
         let h = Math.min(riser * (0.35 + 3.4 * fresh * fresh), side * 1.8 + riser * 0.15);
         let ax = AUX.NONE;

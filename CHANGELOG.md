@@ -17,7 +17,8 @@
       session traverse's stylesheet; the Age lens's typical age for closed masses and the
       strata stylesheet; archive interiors in the controller and their stylesheet. Adds the
       sections for web/js/layout.js and web/js/viewport.js, whose 1.0.0 entries left their
-      headers with the 1.4.0 releases.
+      headers with the 1.4.0 releases; viewport.js's 1.4.0 entry also records a corrected
+      header.
     - 1.1.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — Records the Wave 1 releases of
       app.js (1.5.0), index.html (1.5.0) and terrane.css (2.2.0): the time
       view, landmarks and their seams.
@@ -152,7 +153,8 @@ here unchanged in the same edit.
 
 - 1.4.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — The walls of an open archive's
   chamber (BOX.WALL) carry no label; its floor is labelled with the archive's name, as a folder
-  is.
+  is. The header no longer calls the labels readable by assistive technology: their layer is
+  hidden from it.
 - 1.3.0 (11/12/2026) [dendogg + Anthropic - Claude Opus 5.5] — The crossed convention
   (STYLE.CROSSED, the time view): the two diagonals of a box's footprint in ink on its top and
   bottom faces, measured in the box's own coordinates so a re-based origin cannot move them,

@@ -116,7 +116,7 @@
  *         api.AFTER_LAYOUT.add({ id: 'route', run: (L) => draw(L) });
  *         api.AFTER_OP.add({ id: 'places', run: (body, res) => follow(body, res) });
  *         api.MENU.add({ id: 'places', items: (node) => [{ label, run }] });
- *         api.SURVEY.add({ id: 'sessions', order: 15, build: (sv) => el(...) });
+ *         api.SURVEY.add({ id: 'sessions', order: 5, build: (sv) => el(...) });
  *         api.AFTER_QUERY.add({ id: 'route', run: (search, query) => {} });
  *         api.setQuery('session:1');   // into Find, run at once
  *     Every entry has a unique id; order (default 50) places it.

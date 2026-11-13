@@ -15,7 +15,9 @@
  * ✒ Changelog:
  *     - 1.4.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
  *       walls of an open archive's chamber (BOX.WALL) carry no label; its
- *       floor is labelled with the archive's name, as a folder is.
+ *       floor is labelled with the archive's name, as a folder is. The
+ *       header no longer calls the labels readable by assistive
+ *       technology: their layer is hidden from it.
  *     - 1.3.0 (11/12/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
  *       crossed convention (STYLE.CROSSED, the time view): the two
  *       diagonals of a box's footprint in ink on its top and bottom faces,
@@ -72,8 +74,9 @@
  *     - Picking by direct ray/box tests over the layout arrays, no scene
  *       graph traversal
  *     - HTML labels placed by projected size with collision rejection, so
- *       text is real text: selectable, crisp and readable by assistive
- *       technology
+ *       text is real text, selectable and crisp; the label layer is hidden
+ *       from assistive technology, which reads the same names in the
+ *       ledger and the inspector
  *     - Honors prefers-reduced-motion by cutting flights and transitions
  *     - A layout with more boxes than the buffers hold draws as many as
  *       fit and states how many were left out; it never throws
