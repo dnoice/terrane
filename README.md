@@ -1,10 +1,10 @@
 <!--
 ✒ Metadata
-    - Title: Terrane Readme (Terrane Edition - v1.7)
+    - Title: Terrane Readme (Terrane Edition - v1.8)
     - File Name: README.md
     - Relative Path: README.md
     - Artifact Type: docs
-    - Version: 1.7.0
+    - Version: 1.8.0
     - Date: 11/13/2026
     - Update: Friday, November 13, 2026
     - Author: Dennis 'dendogg' Smaltz
@@ -12,6 +12,10 @@
     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
 
 ✒ Changelog:
+    - 1.8.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — What
+      was verified records the full interface check with the `splash`
+      reload step fixed, and the loading sheet after a reload under
+      Edge leaves the list of what was not verified.
     - 1.7.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
       hardening pass: a page opened anywhere but the service says how to
       start it; the guide's single-key setting and the narrow window's
@@ -384,13 +388,12 @@ by the Windows hidden attribute.
 | `npm test` on Windows 11 (11/13/2026), after the hardening pass: the smoke test adds the holding area by any name (case, a trailing dot, NTFS stream names, its 8.3 short name, a junction), planted holding records, a holding area that is a link, links that lead outside refused for hashing and Open, relative links a copy or move would aim outside, the thumbnail cookie, the scan writer when the page goes away, and source checks; the module tests add twins after a refresh, time inside an archive and the detail cache | 392 passed (181, 77, 45, 33 and 56), none failed |
 | `npm run ui-check` on Windows 11 (11/13/2026), Edge 157 on an RTX 5050 laptop GPU, after the hardening pass: 24 scenarios, the earlier ones plus `hardening` (focus kept through redraws and hidden panels, contrast, live regions, menus, the single-key setting, is:benchmark, the forced unfold, an 800 by 500 window, the page opened from disk and from another server) and `hardening-disk` (a folder deleted from outside, the time view after a change, a list reordered under its cursor, Rescan all with a search), in a WebGL pass and a pass with WebGL disabled | 867 passed and 5 skipped; two failures, the `splash` scenario's reload step in each pass, as before; draw calls at the baseline recorded again once the empty relation layer stopped drawing (overview 6, selected 8, search 7, duplicate ties 9) |
 | The final sanity sweep on Windows 11 (11/13/2026), after the polish pass: `node --check` on every script outside `web/vendor/`, `npm test`, `npm run vendor -- --check`, and `npm run ui-check` in both passes with Edge 157 on an RTX 5050 laptop GPU and the default fixture of 3,126 files | No syntax error in 57 scripts; 392 passed (181, 77, 45, 33 and 56), none failed; every vendored file matches the manifest; 867 passed and 5 skipped, with the `splash` reload step failing once in each pass as before; draw calls at the baseline. The same results again after the merge into `main` as Terrane 1.3.0 |
+| `npm run ui-check` on Windows 11 (11/13/2026), Edge 157 on an RTX 5050 laptop GPU, after the load screen fix: the `splash` reload step reads a record the page keeps of the sheet from its first frame, because with reduced motion the sheet left 48 to 98 ms after it appeared, before the first look | 879 passed, 0 failed, 5 skipped; draw calls at the baseline |
 
 Not verified: running on macOS; frame rate at street level in the largest
 trees on a hardware GPU; Open and Reveal reaching a desktop application on
 Windows; the progress panel driven in a browser (its service side is
-covered by `npm test`); the loading sheet in Firefox and Safari; the
-loading sheet after a reload under Edge on Windows, where the `splash`
-scenario's reload step times out waiting for it in one pass or both; an
+covered by `npm test`); the loading sheet in Firefox and Safari; an
 archive interior, the traverse and the time view in the largest trees,
 and on the 2-core software rasterizer; the page on GitHub Pages itself
 (its message was checked opened from disk and from a stand-in server);

@@ -1,18 +1,26 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Loading Sheet Scenario (Terrane Edition - v1.0)
+ *     - Title: Loading Sheet Scenario (Terrane Edition - v1.1)
  *     - File Name: splash.mjs
  *     - Relative Path: tools/ui-scenarios/splash.mjs
  *     - Artifact Type: test
- *     - Version: 1.0.0
- *     - Date: 11/12/2026
- *     - Update: Thursday, November 12, 2026
+ *     - Version: 1.1.0
+ *     - Date: 11/13/2026
+ *     - Update: Friday, November 13, 2026
  *     - Author: Dennis 'dendogg' Smaltz
  *     - A.I. Acknowledgement: Anthropic - Claude Opus 5.5
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
  *
  * ✒ Changelog:
+ *     - 1.1.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] —
+ *       The reduced-motion reload no longer times out. With reduced
+ *       motion the sheet leaves the moment the survey is done, and on
+ *       the fixture that can be before the first look, so the check
+ *       waited for a sheet that had already been and gone. A recorder
+ *       installed for the new document notes the sheet from its first
+ *       frame, and the reduced-motion checks read that record when the
+ *       sheet has gone, with a note saying how long it was up.
  *     - 1.0.0 (11/12/2026) [dendogg + Anthropic - Claude Opus 5.5] —
  *       Initial release.
  *
@@ -36,7 +44,9 @@
  *     - After the sheet: hidden, empty, phase done, no effect left on the
  *       host, every region usable again
  *     - Reduced motion: the whole T is shown at once, nothing on the sheet
- *       is running, and the sheet leaves with no exit motion
+ *       is running, and the sheet leaves with no exit motion; a sheet that
+ *       comes and goes between two looks is read from a record the page
+ *       keeps from its first frame
  *
  * ✒ Usage Instructions:
  *     node tools/ui-check.mjs splash
@@ -77,11 +87,39 @@ const SHEET = () => {
  */
 const when = (test) => `() => { const s = (${SHEET})(); return (${test}) && s; }`;
 
-/** Reloads the page and waits until the new sheet is up. */
-async function reloadToSheet(t) {
+/**
+ * Installed for the next document before a reload: keeps a record of the
+ * sheet from its first frame, so a sheet that comes and goes between two
+ * looks is still seen. It notes when the sheet was first up, whether the
+ * whole T was showing, whether it was ever up with nothing running, and
+ * when it went.
+ */
+const RECORDER = `(() => {
+  const look = () => {
+    const s = document.getElementById('splash');
+    const r = window.__sheetSeen;
+    if (!s || s.hidden || !s.children.length) {
+      if (r && !r.goneAt) r.goneAt = performance.now();
+      return;
+    }
+    const seen = r || (window.__sheetSeen = { at: performance.now(), whole: false, still: false, goneAt: 0 });
+    const running = s.getAnimations({ subtree: true }).filter((x) => x.playState === 'running').length;
+    seen.whole = seen.whole || !!s.querySelector('.tsp-whole:not([data-off])');
+    if (running === 0) seen.still = true;
+  };
+  new MutationObserver(look).observe(document, { childList: true, subtree: true, attributes: true });
+})();`;
+
+/**
+ * Reloads the page and waits until the new sheet is up. With orSeen, a new
+ * page that is already ready, its sheet already gone, also ends the wait,
+ * provided the recorder saw the sheet: the old page never has a record.
+ */
+async function reloadToSheet(t, { orSeen = false } = {}) {
   await t.eval(() => { setTimeout(() => location.reload(), 0); return true; });
   await t.sleep(200);
-  return t.waitFor(when('s.up && s.children > 0'), { timeout: 20000, what: 'the loading sheet after a reload' });
+  const test = orSeen ? '(s.up && s.children > 0) || (s.ready && !!window.__sheetSeen)' : 's.up && s.children > 0';
+  return t.waitFor(when(test), { timeout: 20000, what: 'the loading sheet after a reload' });
 }
 
 /** Waits until the survey of the reloaded page is done; returns the sheet then. */
@@ -141,14 +179,23 @@ const splash = {
       checkGone(t, 'after the sheet', await untilGone(t, 15000) || await t.eval(SHEET));
     }
 
-    // Reduced motion: the sheet shows the whole T and does not move.
+    // Reduced motion: the sheet shows the whole T and does not move. It
+    // leaves the moment the survey is done, which on the fixture can be
+    // before the first look, so the page keeps its own record of the sheet.
     await t.page.send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-reduced-motion', value: 'reduce' }] });
+    const { identifier } = await t.page.send('Page.addScriptToEvaluateOnNewDocument', { source: RECORDER });
     try {
-      await reloadToSheet(t);
+      await reloadToSheet(t, { orSeen: true });
       const still = await t.until(when('!s.up || s.running === 0'), { timeout: 2000, interval: 25 });
+      const seen = await t.eval(() => window.__sheetSeen || null);
       if (still?.up) {
         t.check('with reduced motion the whole T is shown at once', still.whole, JSON.stringify(still));
         t.check('with reduced motion nothing on the sheet is running', still.running === 0, `${still.running} running`);
+      } else if (seen) {
+        const ms = seen.goneAt ? Math.round(seen.goneAt - seen.at) : null;
+        t.note(`with reduced motion the sheet was up for ${ms ?? '?'} ms, gone before the first look; read from the page's record`);
+        t.check('with reduced motion the whole T is shown at once', seen.whole, JSON.stringify(seen));
+        t.check('with reduced motion nothing on the sheet is running', seen.still, JSON.stringify(seen));
       } else t.skip('with reduced motion the sheet does not move', 'the sheet had gone before it could be read');
       const readyRm = await untilReady(t);
       const t0 = Date.now();
@@ -157,6 +204,7 @@ const splash = {
       t.check('with reduced motion the sheet leaves with no exit motion', goneRm && ms <= 800, `${ms} ms`);
       checkGone(t, 'with reduced motion', goneRm || await t.eval(SHEET));
     } finally {
+      await t.page.send('Page.removeScriptToEvaluateOnNewDocument', { identifier });
       await t.page.send('Emulation.setEmulatedMedia', { features: [] });
     }
   },

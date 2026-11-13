@@ -1,10 +1,10 @@
 <!--
 ✒ Metadata
-    - Title: Terrane Roadmap (Terrane Edition - v1.4)
+    - Title: Terrane Roadmap (Terrane Edition - v1.5)
     - File Name: ROADMAP.md
     - Relative Path: docs/ROADMAP.md
     - Artifact Type: docs
-    - Version: 1.4.0
+    - Version: 1.5.0
     - Date: 11/13/2026
     - Update: Friday, November 13, 2026
     - Author: Dennis 'dendogg' Smaltz
@@ -12,6 +12,11 @@
     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
 
 ✒ Changelog:
+    - 1.5.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
+      load screen is complete: its reload check timed out because,
+      with reduced motion, the sheet left before the first look, and
+      the check now reads a record the page keeps from its first
+      frame. No wave is planned next; the open ground is named.
     - 1.4.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
       Audit, the Hardening pass, Enhancement and polish and the Sanity
       sweeps are recorded as complete, each with its commits and its
@@ -82,9 +87,10 @@ As of 11/13/2026:
   hardening fixes, the GitHub Pages entry, Wave 2 (Session traverse,
   Strata and the client half of Interiors), the Docs pass for both
   waves, and the Audit, Hardening pass, Enhancement and polish and Sanity
-  sweeps, merged as Terrane 1.3.0. Every Stage 5 candidate now has its
-  first increment.
-- **Next:** the load screen.
+  sweeps, merged as Terrane 1.3.0, and the load screen, whose reload
+  check now passes. Every Stage 5 candidate now has its first increment.
+- **Next:** no wave is planned yet. The open ground is Stage 4, the rest
+  of Stage 6, and the Stage 5 deferrals in section 4.
 
 Section 5 has the detail for every wave.
 
@@ -450,13 +456,21 @@ passed every check apart from the load screen's reload check.
      waiting for the loading sheet after a reload"); draw calls at the
      baseline (overview 6, selected 8, search 7, duplicate ties 9).
 
+### Complete: the load screen
+
+The one open fault was the `splash` check's reload step, which timed out
+once per pass. The sheet was not at fault. With reduced motion it leaves
+the moment the first survey is drawn, with no exit, and on the fixture
+that took 48 to 98 ms, so it had come and gone before the check's first
+look and the check waited for a sheet that never returned. The check now
+installs a recorder for the new page that notes the sheet from its first
+frame, and reads that record when the sheet has already gone. Checks:
+`node tools/ui-check.mjs --no-shots`, both passes: "879 passed, 0 failed, 5 skipped".
+
 ### Next
 
-**Load screen.** Sort out the loading sheet, including the reload check
-that times out once per pass.
-
-No wave is planned past the load screen yet. The open ground is Stage 4,
-the rest of Stage 6, and the Stage 5 deferrals in section 4.
+No wave is planned yet. The open ground is Stage 4, the rest of Stage 6,
+and the Stage 5 deferrals in section 4.
 
 ## 6. Development datasets
 
