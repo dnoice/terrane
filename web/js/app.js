@@ -22,7 +22,14 @@
  *       puts a query in Find and runs it at once. Under the Age lens a
  *       closed mass shows its typical age, the median step of its bytes
  *       in the age table (strata.js), instead of its newest change; the
- *       legend says so.
+ *       legend says so. An archive opened with I (interior.js) hangs from
+ *       its file: isAttached, updateWhere, stepSelection, goUp, refreshDirs,
+ *       the crumbs and absPath (x.zip!/inner/file) follow the graft, and a
+ *       flight into it lands where it was going. runOp refuses any change
+ *       under it before anything is sent; the keys, menu and inspector say
+ *       why. Paint walls it in the file's colour, hatches locked entries
+ *       and half-bands twins, tied as the relation set 'twins'. The api
+ *       gains hostOf and listCursor.
  *     - 1.5.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — Paint
  *       draws a box the layout marks AUX.CROSSED (the time view) in the
  *       crossed convention, its colour washed 60% toward paper unless it
@@ -78,6 +85,10 @@
  *       hover tip never request an original file
  *     - Snapshot mode is stated in the title block, and every change and
  *       system hand-off is shown as unavailable with the reason
+ *     - An open archive (S.interior) hangs its root from its file: every
+ *       walk up the tree, the crumbs, the paths, the selection steps and
+ *       the one lock in runOp know the graft, and nothing inside is ever
+ *       fetched, changed, opened or revealed
  *     - Seams for features: ordered registries (KEYS, ESCAPE, PIN_SOURCES,
  *       TIP_LINES, INSPECTOR, READING, TABS, SURVEY, LAYOUT_OPTS, MENU)
  *       and hook lists (AFTER_LAYOUT, AFTER_REFRESH, AFTER_SURVEY,
@@ -446,6 +457,16 @@ async function scanStream(rel, depth, onBatch) {
 
 const rawUrl = (node, max) => `/api/raw?${new URLSearchParams({ path: relPath(node), max, t: TOKEN })}`;
 const absPath = (node) => {
+  // Inside an open archive: the archive's own path, '!', then the entry's
+  // path inside it, x.zip!/inner/file.
+  const I = S.interior;
+  if (I) {
+    const inner = [];
+    for (let a = node; a; a = a.p) {
+      if (a === I.root) return `${absPath(I.host)}!/${inner.reverse().join('/')}`;
+      inner.push(a.n);
+    }
+  }
   const rel = relPath(node);
   return rel ? S.info.root + S.info.sep + rel.split('/').join(S.info.sep) : S.info.root;
 };
@@ -465,13 +486,28 @@ async function scanInto(dir) {
   });
 }
 
+/**
+ * Whether a node is still in the tree. An open archive's root hangs from
+ * its file (S.interior), which has no children of its own: that one link
+ * holds while the archive is open, and no other link through a file does.
+ */
 function isAttached(node) {
+  const I = S.interior;
   let a = node;
   while (a.p) {
-    if (!a.p.c.includes(a)) return false;
-    a = a.p;
+    const p = a.p;
+    if (p.d ? !p.c.includes(a) : !(I && a === I.root && p === I.host)) return false;
+    a = p;
   }
   return a === S.model.root;
+}
+
+/** The open archive's file when node is inside it (its root included); null otherwise. */
+function hostOf(node) {
+  const I = S.interior;
+  if (!I || !node) return null;
+  for (let a = node; a; a = a.p) if (a === I.root) return I.host;
+  return null;
 }
 
 let refreshChain = Promise.resolve();
@@ -486,6 +522,9 @@ function refreshDirs(rels) {
         path = path.includes('/') ? path.slice(0, path.lastIndexOf('/')) : '';
         node = S.model.find(path);
       }
+      // A path that goes on through a file reaches into an open archive:
+      // the folder its file is in is the one on disk to read again.
+      if (node && !node.d && path !== rel) node = node.p;
       if (node && node.d) dirs.add(node);
     }
     for (const dir of dirs) {
@@ -621,12 +660,25 @@ function updateWhere() {
   if (!L) return;
   const p = S.view.look();
   if (!p) return;
+  // A flight into an open archive lands where it was going (setFocus).
+  if (hold) {
+    const v = S.view;
+    if (isAttached(hold.dir) && (v.flight ? v.flight.to === hold.goal : stillAt(v.pose(), hold.goal))) {
+      moveFocus(hold.dir);
+      return;
+    }
+    hold = null;
+  }
+  const I = S.interior;
   let dir = S.model.root;
   if (p.point) {
     const width = p.dist * 0.82 * (S.view.w / S.view.h);
     for (;;) {
       let next = null;
-      for (const ch of dir.c) {
+      for (let ch of dir.c) {
+        // An open archive's file is walled in and its floor is the
+        // archive's root, so going on from the file goes inside.
+        if (I && ch === I.host) ch = I.root;
         if (!ch.d) continue;
         const i = L.index.get(ch);
         if (i === undefined) continue;
@@ -656,6 +708,16 @@ function moveFocus(dir) {
   drawLegend();
   $('b-up').toggleAttribute('disabled', !S.focus.p);
 }
+
+/**
+ * Inside an open archive the location stays where a flight took you while
+ * the eye is still where the flight put it, { dir, goal }: a lone folder
+ * filling the floor would otherwise take it over as the flight lands.
+ * Moving, turning or another flight lets go.
+ */
+let hold = null;
+const stillAt = (a, b) => Math.hypot(a.x - b.x, a.y - b.y, a.z - b.z) <= Math.max(S.view.alt || 0, 1e-6) * 0.02
+  && Math.abs(a.yaw - b.yaw) < 1e-3 && Math.abs(a.pitch - b.pitch) < 1e-3;
 
 let whereTimer = 0;
 /** The north arrow and storage scale over the world; null without WebGL. */
@@ -724,6 +786,12 @@ function paint() {
   // Before the first table it shows its newest change, as it always did.
   const ages = S.lens === 'age' ? S.ages : null;
   const tones = ages ? massTones(ages, now) : null;
+  // An open archive (S.interior): its chamber's boxes stand outside the
+  // search, which does not reach into archives, and are no destination
+  // while placing. Its walls take the file's own colour (their node is
+  // the file); locked entries are hatched and twins half-banded.
+  const I = S.interior;
+  const room = I ? L.chamber : null;
 
   for (let i = 0; i < n; i++) {
     const node = L.node[i];
@@ -755,6 +823,10 @@ function paint() {
       } else c = 0xd3d9d4;
       if (node.f & FLAG_LINK) s = STYLE.BANDS;
       if (node.f & FLAG_HIDDEN && S.lens === 'kind') c = mixHex(c, THEME.paper, 0.4);
+      if (I && type === BOX.FILE) {
+        const own = I.styleOf(node);
+        if (own !== null) s = own;
+      }
     }
     // Changed after the date the time view looks back to: washed toward
     // paper once, here, and crossed by the shader. A selection keeps its
@@ -765,8 +837,10 @@ function paint() {
     }
 
     let d = 0;
+    const inRoom = room !== null && i >= room.from && i < room.to;
     if (search) {
-      if (search.set.has(node) && type !== BOX.SCREE) d = 0;
+      if (inRoom) d = 0;
+      else if (search.set.has(node) && type !== BOX.SCREE) d = 0;
       else if (type === BOX.DIR) d = search.within.has(node) ? 0.3 : 0.7;
       else if (type === BOX.CAP) d = search.within.has(node) ? 0 : 1;
       else if (type === BOX.SCREE) d = screeHasMatch(i) ? 0 : 1;
@@ -777,7 +851,7 @@ function paint() {
       else if (type === BOX.DIR) d = node.ks[filter] > 0 ? 0.25 : 0.7;
       else d = 0.6;
     } else if (placing) {
-      if (type === BOX.FILE || type === BOX.SCREE) d = 0.75;
+      if (inRoom || type === BOX.FILE || type === BOX.SCREE) d = 0.75;
       else if (placing.nodes.some((x) => isAncestor(x, node))) d = 1;
     }
     if (S.sel.has(node) && type !== BOX.SCREE) {
@@ -822,6 +896,20 @@ function syncViewSelection() {
     if (group) ties = group.files.filter((f) => f !== p).slice(0, 40).map(visibleIndexOf).filter((j) => j >= 0 && j !== i);
   }
   S.view.setTies(ties.length ? i : -1, [...new Set(ties)]);
+  // Twins: an entry of the open archive and the files here with its name
+  // and size, tied in the archive kind's colour (the relation set 'twins').
+  const tw = p && S.interior ? S.interior.twinsOf(p) : null;
+  const tj = tw && i >= 0 ? [...new Set(tw.slice(0, 40).map(visibleIndexOf))].filter((j) => j >= 0 && j !== i) : [];
+  if (tj.length) S.view.setRelation('twins', { color: KINDS[5].color, lift: 0.22, legs: topLegs(i, tj) });
+  else S.view.clearRelation('twins');
+}
+
+/** Legs from the top of box i to the top of each box in js, in world coordinates. */
+function topLegs(i, js) {
+  const g = S.layout.geo;
+  const top = (k) => [g[k * 6], g[k * 6 + 1] + g[k * 6 + 4] / 2, g[k * 6 + 2]];
+  const a = top(i);
+  return js.flatMap((j) => [...a, ...top(j)]);
 }
 
 /** Pins from every source in PIN_SOURCES order, up to the capacity. */
@@ -911,6 +999,7 @@ function select(node, { add = false, quiet = false } = {}) {
 function setFocus(dir, { remember = true } = {}) {
   if (!dir || !dir.d) return;
   if (remember && S.focus !== dir) S.trail.push(S.focus);
+  hold = null;
   S.force = new Set();
   for (let a = dir; a; a = a.p) S.force.add(a);
   relayout();
@@ -920,12 +1009,21 @@ function setFocus(dir, { remember = true } = {}) {
   // With a 3D view the location follows the camera when the flight lands.
   // Without one there is no camera to follow, so the location moves here.
   // A view that looks at the sky still has a camera: setting the location
-  // early there would be undone by the first frame of the flight.
+  // early there would be undone by the first frame of the flight. Inside
+  // an open archive the location moves here too, and holds (see hold).
   if (S.noGL || !S.view.look()) moveFocus(dir);
+  else if (hostOf(dir)) {
+    hold = { dir, goal: S.view.flight?.to || S.view.pose() };
+    moveFocus(dir);
+  }
   say(`Travelling to ${dir.n}, ${fmtCount(dir.c.length)} items`);
 }
 
-const goUp = () => S.focus.p && setFocus(S.focus.p);
+/** Up one level; from an open archive's root, to the folder its file is in. */
+const goUp = () => {
+  const up = S.focus.p;
+  if (up) setFocus(up.d ? up : up.p);
+};
 const goBack = () => {
   const prev = S.trail.pop();
   if (prev && isAttached(prev)) setFocus(prev, { remember: false });
@@ -952,10 +1050,13 @@ function activate(node) {
 function stepSelection(key) {
   const cur = S.primary;
   if (!cur) return select(S.focus.c[0] || S.focus);
+  // An open archive's root steps up to its file, and the file down to it;
+  // the root has no siblings, since its file holds nothing else.
+  const I = S.interior;
   let next = null;
-  if (key === 'ArrowUp') next = cur !== S.focus ? cur.p : null;
-  else if (key === 'ArrowDown') next = cur.d ? cur.c[0] : null;
-  else if (cur.p) {
+  if (key === 'ArrowUp') next = I && cur === I.root ? I.host : cur !== S.focus ? cur.p : null;
+  else if (key === 'ArrowDown') next = cur.d ? cur.c[0] : I && cur === I.host ? I.root : null;
+  else if (cur.p?.d) {
     const sibs = cur.p.c;
     const i = sibs.indexOf(cur);
     next = sibs[i + (key === 'ArrowRight' ? 1 : -1)];
@@ -1071,6 +1172,13 @@ function onJob(msg) {
 }
 
 async function runOp(body, { silent = false } = {}) {
+  // The one lock on an open archive: nothing under its path is changed,
+  // opened or revealed, whoever asks, and nothing is sent.
+  const locked = S.interior?.refuse(body);
+  if (locked) {
+    notice(locked, { kind: 'info' });
+    return null;
+  }
   let id = null;
   if (LONG_OPS.has(body.type)) {
     id = newJobId();
@@ -1113,6 +1221,17 @@ async function undo() {
   }
 }
 
+/**
+ * Says why nothing can be changed when any of nodes is inside the open
+ * archive, and returns true. runOp refuses such a change anyway; this
+ * says so before a dialog asks for a name or a destination.
+ */
+function refuseInside(nodes) {
+  if (!S.interior || !nodes.some((n) => hostOf(n))) return false;
+  notice(S.interior.lock, { kind: 'info' });
+  return true;
+}
+
 const nameProblem = (v) => {
   const name = v.name;
   if (!name.trim()) return 'Enter a name.';
@@ -1122,6 +1241,7 @@ const nameProblem = (v) => {
 };
 
 async function newFolder(dir = S.focus) {
+  if (refuseInside([dir])) return;
   const v = await ask({
     title: 'New folder', body: `Inside ${relPath(dir) || S.info.name}`, confirm: 'Create',
     fields: [{ name: 'name', label: 'Folder name', value: 'New folder' }], validate: nameProblem,
@@ -1135,7 +1255,7 @@ async function newFolder(dir = S.focus) {
 }
 
 async function rename(node = S.primary) {
-  if (!node || !node.p) return;
+  if (!node || !node.p || refuseInside([node])) return;
   const v = await ask({
     title: 'Rename', confirm: 'Rename', validate: nameProblem,
     fields: [{ name: 'name', label: node.d ? 'Folder name' : 'File name', value: node.n, selectStem: !node.d }],
@@ -1153,7 +1273,7 @@ const tops = (nodes) => nodes.filter((n) => !nodes.some((o) => o !== n && isAnce
 
 function startPlacing(type, nodes = [...S.sel]) {
   nodes = tops(movable(nodes));
-  if (!nodes.length) return;
+  if (!nodes.length || refuseInside(nodes)) return;
   closeFloating();
   S.placing = { type, nodes };
   $('placing').hidden = false;
@@ -1173,6 +1293,7 @@ function stopPlacing() {
 
 function destinationProblem(type, nodes, dest) {
   if (!dest || !dest.d) return 'not a folder';
+  if (hostOf(dest)) return 'it is inside an archive';
   if (dest.e) return 'that folder cannot be read';
   if (nodes.some((n) => n.d && isAncestor(n, dest))) return 'a folder cannot go inside itself';
   if (type === 'move' && nodes.every((n) => n.p === dest)) return 'already there';
@@ -1192,6 +1313,7 @@ async function transfer(type, nodes, dest) {
 
 async function duplicate(nodes = [...S.sel]) {
   nodes = tops(movable(nodes));
+  if (refuseInside(nodes)) return;
   const byParent = new Map();
   for (const n of nodes) byParent.set(n.p, [...(byParent.get(n.p) || []), n]);
   for (const [parent, list] of byParent) await runOp({ type: 'copy', paths: list.map(relPath), dest: relPath(parent) });
@@ -1199,7 +1321,7 @@ async function duplicate(nodes = [...S.sel]) {
 
 async function remove(nodes = [...S.sel]) {
   nodes = tops(movable(nodes));
-  if (!nodes.length) return;
+  if (!nodes.length || refuseInside(nodes)) return;
   const size = nodes.reduce((a, n) => a + n.s, 0);
   const what = nodes.length === 1 ? `"${nodes[0].n}"` : `${nodes.length} items`;
   const ok = await ask({
@@ -1289,12 +1411,15 @@ function menuFor(node, x, y) {
   const many = S.sel.size > 1 && S.sel.has(node);
   const isRoot = node && !node.p;
   const lock = (extra) => ({ disabled: !!(ro || extra), reason: ro || extra || undefined });
+  // Inside an open archive nothing can be changed, opened or revealed.
+  const shut = (inside, extra) => (inside ? { disabled: true, reason: 'inside an archive' } : lock(extra));
   let items;
   if (!node) {
+    const here = !!hostOf(S.focus);
     items = [
-      { label: 'New folder here…', icon: 'newFolder', hint: 'N', run: () => newFolder(S.focus), ...lock() },
+      { label: 'New folder here…', icon: 'newFolder', hint: 'N', run: () => newFolder(S.focus), ...shut(here) },
       { label: 'Copy path of this folder', icon: 'copyPath', run: () => copyPaths([S.focus]) },
-      { label: 'Reveal in file manager', icon: 'reveal', run: () => runOp({ type: 'reveal', path: relPath(S.focus) }) },
+      { label: 'Reveal in file manager', icon: 'reveal', run: () => runOp({ type: 'reveal', path: relPath(S.focus) }), ...(here ? shut(true) : {}) },
       'sep',
       { label: 'Up one level', icon: 'up', hint: 'Backspace', run: goUp, disabled: !S.focus.p, reason: 'already at the root' },
       { label: 'Rise to the overview', icon: 'overview', hint: '0', run: () => S.view.overview() },
@@ -1303,30 +1428,32 @@ function menuFor(node, x, y) {
     ];
   } else if (many) {
     const nodes = [...S.sel];
+    const inside = nodes.some((n) => hostOf(n));
     items = [
-      { label: `Move ${nodes.length} items to…`, icon: 'move', hint: 'M', run: () => startPlacing('move'), ...lock() },
-      { label: `Copy ${nodes.length} items to…`, icon: 'copy', run: () => startPlacing('copy'), ...lock() },
-      { label: 'Duplicate in place', icon: 'duplicate', hint: 'Ctrl+D', run: () => duplicate(), ...lock() },
+      { label: `Move ${nodes.length} items to…`, icon: 'move', hint: 'M', run: () => startPlacing('move'), ...shut(inside) },
+      { label: `Copy ${nodes.length} items to…`, icon: 'copy', run: () => startPlacing('copy'), ...shut(inside) },
+      { label: 'Duplicate in place', icon: 'duplicate', hint: 'Ctrl+D', run: () => duplicate(), ...shut(inside) },
       { label: 'Copy paths', icon: 'copyPath', hint: 'Ctrl+C', run: () => copyPaths() },
       'sep',
-      { label: `Remove ${nodes.length} items…`, icon: 'remove', hint: 'Del', danger: true, run: () => remove(), ...lock() },
+      { label: `Remove ${nodes.length} items…`, icon: 'remove', hint: 'Del', danger: true, run: () => remove(), ...shut(inside) },
     ];
   } else {
     const rootLock = isRoot ? 'the authorized root' : null;
+    const inside = !!hostOf(node);
     items = [
       node.d ? { label: 'Go there', icon: 'goThere', hint: 'Enter', run: () => setFocus(node), disabled: !!node.e, reason: 'cannot be read' }
-        : { label: 'Open', icon: 'open', hint: 'Enter', run: () => activate(node) },
-      { label: 'Reveal in file manager', icon: 'reveal', run: () => runOp({ type: 'reveal', path: relPath(node) }) },
+        : { label: 'Open', icon: 'open', hint: 'Enter', run: () => activate(node), ...(inside ? shut(true) : {}) },
+      { label: 'Reveal in file manager', icon: 'reveal', run: () => runOp({ type: 'reveal', path: relPath(node) }), ...(inside ? shut(true) : {}) },
       { label: 'Copy path', icon: 'copyPath', hint: 'Ctrl+C', run: () => copyPaths([node]) },
       ...menuExtras(node, { ro }),
       'sep',
-      node.d ? { label: 'New folder inside…', icon: 'newFolder', run: () => newFolder(node), ...lock(node.e ? 'cannot be read' : null) } : null,
-      { label: 'Rename…', icon: 'rename', hint: 'F2', run: () => rename(node), ...lock(rootLock) },
-      { label: 'Move to…', icon: 'move', hint: 'M', run: () => startPlacing('move', [node]), ...lock(rootLock) },
-      { label: 'Copy to…', icon: 'copy', run: () => startPlacing('copy', [node]), ...lock(rootLock) },
-      { label: 'Duplicate in place', icon: 'duplicate', hint: 'Ctrl+D', run: () => duplicate([node]), ...lock(rootLock) },
+      node.d ? { label: 'New folder inside…', icon: 'newFolder', run: () => newFolder(node), ...shut(inside, node.e ? 'cannot be read' : null) } : null,
+      { label: 'Rename…', icon: 'rename', hint: 'F2', run: () => rename(node), ...shut(inside, rootLock) },
+      { label: 'Move to…', icon: 'move', hint: 'M', run: () => startPlacing('move', [node]), ...shut(inside, rootLock) },
+      { label: 'Copy to…', icon: 'copy', run: () => startPlacing('copy', [node]), ...shut(inside, rootLock) },
+      { label: 'Duplicate in place', icon: 'duplicate', hint: 'Ctrl+D', run: () => duplicate([node]), ...shut(inside, rootLock) },
       'sep',
-      { label: 'Remove…', icon: 'remove', hint: 'Del', danger: true, run: () => remove([node]), ...lock(rootLock) },
+      { label: 'Remove…', icon: 'remove', hint: 'Del', danger: true, run: () => remove([node]), ...shut(inside, rootLock) },
     ].filter(Boolean);
   }
   openMenu(x, y, items, { title: many ? `${S.sel.size} items` : node ? node.n : S.focus.n });
@@ -1367,11 +1494,13 @@ function dropTarget(node, target) {
 function drawCrumbs() {
   const host = $('crumbs');
   const chain = [];
-  for (let a = S.focus; a; a = a.p) chain.unshift(a);
+  // An open archive's file is not a step of its own: its root, named as
+  // the file is, stands for it.
+  for (let a = S.focus; a; a = a.p) if (a.d) chain.unshift(a);
   const parts = [];
   chain.forEach((node, i) => {
     if (i) parts.push(el('span', { class: 'slash', 'aria-hidden': 'true', text: '/' }));
-    const b = el('button', { class: 'crumb', type: 'button', text: node.n, title: absPath(node), 'aria-current': node === S.focus ? 'location' : null, onclick: () => setFocus(node) });
+    const b = el('button', { class: S.interior?.root === node ? 'crumb is-archive' : 'crumb', type: 'button', text: node.n, title: absPath(node), 'aria-current': node === S.focus ? 'location' : null, onclick: () => setFocus(node) });
     dropTarget(node, b);
     parts.push(b);
   });
@@ -1386,12 +1515,14 @@ let list;
 function rowFor(node, { showPath = false, total } = {}) {
   // S.time.crossed: the time view's answer, by the rules the layout draws with.
   const crossed = !!S.time?.crossed?.(node);
-  const cls = (node.d ? (node.e ? 'swatch is-sealed' : node.c.length ? 'swatch is-dir' : 'swatch is-empty') : 'swatch') + (crossed ? ' is-crossed' : '');
+  // A locked entry of an open archive, or one whose name climbs out.
+  const mark = S.interior?.rowMark(node);
+  const cls = (node.d ? (node.e ? 'swatch is-sealed' : node.c.length ? 'swatch is-dir' : 'swatch is-empty') : 'swatch') + (crossed ? ' is-crossed' : '') + (mark ? ` ${mark.cls}` : '');
   const share = total ? Math.max(0, Math.min(1, node.s / total)) : 0;
-  const row = el('div', { class: `row${S.sel.has(node) ? ' is-selected' : ''}`, draggable: node.p && !S.info.readOnly ? 'true' : null, 'aria-selected': S.sel.has(node) ? 'true' : 'false', title: showPath ? relPath(node) : node.n },
+  const row = el('div', { class: `row${S.sel.has(node) ? ' is-selected' : ''}`, draggable: node.p && !S.info.readOnly && !hostOf(node) ? 'true' : null, 'aria-selected': S.sel.has(node) ? 'true' : 'false', title: showPath ? relPath(node) : node.n },
     el('span', { class: cls, style: node.d ? null : { background: cssHex(KINDS[node.k].color) } }),
     el('span', { class: 'row-name' }, node.n, node.d ? el('small', { text: node.e ? node.e : fmtCount(node.fc) }) : showPath ? el('small', { text: relPath(node.p) || '/' }) : null,
-      crossed ? el('span', { class: 'sr', text: `, changed since ${S.time.date}` }) : null),
+      crossed ? el('span', { class: 'sr', text: `, changed since ${S.time.date}` }) : null, mark ? el('span', { class: 'sr', text: mark.sr }) : null),
     el('span', { class: 'row-size' }, fmtBytes(node.s), total ? el('i', { style: { width: `${share * 100}%` } }) : null));
   row.addEventListener('click', (e) => {
     list.cursor = list.items.indexOf(node);
@@ -1688,14 +1819,15 @@ function drawInspector() {
   if (S.sel.size > 1) {
     const nodes = [...S.sel];
     const size = tops(nodes).reduce((a, n) => a + n.s, 0);
+    const off = nodes.some((n) => hostOf(n)) ? 'inside an archive' : ro;
     host.replaceChildren(
       el('div', { class: 'insp-title' }, el('div', { class: 'insp-kind', text: 'Selection' }), el('h3', { class: 'insp-name', text: `${fmtCount(nodes.length)} items` })),
       el('dl', { class: 'facts' }, fact('Size', el('b', { text: fmtBytes(size) }), ` · ${pct(size, S.model.root.s)} of root`, shareBar(size, S.model.root.s)),
         fact('Folders', fmtCount(nodes.filter((n) => n.d).length)), fact('Files', fmtCount(nodes.filter((n) => !n.d).length))),
       el('div', { class: 'section-title', text: 'Actions' }),
-      el('div', { class: 'actions-grid' }, actionButton('Move to…', () => startPlacing('move'), { off: ro, icon: 'move' }), actionButton('Copy to…', () => startPlacing('copy'), { off: ro, icon: 'copy' }),
-        actionButton('Duplicate', () => duplicate(), { off: ro, icon: 'duplicate' }), actionButton('Copy paths', () => copyPaths(), { icon: 'copyPath' }),
-        actionButton('Remove…', () => remove(), { off: ro, danger: true, icon: 'remove' }), actionButton('Clear selection', () => select(null), { icon: 'clear' })),
+      el('div', { class: 'actions-grid' }, actionButton('Move to…', () => startPlacing('move'), { off, icon: 'move' }), actionButton('Copy to…', () => startPlacing('copy'), { off, icon: 'copy' }),
+        actionButton('Duplicate', () => duplicate(), { off, icon: 'duplicate' }), actionButton('Copy paths', () => copyPaths(), { icon: 'copyPath' }),
+        actionButton('Remove…', () => remove(), { off, danger: true, icon: 'remove' }), actionButton('Clear selection', () => select(null), { icon: 'clear' })),
     );
     return;
   }
@@ -1704,9 +1836,13 @@ function drawInspector() {
     host.replaceChildren(...buildSections(INSPECTOR.focus, S.focus, { ro }));
     return;
   }
-  const ctx = { ro, lockRoot: ro || (node.p ? null : 'the authorized root'), visible: S.layout.index.has(node) };
+  // inside: the open archive's file when node is one of its entries.
+  const inside = hostOf(node);
+  const ctx = { ro, lockRoot: inside ? 'inside an archive' : ro || (node.p ? null : 'the authorized root'), visible: S.layout.index.has(node), inside };
   host.replaceChildren(...buildSections(INSPECTOR.node, node, ctx));
   host.scrollTop = 0;
+  // An archive's entries are not on disk: there is nothing to stat.
+  if (inside) return;
   const { created, linkRow } = ctx;
   get('stat', { path: relPath(node) }).then((st) => {
     if (S.primary !== node || !created) return;
@@ -1747,13 +1883,16 @@ function nodeTitle(node) {
 
 function nodeFacts(node, ctx) {
   const parent = node.p;
-  // Filled in by drawInspector when the service answers /stat.
-  ctx.created = el('dd', { text: '…' });
+  // Filled in by drawInspector when the service answers /stat. An entry of
+  // an open archive is measured against the archive, and the archive's
+  // root has a file, not a folder, above it.
+  ctx.created = el('dd', { text: ctx.inside ? 'not recorded in the archive' : '…' });
   ctx.linkRow = el('div', { hidden: true }, el('dt', { text: 'Points to' }), el('dd'));
+  const top = ctx.inside ? S.interior.root : S.model.root;
   return el('dl', { class: 'facts' },
     fact('Size', el('b', { text: fmtBytes(node.s) }), node.s >= 1024 ? ` · ${fmtCount(node.s)} B` : ''),
-    parent ? fact('Of parent', pct(node.s, parent.s), shareBar(node.s, parent.s)) : null,
-    fact('Of root', pct(node.s, S.model.root.s), shareBar(node.s, S.model.root.s)),
+    parent?.d ? fact('Of parent', pct(node.s, parent.s), shareBar(node.s, parent.s)) : null,
+    fact(ctx.inside ? 'Of the archive' : 'Of root', pct(node.s, top.s), shareBar(node.s, top.s)),
     node.d ? fact('Contains', `${fmtCount(node.fc)} files · ${fmtCount(node.dc)} folders`) : null,
     node.d ? fact('Levels', `${depthOf(node)} above · ${node.h} below`) : fact('Level', String(depthOf(node))),
     fact(node.d ? 'Newest' : 'Changed', `${fmtDate(node.d ? node.mm : node.m)}`, el('br'), fmtAge(node.d ? node.mm : node.m)),
@@ -1772,26 +1911,29 @@ function nodeCopies(node) {
   ];
 }
 
-function nodeActions(node, { ro, lockRoot, visible }) {
+function nodeActions(node, { ro, lockRoot, visible, inside }) {
+  // Inside an open archive nothing is opened, revealed or changed.
+  const shut = inside ? 'inside an archive' : null;
   return [
     el('div', { class: 'section-title', text: 'Actions' }),
     el('div', { class: 'actions-grid' },
       node.d ? actionButton('Go there', () => setFocus(node), { off: node.e ? 'cannot be read' : null, icon: 'goThere' })
-        : actionButton('Open', () => activate(node), { title: 'Open with the system default application', off: S.info.snapshot ? 'snapshot mode' : null, icon: 'open' }),
-      actionButton('Reveal', () => runOp({ type: 'reveal', path: relPath(node) }), { title: 'Show in the system file manager', off: S.info.snapshot ? 'snapshot mode' : null, icon: 'reveal' }),
+        : actionButton('Open', () => activate(node), { title: 'Open with the system default application', off: S.info.snapshot ? 'snapshot mode' : shut, icon: 'open' }),
+      actionButton('Reveal', () => runOp({ type: 'reveal', path: relPath(node) }), { title: 'Show in the system file manager', off: S.info.snapshot ? 'snapshot mode' : shut, icon: 'reveal' }),
       actionButton('Rename…', () => rename(node), { off: lockRoot, icon: 'rename' }),
       actionButton('Duplicate', () => duplicate([node]), { off: lockRoot, icon: 'duplicate' }),
       actionButton('Move to…', () => startPlacing('move', [node]), { off: lockRoot, icon: 'move' }),
       actionButton('Copy to…', () => startPlacing('copy', [node]), { off: lockRoot, icon: 'copy' }),
-      node.d ? actionButton('New folder inside…', () => newFolder(node), { off: ro || (node.e ? 'cannot be read' : null), wide: true, icon: 'newFolder' }) : null,
+      node.d ? actionButton('New folder inside…', () => newFolder(node), { off: shut || ro || (node.e ? 'cannot be read' : null), wide: true, icon: 'newFolder' }) : null,
       actionButton(visible ? 'Fly to it' : 'Find it in the world', () => reveal(node), { wide: true, title: 'G', icon: 'fly' }),
       actionButton('Remove…', () => remove([node]), { off: lockRoot, danger: true, wide: true, icon: 'remove' })),
   ];
 }
 
-function nodePreview(node) {
+function nodePreview(node, ctx) {
   const ext = extOf(node.n);
-  if (node.d || node.f & FLAG_LINK || node.s <= 0) return null;
+  // An entry of an open archive is never fetched: its path goes through a file.
+  if (node.d || node.f & FLAG_LINK || node.s <= 0 || ctx?.inside) return null;
   if (IMAGE_EXT.has(ext)) {
     // Thumbnails only: an original can be hundreds of megabytes.
     const rel = relPath(node);
@@ -2035,7 +2177,8 @@ function wireViewport() {
     // A picture only for a pointer that rests: sweeping across the world
     // must not fire a request per block it passes.
     clearTimeout(S.tipTimer);
-    if (!node.d && t !== BOX.SCREE) {
+    // No picture for an entry of an open archive: its path goes through a file.
+    if (!node.d && t !== BOX.SCREE && !hostOf(node)) {
       S.tipTimer = setTimeout(() => {
         if (S.view.hoverIndex !== i) return;
         const img = thumbs.img(relPath(node), 160, '');
@@ -2059,6 +2202,7 @@ function wireViewport() {
     if (i < 0 || S.placing) return;
     const node = S.layout.node[i];
     if (S.layout.type[i] === BOX.SCREE) S.view.zoomAt(0.25, e.clientX, e.clientY);
+    else if (S.layout.type[i] === BOX.WALL && S.interior) setFocus(S.interior.root);
     else activate(node);
   };
   v.on.context = (i, e) => {
@@ -2207,12 +2351,13 @@ function wireKeys() {
   core({
     id: 'move', keys: ['m'],
     run: () => {
+      if (refuseInside([...S.sel])) return;
       if (!writable()) startPlacing('move');
       else notice('Read-only mode: nothing can be moved.', { kind: 'info' });
     },
     guide: [CHG, 'M', 'Move to…'],
   });
-  core({ id: 'duplicate', mod: 'ctrl', keys: ['d'], run: () => { if (!writable()) duplicate(); }, guide: [CHG, 'Ctrl+D', 'Duplicate'] });
+  core({ id: 'duplicate', mod: 'ctrl', keys: ['d'], run: () => { if (!refuseInside([...S.sel]) && !writable()) duplicate(); }, guide: [CHG, 'Ctrl+D', 'Duplicate'] });
   core({ id: 'remove', keys: ['Delete'], run: () => { remove(); }, guide: [CHG, 'Del', 'Remove to holding area'] });
   core({ id: 'undo', mod: 'ctrl', keys: ['z'], run: () => { undo(); }, guide: [CHG, 'Ctrl+Z', 'Undo'] });
   core({
@@ -2273,7 +2418,7 @@ function wireKeys() {
   TIP_LINES.add({
     id: 'pixels', order: 50,
     lines: (node) => {
-      if (node.d) return null;
+      if (node.d || hostOf(node)) return null;
       const pic = thumbs.info(relPath(node));
       return pic?.w ? `${fmtCount(pic.w)} × ${fmtCount(pic.h)} px` : null;
     },
@@ -2342,7 +2487,9 @@ const API = Object.freeze({
   S, KEY_OWNERS,
   KEYS, ESCAPE, PIN_SOURCES, TIP_LINES, INSPECTOR, READING, TABS, LAYOUT_OPTS, AFTER_LAYOUT, AFTER_REFRESH, AFTER_SURVEY, AFTER_OP, MENU, QUERY,
   AFTER_QUERY, SURVEY,
-  get, post, runOp, refreshDirs, writable, isAttached, relPath, absPath,
+  get, post, runOp, refreshDirs, writable, isAttached, hostOf, relPath, absPath,
+  // The ledger row the keyboard cursor is on, or null.
+  listCursor: () => (list?.items.length ? list.items[list.cursor] ?? null : null),
   relayout, queueLayout, repaint, drawPins, visibleIndexOf,
   select, setFocus, reveal, activate, describe, say,
   drawAll, drawTabs, drawLedger, drawInspector, drawLegend, drawStatus, runQuery, setQuery,

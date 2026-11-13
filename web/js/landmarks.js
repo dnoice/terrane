@@ -1,16 +1,25 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Landmarks (Terrane Edition - v1.0)
+ *     - Title: Landmarks (Terrane Edition - v1.1)
  *     - File Name: landmarks.js
  *     - Relative Path: web/js/landmarks.js
  *     - Artifact Type: javascript
- *     - Version: 1.0.0
+ *     - Version: 1.1.0
  *     - Date: 11/13/2026
  *     - Update: Friday, November 13, 2026
  *     - Author: Dennis 'dendogg' Smaltz
  *     - A.I. Acknowledgement: Anthropic - Claude Opus 5.5
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
+ *
+ * ✒ Changelog:
+ *     - 1.1.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — A
+ *       folder inside an open archive takes no benchmark: B says why, the
+ *       menu item is unavailable and the inspector has no Benchmark
+ *       section for it. H there marks the return point in the folder
+ *       that holds the archive.
+ *     - 1.0.0 (11/12/2026) [dendogg + Anthropic - Claude Opus 5.5] —
+ *       Initial release.
  *
  * ✒ Description:
  *     Benchmarks and the return point. A benchmark measures a folder at a
@@ -36,8 +45,11 @@
  *       menu items, hover lines and an is:benchmark search word
  *     - One notice after the first scan names the benchmarks that changed
  *     - H marks a return point relative to the box of the folder you are
- *       in; J flies back to where that box is now, and swaps the two
- *       points so J again comes back; without WebGL, J goes to the folder
+ *       in (inside an open archive, the folder that holds it); J flies
+ *       back to where that box is now, and swaps the two points so J
+ *       again comes back; without WebGL, J goes to the folder
+ *     - Benchmarks are for folders on disk: none is set inside an open
+ *       archive
  *     - Terrane's own renames and moves carry benchmarks along, and so
  *       does what one finished before it stopped; Undo carries them back
  *       by the paths the service says it moved, after a reload too; a
@@ -65,8 +77,8 @@
  *     - Dependencies: places.js (the store), model.js (formatting),
  *       layout.js (BOX), theme.js (verdigris), ui.js (ask), icons.js;
  *       app.js's api: S, the registries, refreshDirs, relayout, reveal,
- *       setFocus, visibleIndexOf, drawPins, drawLedger, drawInspector,
- *       say, notice, el, fact, itemButton, actionButton
+ *       setFocus, visibleIndexOf, hostOf, drawPins, drawLedger,
+ *       drawInspector, say, notice, el, fact, itemButton, actionButton
  *     - Compatible platforms: any browser with ES2022 modules
  *     - Wording: a measurement says what "changed"; an entry that was not
  *       there is "here now, not then", never "created" or "added"
@@ -158,6 +170,11 @@ export function install(api) {
   /** B: measures a folder now, after reading its entries from disk. */
   async function bench(dir = target()) {
     if (!dir || measuring) return;
+    const archive = api.hostOf(dir);
+    if (archive) {
+      api.notice(`Benchmarks are for folders on disk: ${named(dir)} is inside ${archive.n}, which Terrane reads without unpacking.`, { kind: 'info' });
+      return;
+    }
     if (!ready()) {
       api.say(WAIT);
       return;
@@ -344,9 +361,12 @@ export function install(api) {
 
   function markReturn() {
     if (!S.focus) return;
-    store.setReturn(here(S.focus));
+    // Inside an open archive, the folder on disk that holds it.
+    const archive = api.hostOf(S.focus);
+    const f = archive ? archive.p : S.focus;
+    store.setReturn(here(f));
     if (S.tab === 'places') api.drawLedger(true);
-    api.say(`Return point marked in ${named(S.focus)}. J returns to it; J again comes back.`);
+    api.say(`Return point marked in ${named(f)}${archive ? `, the folder that holds ${archive.n}` : ''}. J returns to it; J again comes back.`);
   }
 
   function forgetReturn() {
@@ -610,7 +630,7 @@ export function install(api) {
   /* ---------- the inspector ---------- */
 
   function section(node) {
-    if (!node?.d || !ready()) return null;
+    if (!node?.d || !ready() || api.hostOf(node)) return null;
     const b = store.find(node);
     if (!b) {
       return [
@@ -679,7 +699,8 @@ export function install(api) {
           out.push({ label: 'Measure benchmark again', icon: 'remeasure', hint: 'B', run: () => bench(dir) });
           out.push({ label: 'Forget benchmark', icon: 'clear', run: () => forget(b) });
         } else {
-          out.push({ label: node ? 'Set benchmark' : 'Set benchmark on this folder', icon: 'bench', hint: 'B', run: () => bench(dir), disabled: !!dir.e, reason: dir.e ? 'cannot be read' : undefined });
+          const inside = !!api.hostOf(dir);
+          out.push({ label: node ? 'Set benchmark' : 'Set benchmark on this folder', icon: 'bench', hint: 'B', run: () => bench(dir), disabled: !!dir.e || inside, reason: inside ? 'inside an archive' : dir.e ? 'cannot be read' : undefined });
         }
       }
       if (!node) {

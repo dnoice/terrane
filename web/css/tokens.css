@@ -20,6 +20,8 @@
  *       primitives, --ramp-age-0 to --ramp-age-5 (the twins of
  *       THEME.ageRamp), and --tex-strata, a closed mass in three layers
  *       of it with a tick at half its height, for the typical-age glyph.
+ *       --tex-chamber: a walled floor, the archive kind's colour around
+ *       chalk, for the glyph of an archive looked inside.
  *     - 1.1.0 (11/12/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
  *       crossed convention as tokens: --crossed-wash (the 60% paper wash
  *       the world gives a crossed block) and --tex-crossed (the two
@@ -52,7 +54,7 @@
  *     - Registered custom properties (@property) so progress, heading
  *       and sweep values animate as numbers and angles
  *     - Drawing textures (stipple, hatch, grid, paper grain, the crossed
- *       footprint, the traverse, strata) as tokens
+ *       footprint, the traverse, strata, the walled floor) as tokens
  *     - Overrides for prefers-contrast and forced-colors
  *
  * ✒ Other Important Information:
@@ -253,6 +255,9 @@
      fresh above, with an ink tick at half its height, its typical age. */
   --tex-strata: linear-gradient(var(--ink), var(--ink)) 0 50% / 7px 1.5px no-repeat,
     linear-gradient(to top, var(--ramp-age-1) 0 34%, var(--ramp-age-3) 34% 67%, var(--ramp-age-5) 67%);
+  /* A walled floor: an archive looked inside, its walls in the archive
+     kind's colour around a chalk floor. */
+  --tex-chamber: linear-gradient(var(--chalk), var(--chalk)) center / 62% 52% no-repeat, var(--k-archive);
   --tex-grid: linear-gradient(var(--ink-ghost) 1px, transparent 1px) 0 0 / 24px 24px,
     linear-gradient(90deg, var(--ink-ghost) 1px, transparent 1px) 0 0 / 24px 24px;
   --tex-grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .09 0 0 0 0 .12 0 0 0 0 .11 0 0 0 .05 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");

@@ -1,18 +1,24 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Terrace Layout (Terrane Edition - v1.3)
+ *     - Title: Terrace Layout (Terrane Edition - v1.4)
  *     - File Name: layout.js
  *     - Relative Path: web/js/layout.js
  *     - Artifact Type: javascript
- *     - Version: 1.3.0
- *     - Date: 11/12/2026
- *     - Update: Thursday, November 12, 2026
+ *     - Version: 1.4.0
+ *     - Date: 11/13/2026
+ *     - Update: Friday, November 13, 2026
  *     - Author: Dennis 'dendogg' Smaltz
  *     - A.I. Acknowledgement: Anthropic - Claude Opus 5.5
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
  *
  * ✒ Changelog:
+ *     - 1.4.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — An
+ *       open archive (options.inside) stands as a chamber on its file's
+ *       footprint: four WALL boxes on the edges and, between them, the
+ *       archive's root as a plateau keyed by the file, whose contents
+ *       open by distance like any folder's. layout.chamber gives the
+ *       range of the chamber's boxes.
  *     - 1.3.0 (11/12/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
  *       time view: given asOf, a file changed after that date lies flat as
  *       a crossed slab, an empty folder changed after it does too, and a
@@ -26,8 +32,7 @@
  *       the layout as one object; a per-box aux byte, an optional plateau
  *       key and index aliases are added; BOX and STYLE codes are allocated
  *       here, with WALL and CROSSED reserved.
- *     - 1.0.0 (11/09/2026) [dendogg + Anthropic - Claude Fable 5.2] —
- *       Initial release.
+ *     Earlier entries: see CHANGELOG.md
  *
  * ✒ Description:
  *     Turns the tree model into the list of boxes that make up the world,
@@ -61,6 +66,9 @@
  *     - Time view (asOf): heights look back to a date while footprints,
  *       the box count and key order stay as they are now; whatever
  *       changed after the date lies flat, crossed corner to corner
+ *     - Archive chambers (inside): an archive opened with I is walled in
+ *       on its own footprint, and what its directory lists stands on the
+ *       floor between the walls, at any depth and any scale
  *     - One table of box types (BOX) and one of drawing conventions
  *       (STYLE), so every code has a single owner
  *
@@ -71,7 +79,11 @@
  *     with that key), and any key a feature reads, such as asOf or inside.
  *     asOf is { t, kept(dir) }: t a date (ms), kept(dir) the share of a
  *     folder's bytes unchanged since t, from 0 to 1 (timeline.js answers
- *     it). Without asOf the layout is exactly the present one.
+ *     it). Without asOf the layout is exactly the present one. inside is
+ *     { host, root, walls }: host a file node, root the root of what the
+ *     archive lists (its p is host), walls four objects that key the
+ *     walls from one layout to the next; pass aliases [[root, host]] too,
+ *     so the archive's root finds its floor in layout.index.
  *     layout.n          number of boxes, never more than MAX_BOXES
  *     layout.geo        Float64Array, 6 per box: cx, cy, cz, sx, sy, sz
  *     layout.type[i]    a BOX code
@@ -81,6 +93,10 @@
  *     layout.aux[i]     a feature's mark for box i, 0 when unmarked: an
  *                       AUX code (SUNK, CROSSED) in the time view
  *     layout.scree      Map of box index to { count, size }
+ *     layout.chamber    the open archive's boxes, { from, floor, to }:
+ *                       four walls from `from`, the floor at `floor`,
+ *                       what stands on it up to `to`; null when the
+ *                       archive is not drawn as a chamber
  *     layout.coarsened  the grain was raised to fit the budget
  *     layout.over       even the coarsest grain did not fit: the boxes
  *                       past the budget were left out
@@ -100,8 +116,8 @@ import { freshness } from './model.js';
 
 /**
  * Box types. Codes are allocated here and nowhere else, so two features
- * cannot claim the same number. WALL is reserved for archive interiors;
- * no box uses it yet.
+ * cannot claim the same number. WALL is the four walls of an open
+ * archive's chamber; their node is the archive's file.
  */
 export const BOX = Object.freeze({ DIR: 0, FILE: 1, CAP: 2, SCREE: 3, WALL: 4 });
 
@@ -130,6 +146,10 @@ const PER_FOLDER_MAX = 5000;
 // when that is smaller, so it reads the same at every scale.
 const SLAB_RISER = 0.08;
 const SLAB_SIDE = 0.05;
+// An archive's chamber: walls this share of the footprint's short side
+// thick and high. Shares only, so the chamber is the same at every depth.
+const WALL_THICK = 0.035;
+const WALL_HIGH = 0.1;
 /** The most boxes one layout holds; the viewport's capacity is above it. */
 export const MAX_BOXES = 70000;
 
@@ -202,7 +222,7 @@ function distToRect(cam, x, z, w, d, y) {
  * whole, so a feature reads its own key from it without a new parameter.
  */
 function attempt(root, opts) {
-  const { cam, grain, now, force, asOf } = opts;
+  const { cam, grain, now, force, asOf, inside } = opts;
   // The time view: entries changed after asOfT lie flat; a closed mass
   // keeps the share of its height that it kept unchanged.
   const asOfT = asOf ? asOf.t : 0;
@@ -215,6 +235,7 @@ function attempt(root, opts) {
   const aux = [];
   const scree = new Map();
   let over = false;
+  let chamberAt = null;
 
   // The budget is checked before every box, whoever pushes it. A box that
   // would pass MAX_BOXES is refused (-1) and ends the attempt, so n never
@@ -308,7 +329,9 @@ function attempt(root, opts) {
       let t;
       // Heights keep their freshness from now; only what changed after
       // the date looked back to is lowered.
-      if (!ch.d) {
+      if (!ch.d && inside && ch === inside.host) {
+        t = chamber(ch, rx, rz, rw, rd, base, lvl + 1);
+      } else if (!ch.d) {
         const fresh = freshness(ch.m, now);
         let h = Math.min(riser * (0.35 + 3.4 * fresh * fresh), side * 1.8 + riser * 0.15);
         let ax = AUX.NONE;
@@ -359,8 +382,33 @@ function attempt(root, opts) {
     return peak;
   };
 
+  // An open archive on its file's footprint: four walls on the edges and,
+  // between them, the archive's root as a plateau keyed by the file, so
+  // the file's box becomes the floor in a transition and back again. The
+  // walls' node is the file; the floor's is the archive's root.
+  const chamber = (host, x, z, w, d, y, lvl) => {
+    const side = Math.min(w, d);
+    const th = side * WALL_THICK;
+    const h = side * WALL_HIGH;
+    const from = key.length;
+    const [north, south, west, east] = inside.walls;
+    // The long walls run the whole side and the short ones stand between
+    // them, so the chamber is the same whichever way its footprint lies.
+    const ew = w >= d ? w : w - th * 2;
+    const nd = w >= d ? d - th * 2 : d;
+    push(north, host, BOX.WALL, lvl, x + w / 2, y + h / 2, z + th / 2, ew, h, th);
+    push(south, host, BOX.WALL, lvl, x + w / 2, y + h / 2, z + d - th / 2, ew, h, th);
+    push(west, host, BOX.WALL, lvl, x + th / 2, y + h / 2, z + d / 2, th, h, nd);
+    push(east, host, BOX.WALL, lvl, x + w - th / 2, y + h / 2, z + d / 2, th, h, nd);
+    if (over) return y;
+    const floor = key.length;
+    const peak = place(inside.root, x + th, z + th, w - th * 2, d - th * 2, y, lvl, host);
+    chamberAt = { from, floor: key.length > floor ? floor : -1, to: key.length };
+    return Math.max(peak, y + h);
+  };
+
   place(root, -WORLD / 2, -WORLD / 2, WORLD, WORLD, 0, 0);
-  return { over, key, node, type, level, geo, top, aux, scree };
+  return { over, key, node, type, level, geo, top, aux, scree, chamber: chamberAt };
 }
 
 /**
@@ -390,6 +438,6 @@ export function buildLayout(root, options = {}) {
   return {
     n: r.key.length, key: r.key, node: r.node, type: Uint8Array.from(r.type), level: Uint8Array.from(r.level),
     geo: Float64Array.from(r.geo), top: Float64Array.from(r.top), aux: Uint8Array.from(r.aux), scree: r.scree, index, root,
-    coarsened: opts.grain !== grain, over: r.over,
+    coarsened: opts.grain !== grain, over: r.over, chamber: r.chamber,
   };
 }

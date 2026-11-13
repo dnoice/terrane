@@ -1,18 +1,21 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: 3D Viewport (Terrane Edition - v1.3)
+ *     - Title: 3D Viewport (Terrane Edition - v1.4)
  *     - File Name: viewport.js
  *     - Relative Path: web/js/viewport.js
  *     - Artifact Type: javascript
- *     - Version: 1.3.0
- *     - Date: 11/12/2026
- *     - Update: Thursday, November 12, 2026
+ *     - Version: 1.4.0
+ *     - Date: 11/13/2026
+ *     - Update: Friday, November 13, 2026
  *     - Author: Dennis 'dendogg' Smaltz
  *     - A.I. Acknowledgement: Anthropic - Claude Opus 5.5
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
  *
  * ✒ Changelog:
+ *     - 1.4.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
+ *       walls of an open archive's chamber (BOX.WALL) carry no label; its
+ *       floor is labelled with the archive's name, as a folder is.
  *     - 1.3.0 (11/12/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
  *       crossed convention (STYLE.CROSSED, the time view): the two
  *       diagonals of a box's footprint in ink on its top and bottom faces,
@@ -38,8 +41,7 @@
  *       size on screen and chevrons for direction. A set's arc segments
  *       and lift are made whole and finite, so one bad set cannot blank
  *       the others; frame and screenOf stop at the drawn count.
- *     - 1.0.0 (11/09/2026) [dendogg + Anthropic - Claude Fable 5.2] —
- *       Initial release.
+ *     Earlier entries: see CHANGELOG.md
  *
  * ✒ Description:
  *     Draws a layout as a world you travel through and handles everything
@@ -1187,7 +1189,9 @@ export class Viewport {
       const limit = this.w * 1.6;
       const hazeLimit = this.scene.fog.far * 0.55;
       for (let i = 1, o = 6; i < this.n; i++, o += 6) {
-        if (L.type[i] === BOX.SCREE) continue;
+        // Scree has no name, and a chamber's walls would repeat the name
+        // its floor already carries.
+        if (L.type[i] === BOX.SCREE || L.type[i] === BOX.WALL) continue;
         const dist = this.#distTo(g[o], g[o + 1], g[o + 2]);
         if (dist > hazeLimit) continue;
         const px = Math.max(g[o + 3], g[o + 5]) * this.#scaleAt(dist);

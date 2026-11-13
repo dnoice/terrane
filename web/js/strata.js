@@ -53,7 +53,7 @@
  *     - Dependencies: timeline.js (the ladder and its strata), model.js
  *       (formatting, freshness), theme.js (the age ramp), layout.js (BOX);
  *       app.js's api: S, INSPECTOR, TIP_LINES, READING, AFTER_SURVEY,
- *       isAttached, el
+ *       isAttached, hostOf, el
  *     - Compatible platforms: any browser with ES2022 modules; the pure
  *       exports also run in Node 22.5+ (tools/strata-test.mjs)
  *     - Semantics: "changed" is a modification time, the last change,
@@ -63,7 +63,9 @@
  *       before the one where half the bytes have changed, so it is always
  *       true and at most one rung early
  *     - Limitations: no 3D staffs, no leaders to the largest descendant,
- *       and no "Untouched" Contents sort yet
+ *       and no "Untouched" Contents sort yet. Nothing inside an open
+ *       archive: the age table holds the tree on disk, so an archive's
+ *       folders have no section and no typical-age line
  * ----------------------------------------------------------------------------
  */
 
@@ -267,9 +269,13 @@ export function install(api) {
     );
   }
 
-  /** The section for a folder; nothing for a file, a sealed folder, or a counted folder with no files. */
+  /**
+   * The section for a folder; nothing for a file, a sealed folder, a
+   * counted folder with no files, or a folder inside an open archive,
+   * which the age table does not hold.
+   */
   function section(node) {
-    if (!node?.d || node.e) return null;
+    if (!node?.d || node.e || api.hostOf(node)) return null;
     if (S.ages?.has(node) && !S.ages.totalFiles(node)) return null;
     const box = el('section', { class: 'strata', 'aria-label': 'Bytes by last change' });
     fill(box, node);
@@ -295,7 +301,7 @@ export function install(api) {
 
   api.TIP_LINES.add({
     id: 'strata', order: 15, owner: OWNER,
-    lines: (node, c) => (S.lens === 'age' && c.type === BOX.CAP && node.d && !node.e && node.c.length ? typicalLine(S.ages, node) : null),
+    lines: (node, c) => (S.lens === 'age' && c.type === BOX.CAP && node.d && !node.e && node.c.length && !api.hostOf(node) ? typicalLine(S.ages, node) : null),
   });
 
   api.READING.add({

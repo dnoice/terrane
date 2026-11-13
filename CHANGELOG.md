@@ -15,7 +15,9 @@
     - 1.2.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — Records app.js 1.6.0 and
       terrane.css 2.3.0: the Findings sort keys, the Survey and query seams, and the
       session traverse's stylesheet; the Age lens's typical age for closed masses and the
-      strata stylesheet.
+      strata stylesheet; archive interiors in the controller and their stylesheet. Adds the
+      sections for web/js/layout.js and web/js/viewport.js, whose 1.0.0 entries left their
+      headers with the 1.4.0 releases.
     - 1.1.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — Records the Wave 1 releases of
       app.js (1.5.0), index.html (1.5.0) and terrane.css (2.2.0): the time
       view, landmarks and their seams.
@@ -52,7 +54,12 @@ here unchanged in the same edit.
   (SURVEY), AFTER_QUERY hooks hear every run of the search and may give Findings its order and a
   note, and setQuery puts a query in Find and runs it at once. Under the Age lens a closed mass
   shows its typical age, the median step of its bytes in the age table (strata.js), instead of
-  its newest change; the legend says so.
+  its newest change; the legend says so. An archive opened with I (interior.js) hangs from its
+  file: isAttached, updateWhere, stepSelection, goUp, refreshDirs, the crumbs and absPath
+  (x.zip!/inner/file) follow the graft, and a flight into it lands where it was going. runOp
+  refuses any change under it before anything is sent; the keys, menu and inspector say why.
+  Paint walls it in the file's colour, hatches locked entries and half-bands twins, tied as the
+  relation set 'twins'. The api gains hostOf and listCursor.
 - 1.5.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — Paint draws a box the layout marks
   AUX.CROSSED (the time view) in the crossed convention, its colour washed 60% toward paper unless
   it is selected; a Contents row whose entry is crossed carries a crossed swatch and says so to
@@ -104,8 +111,9 @@ here unchanged in the same edit.
 
 - 2.3.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — Imports components/traverse.css:
   the Findings sub-line in two rows with its sort keys and note, the Working sessions rows and the
-  traverse glyph; and components/strata.css: the inspector's Bytes by last change and the
-  typical-age glyph.
+  traverse glyph; components/strata.css: the inspector's Bytes by last change and the
+  typical-age glyph; and components/interior.css: an open archive's crumb, locked and escaping
+  swatches, the Inside sections and the walled-floor glyph.
 - 2.2.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — Imports components/time.css: the
   As of stepper and the crossed swatch and glyph; and components/places.css: benchmark tags in the
   world, the Places tab and the Benchmark section.
@@ -119,6 +127,48 @@ here unchanged in the same edit.
 - 1.1.0 (11/11/2026) [dendogg + Anthropic - Claude Opus 5.5] — The operations panel (verdigris
   progress track, stipple while the total is still being counted), the picture in the hover tip,
   and previews that keep their aspect ratio.
+- 1.0.0 (11/09/2026) [dendogg + Anthropic - Claude Fable 5.2] — Initial release.
+
+## web/js/layout.js
+
+- 1.4.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — An open archive (options.inside)
+  stands as a chamber on its file's footprint: four WALL boxes on the edges and, between them,
+  the archive's root as a plateau keyed by the file, whose contents open by distance like any
+  folder's. layout.chamber gives the range of the chamber's boxes.
+- 1.3.0 (11/12/2026) [dendogg + Anthropic - Claude Opus 5.5] — The time view: given asOf, a file
+  changed after that date lies flat as a crossed slab, an empty folder changed after it does too,
+  and a closed mass is lowered by the share of its bytes kept unchanged, down to a crossed slab
+  when nothing was kept. Footprints, the box count and key order stay those of the present. AUX
+  names the per-box marks.
+- 1.2.0 (11/11/2026) [dendogg + Anthropic - Claude Opus 5.5] — The box budget is checked before
+  every box, so a layout never holds more than 70,000 and cannot overflow the viewport. Options
+  reach the layout as one object; a per-box aux byte, an optional plateau key and index aliases
+  are added; BOX and STYLE codes are allocated here, with WALL and CROSSED reserved.
+- 1.0.0 (11/09/2026) [dendogg + Anthropic - Claude Fable 5.2] — Initial release.
+
+## web/js/viewport.js
+
+- 1.4.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — The walls of an open archive's
+  chamber (BOX.WALL) carry no label; its floor is labelled with the archive's name, as a folder
+  is.
+- 1.3.0 (11/12/2026) [dendogg + Anthropic - Claude Opus 5.5] — The crossed convention
+  (STYLE.CROSSED, the time view): the two diagonals of a box's footprint in ink on its top and
+  bottom faces, measured in the box's own coordinates so a re-based origin cannot move them,
+  thin at any distance, and faded with the haze and as the box shrinks on screen. The colour is
+  washed once, by paint. A pin can stand on the peak of everything on its box and point up
+  (benchmarks' survey marks, in the same pin mesh); up to 12 mark tags are placed before every
+  other label (setMarks); pose() returns the eye and its heading.
+- 1.2.0 (11/11/2026) [dendogg + Anthropic - Claude Opus 5.5] — A layout larger than the instance
+  buffers draws up to their capacity and says so through on.notice, instead of throwing a
+  RangeError. Shader style branches take their codes from STYLE and are bounded on both sides, so
+  an unassigned code draws plain. Box and pin buffers upload only the part that is drawn, not the
+  whole array, and during a transition the shadow map is redrawn on every fourth frame at most and
+  on the frame the boxes arrive. Duplicate ties become the set 'dup' in one relation-line layer
+  that any named set can draw into: one preallocated buffer uploaded by range instead of a new one
+  at every repaint, rewritten around the floating origin at every layout, hidden while boxes
+  travel, with dashes of a constant size on screen and chevrons for direction. A set's arc
+  segments and lift are made whole and finite, so one bad set cannot blank the others; frame and
+  screenOf stop at the drawn count.
 - 1.0.0 (11/09/2026) [dendogg + Anthropic - Claude Fable 5.2] — Initial release.
 
 <!-- ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once! -->

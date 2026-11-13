@@ -16,7 +16,8 @@
       test script also runs tools/relations-test.mjs, the Node check of
       working sessions and the traverse route, after the places test,
       then tools/strata-test.mjs, the Node check of bytes by last change
-      and the Age lens's closed-mass colours.
+      and the Age lens's closed-mass colours, and last
+      tools/interior-test.mjs, the Node check of archive interiors.
     - 1.6.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
       test script also runs tools/places-test.mjs, the Node check of the
       landmarks store, after the service smoke test.
@@ -61,8 +62,9 @@
       after changing any of them, and after wordmark
     - test: runs the service smoke test against a throwaway directory,
       then the places store test (benchmarks and the return point), the
-      working sessions test (sessions, session:N, the route) and the
-      strata test (bytes by last change, typical age) in Node
+      working sessions test (sessions, session:N, the route), the
+      strata test (bytes by last change, typical age) and the interior
+      test (the graft, the chamber, twins, the lock) in Node
     - vendor: fetches the pinned third-party browser files into
       web/vendor/ from jsDelivr; --check verifies them offline
     - ui-check: drives the page in headless Edge or Chrome, keyboard

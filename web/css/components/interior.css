@@ -1,0 +1,80 @@
+/*
+ * ============================================================================
+ * ✒ Metadata
+ *     - Title: Archive Interiors (Terrane Edition - v1.0)
+ *     - File Name: interior.css
+ *     - Relative Path: web/css/components/interior.css
+ *     - Artifact Type: stylesheet
+ *     - Version: 1.0.0
+ *     - Date: 11/13/2026
+ *     - Update: Friday, November 13, 2026
+ *     - Author: Dennis 'dendogg' Smaltz
+ *     - A.I. Acknowledgement: Anthropic - Claude Opus 5.5
+ *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
+ *
+ * ✒ Description:
+ *     An open archive's part of the sheet: the breadcrumb that stands for
+ *     the archive, the marks a locked or escaping entry carries in the
+ *     ledger, the inspector's Inside and In sections, and the walled
+ *     floor in miniature for Reading the world.
+ *
+ * ✒ Key Features:
+ *     - The archive's crumb: underlined in the archive kind's colour, as
+ *       its walls stand in the world
+ *     - Locked swatch: the entry's kind colour hatched over, as the world
+ *       hatches a locked entry; an escaping name's swatch is dotted
+ *     - Inspector notes and the list of names that would land outside
+ *       the folder, in figures, wrapping anywhere
+ *     - Reading glyph: walls in the archive kind's colour around a floor
+ *
+ * ✒ Other Important Information:
+ *     - Dependencies: tokens.css (--tex-chamber, --tex-hatch, --k-archive,
+ *       spacing and type), bar.css (#crumbs .crumb), ledger.css
+ *       (.swatch, .item), inspector.css (.glyph, .facts); imported into
+ *       layer(components) by terrane.css
+ *     - Compatible platforms: current evergreen browsers
+ * ----------------------------------------------------------------------------
+ */
+
+/* ---------- the archive's crumb ---------- */
+
+#crumbs .crumb.is-archive { text-decoration: underline var(--hair) var(--k-archive); text-underline-offset: var(--s-1); }
+#crumbs .crumb.is-archive[aria-current]::after { background: var(--k-archive); }
+
+/* ---------- entries in the ledger ---------- */
+
+/* The kind colour is the swatch's own (set inline), so the hatch goes over it. */
+.swatch.is-locked { position: relative; }
+.swatch.is-locked::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: var(--tex-hatch);
+}
+.swatch.is-escape { border-style: dotted; }
+
+/* ---------- the inspector's Inside and In sections ---------- */
+
+.interior-note {
+  margin: 0;
+  padding: var(--s-2) var(--s-3);
+  color: var(--text-2);
+  font-size: var(--fs-md);
+  line-height: var(--lh-snug);
+  text-wrap: pretty;
+}
+.interior-names {
+  margin: 0;
+  padding: var(--s-1) var(--s-3) var(--s-2) var(--row-indent);
+  color: var(--text-2);
+  font-size: var(--fs-row);
+  overflow-wrap: anywhere;
+}
+.interior-names code { font: 400 var(--fs-fig) / var(--lh-snug) var(--mono); color: var(--text); }
+.interior-twins { padding-bottom: var(--s-2); border-bottom: var(--border-2); }
+.interior-twins .item { padding-left: var(--s-3); }
+.interior-facts code { font: inherit; }
+
+/* ---------- Reading the world ---------- */
+
+.glyph.g-chamber { background: var(--tex-chamber); }
