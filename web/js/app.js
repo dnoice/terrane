@@ -19,9 +19,10 @@
  *       is selected; a Contents row whose entry is crossed carries a
  *       crossed swatch and says so to assistive technology. Two seams for
  *       features: AFTER_OP hooks hear every change the service carried
- *       out (Undo included) before the folders are re-read, and MENU
- *       entries add a group of context menu items; window.__terrane.places
- *       is the landmarks store.
+ *       out (Undo included, with the paths it moved back) before the
+ *       folders are re-read, and a change that stopped part way with what
+ *       it finished; MENU entries add a group of context menu items;
+ *       window.__terrane.places is the landmarks store.
  *     - 1.3.0 (11/12/2026) [dendogg + Anthropic - Claude Opus 5.5] — Icons
  *       on menus, tabs, sort keys, actions and operations; the north arrow
  *       and storage scale over the world (hud.js); tab and lens indicators
@@ -337,9 +338,12 @@ const AFTER_SURVEY = registry('AFTER_SURVEY', needs('AFTER_SURVEY', 'run'));
  * AFTER_OP run(body, res) once the service has carried out a change: body
  * is what was asked ({ type: 'rename', path, name }, { type: 'move',
  * paths, dest }, ...; { type: 'undo' } for Undo) and res its answer
- * (renamed, results, label). It runs before the affected folders are
- * re-read, so a feature that names places by path can follow Terrane's
- * own renames and moves (and their undo) before the tree changes.
+ * (renamed, results, label; for an Undo, moved: the [from, to] paths it
+ * carried back). A change that stopped part way runs it too, with res
+ * { partial: true, results, label }: what it finished. It runs before the
+ * affected folders are re-read, so a feature that names places by path
+ * can follow Terrane's own renames and moves (and their undo) before the
+ * tree changes.
  */
 const AFTER_OP = registry('AFTER_OP', needs('AFTER_OP', 'run'));
 
@@ -369,6 +373,8 @@ async function asError(res) {
   const err = new Error(body.message || `The service answered ${res.status}.`);
   err.code = body.code || String(res.status);
   err.affected = body.affected || [];
+  // A change that stopped part way names what it finished.
+  if (Array.isArray(body.results)) err.results = body.results;
   return err;
 }
 
@@ -1048,6 +1054,9 @@ async function runOp(body, { silent = false } = {}) {
     if (S.tab === 'journal') drawLedger();
     return res;
   } catch (err) {
+    // What was finished before it stopped is journaled like a whole change,
+    // so features follow it the same way, before the folders are re-read.
+    if (err.results) runHooks(AFTER_OP, body, { ok: false, partial: true, label: err.message, results: err.results, affected: err.affected });
     if (err.affected?.length) refreshDirs(err.affected);
     if (err.code === 'EEXIST' && (body.type === 'move' || body.type === 'copy') && body.onConflict !== 'keepBoth') {
       notice(err.message, { kind: 'error', action: { label: 'Keep both', run: () => runOp({ ...body, onConflict: 'keepBoth' }) } });

@@ -6,8 +6,8 @@
  *     - Relative Path: web/css/components/places.css
  *     - Artifact Type: stylesheet
  *     - Version: 1.0.0
- *     - Date: 11/12/2026
- *     - Update: Thursday, November 12, 2026
+ *     - Date: 11/13/2026
+ *     - Update: Friday, November 13, 2026
  *     - Author: Dennis 'dendogg' Smaltz
  *     - A.I. Acknowledgement: Anthropic - Claude Opus 5.5
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
@@ -32,7 +32,9 @@
  *       less tracking) so the fifth, Places, is not pushed out
  *
  * ✒ Other Important Information:
- *     - Dependencies: tokens.css (--bench, --bench-wash), stage.css
+ *     - Dependencies: tokens.css (--bench, --bench-wash, the space and
+ *       type scales, --fs-row and --fs-fig, the row padding and indent
+ *       the ledger aligns to, and a tag's padding), stage.css
  *       (.tag), ledger.css (.rich, .item, .note), inspector.css (.facts,
  *       .glyph), controls.css (.tabs, the ledger container); imported
  *       into layer(components) by terrane.css
@@ -43,7 +45,7 @@
 /* ---------- benchmark tags in the world ---------- */
 
 .tag-bench {
-  padding: 3px 6px 3px 5px;
+  padding: var(--tag-pad-y) var(--tag-pad-x);
   border: var(--border);
   border-left: 3px solid var(--bench);
   background: var(--surface-control);
@@ -72,15 +74,15 @@
 /* A fifth tab: in a narrow ledger the five labels tighten to share the
    328 px side (about 65 px each) instead of pushing the last one out. */
 @container ledger (max-width: 420px) {
-  .tabs:has(> [data-tab='places']) button { padding: 0 2px; font-stretch: var(--wdth-normal); letter-spacing: 0.03em; }
+  .tabs:has(> [data-tab='places']) button { padding: 0 calc(var(--s-1) / 2); font-stretch: var(--wdth-normal); letter-spacing: 0.03em; }
 }
 
 .rich .bench { border-bottom: 0; border-top: var(--border-3); }
 .rich .bench > summary {
   height: auto;
   min-height: var(--row-h);
-  padding: 5px 10px 5px 12px;
-  font: 500 12px / 1.25 var(--sans);
+  padding: var(--row-pad-y) var(--row-pad-x) var(--row-pad-y) var(--s-3);
+  font: 500 var(--fs-row) / 1.25 var(--sans);
   font-stretch: var(--wdth-condensed);
   letter-spacing: 0;
   text-transform: none;
@@ -90,7 +92,7 @@
 .bench-name .nm, .bench-name .path { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .bench-name .path { font: 400 var(--fs-xs) / 1.3 var(--mono); color: var(--text-3); }
 .bench > summary .fig {
-  font: 400 11px / 1 var(--mono);
+  font: 400 var(--fs-fig) / 1 var(--mono);
   font-variant-numeric: tabular-nums;
   color: var(--text-2);
   white-space: nowrap;
@@ -98,14 +100,19 @@
 .bench.is-changed > summary .fig { color: var(--text); font-weight: 500; }
 .bench.is-missing > summary .fig { color: var(--danger); }
 
-.rich .bench .facts { padding-left: 28px; border-bottom: 0; }
+.rich .bench .facts { padding-left: var(--row-indent); border-bottom: 0; }
 .rich .bench .actions { padding-top: 0; }
-.bench-missing { margin: 0; padding: 8px 12px 4px 28px; color: var(--danger); font-size: 12px; text-wrap: pretty; }
-.bench-head { padding: 8px 10px 4px 28px; border-top: var(--border-3); font: 500 11px / 1.2 var(--mono); color: var(--text-2); }
+.bench-missing { margin: 0; padding: var(--s-2) var(--s-3) var(--s-1) var(--row-indent); color: var(--danger); font-size: var(--fs-row); text-wrap: pretty; }
+.bench-head {
+  padding: var(--s-2) var(--row-pad-x) var(--s-1) var(--row-indent);
+  border-top: var(--border-3);
+  font: 500 var(--fs-fig) / 1.2 var(--mono);
+  color: var(--text-2);
+}
 .places-failed { color: var(--danger); }
 
 /* ---------- the inspector ---------- */
 
-.bench-none { display: grid; gap: var(--s-2); padding: 0 12px 12px; border-bottom: var(--border-2); }
+.bench-none { display: grid; gap: var(--s-2); padding: 0 var(--s-3) var(--s-3); border-bottom: var(--border-2); }
 .bench-none p { margin: 0; color: var(--text-2); font-size: var(--fs-md); text-wrap: pretty; }
 .bench-none .btn { justify-self: start; }

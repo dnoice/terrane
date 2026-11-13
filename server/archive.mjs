@@ -23,12 +23,16 @@
  * ✒ Key Features:
  *     - Format sniffing from the first bytes: zip, 7z, RAR, gzip, bzip2,
  *       xz, zstd, cabinet, ar and tar are named; only zip is listed
+ *     - First bytes that match no format: the file is still listed when
+ *       its end holds a zip directory that checks out and lists an entry
+ *       (data before the archive: a self-extracting stub, a launcher)
  *     - A name that claims a format the bytes do not have is reported as
  *       not an archive, naming the format the name suggests
  *     - End of central directory found from the file's tail, preferring a
  *       record whose comment runs exactly to the end of the file
  *     - ZIP64 end records and per-entry ZIP64 sizes; data before the
- *       archive (a self-extracting stub) is tolerated
+ *       archive (a self-extracting stub) is tolerated; a digital signature
+ *       record closing the directory is accepted, however short
  *     - Names: UTF-8 when flagged, the Unicode Path field when its CRC
  *       matches the stored name, otherwise valid UTF-8 or code page 437
  *     - Dates: the extended timestamp or NTFS field (UTC) over the DOS
@@ -36,6 +40,10 @@
  *     - Flags per entry, matching the scanner's bits: 1 symbolic link
  *       (Unix mode), 2 hidden, 4 special, plus 8 locked (encrypted) and
  *       16 escape (a name that would land outside the folder if extracted)
+ *     - Names unique in each folder, as the scanner gives them: a later
+ *       entry whose name is taken there (a file and a folder both "a", or
+ *       an entry repeated) gets a number after it ("a (2)", "b (2).txt"),
+ *       is counted in renamed and is stated in the sentence
  *     - Bounds: 100,000 entries, a 64 MB directory, 4 seconds, 128 folders
  *       deep and 100,000 folders; anything left out is stated in one
  *       sentence
@@ -62,6 +70,7 @@
  *         mtime: 0, locked: false, link: false, special: false }])
  *     inspect(file, { name, limits: { ...LIMITS, entries: 50 } })
  *     inside.partial -> 'Only part of many.zip is listed, ...' or null
+ *     inside.renamed -> entries shown with a number after their name
  *
  * ✒ Other Important Information:
  *     - Dependencies: Node.js built-ins only (node:fs, node:zlib);
@@ -425,12 +434,18 @@ export async function listZip(fd, size, { name = 'The archive', limits = LIMITS,
         break;
       }
     }
+    // A digital signature record closes the directory and can be shorter
+    // than an entry header: whole when its length runs to the end.
+    if (p + 6 <= got && cd.readUInt32LE(p) === SIG.SIGNATURE) {
+      if (!short && p + 6 + cd.readUInt16LE(p + 4) === got) break;
+      cut = short || 'damaged';
+      break;
+    }
     if (p + 46 > got) {
       cut = short || 'damaged';
       break;
     }
     const sig = cd.readUInt32LE(p);
-    if (sig === SIG.SIGNATURE && !short) break;
     if (sig !== SIG.CENTRAL) {
       cut = 'damaged';
       break;
@@ -455,24 +470,51 @@ export async function listZip(fd, size, { name = 'The archive', limits = LIMITS,
 /**
  * Entry list -> scanner records, parents before children. Names are split
  * into segments and resolved inside the archive; nothing here touches the
- * filesystem. Returns the records with totals, what was left out, and how
- * many entries were processed before the deadline.
+ * filesystem. Every name is unique in its folder, as the scanner's are, so
+ * a path finds one entry. Returns the records with totals, what was left
+ * out, and how many entries were processed before the deadline.
  */
 export function toRecords(entries, { rootName = '', limits = LIMITS, deadline = Infinity, signal } = {}) {
-  const root = { id: 0, pid: -1, name: rootName, mtime: 0, files: [], sub: new Map() };
+  const root = { id: 0, pid: -1, name: rootName, mtime: 0, files: [], sub: new Map(), names: new Set(), next: null };
   const order = [root];
   const left = { deep: 0, folders: 0, unnamed: 0 };
   const escaped = [];
-  const totals = { files: 0, unpacked: 0, packed: 0, locked: 0, links: 0, escapes: 0 };
+  const totals = { files: 0, unpacked: 0, packed: 0, locked: 0, links: 0, escapes: 0, renamed: 0 };
+
+  /**
+   * A name free in folder at: the entry's own, or, when an earlier entry
+   * there has it, the name with a number after it ("a (2)", for a file
+   * "b (2).txt"). next keeps the last number per name, so a name repeated
+   * many times costs no more than once each.
+   */
+  const unique = (at, name, file) => {
+    if (!at.names.has(name)) {
+      at.names.add(name);
+      return name;
+    }
+    const dot = file ? name.lastIndexOf('.') : -1;
+    const stem = dot > 0 ? name.slice(0, dot) : name;
+    const ext = dot > 0 ? name.slice(dot) : '';
+    at.next ??= new Map();
+    let k = at.next.get(name) ?? 2;
+    let out = `${stem} (${k})${ext}`;
+    while (at.names.has(out)) out = `${stem} (${++k})${ext}`;
+    at.next.set(name, k + 1);
+    at.names.add(out);
+    totals.renamed++;
+    return out;
+  };
 
   /** The folder for segs[0..n), created as needed; null past the folder bound. */
   const folderAt = (segs, n) => {
     let at = root;
     for (let i = 0; i < n; i++) {
+      // Later entries reach a folder by the segment they name, whatever
+      // name the folder is shown with.
       let next = at.sub.get(segs[i]);
       if (!next) {
         if (order.length - 1 >= limits.folders) return null;
-        next = { id: order.length, pid: at.id, name: segs[i], mtime: 0, files: [], sub: new Map() };
+        next = { id: order.length, pid: at.id, name: unique(at, segs[i], false), mtime: 0, files: [], sub: new Map(), names: new Set(), next: null };
         at.sub.set(segs[i], next);
         order.push(next);
       }
@@ -534,7 +576,7 @@ export function toRecords(entries, { rootName = '', limits = LIMITS, deadline = 
     const size = e.link ? 0 : e.size;
     const flags = (e.link ? FLAG_LINK : 0) | (leaf.startsWith('.') ? FLAG_HIDDEN : 0) | (e.special ? FLAG_SPECIAL : 0)
       | (e.locked ? FLAG_LOCKED : 0) | (escape ? FLAG_ESCAPE : 0);
-    dir.files.push(leaf, size, e.mtime, flags);
+    dir.files.push(unique(dir, leaf, true), size, e.mtime, flags);
     totals.files++;
     totals.unpacked += size;
     totals.packed += e.packed;
@@ -556,16 +598,23 @@ export function toRecords(entries, { rootName = '', limits = LIMITS, deadline = 
 const count = (n) => n.toLocaleString('en-US');
 const plural = (n, one, many) => `${count(n)} ${n === 1 ? one : many}`;
 
-/** One sentence saying what a listing leaves out, or null when it is whole. */
-export function partialSentence(name, { declared, read, cut, directoryBytes, left, limits = LIMITS }) {
+/**
+ * What a listing leaves out, or shows under another name, in a sentence
+ * (two when both); null when it is whole and every name is its own.
+ */
+export function partialSentence(name, { declared, read, cut, directoryBytes, left, renamed = 0, limits = LIMITS }) {
   const lost = [];
   if (left.deep) lost.push(`${plural(left.deep, 'entry is', 'entries are')} nested more than ${limits.depth} folders deep`);
   if (left.folders) lost.push(`${plural(left.folders, 'entry needs', 'entries need')} more than ${count(limits.folders)} folders`);
   if (left.unnamed) lost.push(`${plural(left.unnamed, 'entry has', 'entries have')} no usable name`);
+  const same = renamed
+    ? `In ${name}, ${plural(renamed, 'entry has', 'entries have')} the same name as an earlier one in ${renamed === 1 ? 'its' : 'their'} folder, so ${renamed === 1 ? 'it is' : 'they are'} shown with a number after the name, as in "name (2)".`
+    : null;
+  const also = same ? ` ${same}` : '';
   if (!cut) {
-    if (!lost.length) return null;
+    if (!lost.length) return same;
     const out = left.deep + left.folders + left.unnamed;
-    return `${name} is listed without ${count(out)} of its ${count(read)} entries: ${lost.join('; ')}.`;
+    return `${name} is listed without ${count(out)} of its ${count(read)} entries: ${lost.join('; ')}.${also}`;
   }
   const why = {
     entries: `Terrane reads at most ${count(limits.entries)} entries from one archive`,
@@ -574,7 +623,7 @@ export function partialSentence(name, { declared, read, cut, directoryBytes, lef
     damaged: 'its directory looks damaged after that point',
   }[cut];
   const of = declared > read ? ` of ${count(declared)}` : '';
-  return `Only part of ${name} is listed, the first ${count(read)}${of} entries: ${[why, ...lost].join('; ')}.`;
+  return `Only part of ${name} is listed, the first ${count(read)}${of} entries: ${[why, ...lost].join('; ')}.${also}`;
 }
 
 let running = 0;
@@ -606,6 +655,23 @@ export async function inspect(file, { name = 'The archive', signal, limits = LIM
   }
 }
 
+/**
+ * A zip behind data that is not one (a self-extracting stub, a launcher
+ * before a .jar): listed when the file's end holds a directory that checks
+ * out and lists at least one entry. Otherwise null, and the file is refused
+ * by its first bytes, as one that is no archive.
+ */
+async function behindData(fd, size, opts) {
+  if (size < END_MIN) return null;
+  try {
+    const z = await listZip(fd, size, opts);
+    return z.entries.length ? z : null;
+  } catch (err) {
+    if (err.code === 'EABORT') throw err;
+    return null;
+  }
+}
+
 async function inspectNow(file, { name, signal, limits }) {
   const started = performance.now();
   const deadline = started + limits.ms;
@@ -623,8 +689,11 @@ async function inspectNow(file, { name, signal, limits }) {
     if (!st.isFile()) throw new GuardError('ENOTFILE', st.isDirectory() ? `${name} is a folder, not an archive file.` : `${name} is not a regular file.`);
     const head = await readSmall(fd, 0, Math.min(HEAD_BYTES, st.size));
     const found = sniff(head, name);
-    if (found?.format !== 'zip') throw refusal(name, found, st.size);
-    const z = await listZip(fd, st.size, { name, limits, signal, deadline });
+    const opts = { name, limits, signal, deadline };
+    let z = null;
+    if (found?.format === 'zip') z = await listZip(fd, st.size, opts);
+    else if (!found) z = await behindData(fd, st.size, opts);
+    if (!z) throw refusal(name, found, st.size);
     if (signal?.aborted) throw aborted();
     const t = toRecords(z.entries, { rootName: name, limits, deadline, signal });
     // Placing entries shares the deadline; entries it did not reach are not shown.
@@ -646,7 +715,8 @@ async function inspectNow(file, { name, signal, limits }) {
       links: t.links,
       escapes: t.escapes,
       escaped: t.escaped,
-      partial: partialSentence(name, { declared, read, cut, directoryBytes: z.directoryBytes, left: t.left, limits }),
+      renamed: t.renamed,
+      partial: partialSentence(name, { declared, read, cut, directoryBytes: z.directoryBytes, left: t.left, renamed: t.renamed, limits }),
       ms: Math.round(performance.now() - started),
       records: t.records,
     };

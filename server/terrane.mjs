@@ -21,7 +21,8 @@
  *       away. Other formats are refused with 415 naming the format found
  *       or the one the name suggests; a damaged zip gets 422 with a
  *       sentence. Snapshot mode refuses it with ESNAPSHOT. Error bodies
- *       carry format and claimed when an archive is refused.
+ *       carry format and claimed when an archive is refused, and results
+ *       (the paths finished) when a change stopped part way.
  *     - 1.1.0 (11/11/2026) [dendogg + Anthropic - Claude Opus 5.5] — Job
  *       progress is broadcast on the change stream and replayed to a page
  *       that connects mid-job; POST /api/cancel stops a job; Ctrl+C
@@ -207,6 +208,8 @@ const fail = (res, err) => {
       ok: false, code: err.code || 'EIO', message: explain || err.message, affected: err.affected || [],
       // An archive refusal names the format found and the one the name suggests.
       ...(err.format !== undefined ? { format: err.format } : {}), ...(err.claimed ? { claimed: err.claimed } : {}),
+      // A change that stopped part way names what it finished.
+      ...(Array.isArray(err.results) ? { results: err.results } : {}),
     });
   } else res.end();
 };

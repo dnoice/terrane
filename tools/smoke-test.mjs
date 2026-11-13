@@ -32,7 +32,13 @@
  *       identical afterwards; snapshot mode answers ESNAPSHOT. A reader
  *       section builds zips by hand for names, dates, flags, escapes, the
  *       depth, folder, byte and time bounds, damage, split and encrypted
- *       directories, and sniffing, and checks the reader never writes.
+ *       directories, and sniffing, and checks the reader never writes;
+ *       later (11/13/2026) also a stub or launcher before a zip whose
+ *       first bytes are no zip, a short digital signature record, and
+ *       names repeated in a folder numbered, counted and stated. A section
+ *       runs the operations in-process: Undo answers with the paths it
+ *       moved back, after a restart too, and a move or removal that stops
+ *       part way throws with the paths it finished.
  *     - 1.2.0 (11/11/2026) [dendogg + Anthropic - Claude Opus 5.5] — A
  *       layout section runs the browser's layout module in Node: a tree
  *       shaped to overflow the old folder-entry check stays within the
@@ -92,6 +98,8 @@
  *       tree unchanged by listing; snapshot mode refuses listing
  *     - The archive reader, without the service: hand-built zips for
  *       names, dates, flags, escaping names, bounds and damage
+ *     - Undo answers and partial changes, in-process: the paths moved
+ *       back, and the paths finished before a simulated failure
  *     - Duplicate hashing distinguishes true copies from same-size files
  *     - Layout safety, without the service: the box budget holds at every
  *       box, so no layout can pass the viewport's capacity
@@ -210,9 +218,10 @@ function treeState(dir, rel = '') {
 /**
  * A zip for the archive reader's checks: stored entries, with any
  * central-directory field set by hand. Entry: { name (string or bytes),
- * data, flags, made, attrs, date, time, size, packed, extra }.
+ * data, flags, made, attrs, date, time, size, packed, extra }. cdTail is
+ * appended inside the directory (a digital signature record).
  */
-function zipOf(list, { comment = Buffer.alloc(0), prefix = Buffer.alloc(0), declared = list.length, disk = 0 } = {}) {
+function zipOf(list, { comment = Buffer.alloc(0), prefix = Buffer.alloc(0), declared = list.length, disk = 0, cdTail = Buffer.alloc(0) } = {}) {
   const locals = [];
   const central = [];
   let offset = 0;
@@ -244,7 +253,7 @@ function zipOf(list, { comment = Buffer.alloc(0), prefix = Buffer.alloc(0), decl
     central.push(head, name, extra);
     offset += 30 + name.length + data.length;
   }
-  const cd = Buffer.concat(central);
+  const cd = Buffer.concat([...central, cdTail]);
   const end = Buffer.alloc(22);
   end.writeUInt32LE(0x06054b50, 0);
   end.writeUInt16LE(disk, 4);
@@ -524,6 +533,64 @@ j = (await s4.get('/api/journal')).body;
 const setAside = fs.readdirSync(path.join(root, '.terrane-trash')).some((n) => n.startsWith('journal.unreadable-'));
 check('an unreadable journal is set aside, not overwritten', j.journal.length === 0 && setAside);
 await s4.stop();
+
+console.log('\nUndo answers and changes that stop part way (no service)');
+{
+  const { makeGuard } = await import('../server/guard.mjs');
+  const { makeOps } = await import('../server/ops.mjs');
+  const fsp = (await import('node:fs/promises')).default;
+  const opsRoot = path.join(work, 'ops-root');
+  for (const d of ['one', 'two', 'three', 'four', 'dest']) fs.mkdirSync(path.join(opsRoot, d), { recursive: true });
+  fs.writeFileSync(path.join(opsRoot, 'one', 'f.txt'), '1');
+  const g = await makeGuard(opsRoot);
+  const at = (...p) => fs.existsSync(path.join(opsRoot, ...p));
+  let o = makeOps(g, {});
+  await o.run({ type: 'rename', path: 'one', name: 'uno' });
+  await o.run({ type: 'move', paths: ['uno', 'two'], dest: 'dest' });
+  let u = await o.undo();
+  check('undo of a move answers with the paths it carried back, last moved first, each [where it was, where it is now]',
+    JSON.stringify(u.moved) === JSON.stringify([['dest/two', 'two'], ['dest/uno', 'uno']]) && at('uno', 'f.txt') && at('two'), JSON.stringify(u));
+  // Another process reads the journal: the answer holds after a restart, as after a page reload.
+  await new Promise((r) => setTimeout(r, 5));
+  o = makeOps(g, {});
+  u = await o.undo();
+  check('undo of a rename from an earlier session answers the same way', JSON.stringify(u.moved) === JSON.stringify([['uno', 'one']]) && /earlier session/.test(u.label) && at('one', 'f.txt'), JSON.stringify(u));
+  // The second item's rename fails, so the move stops after the first.
+  const rename = fsp.rename;
+  const failOn = (name) => {
+    fsp.rename = async (from, to) => {
+      if (path.basename(from) === name) throw Object.assign(new Error('simulated: the item is in use'), { code: 'EBUSY' });
+      return rename(from, to);
+    };
+  };
+  let err = null;
+  failOn('three');
+  try {
+    await o.run({ type: 'move', paths: ['two', 'three'], dest: 'dest' });
+  } catch (e) {
+    err = e;
+  } finally {
+    fsp.rename = rename;
+  }
+  check('a move that stops part way throws an error carrying results, the paths it finished',
+    err?.status === 500 && JSON.stringify(err.results) === JSON.stringify(['dest/two']) && err.affected.includes('dest') && at('dest', 'two') && at('three'),
+    JSON.stringify(err && { code: err.code, results: err.results, affected: err.affected, message: err.message }));
+  u = await o.undo();
+  check('its undo carries the finished path back and says so', JSON.stringify(u.moved) === JSON.stringify([['dest/two', 'two']]) && at('two') && !at('dest', 'two'), JSON.stringify(u));
+  err = null;
+  failOn('four');
+  try {
+    await o.run({ type: 'trash', paths: ['three', 'four'] });
+  } catch (e) {
+    err = e;
+  } finally {
+    fsp.rename = rename;
+  }
+  check('a removal that stops part way carries results too: the paths it removed to the holding area',
+    err?.status === 500 && JSON.stringify(err.results) === JSON.stringify(['three']) && !at('three') && at('four'), JSON.stringify(err && { results: err.results, message: err.message }));
+  u = await o.undo();
+  check('an undo that moved nothing by path answers without moved', u.moved === undefined && at('three'), JSON.stringify(u));
+}
 
 console.log('\nSnapshot mode');
 const { takeSnapshot } = await import('../server/snapshot.mjs');
@@ -821,6 +888,57 @@ console.log('\nArchive reader (no service)');
   stub.writeUInt32LE(0x04034b50, 0);
   out = await look(zipOf(['a.txt', 'b/c.txt'].map((name) => ({ name, data: Buffer.from('ab') })), { prefix: stub }));
   check('data before the archive shifts its offsets and the directory is still found', out.read === 2 && out.files === 2 && out.partial === null, JSON.stringify(out));
+  const exeStub = Buffer.concat([Buffer.from('MZ'), Buffer.alloc(100, 0x90)]);
+  out = await look(zipOf(['a.txt', 'b/c.txt'].map((name) => ({ name, data: Buffer.from('ab') })), { prefix: exeStub }), { name: 'setup.exe' });
+  const sfxOk = out.format === 'zip' && out.read === 2 && out.files === 2 && out.partial === null;
+  out = await look(zipOf([{ name: 'Main.class', data: Buffer.from('cafe') }], { prefix: Buffer.from('#!/bin/sh\nexec java -jar "$0" "$@"\n') }), { name: 'tool.jar' });
+  check('a self-extracting stub or a launcher before the archive, first bytes no zip, is listed from the directory at its end',
+    sfxOk && out.format === 'zip' && out.read === 1 && filesOf(out)['Main.class']?.size === 4, JSON.stringify(out));
+  out = await look(Buffer.from('MZ and nothing like a zip after it, not even at the end.'), { name: 'plain.zip' });
+  const plainRefused = out.status === 415 && out.error === 'ENOTARCHIVE' && /first bytes do not match one/.test(out.message);
+  const hollow = Buffer.alloc(22);
+  hollow.writeUInt32LE(0x06054b50, 0);
+  out = await look(Buffer.concat([Buffer.from('MZ'), Buffer.alloc(200), hollow]), { name: 'hollow.exe' });
+  check('first bytes that match nothing, and an end that holds no entry, are still refused as no archive (415)',
+    plainRefused && out.status === 415 && out.error === 'ENOTARCHIVE', JSON.stringify(out));
+  const sigRecord = (data) => {
+    const b = Buffer.alloc(6 + data.length);
+    b.writeUInt32LE(0x05054b50, 0);
+    b.writeUInt16LE(data.length, 4);
+    data.copy(b, 6);
+    return b;
+  };
+  out = await look(zipOf([{ name: 'a.txt', data: Buffer.from('a') }], { cdTail: sigRecord(Buffer.alloc(0)) }));
+  const sigBare = out.read === 1 && out.partial === null;
+  out = await look(zipOf([{ name: 'a.txt' }, { name: 'b.txt' }], { cdTail: sigRecord(Buffer.from('sig')) }));
+  const sigShort = out.read === 2 && out.partial === null;
+  out = await look(zipOf([{ name: 'a.txt' }], { cdTail: Buffer.concat([sigRecord(Buffer.from('x')), Buffer.from('junk')]) }));
+  check('a digital signature record closing the directory, shorter than an entry header, is accepted; one that does not reach the end is damage',
+    sigBare && sigShort && out.read === 1 && /its directory looks damaged after that point/.test(out.partial), out.partial);
+  out = await look(zipOf(['a', 'a/', 'a/b.txt', 'r.txt', 'r.txt', 'r (2).txt', 'notes', 'notes/'].map((name) => ({ name }))));
+  const { Model: ArchModel } = await import('../web/js/model.js');
+  const mdl = new ArchModel('test.zip');
+  mdl.ingest(out.records, [], mdl.root);
+  const dupNames = [];
+  (function walk(d) {
+    const seen = new Set();
+    for (const ch of d.c) {
+      if (seen.has(ch.n)) dupNames.push(ch.n);
+      seen.add(ch.n);
+      if (ch.d) walk(ch);
+    }
+  })(mdl.root);
+  check('two entries with one name in a folder (a file and a folder "a", an entry repeated) are shown as "a (2)", counted, and stated, so a path finds one',
+    dupNames.length === 0 && out.renamed === 4 && mdl.find('a') && !mdl.find('a').d && mdl.find('a (2)/b.txt') && !mdl.find('a (2)/b.txt').d && mdl.find('r.txt') && mdl.find('r (2).txt')
+    && mdl.find('r (2) (2).txt') && mdl.find('notes (2)')?.d === true && out.files === 6 && out.folders === 2
+    && out.partial === 'In test.zip, 4 entries have the same name as an earlier one in their folder, so they are shown with a number after the name, as in "name (2)".',
+    JSON.stringify({ dupNames, renamed: out.renamed, partial: out.partial, names: mdl.root.c.map((c) => c.n) }));
+  const many = AX.toRecords(Array.from({ length: 20000 }, () => ({ name: 'same.txt', dir: false, size: 1, packed: 1, mtime: 0 })));
+  const last = many.records[0][5].at(-4);
+  check('a name repeated 20,000 times is numbered in one pass', many.renamed === 19999 && last === 'same (20000).txt', `${many.renamed} ${last}`);
+  out = await look(zipOf(['x/1.txt', 'x/1.txt', `${'d/'.repeat(129)}deep.txt`].map((name) => ({ name }))));
+  check('a renamed entry beside one left out: both are said, one sentence each',
+    out.partial === 'test.zip is listed without 1 of its 3 entries: 1 entry is nested more than 128 folders deep. In test.zip, 1 entry has the same name as an earlier one in its folder, so it is shown with a number after the name, as in "name (2)".', out.partial);
   out = await look(zipOf(['a.txt', 'b.txt', 'c.txt'].map((name) => ({ name })), { declared: 1 }));
   check('an end record that counts too few (a wrapped count) does not hide entries', out.read === 3 && out.declared === 3 && out.partial === null);
   const empty = Buffer.alloc(22);

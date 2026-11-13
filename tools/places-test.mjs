@@ -7,8 +7,8 @@
  *     - Relative Path: tools/places-test.mjs
  *     - Artifact Type: test
  *     - Version: 1.0.0
- *     - Date: 11/12/2026
- *     - Update: Thursday, November 12, 2026
+ *     - Date: 11/13/2026
+ *     - Update: Friday, November 13, 2026
  *     - Author: Dennis 'dendogg' Smaltz
  *     - A.I. Acknowledgement: Anthropic - Claude Opus 5.5
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
@@ -32,6 +32,11 @@
  *     - Missing on detach: a folder that leaves the tree makes its
  *       benchmark missing, kept, and found again when it comes back
  *     - A storage object that throws: one report, everything in memory
+ *     - Two tabs on one storage: a save keeps the other tab's benchmarks,
+ *       sync() takes them in, forgetting and Forget all reach the other,
+ *       a change made here wins, one folder set twice keeps the later,
+ *       and the return point follows the same rule
+ *     - A snapshot's own key, and its measurements dated when it was taken
  *     - At most 64 benchmarks; the return point's offset arithmetic
  *
  * ✒ Usage Instructions:
@@ -360,6 +365,103 @@ section('Limits and the return point');
   check('an eye kept relative to a box comes back exactly', Math.hypot(v.x - cam.x, v.y - cam.y, v.z - cam.z) < 1e-12 && v.yaw === cam.yaw && v.pitch === cam.pitch, JSON.stringify(v));
   const moved = vantage(p, anchorOf({ geo: new Float64Array([110, 2, -4, 80, 4, 30]) }, 0));
   check('and follows the box when it moves and grows', Math.abs(moved.x - (110 + p.off[0] * 80)) < 1e-12 && Math.abs(moved.y - p.off[1] * 80) < 1e-12);
+}
+
+/* ---------- two tabs ---------- */
+
+section('Two tabs on one directory');
+{
+  const model = build({ a: { 'x.txt': [10] }, b: { 'y.txt': [20] }, c: { 'z.txt': [30] }, d: { 'w.txt': [40] } });
+  const storage = memoryStorage();
+  let syncs = 0;
+  const tab = (now) => {
+    const s = new Places({ key: KEY, storage: () => storage, timers: manualTimers(), now: () => now, onSync: () => syncs++ });
+    s.load();
+    s.resolve(model);
+    return s;
+  };
+  const rels = (s) => s.benchmarks.map((b) => b.rel).sort().join(',');
+  const stored = () => (P.Places.parse(storage.map.get(KEY) || 'null')?.benchmarks || []).map((b) => b.rel).sort().join(',');
+  const A = tab(T0);
+  const B = tab(T0);
+  A.set(model.find('a'));
+  A.flush();
+  B.set(model.find('b'));
+  B.flush();
+  check('a tab opened earlier keeps the other tab\'s benchmark when it saves its own', stored() === 'a,b' && rels(B) === 'a,b', `${stored()} / ${rels(B)}`);
+  check('and the ids stay apart, though both tabs counted from the same number', new Set(B.benchmarks.map((b) => b.id)).size === 2, B.benchmarks.map((b) => b.id).join());
+  check('the tab that merged is told, so the page can redraw', syncs === 1, `${syncs}`);
+  syncs = 0;
+  check('sync() takes in the other tab\'s save, and says it changed', A.sync() === true && rels(A) === 'a,b' && syncs === 1 && A.dirty === false, `${rels(A)} ${syncs}`);
+  check('sync() with nothing new changes nothing and calls nobody', A.sync() === false && syncs === 1);
+  A.resolve(model);
+  check('a merged benchmark is found by the next resolve', A.find(model.find('b'))?.rel === 'b');
+
+  // Forgotten in one tab: gone from the other, which had not changed it.
+  const ab = A.findRel('a');
+  A.remove(ab);
+  A.flush();
+  B.sync();
+  check('a benchmark forgotten in one tab is forgotten in the other', rels(B) === 'b' && stored() === 'b', `${rels(B)} / ${stored()}`);
+
+  // Changed in both: the one changed here wins when it saves.
+  const bA = A.findRel('b');
+  const bB = B.findRel('b');
+  B.set(model.find('b'), T0 + 5000);
+  A.set(model.find('b'), T0 + 9000);
+  A.flush();
+  const before = bB.m.at;
+  B.sync();
+  check('a benchmark changed in this tab is kept over the other tab\'s change, and written', bB.m.at === before && before === T0 + 5000 && B.dirty === true, `${bB.m.at}`);
+  B.flush();
+  A.sync();
+  check('the other tab then takes it, on the same object', bA.m.at === T0 + 5000 && A.findRel('b') === bA, `${bA.m.at}`);
+
+  // One folder benchmarked in both tabs at once: one benchmark, the later.
+  A.set(model.find('c'), T0 + 1000);
+  B.set(model.find('c'), T0 + 2000);
+  A.flush();
+  B.flush();
+  A.sync();
+  check('one folder benchmarked in both tabs at once leaves one benchmark, the later measurement',
+    A.benchmarks.filter((b) => b.rel === 'c').length === 1 && A.findRel('c').m.at === T0 + 2000 && stored() === 'b,c', `${rels(A)} ${A.findRel('c')?.m.at}`);
+
+  // The return point: this tab's when it changed here, else the other's.
+  A.setReturn({ rel: 'b', name: 'b', at: T0, off: null });
+  A.flush();
+  B.sync();
+  check('a return point marked in one tab reaches the other', B.ret?.rel === 'b');
+  B.setReturn({ rel: 'c', name: 'c', at: T0 + 1, off: null });
+  A.setReturn({ rel: 'd', name: 'd', at: T0 + 2, off: null });
+  A.flush();
+  B.sync();
+  check('a return point changed in this tab is kept over the other\'s', B.ret?.rel === 'c' && B.dirty === true);
+
+  // Forget all in one tab while the other set a new one.
+  B.flush();
+  A.sync();
+  A.set(model.find('d'));
+  B.clear();
+  A.flush();
+  B.flush();
+  A.sync();
+  check('Forget all forgets what this tab knew; a benchmark set meanwhile in another tab survives', rels(B) === 'd' && rels(A) === 'd' && stored() === 'd', `${rels(B)} / ${rels(A)} / ${stored()}`);
+  storage.setItem(KEY, '{not json');
+  B.set(model.find('a'));
+  check('unreadable text from elsewhere is replaced by the next save, as after a load', B.flush() === true && stored() === 'a,d', stored());
+}
+
+/* ---------- a snapshot ---------- */
+
+section('A snapshot of the directory');
+{
+  check('a snapshot keeps its places under its own key, apart from the live directory',
+    storageKey('C:\\data\\root', 'snapshot') === 'terrane.places.v1|C:\\data\\root|snapshot' && storageKey('C:\\data\\root') === KEY && storageKey('C:\\data\\root', '') === KEY);
+  const taken = T0 - 3 * DAY;
+  const model = build({ a: { 'x.txt': [10] } });
+  const store = new Places({ key: storageKey('C:\\data\\root', 'snapshot'), timers: manualTimers(), now: () => taken });
+  const { b } = store.set(model.find('a'));
+  check('a measurement is dated by the clock it is given: a snapshot\'s, when it was taken', b.m.at === taken && b.set === taken, `${b.m.at}`);
 }
 
 /* ---------- no DOM ---------- */

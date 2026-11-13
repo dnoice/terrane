@@ -6,8 +6,8 @@
  *     - Relative Path: tools/ui-scenarios/landmarks.mjs
  *     - Artifact Type: test
  *     - Version: 1.0.0
- *     - Date: 11/12/2026
- *     - Update: Thursday, November 12, 2026
+ *     - Date: 11/13/2026
+ *     - Update: Friday, November 13, 2026
  *     - Author: Dennis 'dendogg' Smaltz
  *     - A.I. Acknowledgement: Anthropic - Claude Opus 5.5
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
@@ -30,19 +30,28 @@
  *       H, 0, J and J again (the folder, without WebGL); a reload that
  *       resolves every benchmark and folds a deep one into its mass's pin;
  *       draw calls and frame time with 64 benchmarks, and the 65th refused;
- *       a storage object that throws
+ *       another tab's save merged in on its storage event and kept by
+ *       this tab's next save; a storage object that throws
  *     - landmarks-disk (a writable fixture, both passes): "+1 file" in the
  *       Places tab after the watcher's refresh, the change notice after a
  *       reload, a rename and a move kept attached and carried back by
- *       Undo, a removal to the holding area said as such and found again
- *       by Undo, and a rename outside Terrane marked missing with a
- *       sentence and Forget, then forgotten from the keyboard
+ *       Undo (the move's Undo after a reload), a move that stops part way
+ *       followed to where its finished part went, a removal to the
+ *       holding area said as such and found again by Undo, a rename
+ *       outside Terrane marked missing with a sentence and Forget, then
+ *       forgotten from the keyboard; and Rescan all held part way, where B
+ *       is refused in words with nothing read or saved, the Places and
+ *       menu actions wait, and the benchmark is found again after
+ *     - landmarks-snapshot (with --snapshot only): its own storage key,
+ *       a measurement dated when the snapshot was taken, and the Places
+ *       tab saying where its benchmarks come from
  *     - Every benchmark and the storage key are removed when a scenario
  *       ends, so later scenarios on the same address see none
  *
  * ✒ Usage Instructions:
  *     node tools/ui-check.mjs landmarks
  *     node tools/ui-check.mjs landmarks landmarks-disk --pass nogl
+ *     node tools/ui-check.mjs landmarks-snapshot --snapshot <dataset>
  *
  * ✒ Other Important Information:
  *     - Dependencies: tools/ui-check.mjs (the context t), the fixture's
@@ -486,6 +495,33 @@ async function routes(t) {
   const refused = await noticed(t, /^64 benchmarks is the most Terrane keeps/);
   t.check(`with 64 kept, B on another folder (${other}) is refused in words`, !!refused && (await t.app((T) => T.places.benchmarks.length)) === 64, refused?.text);
 
+  // Another tab on this directory and address saves: its benchmark and
+  // return point are merged in, and this tab's next save keeps them.
+  const tabs = await t.app(async (T) => {
+    const P = T.places;
+    const M = await import(new URL('js/places.js', document.baseURI).href);
+    P.clear();
+    P.flush();
+    const dirs = T.S.model.root.c.filter((c) => c.d && !c.e).slice(0, 3);
+    P.set(dirs[0]);
+    P.flush();
+    const other = JSON.parse(localStorage.getItem(P.key));
+    other.benchmarks.push({ id: 'b900', rel: T.api.relPath(dirs[1]), name: dirs[1].n, set: Date.now(), m: M.measure(dirs[1]) });
+    other.ret = { rel: T.api.relPath(dirs[1]), name: dirs[1].n, at: Date.now(), off: null, yaw: 0, pitch: 0 };
+    localStorage.setItem(P.key, JSON.stringify(other));
+    window.dispatchEvent(new StorageEvent('storage', { key: P.key }));
+    const merged = { rels: P.benchmarks.map((b) => b.rel), found: P.benchmarks.every((b) => b.node), ret: P.ret?.rel, want: [T.api.relPath(dirs[0]), T.api.relPath(dirs[1])] };
+    merged.count = document.querySelector('[role=tab][data-tab=places]').textContent;
+    P.set(dirs[2]);
+    P.flush();
+    merged.stored = JSON.parse(localStorage.getItem(P.key)).benchmarks.map((b) => b.rel);
+    merged.third = T.api.relPath(dirs[2]);
+    return merged;
+  });
+  t.check(`another tab's save is merged in on its storage event: its benchmark, found, and its return point (${tabs.rels.join(', ')})`,
+    JSON.stringify(tabs.rels) === JSON.stringify(tabs.want) && tabs.found && tabs.ret === tabs.want[1] && tabs.count === 'Places2', JSON.stringify(tabs));
+  t.check('and this tab\'s next save keeps it beside its own', JSON.stringify(tabs.stored) === JSON.stringify([...tabs.want, tabs.third]), JSON.stringify(tabs.stored));
+
   // A storage object that throws: everything works in memory, and it is said.
   await t.app((T) => {
     T.places.clear();
@@ -582,6 +618,35 @@ async function onDisk(t) {
     return b.rel === `edge cases/${d}` && b.node === T.S.model.find(`edge cases/${d}`) && b.rel;
   }, { args: [dir], timeout: 10000, what: 'the benchmark to follow the move' });
   t.check(`a move through Terrane carries it too (${movedTo})`, !!movedTo);
+  // Undo after a reload: the page no longer remembers the move; the
+  // service's answer names the paths it carried back.
+  await reload(t);
+  await t.tabTo('#view', { max: 160 });
+  await t.key('Ctrl+Z');
+  const back = await t.until((T, d) => T.places.benchmarks[0].rel === d && T.places.benchmarks[0].node === T.S.model.find(d), { args: [dir], timeout: 10000 });
+  t.check('after a reload, Undo of the move still carries it back', back === true, JSON.stringify(await t.app(state)));
+
+  // A move that stops part way: what it finished is followed. The move is
+  // real; the page is given the answer a failure after it would bring.
+  await t.app(() => {
+    const real = window.fetch;
+    window.fetch = async (url, opts) => {
+      const res = await real(url, opts);
+      if (url !== '/api/op' || !res.ok || JSON.parse(opts.body).type !== 'move') return res;
+      window.fetch = real;
+      const body = await res.json();
+      return new Response(JSON.stringify({ ok: false, code: 'EBUSY', message: 'Move stopped after 1 of 2: the item is in use.', affected: body.affected, results: body.results }),
+        { status: 500, headers: { 'Content-Type': 'application/json' } });
+    };
+    return true;
+  });
+  await t.app((T, d) => { T.api.runOp({ type: 'move', paths: [d], dest: 'edge cases' }); return true; }, dir);
+  const stopped = await noticed(t, /^Move stopped after 1 of 2/);
+  const partly = await t.until((T, d) => {
+    const b = T.places.benchmarks[0];
+    return b.rel === `edge cases/${d}` && b.node === T.S.model.find(`edge cases/${d}`);
+  }, { args: [dir], timeout: 10000 });
+  t.check(`a move that stops part way still carries it to where the finished part went (${stopped.text})`, partly === true, JSON.stringify(await t.app(state)));
   await t.key('Ctrl+Z');
   await t.waitFor((T, d) => T.places.benchmarks[0].rel === d && !!T.places.benchmarks[0].node, { args: [dir], timeout: 10000, what: 'Undo of the move' });
   await t.sleep(2200);
@@ -613,7 +678,128 @@ async function onDisk(t) {
   t.check('Forget, from the keyboard, forgets it', (await t.until((T) => T.places.benchmarks.length === 0)) === true, text);
   const said = await t.app(() => window.__notices.map((n) => n.text));
   t.check('no sentence says created, arrived or added', !said.some((x) => WORDS.test(x)), said.filter((x) => WORDS.test(x)).join(' | '));
+
+  await duringRescan(t);
   await t.app(() => { window.__noticeObs?.disconnect(); return true; });
 }
 
-export default [landmarks, disk];
+/**
+ * Rescan all, held part way: B is refused in words, nothing is read,
+ * measured or saved, and the Places and menu actions wait; once the
+ * survey finishes the benchmark is found again, its measurement intact.
+ */
+async function duringRescan(t) {
+  // The service's message that more folders changed than it can follow is
+  // handed to the page as the service sends it: on Windows a burst that
+  // wide reaches the service's watcher as one event without a name, which
+  // it does not pass on. Rescan all is then pressed as a person would.
+  await t.page.send('Page.addScriptToEvaluateOnNewDocument', {
+    source: '(() => { const ES = window.EventSource; window.EventSource = class extends ES { constructor(...a) { super(...a); window.__events = this; } }; })();',
+  });
+  await reload(t);
+  await placesTab(t);
+  const was = await t.app((T) => {
+    T.places.set(T.S.model.root);
+    T.places.flush();
+    T.api.drawLedger();
+    return { at: T.places.benchmarks[0].m.at, stored: localStorage.getItem(T.places.key) };
+  });
+  // Hold the survey's stream, so the rescan is still running when B is pressed.
+  await t.app(() => {
+    const real = window.fetch;
+    let release;
+    const held = new Promise((r) => { release = r; });
+    window.__releaseScan = () => { window.fetch = real; release(); return true; };
+    window.fetch = async (url, opts) => {
+      if (url === '/api/scan?path=') await held;
+      return real(url, opts);
+    };
+    return true;
+  });
+  await t.app(() => { window.__events.onmessage({ data: JSON.stringify({ type: 'bulk', count: 400 }) }); return true; });
+  await noticed(t, /^400 folders changed on disk\.$/);
+  await t.app(() => { [...document.querySelectorAll('#notices .notice')].find((n) => /folders changed on disk/.test(n.textContent))?.setAttribute('data-check', 'rescan'); return true; });
+  await t.tabTo('[data-check="rescan"] .btn', { max: 200 });
+  await t.key('Enter');
+  await t.waitFor((T) => T.S.scanning && T.S.model.root.c.length === 0, { what: 'Rescan all to begin' });
+  // Files written while the survey is held: only the rescan can show them.
+  const N = 5;
+  fs.mkdirSync(t.abs('rescan-load'));
+  for (let k = 0; k < N; k++) fs.writeFileSync(t.abs(`rescan-load/f${k}.txt`), 'x');
+
+  const mark = t.mark();
+  await t.tabTo('#view', { max: 200 });
+  await t.key('B');
+  const refused = await t.until(() => document.getElementById('live').textContent === 'Benchmarks can be set once the survey has finished.', { timeout: 4000 });
+  const during = await t.app((T) => ({
+    scanning: T.S.scanning, at: T.places.benchmarks[0]?.m.at, n: T.places.benchmarks.length, stored: localStorage.getItem(T.places.key),
+    set: document.querySelector('#ledger-rich [data-k="set"]')?.disabled ?? null, status: document.querySelector('details.bench > summary .fig')?.textContent,
+  }));
+  const reads = t.requests(mark).filter((r) => r.path === '/api/scan');
+  t.check('during Rescan all, B is refused in words and nothing is read, measured or saved',
+    refused === true && during.scanning && during.n === 1 && during.at === was.at && during.stored === was.stored && reads.length === 0, JSON.stringify({ during, reads }));
+  t.check(`the Places tab waits: its Set button is unavailable and the row is not yet found (${during.status})`, during.set === true && during.status === 'not yet found', JSON.stringify(during));
+  await t.tabTo('#view', { max: 200 });
+  await t.key('Shift+F10');
+  await t.waitFor(() => !document.getElementById('menu').hidden);
+  const menu = await t.eval(() => [...document.querySelectorAll('#menu .menu-item')].map((x) => [x.querySelector('.menu-label')?.textContent, x.getAttribute('aria-disabled'), x.querySelector('.menu-why')?.textContent || '']));
+  await t.key('Escape');
+  const item = menu.find(([label]) => /benchmark/i.test(label));
+  t.check('the menu offers the benchmark only as unavailable until the survey has finished', !!item && item[1] === 'true' && item[2] === 'once the survey has finished', JSON.stringify(menu));
+
+  await t.app(() => window.__releaseScan());
+  await t.waitFor((T) => !T.S.scanning && !!T.S.survey && T.places.benchmarks[0]?.node === T.S.model.root, { timeout: 60000, what: 'the rescan to finish' });
+  const after = await t.app((T) => ({ at: T.places.benchmarks[0].m.at, df: T.places.summary(T.places.benchmarks[0]).df, stored: localStorage.getItem(T.places.key), set: document.querySelector('#ledger-rich [data-k="set"]')?.disabled ?? null }));
+  t.check(`after it the benchmark is found again, measured as before, showing the ${N} files written since (+${after.df})`,
+    after.at === was.at && after.stored === was.stored && after.df === N && after.set === false, JSON.stringify(after));
+}
+
+/* ---------- snapshot mode ---------- */
+
+const snapshotRun = {
+  name: 'landmarks-snapshot',
+  title: 'Landmarks in snapshot mode: dated by the snapshot, kept apart',
+  data: 'any',
+  timeout: 120000,
+  async run(t) {
+    if (t.data !== 'snapshot') {
+      t.skip('benchmarks of a snapshot', 'needs --snapshot');
+      return;
+    }
+    try {
+      await inSnapshot(t);
+    } finally {
+      await t.app(cleanup).catch(() => {});
+    }
+  },
+};
+
+async function inSnapshot(t) {
+  await t.settle();
+  await t.app(listenNotices);
+  const s0 = await t.app((T) => ({ key: T.places.key, root: T.S.info.root, takenAt: T.S.info.snapshot?.takenAt, n: T.places.benchmarks.length }));
+  t.check('in snapshot mode the store has its own key, apart from the live directory\'s', s0.key === `terrane.places.v1|${s0.root}|snapshot` && s0.n === 0, s0.key);
+  await t.tabTo('#view');
+  await t.key('B');
+  const note = await noticed(t, /^Benchmark set on /);
+  const st = await t.app(state);
+  t.check('B measures the snapshot and dates the measurement when the snapshot was taken, not now', st.n === 1 && typeof s0.takenAt === 'number' && st.list[0].at === s0.takenAt,
+    JSON.stringify({ at: st.list[0]?.at, takenAt: s0.takenAt }));
+  t.check(`the notice says so (${note.text})`, new RegExp(`, in the snapshot taken ${DATE_TIME.source}\\.$`).test(note.text) && !WORDS.test(note.text), note.text);
+  await placesTab(t);
+  const id = st.list[0].id;
+  await t.tabTo(`details.bench[data-id="${id}"] > summary`, { max: 120 });
+  await t.key('Enter');
+  await t.waitFor((_T, i) => document.querySelector(`details.bench[data-id="${i}"]`)?.open, { args: [id] });
+  const text = await t.text('#ledger-rich');
+  const measured = await t.eval((i) => {
+    const dl = document.querySelector(`details.bench[data-id="${i}"] .bench-facts`);
+    const dt = [...dl.querySelectorAll('dt')].find((x) => x.textContent === 'Measured');
+    return dt?.nextElementSibling?.textContent;
+  }, id);
+  t.check('the Places tab says its benchmarks are measured from the snapshot and kept apart', text.includes('Measured from the snapshot, as it was when taken') && text.includes('apart from benchmarks of the live directory'), text.slice(0, 240));
+  t.check(`and the row says when the snapshot was taken (${measured})`, new RegExp(`^${DATE_TIME.source}, when the snapshot was taken$`).test(measured || ''), measured);
+  await t.app(() => { window.__noticeObs?.disconnect(); return true; });
+}
+
+export default [landmarks, disk, snapshotRun];

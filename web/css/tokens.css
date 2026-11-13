@@ -6,8 +6,8 @@
  *     - Relative Path: web/css/tokens.css
  *     - Artifact Type: stylesheet
  *     - Version: 1.1.0
- *     - Date: 11/12/2026
- *     - Update: Thursday, November 12, 2026
+ *     - Date: 11/13/2026
+ *     - Update: Friday, November 13, 2026
  *     - Author: Dennis 'dendogg' Smaltz
  *     - A.I. Acknowledgement: Anthropic - Claude Opus 5.5
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
@@ -18,6 +18,9 @@
  *       the world gives a crossed block) and --tex-crossed (the two
  *       diagonals of a footprint). A role for benchmarks, --bench
  *       (verdigris, the colour of their survey marks), and its wash.
+ *       Sizes the ledger and the world's labels use that the scales
+ *       lacked: --fs-row and --fs-fig, the row padding and indent, and
+ *       a tag's padding (11/13/2026).
  *     - 1.0.0 (11/12/2026) [dendogg + Anthropic - Claude Opus 5.5] —
  *       Initial release.
  *
@@ -135,6 +138,8 @@
   --fs-xl: 19px;
   --fs-2xl: 24px;
   --fs-3xl: 34px;
+  --fs-row: 12px;      /* a ledger row, its notes and its facts */
+  --fs-fig: 11px;      /* figures and small heads beside a row, in mono */
   --lh-tight: 1.15;
   --lh-snug: 1.3;
   --lh-base: 1.45;
@@ -164,6 +169,11 @@
   --control-h: 30px;
   --control-h-sm: 26px;
   --row-h: 30px;
+  --row-pad-y: 5px;    /* a ledger row, above and below */
+  --row-pad-x: 10px;   /* a ledger row's right edge */
+  --row-indent: 28px;  /* where a rich ledger row's text starts, past its mark */
+  --tag-pad-y: 3px;    /* a label standing over the world */
+  --tag-pad-x: 5px;
   --icon-xs: 12px;
   --icon-sm: 14px;
   --icon: 16px;

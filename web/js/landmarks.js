@@ -6,8 +6,8 @@
  *     - Relative Path: web/js/landmarks.js
  *     - Artifact Type: javascript
  *     - Version: 1.0.0
- *     - Date: 11/12/2026
- *     - Update: Thursday, November 12, 2026
+ *     - Date: 11/13/2026
+ *     - Update: Friday, November 13, 2026
  *     - Author: Dennis 'dendogg' Smaltz
  *     - A.I. Acknowledgement: Anthropic - Claude Opus 5.5
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
@@ -23,7 +23,9 @@
  * ✒ Key Features:
  *     - B measures the selection's folder, or the folder you are in, after
  *       re-reading it from disk; B on a benchmark measures it again; both
- *       are said in a notice with Undo
+ *       are said in a notice with Undo. While a survey runs (the first, or
+ *       a Rescan all) B is refused in words, and the Places, inspector and
+ *       menu actions wait for it
  *     - Verdigris survey marks standing upright on the peak of the box that
  *       shows the folder, or on the mass or scree hiding it, in the shared
  *       pin mesh; up to 12 name-and-change tags outrank every other label
@@ -36,13 +38,17 @@
  *     - H marks a return point relative to the box of the folder you are
  *       in; J flies back to where that box is now, and swaps the two
  *       points so J again comes back; without WebGL, J goes to the folder
- *     - Terrane's own renames and moves (and their undo) carry benchmarks
- *       along; a folder gone from outside is marked missing, with a notice
- *       and Forget, and never silently dropped; one Terrane removed to the
+ *     - Terrane's own renames and moves carry benchmarks along, and so
+ *       does what one finished before it stopped; Undo carries them back
+ *       by the paths the service says it moved, after a reload too; a
+ *       folder gone from outside is marked missing, with a notice and
+ *       Forget, and never silently dropped; one Terrane removed to the
  *       holding area says so, and is found again when restored
  *     - Kept in this browser for this directory at this address; when the
  *       browser refuses, everything works until the tab closes, and a
- *       notice says so
+ *       notice says so. Another tab's saves are merged in, not overwritten
+ *     - In snapshot mode a measurement is of the snapshot, dated when it
+ *       was taken, and kept apart from the live directory's benchmarks
  *
  * ✒ Usage Instructions:
  *     Listed in features.js and installed by app.js. S.places (also
@@ -65,8 +71,10 @@
  *     - Wording: a measurement says what "changed"; an entry that was not
  *       there is "here now, not then", never "created" or "added"
  *     - Limitations: places live in this browser's storage for this
- *       directory and address; another port, browser or profile has its
- *       own. The station trail, coverage and export are not part of it
+ *       directory, source (live or snapshot) and address; another port,
+ *       browser or profile has its own. Two tabs that change the same
+ *       benchmark within a second keep the one saved last. The station
+ *       trail, coverage and export are not part of it
  * ----------------------------------------------------------------------------
  */
 
@@ -95,20 +103,29 @@ const signedBytes = (v) => `${v < 0 ? MINUS : '+'}${fmtBytes(Math.abs(v))}`;
 
 export function install(api) {
   const { S, el, fact } = api;
+  // A snapshot is a recorded copy of the directory: what B measures there
+  // is the snapshot as it was when taken, so that is the measurement's
+  // moment, and its benchmarks are kept apart from the live directory's.
+  const snapshot = !!S.info.snapshot;
   const store = new Places({
-    key: storageKey(S.info.root),
+    key: storageKey(S.info.root, snapshot ? 'snapshot' : ''),
     storage: () => window.localStorage,
+    now: () => (S.info.snapshot ? S.info.snapshot.takenAt : Date.now()),
     onFail: (why) => api.notice(`Places cannot be kept in this browser (${why}). Benchmarks and the return point will last only until this tab closes.`, { kind: 'info', ms: 15000 }),
+    onSync: () => synced(),
   });
   S.places = store;
   store.load();
   // A reload inside the save debounce must not lose the last change.
   window.addEventListener('pagehide', () => store.flush());
+  // Another tab on this directory and address saved its places: they are
+  // merged in, so neither tab's next save wipes the other's.
+  window.addEventListener('storage', (e) => {
+    if (e.key === null || e.key === store.key) store.sync();
+  });
 
   /** Benchmark ids whose rows are open in the Places tab. */
   const open = new Set();
-  /** Terrane's own renames and moves, newest last, so Undo can carry benchmarks back. */
-  const moves = [];
   let announced = false;
   let lostTimer = 0;
   let measuring = false;
@@ -116,6 +133,12 @@ export function install(api) {
   const rel = (node) => api.relPath(node);
   const named = (node) => (node.p ? `"${node.n}"` : `"${node.n}" (the root)`);
   const target = () => (S.primary ? (S.primary.d ? S.primary : S.primary.p) : S.focus);
+  // Benchmarks are found in the tree only once a survey has finished: the
+  // first, and every Rescan all, which streams a new tree in place of the old.
+  const ready = () => store.resolved && !S.scanning;
+  const WAIT = 'Benchmarks can be set once the survey has finished.';
+  // When a measurement is of: a snapshot's is when it was taken.
+  const when = (at) => (snapshot ? `in the snapshot taken ${fmtDate(at)}` : `at ${fmtDate(at)}`);
 
   function redraw() {
     api.drawPins();
@@ -135,8 +158,8 @@ export function install(api) {
   /** B: measures a folder now, after reading its entries from disk. */
   async function bench(dir = target()) {
     if (!dir || measuring) return;
-    if (!store.resolved) {
-      api.say('Benchmarks can be set once the survey has finished.');
+    if (!ready()) {
+      api.say(WAIT);
       return;
     }
     if (dir.e) {
@@ -157,6 +180,11 @@ export function install(api) {
     } finally {
       measuring = false;
     }
+    // A Rescan all begun meanwhile replaces the tree being measured.
+    if (!ready()) {
+      api.say(WAIT);
+      return;
+    }
     const node = S.model.find(path);
     if (!node || !node.d) {
       api.notice(`${named(dir)} is no longer there, so no benchmark was set.`, { kind: 'error' });
@@ -165,13 +193,13 @@ export function install(api) {
     const r = store.set(node);
     if (r.full) return;
     const { b, prev } = r;
-    const now = `${fmtBytes(b.m.s)}, ${files(b.m.fc)}, at ${fmtDate(b.m.at)}`;
+    const now = `${fmtBytes(b.m.s)}, ${files(b.m.fc)}, ${when(b.m.at)}`;
     if (r.created) {
       api.notice(`Benchmark set on ${named(node)}: ${now}.`, {
         action: { label: 'Undo', run: () => { if (store.remove(b)) { open.delete(b.id); redraw(); api.say(`The benchmark on ${named(node)} is removed.`); } } },
       });
     } else {
-      api.notice(`Benchmark on ${named(node)} measured again: ${now}. It was ${fmtBytes(prev.s)}, ${files(prev.fc)} at ${fmtDate(prev.at)}.`, {
+      api.notice(`Benchmark on ${named(node)} measured again: ${now}. It was ${fmtBytes(prev.s)}, ${files(prev.fc)} ${when(prev.at)}.`, {
         action: { label: 'Undo', run: () => { if (store.restore(b, prev)) { redraw(); api.say(`The benchmark on ${named(node)} is back to its measurement of ${fmtDate(prev.at)}.`); } } },
       });
     }
@@ -235,6 +263,15 @@ export function install(api) {
       b.noticed = false;
       api.notice(`The benchmark on "${b.name}" is found again at ${b.rel || 'the root'}.`, { kind: 'info' });
     }
+  }
+
+  /** Another tab's places were merged in: their folders are found, and every view redrawn. */
+  function synced() {
+    if (ready()) {
+      store.resolve(S.model);
+      if (store.benchmarks.some((b) => !b.node && !b.noticed)) queueLost();
+    }
+    redraw();
   }
 
   /** After the first scan: one notice naming every benchmark that changed. */
@@ -397,32 +434,29 @@ export function install(api) {
 
   /* ---------- Terrane's own renames and moves ---------- */
 
+  const pathPair = (x) => Array.isArray(x) && typeof x[0] === 'string' && typeof x[1] === 'string';
+
+  /**
+   * After a change Terrane made (a whole one, or what one finished before
+   * it stopped): renames and moves carry benchmarks along by path. The
+   * service's answer to Undo names the paths it carried back, from its
+   * journal, so this holds after a reload or a cancel too.
+   */
   function follow(body, res) {
     let pairs = [];
     if (body.type === 'rename' && res.renamed && typeof body.path === 'string') pairs = [[body.path, res.renamed]];
     else if (body.type === 'move' && Array.isArray(body.paths) && Array.isArray(res.results)) {
-      pairs = res.results.map((to, k) => [body.paths[k], to]).filter(([from, to]) => typeof from === 'string' && typeof to === 'string');
+      pairs = res.results.map((to, k) => [body.paths[k], to]).filter(pathPair);
     } else if (body.type === 'trash' && Array.isArray(body.paths)) {
       // Removed by Terrane to its holding area: when the folder goes
       // missing, the sentence says where it went.
       const paths = body.paths.filter((p) => typeof p === 'string' && p);
       for (const b of store.benchmarks) if (paths.some((p) => b.rel === p || b.rel.startsWith(`${p}/`))) b.held = true;
       return;
-    } else if (body.type === 'undo' && typeof res.label === 'string') {
-      // The service undoes its latest change; when that was one of these,
-      // its paths go back the way they came.
-      const label = res.label.replace(/^Undid: /, '').replace(/ \(from an earlier session\)$/, '');
-      const done = [...moves].reverse().find((x) => !x.undone && x.label === label);
-      if (done) {
-        done.undone = true;
-        carry(done.pairs.map(([from, to]) => [to, from]).reverse());
-      }
-      return;
-    } else return;
-    if (!pairs.length) return;
-    moves.push({ label: res.label, pairs, undone: false });
-    if (moves.length > 50) moves.shift();
-    carry(pairs);
+    } else if (body.type === 'undo' && Array.isArray(res.moved)) {
+      pairs = res.moved.filter(pathPair);
+    }
+    if (pairs.length) carry(pairs);
   }
 
   function carry(pairs) {
@@ -437,8 +471,8 @@ export function install(api) {
 
   /* ---------- the Places tab ---------- */
 
-  const btn = (label, run, { icon: name, k, cls = '', title, danger } = {}) => el('button', {
-    class: `btn btn-small${danger ? ' btn-danger' : ''}${cls ? ` ${cls}` : ''}`, type: 'button', 'data-k': k, title, onclick: run,
+  const btn = (label, run, { icon: name, k, cls = '', title, danger, off = false } = {}) => el('button', {
+    class: `btn btn-small${danger ? ' btn-danger' : ''}${cls ? ` ${cls}` : ''}`, type: 'button', 'data-k': k, title, disabled: off, onclick: run,
   }, name ? icon(name) : null, label);
 
   function changes(b) {
@@ -480,7 +514,7 @@ export function install(api) {
       }));
     }
     out.push(el('dl', { class: 'facts bench-facts' },
-      fact('Measured', fmtDate(b.m.at)),
+      fact('Measured', snapshot ? `${fmtDate(b.m.at)}, when the snapshot was taken` : fmtDate(b.m.at)),
       fact('Then', measureText(b.m)),
       node ? fact('Now', measureText(node)) : null,
       node ? fact('Change', el('b', { text: sm.changed ? deltaText(sm) : 'none' })) : null));
@@ -524,7 +558,10 @@ export function install(api) {
     // A redraw (a refresh, a selection) keeps the reader's place.
     const had = host.contains(document.activeElement) ? document.activeElement.dataset?.k : null;
     const list = store.benchmarks;
-    const sums = list.map((b) => store.summary(b));
+    // During a survey the rows wait to be found again: the tree they were
+    // found in is being replaced.
+    const live = ready();
+    const sums = list.map((b) => (live ? store.summary(b) : null));
     const changed = sums.filter((s) => s?.changed && !s.missing).length;
     const missing = sums.filter((s) => s?.missing).length;
     sub.replaceChildren(el('span', {
@@ -536,12 +573,17 @@ export function install(api) {
     host.replaceChildren(
       el('details', { open: true, class: 'places-bench' },
         el('summary', {}, 'Benchmarks', el('span', { class: 'n', text: fmtCount(list.length) })),
-        el('p', { class: 'note places-scope', text: `Kept in this browser for this directory at this address (${location.host}). Another browser, profile or address keeps its own.` }),
+        el('p', {
+          class: 'note places-scope',
+          text: snapshot
+            ? `Measured from the snapshot, as it was when taken, and kept in this browser for this directory's snapshots at this address (${location.host}), apart from benchmarks of the live directory.`
+            : `Kept in this browser for this directory at this address (${location.host}). Another browser, profile or address keeps its own.`,
+        }),
         store.failed ? el('p', { class: 'note places-failed', text: `This browser refused to keep them (${store.failed}), so they last only until this tab closes.` }) : null,
         list.length ? list.map((b, k) => row(b, sums[k]))
           : el('p', { class: 'note', text: 'None yet. B measures the selected folder, or the folder you are in, so you can see later what changed in it.' }),
         el('div', { class: 'actions' },
-          t && !t.e ? btn(has ? `Measure "${t.n}" again` : `Set benchmark on "${t.n}"`, () => bench(t), { icon: has ? 'remeasure' : 'bench', k: 'set', title: 'B' }) : null,
+          t && !t.e ? btn(has ? `Measure "${t.n}" again` : `Set benchmark on "${t.n}"`, () => bench(t), { icon: has ? 'remeasure' : 'bench', k: 'set', title: live ? 'B' : WAIT, off: !live }) : null,
           list.length || store.ret ? btn('Forget all…', forgetAll, { icon: 'remove', k: 'forget-all', danger: true }) : null)),
       returnSection());
     if (had) host.querySelector(`[data-k="${CSS.escape(had)}"]`)?.focus({ preventScroll: true });
@@ -568,7 +610,7 @@ export function install(api) {
   /* ---------- the inspector ---------- */
 
   function section(node) {
-    if (!node?.d || !store.resolved) return null;
+    if (!node?.d || !ready()) return null;
     const b = store.find(node);
     if (!b) {
       return [
@@ -608,7 +650,7 @@ export function install(api) {
   api.TIP_LINES.add({
     id: 'places', order: 45, owner: OWNER,
     lines: (node, c) => {
-      if (!store.benchmarks.length || !store.resolved || c.type === BOX.SCREE || !node.d) return null;
+      if (!store.benchmarks.length || !ready() || c.type === BOX.SCREE || !node.d) return null;
       const out = [];
       const b = store.find(node);
       if (b) {
@@ -628,7 +670,10 @@ export function install(api) {
     items: (node) => {
       const dir = node ? (node.d ? node : null) : S.focus;
       const out = [];
-      if (dir && store.resolved) {
+      if (dir && store.resolved && S.scanning) {
+        // A Rescan all: benchmarks are found again once it has finished.
+        out.push({ label: node ? 'Set benchmark' : 'Set benchmark on this folder', icon: 'bench', hint: 'B', run: () => bench(dir), disabled: true, reason: 'once the survey has finished' });
+      } else if (dir && store.resolved) {
         const b = store.find(dir);
         if (b) {
           out.push({ label: 'Measure benchmark again', icon: 'remeasure', hint: 'B', run: () => bench(dir) });
@@ -657,7 +702,9 @@ export function install(api) {
   api.AFTER_REFRESH.add({
     id: 'places', owner: OWNER,
     run: (dirs) => {
-      if (!store.resolved || !store.benchmarks.length) return;
+      // During a survey the tree is still arriving; the survey's end finds
+      // every benchmark again.
+      if (!ready() || !store.benchmarks.length) return;
       const { lost, found } = store.resolve(S.model, dirs);
       noteFound(found);
       // A removal that was cancelled leaves its folder where it was.
