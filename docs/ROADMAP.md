@@ -1,17 +1,25 @@
 <!--
 ✒ Metadata
-    - Title: Terrane Roadmap (Terrane Edition - v1.1)
+    - Title: Terrane Roadmap (Terrane Edition - v1.2)
     - File Name: ROADMAP.md
     - Relative Path: docs/ROADMAP.md
     - Artifact Type: docs
-    - Version: 1.1.0
-    - Date: 11/11/2026
-    - Update: Wednesday, November 11, 2026
+    - Version: 1.2.0
+    - Date: 11/13/2026
+    - Update: Friday, November 13, 2026
     - Author: Dennis 'dendogg' Smaltz
     - A.I. Acknowledgement: Anthropic - Claude Opus 5.5
     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
 
 ✒ Changelog:
+    - 1.2.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] —
+      Adds where things stand and the build waves: what is complete
+      (Wave 0, the 1.2.0 interface, the load screen's first cut, Wave 1,
+      the first hardening fixes, the GitHub Pages entry), what is under
+      way (Wave 2), and what comes next, in order, through to the load
+      screen. Stage 5 is under way, with each candidate's status, wave
+      and deferred work. The exploration loop names the Wave 1 features
+      that now serve it.
     - 1.1.0 (11/11/2026) [dendogg + Anthropic - Claude Opus 5.5] —
       Requirements 14 and 15 are met. Stage 6 records progress,
       cancellation and the persistent journal as done. Adds development
@@ -22,16 +30,20 @@
 ✒ Description:
     The plan behind Terrane: the exploration loop the world is designed
     around, the minimum viable filesystem scope, the practical filesystem
-    interaction requirements, a staged implementation roadmap that marks
-    what is built and what is next, and the datasets that let development
-    run against real data without touching it.
+    interaction requirements, a staged implementation roadmap, the build
+    waves that carry it out (what is complete, what is under way and what
+    comes next), and the datasets that let development run against real
+    data without touching it.
 
 ✒ Key Features:
+    - Where things stand, dated, in three lines
     - Exploration loop with the system that serves each step
     - Minimum filesystem scope: in, out, and why
     - Interaction requirements written as checkable statements
     - Six stages, each with an exit test; stages 1 to 3 are complete and
-      stage 6 is under way
+      stages 5 and 6 are under way
+    - Stage 5's candidates with their status, wave and deferred work
+    - Build waves: complete, under way and next, with commits and checks
     - Development datasets: how to build against real data safely
 
 ✒ Other Important Information:
@@ -42,6 +54,21 @@
 
 # Roadmap
 
+## Where things stand
+
+As of 11/13/2026:
+
+- **Complete, on `main`:** Stages 1 to 3, Wave 0 (the Stage 5
+  groundwork), the 1.2.0 interface, the load screen's first cut, Wave 1
+  (Time, Landmarks and the service half of Interiors), the first
+  hardening fixes and the GitHub Pages entry.
+- **Under way:** Wave 2 (Session traverse, Strata and the client half of
+  Interiors), now in its fix step. Stage 6.
+- **Next, in order:** Docs, the Wave 2 merge, Audit, Hardening pass,
+  Enhancement and polish, Sanity sweeps, then the load screen.
+
+Section 5 has the detail for every wave.
+
 ## 1. The exploration loop
 
 One pass through the loop, and what serves each step today.
@@ -49,13 +76,13 @@ One pass through the loop, and what serves each step today.
 | Step | The visitor | Served by |
 | ---- | ----------- | --------- |
 | 1. Arrive | Sees the whole directory from above as a hundred or so masses: where the bytes are, what kind they are | Overview vantage; area is bytes; masses tinted by dominant kind; heavyweight pins |
-| 2. Notice | Something stands out: a large mass, a tall fresh block, a pin, a colour | Lenses (kind, age, size, duplicates); survey tab; search pins |
+| 2. Notice | Something stands out: a large mass, a tall fresh block, a pin, a colour | Lenses (kind, age, size, duplicates); survey tab; search pins; the time scrub (T), which draws what changed since a date crossed |
 | 3. Approach | Flies toward it. It opens as it gets close | Wheel flies to the cursor; distance-driven unfolding; contents rise out of the plateau |
 | 4. Orient | Knows where they are without thinking about it | Breadcrumbs and ledger follow the camera; tags on nearby plateaus; horizon and haze |
-| 5. Inspect | Selects a thing and reads it | Inspector: path, size and shares, dates, composition, preview, duplicates |
+| 5. Inspect | Selects a thing and reads it | Inspector: path, size and shares, dates, composition, preview, duplicates, what changed since a date, what changed since a benchmark |
 | 6. Act | Opens, renames, moves, removes | Context menu, keys, placing mode, drag and drop; every result stated in words |
 | 7. Confirm | Sees the world change to match the disk | Affected folders re-read; boxes move or rise; Undo offered in the notice |
-| 8. Leave | Goes up, back, or jumps somewhere else | Backspace, Alt+Left, 0, breadcrumbs, search results, survey entries |
+| 8. Leave | Goes up, back, or jumps somewhere else | Backspace, Alt+Left, 0, breadcrumbs, search results, survey entries, the return point (H marks it, J returns), the Places tab |
 
 The loop has two speeds. On foot (W A S D at eye level) it is browsing. By
 jump (search, survey, breadcrumbs) it is retrieval. Both end in the same
@@ -92,7 +119,8 @@ The smallest scope at which Terrane is a tool and not a demonstration.
 
 ## 3. Practical filesystem interaction requirements
 
-Written so each can be checked. All fifteen are met by the current build.
+Written so each can be checked. All fifteen are met by the build on
+`main`. Wave 2 amends the first when it merges (section 5).
 
 1. Every item drawn in the world corresponds to exactly one real entry,
    or is an aggregate that states its count and total size.
@@ -172,23 +200,19 @@ The browser currently holds the whole tree. For trees in the millions:
 Exit test: five million entries with browser memory under 300 MB and no
 frame over 16 ms from script.
 
-### Stage 5. Beyond the ground plane
+### Stage 5. Beyond the ground plane. Under way
 
-The honest gap against the open-world idea. Candidates, in order of how
-much information each adds:
+The honest gap against the open-world idea. Stage 5 is built in waves
+(section 5), on the groundwork Wave 0 laid. The five candidates, in order
+of how much information each adds:
 
-- **Interiors.** Entering a large file kind-appropriately: an archive's
-  contents as a chamber, an image at wall scale, a text file as a
-  readable surface.
-- **Relations across the tree.** Duplicate ties are the first. Next:
-  same-name siblings, symbolic links drawn as bridges to their targets,
-  files modified in the same session as a path through the world.
-- **Time as a dimension.** Scrub the world backward: blocks sink as you
-  go past their modification date, so growth is visible.
-- **Vertical organisation.** Use the space above a plateau for what is
-  about it and not in it: its history, its largest descendants.
-- **Landmarks and memory.** Named places, a trail of where you have
-  been, a return-to-here marker.
+| Candidate | The idea | Built so far | Status | Deferred |
+| --------- | -------- | ------------ | ------ | -------- |
+| Interiors | Entering a large file kind-appropriately: an archive's contents as a chamber, an image at wall scale, a text file as a readable surface | Archive chambers. The service lists a zip archive's directory through `GET /api/inside` (Wave 1); `I` opens a zip-family archive as a walled floor in the world (Wave 2) | Service half complete; client half in Wave 2 | tar and tgz, CRC-32 verification, search inside an archive; images at wall scale; text as a readable surface |
+| Relations across the tree | Duplicate ties are the first. Next: same-name siblings, symbolic links drawn as bridges to their targets, files modified in the same session as a path through the world | One relation-line layer of named sets, with the duplicate ties as its first set (Wave 0); working sessions as a search (`session:N`) and a traverse drawn through the world (Wave 2) | Session traverse in Wave 2 | Stop-stepping keys, a gap selector, a way to include dot-folders, "Changed with it"; same-name siblings; link bridges |
+| Time as a dimension | Scrub the world backward: blocks sink as you go past their modification date, so growth is visible | The date scrub (T , . < >): files changed since the date are drawn crossed, closed masses sink by what they kept; the As of stepper; the inspector's Since section (Wave 1) | Complete | Scree participation, replay, calendar-aligned steps, an "as it looked then" height mode, creation dates |
+| Vertical organisation | Use the space above a plateau for what is about it and not in it: its history, its largest descendants | Strata: the inspector's Bytes by last change; under the Age lens a closed mass takes its typical age, not its newest change (Wave 2) | In Wave 2, without the 3D part | The staffs above a plateau, leaders to the largest descendant, an Untouched sort in Contents |
+| Landmarks and memory | Named places, a trail of where you have been, a return-to-here marker | Benchmarks (B), which say later what changed in a folder, including what left it; the return point (H, J); the Places tab (Wave 1) | First increment complete | Export and Import (first in the next increment), the station trail, coverage |
 
 Exit test for each: it answers a question about the directory that the
 ledger alone cannot.
@@ -216,7 +240,131 @@ rename and finishes at once; the test applies to a copy, or a move onto
 another volume. `npm test` runs the same sequence on a 24 MB copy slowed
 to take a second.
 
-## 5. Development datasets
+## 5. Build waves
+
+Stage 5 is built in waves. Each wave runs on its own branch (`wave-1`,
+`wave-2`) in a separate worktree: its build steps one after another, then
+an adversarial review, a fix step, and a docs and header pass. A wave is
+merged into `main` and pushed only when `npm test`,
+`node tools/vendor.mjs --check` and the full `node tools/ui-check.mjs`
+pass, with and without WebGL, on the default fixture. The one accepted
+failure is the load screen's reload check, which times out once per pass
+and is parked for the load-screen work at the end.
+
+The plan had five waves: Wave 0 for the groundwork, Waves 1 to 3 for the
+features and Wave 4 for the docs. In practice the client half of
+Interiors (planned as Wave 3) and the docs (planned as Wave 4) run as the
+last steps of Wave 2.
+
+### Complete
+
+- **Wave 0: groundwork (G1 to G7).** 11/12/2026, `d5434d3`. The seams
+  every Stage 5 feature plugs into:
+  - a hard 70,000-box layout budget, so no layout overruns the instance
+    buffers;
+  - GPU uploads limited to the drawn range, and shadows redrawn at most
+    every fourth frame while boxes travel;
+  - one relation-line layer of named sets, with the duplicate ties as
+    its first set;
+  - the controller's registries (keys, Escape, pins, hover lines,
+    inspector sections, Reading rows, tabs, and the layout, refresh and
+    survey hooks), which each feature fills from its own module;
+  - the no-WebGL route: Contents can go into folders and stay there;
+  - the shared age table (`web/js/timeline.js`), rebuilt with every
+    survey;
+  - `tools/ui-check.mjs`, the headless browser check: keyboard only,
+    with and without WebGL, with a draw-call baseline.
+- **Terrane 1.2.0 interface.** 11/12/2026, `4b6eee2`. The layered design
+  system and its tokens, icons, the survey instruments over the world,
+  motion, and the vendoring tool that pins every third-party file by its
+  SHA-256 digest.
+- **Load screen, first cut.** 11/12/2026, `9d8e2af`. The loading sheet:
+  the T mark, the TERRANE wordmark and T-madness.
+- **Wave 1.** Merged 11/13/2026, `0d76f60`:
+  - Time as a dimension (`0496959`): the date scrub described under
+    Stage 5;
+  - Landmarks (`2248ead`): benchmarks, the return point and the Places
+    tab, kept per browser, address and source;
+  - Interiors, service half (`3cbd222`): `GET /api/inside` lists a zip
+    archive's directory within fixed bounds, flags locked entries and
+    names that would escape the archive, and is refused in snapshot mode;
+  - the review fixes (`b707c33`).
+
+  After the merge, and one fix to the browser check so it waits for the
+  load screen after a reload, every check passed apart from the load
+  screen's reload check.
+- **First hardening fixes.** 11/13/2026, `5f45117`. Interface files are
+  revalidated by a weak ETag instead of downloaded again on every use,
+  while the page, which holds the session token, is never stored.
+  Malformed static paths are a 404. `/api/raw` and `/api/inside` work
+  when the root is a whole drive such as `C:\`. Smoke test: 154 passed.
+- **GitHub Pages entry.** 11/13/2026. The root `index.html` forwards
+  visitors to `web/`, and `.nojekyll` publishes the repository as it is.
+  Pages can show the interface but not run it, because the page needs the
+  local service.
+
+### Under way
+
+**Wave 2** (branch `wave-2`). Its three build steps are committed:
+
+- Session traverse (`fdf6f05`): working sessions, groups of files changed
+  close together in time, listed in the Survey tab. `session:N` finds a
+  session's files, and its route is drawn through the world as a
+  traverse.
+- Strata (`5cbb225`): the inspector's Bytes by last change, in six bands
+  from under a day to over three years. Under the Age lens, a closed mass
+  is coloured by its typical age instead of its newest change.
+- Interiors, client half (`d532863`): `I` opens a zip-family archive
+  (zip, jar, war, ear, apk, aab, whl, xpi, nupkg, vsix, ipa) as a walled
+  floor in the world, read from the archive's directory without
+  unpacking it.
+
+The review ran the full browser check: 769 passed, and the 2 failures
+are the load screen's reload check, once per pass. It found three things,
+which the fix step is working on now:
+
+- Medium: J does not yet handle an open archive the way H does, so the
+  return point it saves can point inside the archive.
+- Low: if a refresh removes a twin of an archive entry, the open archive
+  still shows that entry as a twin.
+- Low: inside an open archive, the Age legend's "typical age" does not
+  hold, because the age table covers only the tree on disk.
+
+When Wave 2 merges, requirement 1 is amended to cover archive entries as
+the archive's directory lists them.
+
+### Next, in order
+
+1. **Docs.** Wave 2's last step: README, ARCHITECTURE, this roadmap,
+   `CHANGELOG.md` and every header Waves 1 and 2 touched, checked against
+   the code.
+2. **Wave 2 merge.** Into `main`, with every check run again, then
+   pushed.
+3. **Audit.** Five read-only auditors, one lens each: security,
+   correctness, accessibility (the keyboard and no-WebGL routes),
+   performance, and whether the docs and comments are true of the code.
+   A finding is kept only once it is confirmed.
+4. **Hardening pass.** Every confirmed finding fixed, each with a check
+   that would have caught it, plus two known items:
+   - a page not served by the service (opened from disk, from another
+     server or from GitHub Pages) says that Terrane runs from its local
+     service and how to start it, instead of "The service answered 404.";
+   - the forced unfold that J leaves behind ends when the view returns to
+     the overview.
+5. **Enhancement and polish.** Polish of the interface, with no change
+   in behaviour, judged from screenshots.
+6. **Sanity sweeps.** Every check, every header and every claim in the
+   docs, once more.
+7. **Load screen.** Sort out the loading sheet, including the reload
+   check that times out once per pass.
+
+Steps 3 to 6 run as one workflow on their own branch (`finish`), which is
+merged and pushed like a wave.
+
+No wave is planned past the load screen yet. The open ground is Stage 4,
+the rest of Stage 6, and the Stage 5 deferrals in section 4.
+
+## 6. Development datasets
 
 Building Terrane against a real directory without risk to it.
 
