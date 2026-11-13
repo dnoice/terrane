@@ -1,10 +1,10 @@
 <!--
 ✒ Metadata
-    - Title: Terrane Roadmap (Terrane Edition - v1.3)
+    - Title: Terrane Roadmap (Terrane Edition - v1.4)
     - File Name: ROADMAP.md
     - Relative Path: docs/ROADMAP.md
     - Artifact Type: docs
-    - Version: 1.3.0
+    - Version: 1.4.0
     - Date: 11/13/2026
     - Update: Friday, November 13, 2026
     - Author: Dennis 'dendogg' Smaltz
@@ -12,6 +12,12 @@
     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
 
 ✒ Changelog:
+    - 1.4.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
+      Audit, the Hardening pass, Enhancement and polish and the Sanity
+      sweeps are recorded as complete on branch `finish`, each with its
+      commits and its check lines, the final ones from the last sweep;
+      the branch waits to be merged into `main` like a wave. The load
+      screen is what comes next. Wave 2 names its merge commit.
     - 1.3.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — Stage
       5 is under way: its first increment (archive interiors, working
       sessions as a traverse, the date scrub, strata, benchmarks and the
@@ -41,9 +47,10 @@
     The plan behind Terrane: the exploration loop the world is designed
     around, the minimum viable filesystem scope, the practical filesystem
     interaction requirements, a staged implementation roadmap, the build
-    waves that carry it out (what is complete, what is under way and what
-    comes next), and the datasets that let development run against real
-    data without touching it.
+    waves that carry it out (what is complete on `main`, what is complete
+    on a branch waiting to be merged, and what comes next), and the
+    datasets that let development run against real data without
+    touching it.
 
 ✒ Key Features:
     - Where things stand, dated, in three lines
@@ -54,7 +61,8 @@
       and stages 5 and 6 are under way
     - Stage 5's first increment: what was delivered, by which wave,
       what was deferred, and the question each feature answers
-    - Build waves: complete, under way and next, with commits and checks
+    - Build waves: complete on `main`, complete on branch `finish`, and
+      next, with commits and checks
     - Development datasets: how to build against real data safely
 
 ✒ Other Important Information:
@@ -75,8 +83,10 @@ As of 11/13/2026:
   hardening fixes, the GitHub Pages entry, Wave 2 (Session traverse,
   Strata and the client half of Interiors) and the Docs pass for both
   waves. Every Stage 5 candidate now has its first increment.
-- **Under way:** Audit, then the Hardening pass, Enhancement and polish,
-  and Sanity sweeps, run as one workflow.
+- **Complete, on branch `finish`:** the Audit, the Hardening pass,
+  Enhancement and polish, and the Sanity sweeps, run as one workflow.
+  The branch waits to be merged into `main` like a wave, and the merge
+  records its own commit.
 - **Next:** the load screen.
 
 Section 5 has the detail for every wave.
@@ -353,7 +363,7 @@ last steps of Wave 2.
   Pages can show the interface but not run it, because the page needs the
   local service.
 
-- **Wave 2.** Merged 11/13/2026:
+- **Wave 2.** Merged 11/13/2026, `461651c`:
   - Session traverse (`fdf6f05`): working sessions, groups of files
     changed close together in time, listed in the Survey tab.
     `session:N` finds a session's files, and its route is drawn through
@@ -378,26 +388,67 @@ last steps of Wave 2.
   The merge passed every check apart from the load screen's reload
   check.
 
-### Under way
+### Complete on branch `finish`
 
-Steps 1 to 4 run as one workflow on their own branch (`finish`), which is
-merged and pushed like a wave.
+Steps 1 to 4 ran as one workflow on their own branch, `finish`, made
+from `main` at the Wave 2 merge (`461651c`). The branch waits to be
+merged into `main` and pushed like a wave; the merge records its own
+commit.
 
 1. **Audit.** Five read-only auditors, one lens each: security,
    correctness, accessibility (the keyboard and no-WebGL routes),
    performance, and whether the docs and comments are true of the code.
-   A finding is kept only once it is confirmed.
+   A finding was kept only once it was confirmed. The Audit changed no
+   file, so it has no commit of its own; its confirmed findings are what
+   the Hardening pass fixed.
 2. **Hardening pass.** Every confirmed finding fixed, each with a check
-   that would have caught it, plus two known items:
+   that would have caught it, plus the two known items:
    - a page not served by the service (opened from disk, from another
      server or from GitHub Pages) says that Terrane runs from its local
      service and how to start it, instead of "The service answered 404.";
    - the forced unfold that J leaves behind ends when the view returns to
      the overview.
-3. **Enhancement and polish.** Polish of the interface, with no change
-   in behaviour, judged from screenshots.
+
+   Commits: the service (`0ce2225`: the holding area by any name, its
+   index read as untrusted data, links followed only to an end inside
+   the root, the scan stream and the thumbnail cookie); the page
+   (`913c753`: refresh, Rescan all, the forced unfold, focus, contrast,
+   the narrow inspector drawer, the single-key setting and the unserved
+   page); the docs and dead code (`3881804`); and the checks that
+   followed (`2881ff8`). Checks: `npm test` 392 passed (181, 77, 45, 33
+   and 56), none failed; `node tools/ui-check.mjs` 867 passed and 5
+   skipped, with the `splash` reload step failing once in each pass; the
+   draw-call baseline recorded again once the empty relation layer
+   stopped drawing (overview 6, selected 8, search 7, duplicate ties 9).
+3. **Enhancement and polish** (`e152119`). Polish of the interface,
+   judged from screenshots at two widths: the instruments over the world
+   on two rows, so notices and operations in progress no longer cover
+   the view tools or the storage scale; world labels measured as drawn;
+   empty states that say so, and counts such as "1 item"; a narrow
+   ledger's tabs, captions and sort keys; focus rings kept inside the
+   panel edges; the menu fading out and the narrow drawer sliding; type
+   sizes on the scale; and the print sheet. Checks: `npm test` 392 passed;
+   `node tools/vendor.mjs --check` clean; `node tools/ui-check.mjs` 867
+   passed, 5 skipped and 2 failed, the known `splash` reload step once
+   per pass.
 4. **Sanity sweeps.** Every check, every header and every claim in the
-   docs, once more.
+   docs, once more, in the commit titled "Sanity sweep": the docs now
+   describe the interface files' revalidation, containment at a drive
+   root and the page the service did not serve. Final check lines, on
+   Windows 11 with Edge 157 on an RTX 5050 laptop GPU and the default
+   fixture of 3,126 files:
+   - `node --check` on all 57 script files outside `web/vendor/`: no
+     error;
+   - `npm test`: "181 passed, 0 failed", "77 passed, 0 failed",
+     "45 passed, 0 failed", "33 passed, 0 failed" and
+     "56 passed, 0 failed", 392 in all;
+   - `node tools/vendor.mjs --check`:
+     "Every vendored file matches the manifest.";
+   - `node tools/ui-check.mjs --no-shots`, both passes:
+     "867 passed, 2 failed, 5 skipped". The two failures are the known
+     `splash` reload step, once per pass ("Timed out after 20000 ms
+     waiting for the loading sheet after a reload"); draw calls at the
+     baseline (overview 6, selected 8, search 7, duplicate ties 9).
 
 ### Next
 

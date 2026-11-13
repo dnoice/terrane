@@ -20,7 +20,10 @@
       the thumbnail cookie; What was verified records the runs of
       11/13/2026 after the hardening; the project map lists
       elsewhere.js and the hardening scenarios, and says what
-      tokens.css holds.
+      tokens.css holds. The sanity sweep: Launch says the directory can
+      be a whole drive; the safety model says the page is never stored
+      while the files it loads are revalidated by a weak ETag; What was
+      verified records the final runs on branch finish.
     - 1.6.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] —
       Looking further: the date scrub (T , . < >), benchmarks and the
       return point (B, H, J and the Places tab, with where places are
@@ -111,7 +114,8 @@ node server/terrane.mjs "C:\Users\DnnsS\OneDrive\Desktop\dd1\projects"
 ```
 
 The service prints its address (`http://127.0.0.1:4173/`) and opens it in
-the default browser. Stop it with Ctrl+C.
+the default browser. Stop it with Ctrl+C. The directory can be a whole
+drive, such as `D:\`.
 
 Open the page only at that address. Opened from disk, from another
 server or from GitHub Pages it has no service behind it, and says so:
@@ -353,6 +357,9 @@ gives the path through the archive, `x.zip!/inner/file`.
   requires a per-session token on every API call. The cookie that lets
   thumbnails load carries a secret of its own, named for the port, which
   opens thumbnails and nothing else.
+- The page, which carries the token, is never stored by the browser. The
+  files it loads are kept and revalidated by a weak ETag, so one that has
+  not changed costs a 304 instead of a download.
 
 Limits worth knowing: the journal keeps the latest 500 changes;
 `.terrane-trash` lives inside your directory, so on a OneDrive folder it
@@ -375,6 +382,7 @@ by the Windows hidden attribute.
 | `npm run ui-check` on Windows 11 (11/13/2026), Edge 157 on an RTX 5050 laptop GPU, on the default fixture of 3,126 files: 22 scenarios, the earlier ones plus `time`, `landmarks`, `interior`, `traverse` and `strata` and their on-disk variants, in a WebGL pass and a pass with WebGL disabled | 793 passed and 5 skipped (what needs `--snapshot`, or reads the sheet after it had gone) after the Wave 2 merge; two failures, the `splash` scenario's reload step in each pass, which timed out waiting for the sheet (the docs pass before the merge saw it in the pass without WebGL only); draw calls at the recorded baseline, with the time view and the Age lens too, and 64 benchmarks one call over it (the shared pin mesh) |
 | `npm test` on Windows 11 (11/13/2026), after the hardening pass: the smoke test adds the holding area by any name (case, a trailing dot, NTFS stream names, its 8.3 short name, a junction), planted holding records, a holding area that is a link, links that lead outside refused for hashing and Open, relative links a copy or move would aim outside, the thumbnail cookie, the scan writer when the page goes away, and source checks; the module tests add twins after a refresh, time inside an archive and the detail cache | 392 passed (181, 77, 45, 33 and 56), none failed |
 | `npm run ui-check` on Windows 11 (11/13/2026), Edge 157 on an RTX 5050 laptop GPU, after the hardening pass: 24 scenarios, the earlier ones plus `hardening` (focus kept through redraws and hidden panels, contrast, live regions, menus, the single-key setting, is:benchmark, the forced unfold, an 800 by 500 window, the page opened from disk and from another server) and `hardening-disk` (a folder deleted from outside, the time view after a change, a list reordered under its cursor, Rescan all with a search), in a WebGL pass and a pass with WebGL disabled | 867 passed and 5 skipped; two failures, the `splash` scenario's reload step in each pass, as before; draw calls at the baseline recorded again once the empty relation layer stopped drawing (overview 6, selected 8, search 7, duplicate ties 9) |
+| The final sanity sweep on Windows 11 (11/13/2026), after the polish pass: `node --check` on every script outside `web/vendor/`, `npm test`, `npm run vendor -- --check`, and `npm run ui-check` in both passes with Edge 157 on an RTX 5050 laptop GPU and the default fixture of 3,126 files | No syntax error in 57 scripts; 392 passed (181, 77, 45, 33 and 56), none failed; every vendored file matches the manifest; 867 passed and 5 skipped, with the `splash` reload step failing once in each pass as before; draw calls at the baseline |
 
 Not verified: running on macOS; frame rate at street level in the largest
 trees on a hardware GPU; Open and Reveal reaching a desktop application on

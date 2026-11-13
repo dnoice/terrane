@@ -25,7 +25,11 @@
       what is true: components read colours from tokens.css (sizes
       mostly), and a locked entry's hatch replaces a link's bands. The
       polish pass: the instruments' two rows over the world, and the
-      print sheet's title block, inspector and buttons.
+      print sheet's title block, inspector and buttons. The sanity
+      sweep: the service section says that containment is one test
+      (`guard.contains`, so a drive root works as the root), that the
+      page is never stored while the files it loads are revalidated by
+      a weak ETag, and how a page the service did not serve says so.
     - 1.4.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
       visual identity gains the conventions Stage 5 added: the crossed
       footprint and AUX, the upright verdigris benchmark mark, the
@@ -226,6 +230,26 @@ snapshot mode (--snapshot):  info, scan, stat, events, an empty journal  ->  sna
   and holds a secret of its own that opens `/api/thumbs` and
   `/api/thumb` only; a cookie reaches every service on the host whatever
   its port, so it never carries the session token.
+- **Containment is one test.** `guard.contains(abs)` is the test the
+  guard applies itself, and every route that checks a real location
+  against the root uses it or `guard.realInside`, never a prefix of its
+  own. A drive root such as `C:\` already ends in a separator, so a
+  prefix built by adding one refused everything under it; with the one
+  test a whole drive works as the root.
+- **The page is never stored; what it loads is revalidated.** The page
+  carries the session token, so it is served `no-store`. Every other
+  interface file carries a weak ETag made from its size and change time,
+  with `Cache-Control: no-cache`, and answers 304 while it is unchanged,
+  so the modules and the icon sprite are not downloaded again on every
+  use. A malformed or null-byte path, or a folder, is a 404.
+- **A page the service did not serve says so.** The service writes the
+  token into the page as it serves it. Opened from disk, from another
+  server or from GitHub Pages, the page still holds the placeholder, and
+  `elsewhere.js`, a classic script that runs from disk too, sees it
+  before any request: it sends the loading sheet away, says that
+  Terrane runs from its local service and how to start it, and links to
+  the repository. `app.js` reads the same placeholder and asks the
+  service nothing.
 - **State lives in one place per kind**: the disk is the truth; the model
   is a cache of it; the layout is a function of model and eye; paint is a
   function of layout and session state. Nothing is patched in place
