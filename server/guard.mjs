@@ -1,18 +1,22 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Path Guard (Terrane Edition - v1.1)
+ *     - Title: Path Guard (Terrane Edition - v1.2)
  *     - File Name: guard.mjs
  *     - Relative Path: server/guard.mjs
  *     - Artifact Type: javascript
- *     - Version: 1.1.0
- *     - Date: 11/11/2026
- *     - Update: Wednesday, November 11, 2026
+ *     - Version: 1.2.0
+ *     - Date: 11/13/2026
+ *     - Update: Friday, November 13, 2026
  *     - Author: Dennis 'dendogg' Smaltz
  *     - A.I. Acknowledgement: Anthropic - Claude Opus 5.5
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
  *
  * ✒ Changelog:
+ *     - 1.2.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] —
+ *       guard.contains(abs) exposes the containment test the guard uses
+ *       itself, so routes that check a real path no longer build their
+ *       own prefix, which doubled the separator at a drive root.
  *     - 1.1.0 (11/11/2026) [dendogg + Anthropic - Claude Opus 5.5] — Path
  *       validation is exported as relParts(), so snapshot mode refuses
  *       exactly what the live guard refuses.
@@ -94,6 +98,12 @@ export async function makeGuard(rootInput) {
 
   return {
     root,
+
+    /**
+     * True when an absolute path is the root or lies under it. Safe when the
+     * root is a drive or filesystem root, whose path already ends in a separator.
+     */
+    contains: inside,
 
     /** Root-relative posix-style string -> absolute path inside the root. */
     resolve(rel, { allowRoot = true } = {}) {

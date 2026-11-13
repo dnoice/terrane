@@ -2,11 +2,11 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Service Smoke Test (Terrane Edition - v1.3)
+ *     - Title: Service Smoke Test (Terrane Edition - v1.4)
  *     - File Name: smoke-test.mjs
  *     - Relative Path: tools/smoke-test.mjs
  *     - Artifact Type: test
- *     - Version: 1.3.0
+ *     - Version: 1.4.0
  *     - Date: 11/13/2026
  *     - Update: Friday, November 13, 2026
  *     - Author: Dennis 'dendogg' Smaltz
@@ -14,6 +14,11 @@
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
  *
  * ✒ Changelog:
+ *     - 1.4.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — A
+ *       static-files section: interface files carry a weak ETag with
+ *       no-cache and answer 304 to it, the page is no-store with no ETag,
+ *       and malformed or escaping static paths are 404. guard.contains()
+ *       is checked against a drive or filesystem root.
  *     - 1.3.0 (11/12/2026) [dendogg + Anthropic - Claude Opus 5.5] — A
  *       time-view section lays out the age-table tree from four eyes at
  *       every ladder step: the present's box count, key order and
@@ -336,10 +341,10 @@ async function boot(extra, port, env = {}, { withRoot = true } = {}) {
     });
     child.on('exit', () => reject(new Error('service exited')));
   });
-  const request = (method, route, { body, token, host } = {}) => new Promise((resolve, reject) => {
+  const request = (method, route, { body, token, host, headers = {} } = {}) => new Promise((resolve, reject) => {
     const data = body ? JSON.stringify(body) : null;
     const req = http.request({ host: '127.0.0.1', port: actual, path: route, method, headers: {
-      ...(host ? { Host: host } : {}), ...(token ? { 'X-Terrane-Token': token } : {}),
+      ...headers, ...(host ? { Host: host } : {}), ...(token ? { 'X-Terrane-Token': token } : {}),
       ...(data ? { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(data) } : {}),
     } }, (res) => {
       let text = '';
@@ -349,7 +354,7 @@ async function boot(extra, port, env = {}, { withRoot = true } = {}) {
         try {
           parsed = JSON.parse(text);
         } catch { /* ndjson or html */ }
-        resolve({ status: res.statusCode, body: parsed, text });
+        resolve({ status: res.statusCode, body: parsed, text, headers: res.headers });
       });
     });
     req.on('error', reject);
@@ -414,6 +419,34 @@ if (linked) {
 }
 check('invalid names are refused', (await s.op({ type: 'mkdir', parent: '', name: 'a/b' })).status === 400 && (await s.op({ type: 'mkdir', parent: '', name: '..' })).status === 400);
 check('the root itself cannot be renamed or removed', (await s.op({ type: 'rename', path: '', name: 'x' })).status === 403 && (await s.op({ type: 'trash', paths: [''] })).status === 403);
+
+console.log('\nStatic files');
+{
+  const page = await s.request('GET', '/');
+  check('the page is never stored and carries no ETag',
+    page.headers['cache-control'] === 'no-store' && !page.headers.etag, JSON.stringify(page.headers));
+  const css = await s.request('GET', '/css/terrane.css');
+  const tag = css.headers.etag;
+  check('an interface file is revalidated: no-cache with a weak ETag',
+    css.status === 200 && css.headers['cache-control'] === 'no-cache' && /^W\/"[0-9a-z]+-[0-9a-z]+"$/.test(tag || ''), JSON.stringify(css.headers));
+  const again = await s.request('GET', '/css/terrane.css', { headers: { 'If-None-Match': tag } });
+  check('asking with that ETag answers 304 with no body', again.status === 304 && again.text === '' && again.headers.etag === tag, `${again.status}`);
+  const other = await s.request('GET', '/css/terrane.css', { headers: { 'If-None-Match': 'W/"0-0"' } });
+  check('a different ETag gets the file again', other.status === 200 && other.text === css.text);
+  const page304 = await s.request('GET', '/', { headers: { 'If-None-Match': tag } });
+  check('the page is sent whole whatever ETag is offered', page304.status === 200 && /terrane-token/.test(page304.text));
+  check('a malformed static path is 404, not an error', (await s.request('GET', '/%E0%A4%A')).status === 404);
+  check('a null byte in a static path is 404', (await s.request('GET', '/index.html%00.js')).status === 404);
+  check('an escaping static path is 404', (await s.request('GET', '/..%2f..%2fpackage.json')).status === 404);
+  check('a static folder is 404', (await s.request('GET', '/css')).status === 404);
+}
+{
+  const { makeGuard } = await import('../server/guard.mjs');
+  const top = path.parse(root).root;
+  const g = await makeGuard(top);
+  check(`guard.contains() works when the root is a drive or filesystem root (${top})`,
+    g.root === top && g.contains(g.root) && g.contains(path.join(top, 'a', 'b.txt')) && g.contains(root), g.root);
+}
 
 console.log('\nScan');
 const scan = await s.get('/api/scan?path=');

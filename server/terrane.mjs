@@ -2,11 +2,11 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Terrane Service (Terrane Edition - v1.2)
+ *     - Title: Terrane Service (Terrane Edition - v1.3)
  *     - File Name: terrane.mjs
  *     - Relative Path: server/terrane.mjs
  *     - Artifact Type: CLI
- *     - Version: 1.2.0
+ *     - Version: 1.3.0
  *     - Date: 11/13/2026
  *     - Update: Friday, November 13, 2026
  *     - Author: Dennis 'dendogg' Smaltz
@@ -14,6 +14,14 @@
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
  *
  * ✒ Changelog:
+ *     - 1.3.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
+ *       interface's files are revalidated instead of fetched again on
+ *       every use: each carries a weak ETag from its size and change time
+ *       and Cache-Control no-cache, and an unchanged file answers 304. The
+ *       page itself, which holds the session token, is still never stored.
+ *       A malformed or null-byte static path is a 404 rather than an
+ *       error. /api/raw and /api/inside check containment with the
+ *       guard's own test, so a drive root such as C:\ works as the root.
  *     - 1.2.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — GET
  *       /api/inside lists what a zip archive holds, as scanner records,
  *       through the same checks as /api/raw (the file's own real location
@@ -65,6 +73,8 @@
  *     - Thumbnails from the thumbnail dataset, in both modes: one gzipped
  *       index, and versioned images cached as immutable; image URLs carry
  *       no token and authenticate with a SameSite=Strict cookie
+ *     - Interface files revalidated by a weak ETag (no-cache, 304 when
+ *       unchanged); the page, which holds the token, is never stored
  *     - Zero npm dependencies; three.js and the fonts are vendored in web/
  *
  * ✒ Usage Instructions:
@@ -465,7 +475,7 @@ async function api(req, res, url) {
       const abs = guard.resolve(q.get('path') || '', { allowRoot: false });
       await guard.assertParentInside(abs);
       const real = await fsp.realpath(abs);
-      if (!(real === guard.root || real.startsWith(guard.root + path.sep))) {
+      if (!guard.contains(real)) {
         throw new GuardError('EOUTSIDE', 'This link points outside the authorized directory.', 403);
       }
       const st = await fsp.stat(real);
@@ -495,8 +505,7 @@ async function api(req, res, url) {
       } catch (err) {
         throw new GuardError(err.code || 'ENOENT', `${name} is no longer there.`, 404);
       }
-      const prefix = guard.root.endsWith(path.sep) ? guard.root : guard.root + path.sep;
-      if (!real.startsWith(prefix)) throw new GuardError('EOUTSIDE', 'This link points outside the authorized directory.', 403);
+      if (real === guard.root || !guard.contains(real)) throw new GuardError('EOUTSIDE', 'This link points outside the authorized directory.', 403);
       try {
         st = await fsp.stat(real);
       } catch (err) {
@@ -562,22 +571,47 @@ async function api(req, res, url) {
 }
 
 async function serveStatic(req, res, url) {
-  let rel = decodeURIComponent(url.pathname);
+  let rel;
+  try {
+    rel = decodeURIComponent(url.pathname);
+  } catch {
+    throw new GuardError('EPATH', 'Not found.', 404);
+  }
   if (rel === '/') rel = '/index.html';
+  if (rel.includes('\0')) throw new GuardError('EPATH', 'Not found.', 404);
   const abs = path.join(WEB, rel);
   if (!abs.startsWith(WEB + path.sep)) throw new GuardError('EPATH', 'Not found.', 404);
+  let st;
+  try {
+    st = await fsp.stat(abs);
+  } catch {
+    throw new GuardError('ENOENT', 'Not found.', 404);
+  }
+  if (!st.isFile()) throw new GuardError('ENOENT', 'Not found.', 404);
+  const page = rel === '/index.html';
+  const headers = {
+    'Content-Type': MIME[path.extname(abs)] || 'application/octet-stream',
+    // The page carries this session's token, so it is never stored. Every
+    // other file is revalidated: the browser keeps it and asks with its
+    // ETag, and an unchanged file costs a 304 instead of a download.
+    'Cache-Control': page ? 'no-store' : 'no-cache',
+    'X-Content-Type-Options': 'nosniff',
+  };
+  if (!page) {
+    const etag = `W/"${st.size.toString(36)}-${Math.trunc(st.mtimeMs).toString(36)}"`;
+    headers.ETag = etag;
+    if (req.headers['if-none-match'] === etag) {
+      res.writeHead(304, headers);
+      return res.end();
+    }
+  }
   let data;
   try {
     data = await fsp.readFile(abs);
   } catch {
     throw new GuardError('ENOENT', 'Not found.', 404);
   }
-  const headers = {
-    'Content-Type': MIME[path.extname(abs)] || 'application/octet-stream',
-    'Cache-Control': 'no-store',
-    'X-Content-Type-Options': 'nosniff',
-  };
-  if (rel === '/index.html') {
+  if (page) {
     data = Buffer.from(data.toString('utf8').replace('__TERRANE_TOKEN__', token));
     headers['Content-Security-Policy'] = "default-src 'self'; img-src 'self' blob: data:; style-src 'self' 'unsafe-inline'; frame-ancestors 'none'";
     headers['Referrer-Policy'] = 'no-referrer';
