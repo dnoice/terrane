@@ -2,18 +2,43 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Service Smoke Test (Terrane Edition - v1.2)
+ *     - Title: Service Smoke Test (Terrane Edition - v1.3)
  *     - File Name: smoke-test.mjs
  *     - Relative Path: tools/smoke-test.mjs
  *     - Artifact Type: test
- *     - Version: 1.2.0
- *     - Date: 11/12/2026
- *     - Update: Thursday, November 12, 2026
+ *     - Version: 1.3.0
+ *     - Date: 11/13/2026
+ *     - Update: Friday, November 13, 2026
  *     - Author: Dennis 'dendogg' Smaltz
  *     - A.I. Acknowledgement: Anthropic - Claude Opus 5.5
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
  *
  * ✒ Changelog:
+ *     - 1.3.0 (11/12/2026) [dendogg + Anthropic - Claude Opus 5.5] — A
+ *       time-view section lays out the age-table tree from four eyes at
+ *       every ladder step: the present's box count, key order and
+ *       footprints; changed files and empty folders as crossed slabs no
+ *       taller than their slab; closed masses lowered by what they kept;
+ *       no box rising as the date goes back; the time module's crossed
+ *       rule agreeing with the layout; and no asOf giving the present
+ *       layout exactly. An archive section (11/13/2026) lists a fresh
+ *       fixture's archives through GET /api/inside on a read-only
+ *       service: the stored zip's exact names and sizes (and the loose
+ *       copy and the copy 13 levels down agreeing), ZIP64, the locked
+ *       flag and the escape count, 415 naming 7z and the format a
+ *       misnamed .tar.gz suggests, the damaged sentence for the truncated
+ *       zip, ENOTFILE, 401, 400 for '..', 403 through links that leave
+ *       the root, the 100,000-entry bound in a sentence, and the tree
+ *       identical afterwards; snapshot mode answers ESNAPSHOT. A reader
+ *       section builds zips by hand for names, dates, flags, escapes, the
+ *       depth, folder, byte and time bounds, damage, split and encrypted
+ *       directories, and sniffing, and checks the reader never writes;
+ *       later (11/13/2026) also a stub or launcher before a zip whose
+ *       first bytes are no zip, a short digital signature record, and
+ *       names repeated in a folder numbered, counted and stated. A section
+ *       runs the operations in-process: Undo answers with the paths it
+ *       moved back, after a restart too, and a move or removal that stops
+ *       part way throws with the paths it finished.
  *     - 1.2.0 (11/11/2026) [dendogg + Anthropic - Claude Opus 5.5] — A
  *       layout section runs the browser's layout module in Node: a tree
  *       shaped to overflow the old folder-entry check stays within the
@@ -68,6 +93,13 @@
  *     - Snapshot mode: written outside the tree it records, replays a live
  *       scan exactly, refuses every change and every content read
  *     - Read-only mode refuses mutations
+ *     - Archive interiors: the fixture's archives listed through the
+ *       service, every refusal by status and sentence, the bounds, and a
+ *       tree unchanged by listing; snapshot mode refuses listing
+ *     - The archive reader, without the service: hand-built zips for
+ *       names, dates, flags, escaping names, bounds and damage
+ *     - Undo answers and partial changes, in-process: the paths moved
+ *       back, and the paths finished before a simulated failure
  *     - Duplicate hashing distinguishes true copies from same-size files
  *     - Layout safety, without the service: the box budget holds at every
  *       box, so no layout can pass the viewport's capacity
@@ -77,6 +109,9 @@
  *       and takes is: words and name:value tokens from its caller
  *     - The age table, without the service: changed bytes and files per
  *       folder and step equal a brute-force walk, and the strata add up
+ *     - The time view, without the service: the layout looked back to
+ *       every ladder step keeps the present's boxes and lowers only what
+ *       changed after the date
  *
  * ✒ Usage Instructions:
  *     node tools/smoke-test.mjs
@@ -85,9 +120,9 @@
  *
  * ✒ Other Important Information:
  *     - Dependencies: Node.js built-ins only; server/terrane.mjs,
- *       server/snapshot.mjs, web/js/layout.js, web/js/model.js,
- *       web/js/timeline.js, and web/js/viewport.js with the vendored
- *       three.js
+ *       server/snapshot.mjs, server/archive.mjs, tools/make-fixture.mjs,
+ *       web/js/layout.js, web/js/model.js, web/js/timeline.js,
+ *       web/js/time.js, and web/js/viewport.js with the vendored three.js
  *     - Compatible platforms: Node.js 22.5+; the symbolic-link checks are
  *       skipped where links cannot be created
  *     - Performance: about 10 seconds; the second service runs with
@@ -100,6 +135,7 @@ import os from 'node:os';
 import path from 'node:path';
 import http from 'node:http';
 import crypto from 'node:crypto';
+import zlib from 'node:zlib';
 import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
@@ -152,6 +188,139 @@ function snapshot(dir = root, rel = '') {
     else out.push(`${r}:${crypto.createHash('sha1').update(fs.readFileSync(path.join(dir, d.name))).digest('hex')}`);
   }
   return out;
+}
+
+/**
+ * Names, sizes, modification times and, up to 4 MB, content hashes of
+ * everything under dir, folders included; links are recorded, not
+ * followed. Large sparse files are compared by size and time only.
+ */
+function treeState(dir, rel = '') {
+  let list;
+  try {
+    list = fs.readdirSync(dir, { withFileTypes: true });
+  } catch (err) {
+    return [`${rel}/!${err.code}`];
+  }
+  const out = [];
+  for (const d of list.sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0))) {
+    if (!rel && d.name === '.terrane-trash') continue;
+    const abs = path.join(dir, d.name);
+    const r = rel ? `${rel}/${d.name}` : d.name;
+    const st = fs.lstatSync(abs);
+    if (st.isSymbolicLink()) out.push(`${r}@${fs.readlinkSync(abs)}`);
+    else if (st.isDirectory()) out.push(`${r}/${st.mtimeMs}`, ...treeState(abs, r));
+    else out.push(`${r}:${st.size}:${st.mtimeMs}:${st.size <= 4 * 1024 * 1024 ? crypto.createHash('sha1').update(fs.readFileSync(abs)).digest('hex') : '-'}`);
+  }
+  return out;
+}
+
+/**
+ * A zip for the archive reader's checks: stored entries, with any
+ * central-directory field set by hand. Entry: { name (string or bytes),
+ * data, flags, made, attrs, date, time, size, packed, extra }. cdTail is
+ * appended inside the directory (a digital signature record).
+ */
+function zipOf(list, { comment = Buffer.alloc(0), prefix = Buffer.alloc(0), declared = list.length, disk = 0, cdTail = Buffer.alloc(0) } = {}) {
+  const locals = [];
+  const central = [];
+  let offset = 0;
+  for (const e of list) {
+    const name = Buffer.isBuffer(e.name) ? e.name : Buffer.from(e.name, 'utf8');
+    const data = e.data || Buffer.alloc(0);
+    const extra = e.extra || Buffer.alloc(0);
+    const local = Buffer.alloc(30);
+    local.writeUInt32LE(0x04034b50, 0);
+    local.writeUInt16LE(20, 4);
+    local.writeUInt16LE(e.flags || 0, 6);
+    local.writeUInt32LE(data.length, 18);
+    local.writeUInt32LE(data.length, 22);
+    local.writeUInt16LE(name.length, 26);
+    locals.push(local, name, data);
+    const head = Buffer.alloc(46);
+    head.writeUInt32LE(0x02014b50, 0);
+    head.writeUInt16LE(e.made ?? 20, 4);
+    head.writeUInt16LE(20, 6);
+    head.writeUInt16LE(e.flags || 0, 8);
+    head.writeUInt16LE(e.time ?? 0, 12);
+    head.writeUInt16LE(e.date ?? 0, 14);
+    head.writeUInt32LE(e.packed ?? data.length, 20);
+    head.writeUInt32LE(e.size ?? data.length, 24);
+    head.writeUInt16LE(name.length, 28);
+    head.writeUInt16LE(extra.length, 30);
+    head.writeUInt32LE((e.attrs ?? 0) >>> 0, 38);
+    head.writeUInt32LE(offset, 42);
+    central.push(head, name, extra);
+    offset += 30 + name.length + data.length;
+  }
+  const cd = Buffer.concat([...central, cdTail]);
+  const end = Buffer.alloc(22);
+  end.writeUInt32LE(0x06054b50, 0);
+  end.writeUInt16LE(disk, 4);
+  end.writeUInt16LE(disk, 6);
+  end.writeUInt16LE(declared & 0xffff, 8);
+  end.writeUInt16LE(declared & 0xffff, 10);
+  end.writeUInt32LE(cd.length, 12);
+  end.writeUInt32LE(offset, 16);
+  end.writeUInt16LE(comment.length, 20);
+  return Buffer.concat([prefix, ...locals, cd, end, comment]);
+}
+
+/** A ZIP64 archive whose directory lists n one-byte files under many/, all sharing one local entry. */
+function manyZip(n) {
+  const name = (i) => `many/f${String(i).padStart(6, '0')}.txt`;
+  const local = Buffer.alloc(47);
+  local.writeUInt32LE(0x04034b50, 0);
+  local.writeUInt16LE(45, 4);
+  local.writeUInt32LE(1, 18);
+  local.writeUInt32LE(1, 22);
+  local.writeUInt16LE(16, 26);
+  local.write(name(0), 30, 'latin1');
+  local.write('x', 46, 'latin1');
+  const cd = Buffer.alloc(n * 62);
+  for (let i = 0; i < n; i++) {
+    const p = i * 62;
+    cd.writeUInt32LE(0x02014b50, p);
+    cd.writeUInt16LE(45, p + 4);
+    cd.writeUInt16LE(45, p + 6);
+    cd.writeUInt32LE(1, p + 20);
+    cd.writeUInt32LE(1, p + 24);
+    cd.writeUInt16LE(16, p + 28);
+    cd.write(name(i), p + 46, 'latin1');
+  }
+  const rec = Buffer.alloc(56);
+  rec.writeUInt32LE(0x06064b50, 0);
+  rec.writeBigUInt64LE(44n, 4);
+  rec.writeUInt16LE(45, 12);
+  rec.writeUInt16LE(45, 14);
+  rec.writeBigUInt64LE(BigInt(n), 24);
+  rec.writeBigUInt64LE(BigInt(n), 32);
+  rec.writeBigUInt64LE(BigInt(cd.length), 40);
+  rec.writeBigUInt64LE(BigInt(local.length), 48);
+  const loc = Buffer.alloc(20);
+  loc.writeUInt32LE(0x07064b50, 0);
+  loc.writeBigUInt64LE(BigInt(local.length + cd.length), 8);
+  loc.writeUInt32LE(1, 16);
+  const end = Buffer.alloc(22);
+  end.writeUInt32LE(0x06054b50, 0);
+  end.writeUInt16LE(0xffff, 8);
+  end.writeUInt16LE(0xffff, 10);
+  end.writeUInt32LE(0xffffffff, 12);
+  end.writeUInt32LE(0xffffffff, 16);
+  return Buffer.concat([local, cd, rec, loc, end]);
+}
+
+/** Folder and file paths with sizes from scanner records: 'a/' and 'a/b.txt:5'. */
+function recordPaths(records) {
+  const where = new Map();
+  const out = [];
+  for (const [id, pid, name, , , files] of records) {
+    const at = pid === -1 ? '' : where.get(pid) ? `${where.get(pid)}/${name}` : name;
+    where.set(id, at);
+    if (pid !== -1) out.push(`${at}/`);
+    for (let i = 0; i < files.length; i += 4) out.push(`${at ? `${at}/` : ''}${files[i]}:${files[i + 1]}`);
+  }
+  return out.sort();
 }
 
 async function boot(extra, port, env = {}, { withRoot = true } = {}) {
@@ -365,6 +534,64 @@ const setAside = fs.readdirSync(path.join(root, '.terrane-trash')).some((n) => n
 check('an unreadable journal is set aside, not overwritten', j.journal.length === 0 && setAside);
 await s4.stop();
 
+console.log('\nUndo answers and changes that stop part way (no service)');
+{
+  const { makeGuard } = await import('../server/guard.mjs');
+  const { makeOps } = await import('../server/ops.mjs');
+  const fsp = (await import('node:fs/promises')).default;
+  const opsRoot = path.join(work, 'ops-root');
+  for (const d of ['one', 'two', 'three', 'four', 'dest']) fs.mkdirSync(path.join(opsRoot, d), { recursive: true });
+  fs.writeFileSync(path.join(opsRoot, 'one', 'f.txt'), '1');
+  const g = await makeGuard(opsRoot);
+  const at = (...p) => fs.existsSync(path.join(opsRoot, ...p));
+  let o = makeOps(g, {});
+  await o.run({ type: 'rename', path: 'one', name: 'uno' });
+  await o.run({ type: 'move', paths: ['uno', 'two'], dest: 'dest' });
+  let u = await o.undo();
+  check('undo of a move answers with the paths it carried back, last moved first, each [where it was, where it is now]',
+    JSON.stringify(u.moved) === JSON.stringify([['dest/two', 'two'], ['dest/uno', 'uno']]) && at('uno', 'f.txt') && at('two'), JSON.stringify(u));
+  // Another process reads the journal: the answer holds after a restart, as after a page reload.
+  await new Promise((r) => setTimeout(r, 5));
+  o = makeOps(g, {});
+  u = await o.undo();
+  check('undo of a rename from an earlier session answers the same way', JSON.stringify(u.moved) === JSON.stringify([['uno', 'one']]) && /earlier session/.test(u.label) && at('one', 'f.txt'), JSON.stringify(u));
+  // The second item's rename fails, so the move stops after the first.
+  const rename = fsp.rename;
+  const failOn = (name) => {
+    fsp.rename = async (from, to) => {
+      if (path.basename(from) === name) throw Object.assign(new Error('simulated: the item is in use'), { code: 'EBUSY' });
+      return rename(from, to);
+    };
+  };
+  let err = null;
+  failOn('three');
+  try {
+    await o.run({ type: 'move', paths: ['two', 'three'], dest: 'dest' });
+  } catch (e) {
+    err = e;
+  } finally {
+    fsp.rename = rename;
+  }
+  check('a move that stops part way throws an error carrying results, the paths it finished',
+    err?.status === 500 && JSON.stringify(err.results) === JSON.stringify(['dest/two']) && err.affected.includes('dest') && at('dest', 'two') && at('three'),
+    JSON.stringify(err && { code: err.code, results: err.results, affected: err.affected, message: err.message }));
+  u = await o.undo();
+  check('its undo carries the finished path back and says so', JSON.stringify(u.moved) === JSON.stringify([['dest/two', 'two']]) && at('two') && !at('dest', 'two'), JSON.stringify(u));
+  err = null;
+  failOn('four');
+  try {
+    await o.run({ type: 'trash', paths: ['three', 'four'] });
+  } catch (e) {
+    err = e;
+  } finally {
+    fsp.rename = rename;
+  }
+  check('a removal that stops part way carries results too: the paths it removed to the holding area',
+    err?.status === 500 && JSON.stringify(err.results) === JSON.stringify(['three']) && !at('three') && at('four'), JSON.stringify(err && { results: err.results, message: err.message }));
+  u = await o.undo();
+  check('an undo that moved nothing by path answers without moved', u.moved === undefined && at('three'), JSON.stringify(u));
+}
+
 console.log('\nSnapshot mode');
 const { takeSnapshot } = await import('../server/snapshot.mjs');
 const snapDir = path.join(work, 'snaps');
@@ -396,6 +623,9 @@ r = await sm.op({ type: 'mkdir', parent: '', name: 'from-snapshot' });
 const u = await sm.post('/api/undo');
 check('snapshot mode refuses every change', r.status === 403 && u.status === 403 && /snapshot/i.test(r.body.message) && !has('from-snapshot'));
 check('snapshot mode never reads file contents', (await sm.get('/api/raw?path=docs/b.txt')).status === 403);
+r = await sm.get('/api/inside?path=docs/b.txt');
+check('snapshot mode refuses to look inside an archive, with ESNAPSHOT and a sentence',
+  r.status === 403 && r.body.code === 'ESNAPSHOT' && /snapshot mode/i.test(r.body.message) && !r.body.records, JSON.stringify(r.body));
 check('snapshot mode keeps the path rules', (await sm.get('/api/scan?path=' + encodeURIComponent('../outside'))).status === 400);
 check('without a thumbnail dataset the index says so', (await sm.get('/api/thumbs')).body.available === false);
 await sm.stop();
@@ -406,6 +636,342 @@ r = await ro.op({ type: 'mkdir', parent: '', name: 'nope' });
 check('read-only refuses mutations with an explanation', r.status === 403 && /read-only/i.test(r.body.message) && !has('nope'));
 check('read-only still scans', (await ro.get('/api/scan?path=')).status === 200);
 await ro.stop();
+
+console.log('\nArchive interiors (the fixture\'s archives, through the service)');
+const { makeFixture, unseal } = await import('./make-fixture.mjs');
+const { Model: TreeModel } = await import(new URL('../web/js/model.js', import.meta.url));
+{
+  const fx = path.join(work, 'fixture');
+  const away = path.join(work, 'away');
+  const fm = await makeFixture(fx, { files: 120, seed: 7 });
+  const AR = fm.archives;
+  const fxPath = (rel) => path.join(fx, ...rel.split('/'));
+  fs.mkdirSync(away);
+  fs.copyFileSync(fxPath(AR.site.path), path.join(away, 'away.zip'));
+  let fxLinked = false;
+  try {
+    fs.symlinkSync(path.join(away, 'away.zip'), fxPath('archives/away-link.zip'), 'file');
+    fs.symlinkSync(away, fxPath('archives/away-dir'), process.platform === 'win32' ? 'junction' : 'dir');
+    fxLinked = true;
+  } catch { /* no link privilege */ }
+  fs.writeFileSync(fxPath('archives/many.zip'), manyZip(100001));
+  const fxBefore = treeState(fx);
+
+  // Read-only: looking inside is reading, so a read-only service allows it.
+  const z = await boot([fx, '--read-only'], 4930, {}, { withRoot: false });
+  const inside = (rel, opts) => (opts?.token === false
+    ? z.request('GET', `/api/inside?path=${encodeURIComponent(rel)}`)
+    : z.get(`/api/inside?path=${encodeURIComponent(rel)}`));
+  const listed = (entries) => entries.map((e) => (e.folder ? e.name : `${e.name}:${e.size}`)).sort();
+
+  let x = await inside(AR.site.path);
+  check(`the stored zip lists exactly the fixture's names and sizes, the UTF-8 name included (${x.body.files} files, ${x.body.folders} folders)`,
+    x.status === 200 && JSON.stringify(recordPaths(x.body.records)) === JSON.stringify(listed(AR.site.entries))
+    && recordPaths(x.body.records).includes('site/notes/café.md:29') && x.body.partial === null && x.body.format === 'zip',
+    JSON.stringify(x.body).slice(0, 400));
+  const site = x.body;
+  check('the listing states the archive\'s own size and time, and its totals add up',
+    site.size === fs.statSync(fxPath(AR.site.path)).size && site.mtime === Math.round(fs.statSync(fxPath(AR.site.path)).mtimeMs)
+    && site.declared === AR.site.entries.length && site.read === AR.site.entries.length
+    && site.unpacked === AR.site.entries.reduce((a, e) => a + e.size, 0) && site.locked === 0 && site.escapes === 0);
+  const tm = new TreeModel('site.zip');
+  tm.ingest(site.records, [], tm.root);
+  check('the records are the scanner\'s shape, parents first, and the browser\'s model takes them as they are',
+    site.records.every(([id, pid], i) => id === i && pid < id) && tm.root.fc === site.files && tm.root.dc === site.folders && tm.root.s === site.unpacked);
+  const mirror = (await z.get(`/api/scan?path=${encodeURIComponent(AR.mirror)}`)).text.trim().split('\n').flatMap((l) => JSON.parse(l));
+  const mirrored = recordPaths(mirror.map((rec) => (rec[1] === -1 ? [rec[0], -1, '', 0, 0, rec[5]] : rec))).map((p) => `site/${p}`);
+  check('the archive lists what the loose copy beside it holds, name for name and size for size',
+    JSON.stringify(['site/', ...mirrored].sort()) === JSON.stringify(recordPaths(site.records)), mirrored.join(' '));
+  x = await inside(fm.chain.host);
+  check('the copy 13 levels down lists the same entries', x.status === 200 && JSON.stringify(recordPaths(x.body.records)) === JSON.stringify(recordPaths(site.records)));
+
+  x = await inside(AR.zip64.path);
+  check('a ZIP64 archive lists its entries from the ZIP64 end records',
+    x.status === 200 && JSON.stringify(recordPaths(x.body.records)) === JSON.stringify(listed(AR.zip64.entries)));
+
+  x = await inside(AR.hazards.path);
+  const hz = x.body.records?.[0]?.[5] || [];
+  const flagOf = (n) => hz[hz.indexOf(n) + 3];
+  check('the encrypted entry carries the LOCKED flag (8) and is counted; the others do not',
+    x.status === 200 && x.body.locked === AR.hazards.locked && (flagOf('secret.txt') & 8) === 8 && (flagOf('readme.txt') & 8) === 0 && (flagOf('escape.txt') & 8) === 0,
+    JSON.stringify(x.body));
+  check('the ../ name is counted as an escape, flagged (16), kept verbatim, and listed inside the archive',
+    x.body.escapes === AR.hazards.escapes && (flagOf('escape.txt') & 16) === 16 && (flagOf('readme.txt') & 16) === 0
+    && JSON.stringify(x.body.escaped) === '[{"name":"../escape.txt","at":"escape.txt"}]' && x.body.records.length === 1);
+
+  x = await inside(AR.truncated.path);
+  check('a truncated zip is refused with the damaged sentence (422)',
+    x.status === 422 && x.body.code === 'EDAMAGED' && /^truncated\.zip looks damaged: .*cut short.*cannot be listed\.$/.test(x.body.message), JSON.stringify(x.body));
+  x = await inside(AR.sevenZip.path);
+  check('a 7z archive is refused with 415 naming the format',
+    x.status === 415 && x.body.code === 'EFORMAT' && x.body.format === '7z' && /packed\.7z is a 7z archive\. Terrane lists the contents of zip archives only\./.test(x.body.message), JSON.stringify(x.body));
+  x = await inside(AR.notAnArchive);
+  check('a file named .tar.gz that is not one is refused with 415 naming the format its name suggests',
+    x.status === 415 && x.body.code === 'ENOTARCHIVE' && x.body.format === null && x.body.claimed === 'tar.gz' && /is not an archive: .*\(tar\.gz\)/.test(x.body.message), JSON.stringify(x.body));
+  x = await inside('archives/site');
+  check('a folder is refused with ENOTFILE (400)', x.status === 400 && x.body.code === 'ENOTFILE', JSON.stringify(x.body));
+
+  x = await inside('archives/many.zip');
+  check('a 100,001-entry archive stops at the 100,000-entry bound and says so in a sentence',
+    x.status === 200 && x.body.read === 100000 && x.body.files === 100000 && x.body.declared === 100001
+    && x.body.partial === 'Only part of many.zip is listed, the first 100,000 of 100,001 entries: Terrane reads at most 100,000 entries from one archive.',
+    `${x.body.read} read, ${x.body.partial}, ${x.body.ms} ms`);
+
+  check('the API refuses a listing without the token (401)', (await inside(AR.site.path, { token: false })).status === 401);
+  check('a path with .. is refused (400)', (await inside(`archives/../${AR.site.path}`)).status === 400);
+  check('the root, the holding area and a missing file are refused (403, 403, 404)',
+    (await inside('')).status === 403 && (await inside('.terrane-trash/x.zip')).status === 403 && (await inside('archives/nowhere.zip')).status === 404);
+  if (fxLinked) {
+    x = await inside('archives/away-link.zip');
+    check('a link to an archive outside the root is refused (403)', x.status === 403 && x.body.code === 'EOUTSIDE' && !x.body.records, JSON.stringify(x.body));
+    x = await inside('archives/away-dir/away.zip');
+    check('an archive reached through a linked folder outside the root is refused (403)', x.status === 403 && x.body.code === 'EOUTSIDE', JSON.stringify(x.body));
+  } else console.log('  skip  links to archives outside the root (links cannot be created here)');
+  await z.stop();
+  const fxAfter = treeState(fx);
+  check(`listing changed nothing on disk: names, sizes, times and bytes are identical (${fxBefore.length} items)`,
+    fxBefore.length > 100 && JSON.stringify(fxAfter) === JSON.stringify(fxBefore), fxAfter.filter((l, i) => l !== fxBefore[i]).slice(0, 4).join(' | '));
+  unseal(fx);
+}
+
+console.log('\nArchive reader (no service)');
+{
+  const AX = await import('../server/archive.mjs');
+  const zips = path.join(work, 'zips');
+  fs.mkdirSync(zips);
+  let seq = 0;
+  /** Writes bytes as a zip file and reads it back, as the service would. */
+  const look = async (bytes, opts = {}) => {
+    const file = path.join(zips, `z${++seq}.zip`);
+    fs.writeFileSync(file, bytes);
+    try {
+      return await AX.inspect(file, { name: opts.name || 'test.zip', ...opts });
+    } catch (err) {
+      return { error: err.code, status: err.status, message: err.message, format: err.format };
+    }
+  };
+  const filesOf = (out, dir = '') => {
+    const rec = dir ? out.records.find((rc) => rc[1] !== -1 && rc[2] === dir) : out.records[0];
+    const f = rec?.[5] || [];
+    const m = {};
+    for (let i = 0; i < f.length; i += 4) m[f[i]] = { size: f[i + 1], m: f[i + 2], flags: f[i + 3] };
+    return m;
+  };
+  const ext = (id, body) => {
+    const b = Buffer.alloc(4 + body.length);
+    b.writeUInt16LE(id, 0);
+    b.writeUInt16LE(body.length, 2);
+    body.copy(b, 4);
+    return b;
+  };
+  const u32 = (v) => {
+    const b = Buffer.alloc(4);
+    b.writeUInt32LE(v >>> 0);
+    return b;
+  };
+
+  // Names.
+  const stale = Buffer.from('old-name.txt');
+  let out = await look(zipOf([
+    { name: Buffer.from([0x63, 0x61, 0x66, 0x82, 0x2e, 0x74, 0x78, 0x74]) },
+    { name: Buffer.from('naïve.txt', 'utf8') },
+    { name: 'plain.txt', flags: 0x0800 },
+    { name: stale, extra: ext(0x7075, Buffer.concat([Buffer.from([1]), u32(zlib.crc32(stale)), Buffer.from('日本.txt', 'utf8')])) },
+    { name: 'kept.txt', extra: ext(0x7075, Buffer.concat([Buffer.from([1]), u32(zlib.crc32(stale)), Buffer.from('ignored.txt', 'utf8')])) },
+  ]));
+  check('names: code page 437 without the UTF-8 flag, unflagged valid UTF-8, the Unicode Path field when its CRC matches the stored name, and not otherwise',
+    JSON.stringify(Object.keys(filesOf(out))) === JSON.stringify(['café.txt', 'naïve.txt', 'plain.txt', '日本.txt', 'kept.txt']), JSON.stringify(Object.keys(filesOf(out))));
+
+  // Dates.
+  const ntfs = Buffer.alloc(32);
+  ntfs.writeUInt16LE(1, 4);
+  ntfs.writeUInt16LE(24, 6);
+  ntfs.writeBigUInt64LE((BigInt(Date.UTC(2020, 0, 2, 3, 4, 5)) + 11644473600000n) * 10000n, 8);
+  const ut = Buffer.alloc(5);
+  ut[0] = 1;
+  ut.writeInt32LE(1600000000, 1);
+  const dosDate = ((2019 - 1980) << 9) | (3 << 5) | 4;
+  const dosClock = (5 << 11) | (6 << 5) | 4;
+  out = await look(zipOf([
+    { name: 'dos.txt', date: dosDate, time: dosClock },
+    { name: 'ut.txt', date: dosDate, time: dosClock, extra: ext(0x5455, ut) },
+    { name: 'ntfs.txt', date: dosDate, time: dosClock, extra: ext(0x000a, ntfs) },
+    { name: 'undated.txt' },
+    { name: 'bad-day.txt', date: (40 << 9) | (13 << 5) | 1 },
+  ]));
+  let fo = filesOf(out);
+  check('dates: DOS fields as local time, the extended timestamp and NTFS fields as UTC, and 0 for none or an impossible date',
+    fo['dos.txt'].m === new Date(2019, 2, 4, 5, 6, 8).getTime() && fo['ut.txt'].m === 1600000000000 && fo['ntfs.txt'].m === Date.UTC(2020, 0, 2, 3, 4, 5)
+    && fo['undated.txt'].m === 0 && fo['bad-day.txt'].m === 0, JSON.stringify(fo));
+
+  // Kinds and flags.
+  const unix = (3 << 8) | 30;
+  const z64 = Buffer.alloc(16);
+  z64.writeBigUInt64LE(5000000000n, 0);
+  z64.writeBigUInt64LE(4900000000n, 8);
+  out = await look(zipOf([
+    { name: 'link', made: unix, attrs: (0o120777 << 16) >>> 0, data: Buffer.from('../../etc/passwd') },
+    { name: 'pipe', made: unix, attrs: (0o010644 << 16) >>> 0 },
+    { name: 'bin', made: unix, attrs: (0o040755 << 16) >>> 0 },
+    { name: 'bin/tool', made: unix, attrs: (0o100755 << 16) >>> 0, data: Buffer.from('#!') },
+    { name: '.env', data: Buffer.from('A=1') },
+    { name: 'dosdir', attrs: 0x10 },
+    { name: 'huge.bin', size: 0xffffffff, packed: 0xffffffff, extra: ext(0x0001, z64) },
+  ]));
+  fo = filesOf(out);
+  check('flags: a Unix symbolic link (1, size 0), hidden (2), special (4); folders by Unix mode or DOS attribute; ZIP64 sizes per entry',
+    fo.link.flags === 1 && fo.link.size === 0 && out.links === 1 && fo['.env'].flags === 2 && fo.pipe.flags === 4
+    && !fo.bin && !fo.dosdir && out.folders === 2 && fo['huge.bin'].size === 5000000000 && out.packed === 4900000000 + 2 + 3 + 16,
+    JSON.stringify({ fo, folders: out.folders, packed: out.packed }));
+
+  // Names that would land outside the folder.
+  out = await look(zipOf(['/abs.txt', 'C:\\win.txt', 'a:b.txt', '..\\back.txt', 'x/../../up.txt', 'ok/../fine.txt', 'deep/./er/../in.txt', '../'].map((name) => ({ name }))));
+  fo = filesOf(out);
+  check('escapes: absolute, drive-lettered and climbing names are kept at the top, flagged 16, counted, and given back verbatim; .. that stays inside is resolved',
+    out.escapes === 6 && ['abs.txt', 'win.txt', 'a:b.txt', 'back.txt', 'up.txt'].every((n) => fo[n]?.flags === 16) && fo['fine.txt']?.flags === 0
+    && filesOf(out, 'deep')['in.txt']?.flags === 0 && out.escaped.map((e) => e.name).join('|') === '/abs.txt|C:\\win.txt|a:b.txt|..\\back.txt|x/../../up.txt|../'
+    && out.partial === null, JSON.stringify({ fo, escaped: out.escaped, partial: out.partial }));
+
+  // Depth, folders and unnamed entries.
+  out = await look(zipOf([
+    { name: `${'d/'.repeat(128)}kept.txt` },
+    { name: `${'d/'.repeat(129)}deep.txt` },
+    { name: `${'d/'.repeat(140)}` },
+    { name: '..' },
+    { name: 'fine.txt' },
+  ]));
+  check('an entry more than 128 folders deep, or with no usable name, is left out, and the sentence says how many and why',
+    out.files === 2 && out.folders === 128
+    && out.partial === 'test.zip is listed without 3 of its 5 entries: 2 entries are nested more than 128 folders deep; 1 entry has no usable name.', out.partial);
+  out = await look(zipOf(['a/1.txt', 'b/2.txt', 'c/3.txt', 'top.txt'].map((name) => ({ name }))), { limits: { ...AX.LIMITS, folders: 2 } });
+  check('past the folder bound, entries that need another folder are left out and counted',
+    out.files === 3 && out.folders === 2 && /1 entry needs more than 2 folders/.test(out.partial), out.partial);
+
+  // Bounds on entries, directory bytes and time.
+  const ten = zipOf(Array.from({ length: 10 }, (_, i) => ({ name: `file-${i}.txt`, data: Buffer.from('x') })));
+  out = await look(ten, { limits: { ...AX.LIMITS, entries: 5 } });
+  check('the entry bound stops reading and names itself',
+    out.read === 5 && out.declared === 10 && out.partial === 'Only part of test.zip is listed, the first 5 of 10 entries: Terrane reads at most 5 entries from one archive.', out.partial);
+  out = await look(ten, { limits: { ...AX.LIMITS, directoryBytes: 200 } });
+  check('the directory-size bound reads only that many bytes of directory and says so',
+    out.read === 3 && /^Only part of test\.zip is listed, the first 3 of 10 entries: its directory is .* MB and Terrane reads at most the first/.test(out.partial), `${out.read}: ${out.partial}`);
+  out = await look(manyZip(5000), { name: 'many.zip', limits: { ...AX.LIMITS, ms: 0 } });
+  check('the time bound stops between entries and says so', out.read === 1023 && /^Only part of many\.zip is listed, the first 1,023 of 5,000 entries: reading stopped after 0 seconds\.$/.test(out.partial), out.partial);
+  const placed = AX.toRecords(Array.from({ length: 3000 }, (_, i) => ({ name: `p/${i}.txt`, dir: false, size: 1, packed: 1, mtime: 0 })), { deadline: 0 });
+  check('placing entries shares the deadline and reports how far it got', placed.processed === 1023 && placed.files === 1023, `${placed.processed}`);
+  const ac = new AbortController();
+  ac.abort();
+  out = await look(ten, { signal: ac.signal });
+  check('a cancelled request reads nothing', out.error === 'EABORT');
+
+  // Damage and refusals.
+  const four = zipOf(['a.txt', 'b.txt', 'c.txt', 'd.txt'].map((name) => ({ name, data: Buffer.from(name) })));
+  const cdAt = four.length - 22 - 4 * (46 + 5);
+  const broken = Buffer.from(four);
+  broken.writeUInt32LE(0xdeadbeef, cdAt + 2 * 51);
+  out = await look(broken);
+  check('a directory that breaks off part way lists what came before and says the rest looks damaged',
+    out.read === 2 && out.partial === 'Only part of test.zip is listed, the first 2 of 4 entries: its directory looks damaged after that point.', out.partial);
+  const headless = Buffer.from(four);
+  headless.writeUInt32LE(0xdeadbeef, cdAt);
+  out = await look(headless);
+  check('a directory that is not where the end record says is damaged (422)', out.status === 422 && /looks damaged: its directory is not where/.test(out.message), out.message);
+  const hidden = Buffer.from(four);
+  hidden.writeUInt32LE(0x08064b50, cdAt);
+  out = await look(hidden);
+  check('an encrypted directory is refused (415) naming zip', out.status === 415 && out.format === 'zip' && /directory is encrypted/.test(out.message), out.message);
+  out = await look(zipOf([{ name: 'a.txt' }], { disk: 1 }));
+  check('a split archive is refused (415)', out.status === 415 && /split across several files/.test(out.message), out.message);
+  out = await look(zipOf([{ name: 'a.txt', data: Buffer.from('a') }], { comment: Buffer.concat([Buffer.from([0x50, 0x4b, 5, 6]), Buffer.alloc(30, 0x20)]) }));
+  check('a comment holding a false end record does not mislead the reader', out.read === 1 && filesOf(out)['a.txt']?.size === 1, JSON.stringify(out));
+  const stub = Buffer.alloc(64);
+  stub.writeUInt32LE(0x04034b50, 0);
+  out = await look(zipOf(['a.txt', 'b/c.txt'].map((name) => ({ name, data: Buffer.from('ab') })), { prefix: stub }));
+  check('data before the archive shifts its offsets and the directory is still found', out.read === 2 && out.files === 2 && out.partial === null, JSON.stringify(out));
+  const exeStub = Buffer.concat([Buffer.from('MZ'), Buffer.alloc(100, 0x90)]);
+  out = await look(zipOf(['a.txt', 'b/c.txt'].map((name) => ({ name, data: Buffer.from('ab') })), { prefix: exeStub }), { name: 'setup.exe' });
+  const sfxOk = out.format === 'zip' && out.read === 2 && out.files === 2 && out.partial === null;
+  out = await look(zipOf([{ name: 'Main.class', data: Buffer.from('cafe') }], { prefix: Buffer.from('#!/bin/sh\nexec java -jar "$0" "$@"\n') }), { name: 'tool.jar' });
+  check('a self-extracting stub or a launcher before the archive, first bytes no zip, is listed from the directory at its end',
+    sfxOk && out.format === 'zip' && out.read === 1 && filesOf(out)['Main.class']?.size === 4, JSON.stringify(out));
+  out = await look(Buffer.from('MZ and nothing like a zip after it, not even at the end.'), { name: 'plain.zip' });
+  const plainRefused = out.status === 415 && out.error === 'ENOTARCHIVE' && /first bytes do not match one/.test(out.message);
+  const hollow = Buffer.alloc(22);
+  hollow.writeUInt32LE(0x06054b50, 0);
+  out = await look(Buffer.concat([Buffer.from('MZ'), Buffer.alloc(200), hollow]), { name: 'hollow.exe' });
+  check('first bytes that match nothing, and an end that holds no entry, are still refused as no archive (415)',
+    plainRefused && out.status === 415 && out.error === 'ENOTARCHIVE', JSON.stringify(out));
+  const sigRecord = (data) => {
+    const b = Buffer.alloc(6 + data.length);
+    b.writeUInt32LE(0x05054b50, 0);
+    b.writeUInt16LE(data.length, 4);
+    data.copy(b, 6);
+    return b;
+  };
+  out = await look(zipOf([{ name: 'a.txt', data: Buffer.from('a') }], { cdTail: sigRecord(Buffer.alloc(0)) }));
+  const sigBare = out.read === 1 && out.partial === null;
+  out = await look(zipOf([{ name: 'a.txt' }, { name: 'b.txt' }], { cdTail: sigRecord(Buffer.from('sig')) }));
+  const sigShort = out.read === 2 && out.partial === null;
+  out = await look(zipOf([{ name: 'a.txt' }], { cdTail: Buffer.concat([sigRecord(Buffer.from('x')), Buffer.from('junk')]) }));
+  check('a digital signature record closing the directory, shorter than an entry header, is accepted; one that does not reach the end is damage',
+    sigBare && sigShort && out.read === 1 && /its directory looks damaged after that point/.test(out.partial), out.partial);
+  out = await look(zipOf(['a', 'a/', 'a/b.txt', 'r.txt', 'r.txt', 'r (2).txt', 'notes', 'notes/'].map((name) => ({ name }))));
+  const { Model: ArchModel } = await import('../web/js/model.js');
+  const mdl = new ArchModel('test.zip');
+  mdl.ingest(out.records, [], mdl.root);
+  const dupNames = [];
+  (function walk(d) {
+    const seen = new Set();
+    for (const ch of d.c) {
+      if (seen.has(ch.n)) dupNames.push(ch.n);
+      seen.add(ch.n);
+      if (ch.d) walk(ch);
+    }
+  })(mdl.root);
+  check('two entries with one name in a folder (a file and a folder "a", an entry repeated) are shown as "a (2)", counted, and stated, so a path finds one',
+    dupNames.length === 0 && out.renamed === 4 && mdl.find('a') && !mdl.find('a').d && mdl.find('a (2)/b.txt') && !mdl.find('a (2)/b.txt').d && mdl.find('r.txt') && mdl.find('r (2).txt')
+    && mdl.find('r (2) (2).txt') && mdl.find('notes (2)')?.d === true && out.files === 6 && out.folders === 2
+    && out.partial === 'In test.zip, 4 entries have the same name as an earlier one in their folder, so they are shown with a number after the name, as in "name (2)".',
+    JSON.stringify({ dupNames, renamed: out.renamed, partial: out.partial, names: mdl.root.c.map((c) => c.n) }));
+  const many = AX.toRecords(Array.from({ length: 20000 }, () => ({ name: 'same.txt', dir: false, size: 1, packed: 1, mtime: 0 })));
+  const last = many.records[0][5].at(-4);
+  check('a name repeated 20,000 times is numbered in one pass', many.renamed === 19999 && last === 'same (20000).txt', `${many.renamed} ${last}`);
+  out = await look(zipOf(['x/1.txt', 'x/1.txt', `${'d/'.repeat(129)}deep.txt`].map((name) => ({ name }))));
+  check('a renamed entry beside one left out: both are said, one sentence each',
+    out.partial === 'test.zip is listed without 1 of its 3 entries: 1 entry is nested more than 128 folders deep. In test.zip, 1 entry has the same name as an earlier one in its folder, so it is shown with a number after the name, as in "name (2)".', out.partial);
+  out = await look(zipOf(['a.txt', 'b.txt', 'c.txt'].map((name) => ({ name })), { declared: 1 }));
+  check('an end record that counts too few (a wrapped count) does not hide entries', out.read === 3 && out.declared === 3 && out.partial === null);
+  const empty = Buffer.alloc(22);
+  empty.writeUInt32LE(0x06054b50, 0);
+  out = await look(empty);
+  check('an empty zip lists nothing, without complaint', out.read === 0 && out.records.length === 1 && out.records[0][5].length === 0 && out.partial === null, JSON.stringify(out));
+  out = await look(Buffer.alloc(0));
+  check('an empty file is not an archive (415)', out.status === 415 && /is empty/.test(out.message));
+
+  // Sniffing and claims.
+  const head = (...bytes) => Buffer.from(bytes);
+  const tarHead = Buffer.alloc(512);
+  tarHead.write('ustar', 257, 'latin1');
+  const sniffed = [
+    [head(0x52, 0x61, 0x72, 0x21, 0x1a, 0x07, 0x01, 0x00), 'x.rar'], [head(0x1f, 0x8b, 8), 'x.tgz'], [head(0x1f, 0x8b, 8), 'x.gz'],
+    [head(0x42, 0x5a, 0x68, 0x39), 'x.bz2'], [head(0xfd, 0x37, 0x7a, 0x58, 0x5a, 0x00), 'x.tar.xz'], [head(0x28, 0xb5, 0x2f, 0xfd), 'x.zst'],
+    [head(0x4d, 0x53, 0x43, 0x46), 'x.cab'], [Buffer.from('!<arch>\n'), 'x.deb'], [tarHead, 'x.tar'], [head(0x50, 0x4b, 3, 4), 'x.docx'], [Buffer.from('hello'), 'x.zip'],
+  ].map(([b, n]) => AX.sniff(b, n)?.format ?? null);
+  check('the first bytes name the format, and a compressed stream named as a tar is called one',
+    JSON.stringify(sniffed) === JSON.stringify(['rar', 'tar.gz', 'gzip', 'bzip2', 'tar.xz', 'zstd', 'cab', 'ar', 'tar', 'zip', null]), JSON.stringify(sniffed));
+  check('a name suggests a format, compressed tars first', JSON.stringify(['a.tar.gz', 'a.TGZ', 'a.gz', 'a.jar', 'a.epub', 'a.txt'].map((n) => AX.claimed(n)?.format ?? null))
+    === JSON.stringify(['tar.gz', 'tar.gz', 'gzip', 'zip', 'zip', null]));
+
+  // The reader is not a writer.
+  const src = fs.readFileSync(new URL('../server/archive.mjs', import.meta.url), 'utf8');
+  const imports = [...src.matchAll(/^import .* from '([^']+)';$/gm)].map((mm) => mm[1]);
+  check('the reader imports only fs, zlib and the guard\'s errors, and never writes, links, renames or removes',
+    JSON.stringify(imports) === JSON.stringify(['node:fs/promises', 'node:fs', 'node:zlib', './guard.mjs'])
+    && !/\b(write|append|mkdir|rename|unlink|rm|rmdir|symlink|link|copyFile|cp|truncate|chmod|utimes)(Sync)?\(/.test(src.replace(/\/\*[\s\S]*?\*\/|\/\/.*$/gm, '')),
+    imports.join(', '));
+  check('the bounds are frozen at 100,000 entries, a 64 MB directory and 4 seconds', Object.isFrozen(AX.LIMITS) && AX.LIMITS.entries === 100000
+    && AX.LIMITS.directoryBytes === 64 * 1024 * 1024 && AX.LIMITS.ms === 4000 && AX.FLAG_LOCKED === 8 && AX.FLAG_ESCAPE === 16);
+}
 
 console.log('\nLayout (no service)');
 const { buildLayout, BOX, STYLE, MAX_BOXES } = await import(new URL('../web/js/layout.js', import.meta.url));
@@ -704,6 +1270,70 @@ for (const k of [-1, 20, 1.5, NaN, '2']) {
 check('a file answers from its own date and size; steps off the ladder are refused; the table is frozen',
   et.changedBytes(file, 0) === 0 && et.changedBytes(file, 1) === 1000 && et.kept(file, 1) === 0 && et.medianStep(file) === 1 && !et.has(file)
   && JSON.stringify(et.bands(file).bytes) === '[1000,0,0,0,0,0]' && refused === 5 && Object.isFrozen(et) && Object.isFrozen(et.T) && et.T[1] === AT - DAY);
+
+console.log('\nTime view (no service)');
+const { AUX } = await import(new URL('../web/js/layout.js', import.meta.url));
+const { crossedAt, fmtDay } = await import(new URL('../web/js/time.js', import.meta.url));
+check('AUX names the time view\'s marks, frozen: NONE 0, SUNK 1, CROSSED 2', Object.isFrozen(AUX) && JSON.stringify(AUX) === '{"NONE":0,"SUNK":1,"CROSSED":2}');
+check('dates are written MM/DD/YYYY', fmtDay(new Date(2026, 8, 28, 23, 59).getTime()) === '09/28/2026' && fmtDay(new Date(1996, 0, 2).getTime()) === '01/02/1996');
+const timeEyes = [
+  ['overview', { x: 0, y: 900, z: 1200 }, 0.0062],
+  ['close', { x: -40, y: 25, z: 60 }, 0.0024],
+  ['low', { x: 120, y: 4, z: -90 }, 0.0024],
+  ['forced', { x: 0, y: 900, z: 1200 }, 1e-7, new Set(allDirs.filter((d) => { let n = 0; for (let x = d; x.p; x = x.p) n++; return n <= 4; }))],
+];
+const sameLayout = (a, b) => a.n === b.n && a.key.every((k, i) => k === b.key[i]) && a.geo.every((x, i) => Object.is(x, b.geo[i]))
+  && a.aux.every((x, i) => x === b.aux[i]) && a.type.every((x, i) => x === b.type[i]);
+let timeProblems = [];
+const presentProblems = [];
+let timeCounts = { crossed: 0, sunk: 0, steps: 0, boxes: 0 };
+for (const [label, cam, grain, force] of timeEyes) {
+  const opts = { cam, grain, now: AT, force: force || null };
+  const present = buildLayout(am.root, opts);
+  const again = buildLayout(am.root, { ...opts, asOf: undefined });
+  const nulled = buildLayout(am.root, { ...opts, asOf: null });
+  if (!sameLayout(present, again) || !sameLayout(present, nulled)) presentProblems.push(`${label}: no asOf is not the present layout`);
+  if (present.aux.some((x) => x !== 0)) presentProblems.push(`${label}: the present marks boxes`);
+  let prev = present;
+  for (let k = 1; k < STEPS; k++) {
+    const t = ages.T[k];
+    const L = buildLayout(am.root, { ...opts, asOf: { t, kept: (d) => ages.kept(d, k) } });
+    timeCounts.steps++;
+    timeCounts.boxes += L.n;
+    const bad = (why) => { if (timeProblems.length < 6) timeProblems.push(`${label} step ${k}: ${why}`); };
+    if (L.n !== present.n || L.key.some((x, i) => x !== present.key[i])) { bad('box count or key order'); continue; }
+    const riser = new Map();
+    for (let i = 0; i < L.n; i++) if (L.type[i] === BOX.DIR) riser.set(L.node[i], L.geo[i * 6 + 4]);
+    for (let i = 0; i < L.n; i++) {
+      const o = i * 6;
+      const node = L.node[i];
+      const h = L.geo[o + 4];
+      const side = Math.min(L.geo[o + 3], L.geo[o + 5]);
+      if ([0, 2, 3, 5].some((q) => !Object.is(L.geo[o + q], present.geo[o + q]))) bad(`footprint of ${node.n}`);
+      if (h > prev.geo[o + 4]) bad(`${node.n} rose`);
+      if (Math.abs(L.geo[o + 1] - h / 2 - (present.geo[o + 1] - present.geo[o + 4] / 2)) > 1e-9 * Math.max(1, Math.abs(present.geo[o + 1]))) bad(`${node.n} left its plateau`);
+      const slab = Math.min(riser.get(node.p) * 0.08, side * 0.05);
+      const ax = L.aux[i];
+      if (ax === AUX.CROSSED) timeCounts.crossed++;
+      if (ax === AUX.SUNK) timeCounts.sunk++;
+      if (L.type[i] === BOX.FILE) {
+        if (node.m > t ? ax !== AUX.CROSSED || h > slab : ax !== AUX.NONE || !Object.is(h, present.geo[o + 4])) bad(`file ${node.n}`);
+      } else if (L.type[i] === BOX.CAP) {
+        const kept = ages.kept(node, k);
+        const want = node.e ? AUX.NONE : !node.c.length ? (node.m > t ? AUX.CROSSED : AUX.NONE) : node.mm > t ? (kept > 0 ? AUX.SUNK : AUX.CROSSED) : AUX.NONE;
+        if (ax !== want) bad(`mass ${node.n}: aux ${ax}, want ${want}`);
+        if (want === AUX.CROSSED && h > slab) bad(`mass ${node.n} above its slab`);
+        if (want === AUX.SUNK && Math.abs(h - Math.max(slab, present.geo[o + 4] * kept)) > 1e-12 * present.geo[o + 4]) bad(`mass ${node.n} not lowered to what it kept`);
+        if (want === AUX.NONE && !Object.is(h, present.geo[o + 4])) bad(`unchanged mass ${node.n} moved`);
+      } else if (ax !== AUX.NONE) bad(`a ${L.type[i] === BOX.DIR ? 'plateau' : 'scree tile'} is marked`);
+      if ((L.type[i] === BOX.FILE || L.type[i] === BOX.CAP) && crossedAt(ages, k, node) !== (ax === AUX.CROSSED)) bad(`time.js and the layout disagree on ${node.n}`);
+    }
+    prev = L;
+  }
+}
+check(`looked back to each of the 19 steps from four eyes, every layout keeps the present's boxes, keys and footprints; changed files and empty folders are crossed slabs, closed masses are lowered by what they kept, nothing rises going back, and time.js agrees (${timeCounts.boxes.toLocaleString('en-US')} boxes: ${timeCounts.crossed.toLocaleString('en-US')} crossed, ${timeCounts.sunk.toLocaleString('en-US')} lowered)`,
+  timeProblems.length === 0 && timeCounts.crossed > 0 && timeCounts.sunk > 0, timeProblems.join(' | '));
+check('without asOf, or with asOf null or undefined, the layout is the present one and marks nothing', presentProblems.length === 0, presentProblems.join(' | '));
 
 fs.rmSync(work, { recursive: true, force: true });
 console.log(`\n${passed} passed, ${failed} failed\n`);

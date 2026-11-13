@@ -1,18 +1,24 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Filesystem Operations (Terrane Edition - v1.1)
+ *     - Title: Filesystem Operations (Terrane Edition - v1.2)
  *     - File Name: ops.mjs
  *     - Relative Path: server/ops.mjs
  *     - Artifact Type: javascript
- *     - Version: 1.1.0
- *     - Date: 11/11/2026
- *     - Update: Wednesday, November 11, 2026
+ *     - Version: 1.2.0
+ *     - Date: 11/13/2026
+ *     - Update: Friday, November 13, 2026
  *     - Author: Dennis 'dendogg' Smaltz
  *     - A.I. Acknowledgement: Anthropic - Claude Opus 5.5
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
  *
  * ✒ Changelog:
+ *     - 1.2.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — Undo
+ *       of a rename or move answers with moved, the paths it carried back
+ *       as [where it was, where it is now] pairs, so the page can follow
+ *       them by path, after a reload too. A move, copy or removal that
+ *       stops part way throws an error carrying results, the paths it
+ *       finished, which are journaled as before.
  *     - 1.1.0 (11/11/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
  *       undo journal persists in the holding area with root-relative paths
  *       that the guard re-checks on undo. Copy, move and remove run as jobs
@@ -68,6 +74,8 @@
  *     await ops.undo();
  *     Each call resolves to { ok, label, affected: [dir rel paths], ... };
  *     a cancelled job resolves with cancelled: true and says what was done.
+ *     A job that stops part way rejects with an error whose results lists
+ *     the paths it finished; undo() of a rename or move also gives moved.
  *
  * ✒ Other Important Information:
  *     - Dependencies: Node.js built-ins only; guard.mjs, transfer.mjs
@@ -465,6 +473,9 @@ export function makeOps(guard, { readOnly = false, onJob } = {}) {
         if (done.length) await record(type, `Partial ${type} (${done.length} of ${plan.length})`, undo, [...affected]);
         const e = new GuardError(stop.code || 'EIO', `${Verb} stopped after ${done.length} of ${plan.length}: ${stop.message}${residue}`, 500);
         e.affected = [...affected];
+        // What was finished stays and is journaled; the page follows it as
+        // it follows a whole move.
+        if (done.length) e.results = results;
         throw e;
       }
       const label = type === 'move' ? `Moved ${plural(done.length, 'item')} to "${where}"` : `Copied ${plural(done.length, 'item')} to "${where}"`;
@@ -501,6 +512,7 @@ export function makeOps(guard, { readOnly = false, onJob } = {}) {
         if (added.length) await record('trash', `Partial removal (${added.length} of ${tops.length})`, undo, affected);
         const e = new GuardError(failure.code || 'EIO', `Removal stopped after ${added.length} of ${tops.length}: ${failure.message}`, 500);
         e.affected = [...new Set([...affected, ...tops.map(parentRel)])];
+        if (added.length) e.results = added.map((a) => a.origin);
         throw e;
       }
       if (added.length < tops.length) {
@@ -700,7 +712,12 @@ export function makeOps(guard, { readOnly = false, onJob } = {}) {
         entry.undone = true;
         await saveJournal();
         const when = entry.session === SESSION ? '' : ' (from an earlier session)';
-        return { ok: true, label: `Undid: ${entry.label}${when}`, affected, undoable: false };
+        const res = { ok: true, label: `Undid: ${entry.label}${when}`, affected, undoable: false };
+        // The paths carried back, in the order they moved, each as [where
+        // it was, where it is now]: the page follows them by path, not by
+        // matching labels, which a reload or a cancel would defeat.
+        if (entry.undo.kind === 'moves') res.moved = entry.undo.pairs.map(([from, to]) => [to, from]).reverse();
+        return res;
       });
     },
 

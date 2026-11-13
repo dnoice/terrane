@@ -1,11 +1,11 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: 3D Viewport (Terrane Edition - v1.2)
+ *     - Title: 3D Viewport (Terrane Edition - v1.3)
  *     - File Name: viewport.js
  *     - Relative Path: web/js/viewport.js
  *     - Artifact Type: javascript
- *     - Version: 1.2.0
+ *     - Version: 1.3.0
  *     - Date: 11/12/2026
  *     - Update: Thursday, November 12, 2026
  *     - Author: Dennis 'dendogg' Smaltz
@@ -13,6 +13,16 @@
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
  *
  * ✒ Changelog:
+ *     - 1.3.0 (11/12/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
+ *       crossed convention (STYLE.CROSSED, the time view): the two
+ *       diagonals of a box's footprint in ink on its top and bottom faces,
+ *       measured in the box's own coordinates so a re-based origin cannot
+ *       move them, thin at any distance, and faded with the haze and as
+ *       the box shrinks on screen. The colour is washed once, by paint.
+ *       A pin can stand on the peak of everything on its box and point up
+ *       (benchmarks' survey marks, in the same pin mesh); up to 12 mark
+ *       tags are placed before every other label (setMarks); pose()
+ *       returns the eye and its heading.
  *     - 1.2.0 (11/11/2026) [dendogg + Anthropic - Claude Opus 5.5] — A
  *       layout larger than the instance buffers draws up to their capacity
  *       and says so through on.notice, instead of throwing a RangeError.
@@ -41,9 +51,9 @@
  * ✒ Key Features:
  *     - One instanced mesh for every box: a single draw call regardless of
  *       how many thousand entries are in view
- *     - Ink edges, hatching, stipple and banding are computed in the
- *       fragment shader from each box's own dimensions, so drawing
- *       conventions cost no extra geometry
+ *     - Ink edges, hatching, stipple, banding and the crossed footprint
+ *       are computed in the fragment shader from each box's own
+ *       dimensions, so drawing conventions cost no extra geometry
  *     - A place, not a diagram: perspective camera inside the scene, with
  *       sky, horizon, haze, a surveyed ground plane and sun shadows that
  *       follow the eye down to any scale
@@ -68,6 +78,9 @@
  *     - Relation lines in named sets (duplicate ties first) share one
  *       draw call: straight or arched, solid or dashed at a constant size
  *       on screen at any depth, with optional direction chevrons
+ *     - Pins share one draw call too: pointing down at a box, or upright
+ *       on the peak of everything standing on it; mark tags (at most 12)
+ *       outrank every other label
  *
  * ✒ Usage Instructions:
  *     const view = new Viewport({ canvas, labelLayer });
@@ -78,7 +91,10 @@
  *     view.setRelation(key, { color, dashed, lift, arrows, legs });
  *     view.clearRelation(key);             // legs: ax ay az bx by bz, world
  *     view.setTies(from, toIndices);       // the set 'dup', garnet arcs
+ *     view.setPins([{ i, color, peak, upright }]);
+ *     view.setMarks([{ i, text, cls }]);   // tags first in line, up to 12
  *     view.frame(index);  view.overview();  view.eye;  view.look();
+ *     view.flyTo(view.pose());             // the eye and heading, and back
  *
  * ✒ Other Important Information:
  *     - Dependencies: three.js r187 (vendored at web/vendor/three),
@@ -106,6 +122,8 @@ import { THEME } from './theme.js';
 // which is below this.
 const CAPACITY = 72000;
 const PIN_CAPACITY = 3000;
+// Mark tags placed before every other label, so they win every collision.
+const MARKS_MAX = 12;
 // The sun's 4096 x 4096 shadow map costs more to draw than the view does.
 // While boxes travel it is redrawn on every fourth frame at most, and again
 // on the frame where they arrive.
@@ -330,6 +348,7 @@ function boxMaterial() {
           float hw = max(fwidth(hc), 1e-5);
           float per = exp2(ceil(log2(hw * 7.0)));
           float edgeW = 1.0;
+          float crossInk = 0.0;
           if ${styleIs(STYLE.HATCH)} {
             float t = abs(fract(hc / per) - 0.5);
             col = mix(col, uInk, (1.0 - smoothstep(0.09, 0.09 + hw / per, t)) * 0.7);
@@ -346,12 +365,29 @@ function boxMaterial() {
           } else if ${styleIs(STYLE.HALF_BANDS)} {
             float t = fract(hc / (per * 2.0));
             col = mix(col, uPaper, smoothstep(0.5 - hw / per, 0.5, t) * (1.0 - smoothstep(1.0 - hw / per, 1.0, t)) * 0.6);
+          } else if ${styleIs(STYLE.CROSSED)} {
+            // The footprint's two diagonals on the top and bottom faces, in
+            // the box's own coordinates: the floating origin never moves
+            // them. Distances are in world units, so the line keeps about
+            // a pixel's width at any depth. No wash here: paint has done it.
+            vec2 q = vBoxLocal.xz;
+            vec2 sz = vBoxScale.xz;
+            float k = sz.x * sz.y / max(length(sz), 1e-30);
+            // Signed distances: their screen rate is exact, where the rate
+            // of an abs() halves across the line and breaks it into dashes.
+            float s1 = (q.x - q.y) * k;
+            float s2 = (q.x + q.y) * k;
+            float c1 = 1.0 - smoothstep(0.55, 1.45, abs(s1) / max(fwidth(s1), 1e-30));
+            float c2 = 1.0 - smoothstep(0.55, 1.45, abs(s2) / max(fwidth(s2), 1e-30));
+            crossInk = max(c1, c2) * step(0.499, abs(vBoxLocal.y));
           }
           float haze = 0.0;
           #ifdef USE_FOG
             haze = smoothstep(fogNear, fogFar, vFogDepth);
           #endif
           col = mix(col, uPaper, vDim * 0.88 * (1.0 - haze));
+          crossInk *= smoothstep(3.0, 16.0, smid / fw) * (1.0 - 0.8 * vDim) * (1.0 - haze);
+          col = mix(col, uInk, crossInk * 0.85);
           float edge = 1.0 - smoothstep(fw * 0.7 * edgeW, fw * (0.7 * edgeW + 1.0), mid);
           edge *= smoothstep(3.0, 16.0, smid / fw) * 0.74 + 0.06;
           col = mix(col, uInk, edge * (1.0 - 0.8 * vDim) * (1.0 - haze));
@@ -468,6 +504,10 @@ export class Viewport {
     scene.add(pins);
     this.pins = pins;
     this.pinList = [];
+    this.pinMatrix = new THREE.Matrix4();
+    this.pinScale = new THREE.Vector3();
+    // Tags that outrank every other label (benchmarks), at most MARKS_MAX.
+    this.marks = [];
     // three.js makes each buffer from the whole array on first use but
     // leaves a range marked before then in place; clearing it there keeps
     // the next upload to what changed since.
@@ -551,6 +591,12 @@ export class Viewport {
 
   get eye() {
     return { x: this.cam.x, y: this.cam.y, z: this.cam.z };
+  }
+
+  /** The eye and its heading, a copy that flyTo takes back. */
+  pose() {
+    const { x, y, z, yaw, pitch } = this.cam;
+    return { x, y, z, yaw, pitch };
   }
 
   /** Pixels per world unit at a given distance from the eye. */
@@ -832,6 +878,13 @@ export class Viewport {
     this.invalidate();
   }
 
+  /**
+   * Pins over boxes, all in one instanced mesh: [{ i, color, peak, upright }].
+   * A pin points down at the top of its box. peak stands it on the highest
+   * point of everything standing on the box instead (a plateau's contents
+   * included); upright turns it point up, a survey mark rather than a pin,
+   * so it reads by its shape as well as its colour.
+   */
   setPins(list) {
     const drawn = this.leftOut ? list.filter((p) => p.i < this.n) : list;
     this.pinList = drawn.slice(0, PIN_CAPACITY);
@@ -847,14 +900,27 @@ export class Viewport {
 
   #placePins() {
     if (!this.pinList.length) return;
-    const m = new THREE.Matrix4();
+    const m = this.pinMatrix;
     const g = this.cur;
+    const L = this.layout;
+    const { x: ox, y: oy, z: oz } = this.origin;
     this.pinList.forEach((p, k) => {
       const o = p.i * 6;
-      const topY = g[o + 1] + g[o + 4] / 2;
+      let topY = g[o + 1] + g[o + 4] / 2;
+      // The layout's peak above the box's top, carried onto where the box
+      // is now, so a peak pin travels with its box in a transition.
+      if (p.peak) topY += Math.max(0, L.top[p.i] - (L.geo[o + 1] + L.geo[o + 4] / 2));
       const s = 13 / this.#scaleAt(this.#distTo(g[o], topY, g[o + 2]));
-      m.makeScale(s, s, s);
-      m.setPosition(g[o] - this.origin.x, topY + s * 0.15 - this.origin.y, g[o + 2] - this.origin.z);
+      if (p.upright) {
+        // Half a turn about x: the base sits just above the anchor, the
+        // apex points up. A rotation, not a negative scale, so the faces
+        // keep their winding.
+        m.makeRotationX(Math.PI).scale(this.pinScale.set(s, s, s));
+        m.setPosition(g[o] - ox, topY + s * 1.65 - oy, g[o + 2] - oz);
+      } else {
+        m.makeScale(s, s, s);
+        m.setPosition(g[o] - ox, topY + s * 0.15 - oy, g[o + 2] - oz);
+      }
       this.pins.setMatrixAt(k, m);
     });
     this.pins.position.set(this.origin.x, this.origin.y, this.origin.z);
@@ -1098,6 +1164,18 @@ export class Viewport {
 
   /* ---------- labels ---------- */
 
+  /**
+   * Tags that outrank every other label: [{ i, text, cls }], at most
+   * MARKS_MAX, in priority order. Each stands above the peak of box i (a
+   * peak pin's anchor), is placed before the folder and file labels so it
+   * wins any overlap, and is never left out for being wider than its box.
+   * cls adds classes to the tag. An empty list removes them.
+   */
+  setMarks(list) {
+    this.marks = (list || []).slice(0, MARKS_MAX);
+    this.invalidate();
+  }
+
   #updateLabels() {
     const L = this.layout;
     const pool = this.labelPool;
@@ -1146,6 +1224,12 @@ export class Viewport {
         el.hidden = false;
         return true;
       };
+      // Marks first, above their peak and its upright pin (about 22 px).
+      for (const mk of this.marks) {
+        if (!(mk.i >= 0 && mk.i < this.n)) continue;
+        const o = mk.i * 6;
+        tryPlace(mk.i, Infinity, `tag-mark${mk.cls ? ` ${mk.cls}` : ''}`, mk.text, Math.max(L.top[mk.i], g[o + 1] + g[o + 4] / 2), 26);
+      }
       let count = 0;
       for (const [px, i] of dirs) {
         if (count >= 24) break;

@@ -1,15 +1,21 @@
 <!--
 ✒ Metadata
-    - Title: Shipped File Changelogs (Terrane Edition - v1.0)
+    - Title: Shipped File Changelogs (Terrane Edition - v1.1)
     - File Name: CHANGELOG.md
     - Relative Path: CHANGELOG.md
     - Artifact Type: docs
-    - Version: 1.0.0
-    - Date: 11/12/2026
-    - Update: Thursday, November 12, 2026
+    - Version: 1.1.0
+    - Date: 11/13/2026
+    - Update: Friday, November 13, 2026
     - Author: Dennis 'dendogg' Smaltz
     - A.I. Acknowledgement: Anthropic - Claude Opus 5.5
     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
+
+✒ Changelog:
+    - 1.1.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — Records the Wave 1 releases of
+      app.js (1.5.0), index.html (1.5.0) and terrane.css (2.2.0): the time
+      view, landmarks and their seams.
+    - 1.0.0 (11/12/2026) [dendogg + Anthropic - Claude Opus 5.5] — Initial release.
 
 ✒ Description:
     The full changelog of every browser file whose header keeps only its
@@ -36,6 +42,13 @@ here unchanged in the same edit.
 
 ## web/js/app.js
 
+- 1.5.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — Paint draws a box the layout marks
+  AUX.CROSSED (the time view) in the crossed convention, its colour washed 60% toward paper unless
+  it is selected; a Contents row whose entry is crossed carries a crossed swatch and says so to
+  assistive technology. Two seams for features: AFTER_OP hooks hear every change the service
+  carried out (Undo included, with the paths it moved back) before the folders are re-read, and a
+  change that stopped part way with what it finished; MENU entries add a group of context menu
+  items; window.__terrane.places is the landmarks store.
 - 1.4.0 (11/12/2026) [dendogg + Anthropic - Claude Opus 5.5] — The loading sheet (splash.js)
   covers the page from start until the service answers and the first survey batch is drawn,
   naming each stage; it leaves early on either failure so the veil can explain.
@@ -61,6 +74,8 @@ here unchanged in the same edit.
 
 ## web/index.html
 
+- 1.5.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — An As of cell in the title block: a
+  stepper for the date the world looks back to (earlier, the date or Now, later), reachable by Tab.
 - 1.4.0 (11/12/2026) [dendogg + Anthropic - Claude Opus 5.5] — The loading sheet's host, first in
   the body: the T is surveyed and laid down stratum by stratum while the service connects and the
   first survey arrives, then the sheet is excavated away.
@@ -76,6 +91,9 @@ here unchanged in the same edit.
 
 ## web/css/terrane.css
 
+- 2.2.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — Imports components/time.css: the
+  As of stepper and the crossed swatch and glyph; and components/places.css: benchmark tags in the
+  world, the Places tab and the Benchmark section.
 - 2.1.0 (11/12/2026) [dendogg + Anthropic - Claude Opus 5.5] — The loading sheet joins the
   components layer (components/splash.css): the T mark, the TERRANE wordmark and the status line.
 - 2.0.0 (11/12/2026) [dendogg + Anthropic - Claude Opus 5.5] — The one stylesheet becomes the

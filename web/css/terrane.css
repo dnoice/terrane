@@ -1,18 +1,22 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Terrane Design System (Terrane Edition - v2.1)
+ *     - Title: Terrane Design System (Terrane Edition - v2.2)
  *     - File Name: terrane.css
  *     - Relative Path: web/css/terrane.css
  *     - Artifact Type: stylesheet
- *     - Version: 2.1.0
- *     - Date: 11/12/2026
- *     - Update: Thursday, November 12, 2026
+ *     - Version: 2.2.0
+ *     - Date: 11/13/2026
+ *     - Update: Friday, November 13, 2026
  *     - Author: Dennis 'dendogg' Smaltz
  *     - A.I. Acknowledgement: Anthropic - Claude Opus 5.5
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
  *
  * ✒ Changelog:
+ *     - 2.2.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] —
+ *       Imports components/time.css: the As of stepper and the crossed
+ *       swatch and glyph; and components/places.css: benchmark tags in
+ *       the world, the Places tab and the Benchmark section.
  *     - 2.1.0 (11/12/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
  *       loading sheet joins the components layer (components/splash.css):
  *       the T mark, the TERRANE wordmark and the status line.
@@ -22,10 +26,6 @@
  *       and print, each in its own file and cascade layer. Adds icons, the
  *       highlighter sweep, sliding indicators, survey instruments around
  *       the world, entry and exit motion, and a print sheet.
- *     - 1.1.0 (11/11/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
- *       operations panel (verdigris progress track, stipple while the total
- *       is still being counted), the picture in the hover tip, and previews
- *       that keep their aspect ratio.
  *     Earlier entries: see CHANGELOG.md
  *
  * ✒ Description:
@@ -70,6 +70,8 @@
 @import url('components/block.css') layer(components);
 @import url('components/floating.css') layer(components);
 @import url('components/splash.css') layer(components);
+@import url('components/time.css') layer(components);
+@import url('components/places.css') layer(components);
 @import url('utilities.css') layer(utilities);
 @import url('motion.css') layer(motion);
 @import url('print.css') layer(print) print;

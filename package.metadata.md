@@ -1,17 +1,20 @@
 <!--
 ✒ Metadata
-    - Title: Package Manifest (Terrane Edition - v1.5)
+    - Title: Package Manifest (Terrane Edition - v1.6)
     - File Name: package.json
     - Relative Path: package.json
     - Artifact Type: config
-    - Version: 1.5.0
-    - Date: 11/12/2026
-    - Update: Thursday, November 12, 2026
+    - Version: 1.6.0
+    - Date: 11/13/2026
+    - Update: Friday, November 13, 2026
     - Author: Dennis 'dendogg' Smaltz
     - A.I. Acknowledgement: Anthropic - Claude Opus 5.5
     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
 
 ✒ Changelog:
+    - 1.6.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
+      test script also runs tools/places-test.mjs, the Node check of the
+      landmarks store, after the service smoke test.
     - 1.5.0 (11/12/2026) [dendogg + Anthropic - Claude Opus 5.5] — Adds
       the wordmark script, which builds the framed TERRANE wordmark from
       Dennis's TER.svg and R-N.svg; run it before mark.
@@ -51,7 +54,8 @@
     - mark: regenerates web/js/terrane-mark.js from the T drawings and
       the framed wordmark (Python with svgelements and shapely); run it
       after changing any of them, and after wordmark
-    - test: runs the service smoke test against a throwaway directory
+    - test: runs the service smoke test against a throwaway directory,
+      then the places store test (benchmarks and the return point) in Node
     - vendor: fetches the pinned third-party browser files into
       web/vendor/ from jsDelivr; --check verifies them offline
     - ui-check: drives the page in headless Edge or Chrome, keyboard

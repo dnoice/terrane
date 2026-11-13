@@ -2,18 +2,22 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Interface Check (Terrane Edition - v1.1)
+ *     - Title: Interface Check (Terrane Edition - v1.2)
  *     - File Name: ui-check.mjs
  *     - Relative Path: tools/ui-check.mjs
  *     - Artifact Type: test
- *     - Version: 1.1.0
- *     - Date: 11/12/2026
- *     - Update: Thursday, November 12, 2026
+ *     - Version: 1.2.0
+ *     - Date: 11/13/2026
+ *     - Update: Friday, November 13, 2026
  *     - Author: Dennis 'dendogg' Smaltz
  *     - A.I. Acknowledgement: Anthropic - Claude Opus 5.5
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
  *
  * ✒ Changelog:
+ *     - 1.2.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] —
+ *       t.reload() reloads the page and waits for it as for the first load,
+ *       until the survey is done and the loading sheet has gone, so a
+ *       scenario never types into a page the sheet still makes inert.
  *     - 1.1.0 (11/12/2026) [dendogg + Anthropic - Claude Opus 5.5] — A page
  *       is ready only once the loading sheet has gone as well. When the
  *       survey is done and the sheet is still in its intro, the check
@@ -79,7 +83,8 @@
  *     timeout (ms). The context t offers: pass, gl, data, manifest, root,
  *     abs(rel), baseline, recorded, check, skip, note, key, keys, type,
  *     tabTo, focused, eval, app, waitFor, until, poll, settle, text,
- *     live, notices, mark, requests, shot, drawCalls, sleep, url.
+ *     live, notices, mark, requests, shot, drawCalls, sleep, url, and
+ *     reload() (waits for the survey and the loading sheet as at the start).
  *     t.app(fn) and t.waitFor(fn) call fn(window.__terrane) in the page,
  *     so fn must be self-contained and return plain JSON values.
  *
@@ -529,6 +534,14 @@ function context(page, env) {
     },
     sleep: wait,
 
+    /** Reloads the page and waits as for the first load: survey done, sheet gone. */
+    async reload() {
+      await page.send('Runtime.evaluate', { expression: 'window.__oldPage = true', returnByValue: true });
+      await page.send('Page.reload', {});
+      await untilReady(page);
+      await t.settle();
+    },
+
     async eval(fn, ...args) {
       const expression = typeof fn === 'function' ? `(${fn})(...${JSON.stringify(args)})` : String(fn);
       const r = await page.send('Runtime.evaluate', { expression, awaitPromise: true, returnByValue: true });
@@ -668,32 +681,39 @@ function context(page, env) {
 
 /* ---------- running ---------- */
 
-async function openApp(browser, env) {
-  const page = await Page.open(browser.cdp, env.url);
+// Ready means the survey is done and the loading sheet has gone. A sheet
+// still in its intro is skipped as a click on it would. A page that is
+// marked with window.__oldPage is the one before a reload, never ready.
+const READY = `(() => {
+  if (window.__oldPage) return "";
+  const T = window.__terrane;
+  const s = document.getElementById("splash");
+  if (T && !T.S.scanning) {
+    if (!s || s.hidden) return "ready";
+    if (s.dataset.phase === "intro") s.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true }));
+    return "the loading sheet is leaving";
+  }
+  const v = document.getElementById("veil");
+  return v && !v.hidden ? v.textContent : "";
+})()`;
+
+/** Waits until the page's survey is done and its loading sheet has gone. */
+async function untilReady(page) {
   const end = Date.now() + 120000;
   for (;;) {
-    const r = await page.send('Runtime.evaluate', {
-      // Ready means the survey is done and the loading sheet has gone. A
-      // sheet still in its intro is skipped as a click on it would.
-      expression: `(() => {
-        const T = window.__terrane;
-        const s = document.getElementById("splash");
-        if (T && !T.S.scanning) {
-          if (!s || s.hidden) return "ready";
-          if (s.dataset.phase === "intro") s.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true }));
-          return "the loading sheet is leaving";
-        }
-        const v = document.getElementById("veil");
-        return v && !v.hidden ? v.textContent : "";
-      })()`,
-      returnByValue: true,
-    }).catch(() => ({ result: { value: '' } }));
+    const r = await page.send('Runtime.evaluate', { expression: READY, returnByValue: true })
+      .catch(() => ({ result: { value: '' } }));
     if (r.result?.value === 'ready') break;
     if (/Not connected|survey stopped/i.test(r.result?.value || '')) throw new Error(`The page could not start: ${r.result.value}`);
     if (Date.now() > end) throw new Error(`The page did not finish its survey in 120 s (${r.result?.value || 'no message'})`);
     await wait(100);
   }
   await page.send('Runtime.evaluate', { expression: 'document.fonts.ready.then(() => true)', awaitPromise: true });
+}
+
+async function openApp(browser, env) {
+  const page = await Page.open(browser.cdp, env.url);
+  await untilReady(page);
   return page;
 }
 

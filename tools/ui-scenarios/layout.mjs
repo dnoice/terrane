@@ -1,16 +1,23 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Layout Safety Scenario (Terrane Edition - v1.0)
+ *     - Title: Layout Safety Scenario (Terrane Edition - v1.1)
  *     - File Name: layout.mjs
  *     - Relative Path: tools/ui-scenarios/layout.mjs
  *     - Artifact Type: test
- *     - Version: 1.0.0
- *     - Date: 11/11/2026
- *     - Update: Wednesday, November 11, 2026
+ *     - Version: 1.1.0
+ *     - Date: 11/12/2026
+ *     - Update: Thursday, November 12, 2026
  *     - Author: Dennis 'dendogg' Smaltz
  *     - A.I. Acknowledgement: Anthropic - Claude Opus 5.5
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
+ *
+ * ✒ Changelog:
+ *     - 1.1.0 (11/12/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
+ *       box shader has six bounded style branches now that CROSSED draws;
+ *       the AUX table is read with BOX and STYLE.
+ *     - 1.0.0 (11/11/2026) [dendogg + Anthropic - Claude Opus 5.5] —
+ *       Initial release.
  *
  * ✒ Description:
  *     Checks the layout's safety limits and extension points in the real
@@ -50,7 +57,8 @@ export default {
         over: L.over,
         box: { ...mod.BOX },
         style: { ...mod.STYLE },
-        frozen: Object.isFrozen(mod.BOX) && Object.isFrozen(mod.STYLE),
+        auxCodes: { ...mod.AUX },
+        frozen: Object.isFrozen(mod.BOX) && Object.isFrozen(mod.STYLE) && Object.isFrozen(mod.AUX),
         status: document.getElementById('status-label').textContent,
       };
     });
@@ -59,6 +67,7 @@ export default {
     t.check('BOX reserves WALL = 4', JSON.stringify(got.box) === JSON.stringify({ DIR: 0, FILE: 1, CAP: 2, SCREE: 3, WALL: 4 }), JSON.stringify(got.box));
     t.check('STYLE reserves CROSSED = 6 and leaves 7 free',
       JSON.stringify(got.style) === JSON.stringify({ PLAIN: 0, HATCH: 1, HOLLOW: 2, STIPPLE: 3, BANDS: 4, HALF_BANDS: 5, CROSSED: 6 }), JSON.stringify(got.style));
+    t.check('AUX names the time view\'s marks: SUNK 1, CROSSED 2', JSON.stringify(got.auxCodes) === JSON.stringify({ NONE: 0, SUNK: 1, CROSSED: 2 }), JSON.stringify(got.auxCodes));
     t.check('the code tables are frozen', got.frozen);
     t.check('the title block does not report blocks left out', !/left out/.test(got.status), got.status);
     if (!t.gl) return;
@@ -77,7 +86,8 @@ export default {
     });
     t.check('the compiled box shader was found', !!shader);
     t.check(`every style branch is bounded on both sides (${shader?.tests.length} branches)`,
-      shader && shader.bounded && shader.tests.length === 5 && shader.tests.some((s) => s.startsWith('vStyle > 4.5 && vStyle < 5.5')), JSON.stringify(shader?.tests));
+      shader && shader.bounded && shader.tests.length === 6 && shader.tests.some((s) => s.startsWith('vStyle > 4.5 && vStyle < 5.5'))
+      && shader.tests.some((s) => s.startsWith('vStyle > 5.5 && vStyle < 6.5')), JSON.stringify(shader?.tests));
 
     await t.settle();
     // A layout past the buffers: the real one tiled out to 73,500 boxes.

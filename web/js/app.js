@@ -1,18 +1,28 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Terrane Application (Terrane Edition - v1.4)
+ *     - Title: Terrane Application (Terrane Edition - v1.5)
  *     - File Name: app.js
  *     - Relative Path: web/js/app.js
  *     - Artifact Type: javascript
- *     - Version: 1.4.0
- *     - Date: 11/12/2026
- *     - Update: Thursday, November 12, 2026
+ *     - Version: 1.5.0
+ *     - Date: 11/13/2026
+ *     - Update: Friday, November 13, 2026
  *     - Author: Dennis 'dendogg' Smaltz
  *     - A.I. Acknowledgement: Anthropic - Claude Opus 5.5
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
  *
  * ✒ Changelog:
+ *     - 1.5.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — Paint
+ *       draws a box the layout marks AUX.CROSSED (the time view) in the
+ *       crossed convention, its colour washed 60% toward paper unless it
+ *       is selected; a Contents row whose entry is crossed carries a
+ *       crossed swatch and says so to assistive technology. Two seams for
+ *       features: AFTER_OP hooks hear every change the service carried
+ *       out (Undo included, with the paths it moved back) before the
+ *       folders are re-read, and a change that stopped part way with what
+ *       it finished; MENU entries add a group of context menu items;
+ *       window.__terrane.places is the landmarks store.
  *     - 1.4.0 (11/12/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
  *       loading sheet (splash.js) covers the page from start until the
  *       service answers and the first survey batch is drawn, naming each
@@ -23,18 +33,6 @@
  *       that slide; status figures that count to their new values; the
  *       inspector settles in when its subject changes; the veil lifts away
  *       instead of vanishing; panel toggles and a Find clear button.
- *     - 1.2.0 (11/11/2026) [dendogg + Anthropic - Claude Opus 5.5] — Paint
- *       uses the STYLE table; the viewport's notices are shown; the title
- *       block says when a layout left blocks out to stay in budget. Keys,
- *       Escape, pins, hover lines, inspector sections, Reading rows, tabs,
- *       layout options and after-layout, refresh and survey hooks are
- *       registries that feature modules fill through install(api); the
- *       key allocation is fixed and the guide is made from the key table.
- *       Without WebGL, going to a folder moves the location there and a
- *       relayout leaves it in place, so Contents can go down levels.
- *       Every survey rebuilds a shared table of each folder's bytes and
- *       files by last change (S.ages), and Rescan all drops the old one.
- *       The Menu key opens the menu without WebGL instead of throwing.
  *     Earlier entries: see CHANGELOG.md
  *
  * ✒ Description:
@@ -74,9 +72,10 @@
  *     - Snapshot mode is stated in the title block, and every change and
  *       system hand-off is shown as unavailable with the reason
  *     - Seams for features: ordered registries (KEYS, ESCAPE, PIN_SOURCES,
- *       TIP_LINES, INSPECTOR, READING, TABS, LAYOUT_OPTS) and hook lists
- *       (AFTER_LAYOUT, AFTER_REFRESH, AFTER_SURVEY), so a feature adds
- *       entries from its own file instead of editing these functions
+ *       TIP_LINES, INSPECTOR, READING, TABS, LAYOUT_OPTS, MENU) and hook
+ *       lists (AFTER_LAYOUT, AFTER_REFRESH, AFTER_SURVEY, AFTER_OP), so a
+ *       feature adds entries from its own file instead of editing these
+ *       functions
  *     - One key table drives the keyboard, the guide and the fixed key
  *       allocation; a reserved key can only be bound by its owner
  *     - One age table per survey (timeline.js) answers how much of any
@@ -94,6 +93,8 @@
  *         api.ESCAPE.add({ id: 'time', order: 40, active, clear });
  *         api.PIN_SOURCES.add({ id: 'places', order: 10, pins: (L) => [] });
  *         api.AFTER_LAYOUT.add({ id: 'route', run: (L) => draw(L) });
+ *         api.AFTER_OP.add({ id: 'places', run: (body, res) => follow(body, res) });
+ *         api.MENU.add({ id: 'places', items: (node) => [{ label, run }] });
  *     Every entry has a unique id; order (default 50) places it.
  *
  * ✒ Other Important Information:
@@ -110,7 +111,7 @@ import {
   Model, KINDS, FLAG_LINK, FLAG_HIDDEN, extOf, fmtBytes, fmtCount, fmtDate, fmtAge, freshness, relPath, depthOf,
   isAncestor, parseQuery, runSearch,
 } from './model.js';
-import { buildLayout, BOX, STYLE } from './layout.js';
+import { buildLayout, BOX, STYLE, AUX } from './layout.js';
 import { Viewport } from './viewport.js';
 import { THEME, mixHex, ramp, cssHex } from './theme.js';
 import { el, openMenu, closeFloating, floatingOpen, ask, notice, tip, hideTip, slideIndicator, VirtualList } from './ui.js';
@@ -329,11 +330,32 @@ const LAYOUT_OPTS = registry('LAYOUT_OPTS', needs('LAYOUT_OPTS', 'options'));
 const AFTER_LAYOUT = registry('AFTER_LAYOUT', needs('AFTER_LAYOUT', 'run'));
 const AFTER_REFRESH = registry('AFTER_REFRESH', needs('AFTER_REFRESH', 'run'));
 const AFTER_SURVEY = registry('AFTER_SURVEY', needs('AFTER_SURVEY', 'run'));
+/**
+ * AFTER_OP run(body, res) once the service has carried out a change: body
+ * is what was asked ({ type: 'rename', path, name }, { type: 'move',
+ * paths, dest }, ...; { type: 'undo' } for Undo) and res its answer
+ * (renamed, results, label; for an Undo, moved: the [from, to] paths it
+ * carried back). A change that stopped part way runs it too, with res
+ * { partial: true, results, label }: what it finished. It runs before the
+ * affected folders are re-read, so a feature that names places by path
+ * can follow Terrane's own renames and moves (and their undo) before the
+ * tree changes.
+ */
+const AFTER_OP = registry('AFTER_OP', needs('AFTER_OP', 'run'));
+
+/**
+ * MENU: context menu items from features: { id, order, items(node, ctx)
+ * -> item[] | null }, where node is the item the menu is for (null for
+ * the folder you are in) and ctx is { ro }. Items take openMenu's shape
+ * and appear as a group after the first one (Open, Reveal, Copy path) or,
+ * for the folder you are in, at the end. A selection of many has none.
+ */
+const MENU = registry('MENU', needs('MENU', 'items'));
 
 /** QUERY: search tokens for parseQuery: is.<word>(node) and prefix.<name>(value, raw) -> predicate. */
 const QUERY = Object.freeze({ is: {}, prefix: {} });
 
-for (const reg of [KEYS, ESCAPE, PIN_SOURCES, TIP_LINES, INSPECTOR.focus, INSPECTOR.node, READING, TABS, LAYOUT_OPTS, AFTER_LAYOUT, AFTER_REFRESH, AFTER_SURVEY]) Object.freeze(reg);
+for (const reg of [KEYS, ESCAPE, PIN_SOURCES, TIP_LINES, INSPECTOR.focus, INSPECTOR.node, READING, TABS, LAYOUT_OPTS, AFTER_LAYOUT, AFTER_REFRESH, AFTER_SURVEY, AFTER_OP, MENU]) Object.freeze(reg);
 
 /* ====================================================================== */
 /* service                                                                */
@@ -347,6 +369,8 @@ async function asError(res) {
   const err = new Error(body.message || `The service answered ${res.status}.`);
   err.code = body.code || String(res.status);
   err.affected = body.affected || [];
+  // A change that stopped part way names what it finished.
+  if (Array.isArray(body.results)) err.results = body.results;
   return err;
 }
 
@@ -695,6 +719,13 @@ function paint() {
       if (node.f & FLAG_LINK) s = STYLE.BANDS;
       if (node.f & FLAG_HIDDEN && S.lens === 'kind') c = mixHex(c, THEME.paper, 0.4);
     }
+    // Changed after the date the time view looks back to: washed toward
+    // paper once, here, and crossed by the shader. A selection keeps its
+    // highlighter colour below, with the cross over it.
+    if (L.aux[i] === AUX.CROSSED) {
+      s = STYLE.CROSSED;
+      c = mixHex(c, THEME.paper, 0.6);
+    }
 
     let d = 0;
     if (search) {
@@ -1013,12 +1044,16 @@ async function runOp(body, { silent = false } = {}) {
   }
   try {
     const res = await post('op', body);
+    runHooks(AFTER_OP, body, res);
     if (res.cancelled) notice(res.label, { kind: 'info', ...(res.undoable ? { action: { label: 'Undo', run: undo } } : {}) });
     else if (!silent) notice(res.label, res.undoable ? { action: { label: 'Undo', run: undo } } : {});
     if (res.affected?.length) await refreshDirs(res.affected);
     if (S.tab === 'journal') drawLedger();
     return res;
   } catch (err) {
+    // What was finished before it stopped is journaled like a whole change,
+    // so features follow it the same way, before the folders are re-read.
+    if (err.results) runHooks(AFTER_OP, body, { ok: false, partial: true, label: err.message, results: err.results, affected: err.affected });
     if (err.affected?.length) refreshDirs(err.affected);
     if (err.code === 'EEXIST' && (body.type === 'move' || body.type === 'copy') && body.onConflict !== 'keepBoth') {
       notice(err.message, { kind: 'error', action: { label: 'Keep both', run: () => runOp({ ...body, onConflict: 'keepBoth' }) } });
@@ -1032,6 +1067,7 @@ async function runOp(body, { silent = false } = {}) {
 async function undo() {
   try {
     const res = await post('undo');
+    runHooks(AFTER_OP, { type: 'undo' }, res);
     notice(res.label);
     await refreshDirs(res.affected);
     if (S.tab === 'journal') drawLedger();
@@ -1197,6 +1233,20 @@ async function verifyDuplicates() {
 /* menus                                                                  */
 /* ====================================================================== */
 
+/** Menu items the MENU entries add for node (null: the folder you are in), as one group. */
+function menuExtras(node, ctx) {
+  const out = [];
+  for (const m of MENU) {
+    try {
+      const got = m.items(node, ctx);
+      if (got?.length) out.push(...got.filter(Boolean));
+    } catch (err) {
+      console.error(`MENU "${m.id}" failed:`, err);
+    }
+  }
+  return out.length ? ['sep', ...out] : [];
+}
+
 function menuFor(node, x, y) {
   const ro = writable();
   const many = S.sel.size > 1 && S.sel.has(node);
@@ -1212,6 +1262,7 @@ function menuFor(node, x, y) {
       { label: 'Up one level', icon: 'up', hint: 'Backspace', run: goUp, disabled: !S.focus.p, reason: 'already at the root' },
       { label: 'Rise to the overview', icon: 'overview', hint: '0', run: () => S.view.overview() },
       { label: 'Re-read this folder', icon: 'refresh', hint: 'F5', run: () => refreshDirs([relPath(S.focus)]) },
+      ...menuExtras(null, { ro }),
     ];
   } else if (many) {
     const nodes = [...S.sel];
@@ -1230,6 +1281,7 @@ function menuFor(node, x, y) {
         : { label: 'Open', icon: 'open', hint: 'Enter', run: () => activate(node) },
       { label: 'Reveal in file manager', icon: 'reveal', run: () => runOp({ type: 'reveal', path: relPath(node) }) },
       { label: 'Copy path', icon: 'copyPath', hint: 'Ctrl+C', run: () => copyPaths([node]) },
+      ...menuExtras(node, { ro }),
       'sep',
       node.d ? { label: 'New folder inside…', icon: 'newFolder', run: () => newFolder(node), ...lock(node.e ? 'cannot be read' : null) } : null,
       { label: 'Rename…', icon: 'rename', hint: 'F2', run: () => rename(node), ...lock(rootLock) },
@@ -1295,11 +1347,14 @@ function drawCrumbs() {
 let list;
 
 function rowFor(node, { showPath = false, total } = {}) {
-  const cls = node.d ? (node.e ? 'swatch is-sealed' : node.c.length ? 'swatch is-dir' : 'swatch is-empty') : 'swatch';
+  // S.time.crossed: the time view's answer, by the rules the layout draws with.
+  const crossed = !!S.time?.crossed?.(node);
+  const cls = (node.d ? (node.e ? 'swatch is-sealed' : node.c.length ? 'swatch is-dir' : 'swatch is-empty') : 'swatch') + (crossed ? ' is-crossed' : '');
   const share = total ? Math.max(0, Math.min(1, node.s / total)) : 0;
   const row = el('div', { class: `row${S.sel.has(node) ? ' is-selected' : ''}`, draggable: node.p && !S.info.readOnly ? 'true' : null, 'aria-selected': S.sel.has(node) ? 'true' : 'false', title: showPath ? relPath(node) : node.n },
     el('span', { class: cls, style: node.d ? null : { background: cssHex(KINDS[node.k].color) } }),
-    el('span', { class: 'row-name' }, node.n, node.d ? el('small', { text: node.e ? node.e : fmtCount(node.fc) }) : showPath ? el('small', { text: relPath(node.p) || '/' }) : null),
+    el('span', { class: 'row-name' }, node.n, node.d ? el('small', { text: node.e ? node.e : fmtCount(node.fc) }) : showPath ? el('small', { text: relPath(node.p) || '/' }) : null,
+      crossed ? el('span', { class: 'sr', text: `, changed since ${S.time.date}` }) : null),
     el('span', { class: 'row-size' }, fmtBytes(node.s), total ? el('i', { style: { width: `${share * 100}%` } }) : null));
   row.addEventListener('click', (e) => {
     list.cursor = list.items.indexOf(node);
@@ -2179,7 +2234,7 @@ function wireKeys() {
  */
 const API = Object.freeze({
   S, KEY_OWNERS,
-  KEYS, ESCAPE, PIN_SOURCES, TIP_LINES, INSPECTOR, READING, TABS, LAYOUT_OPTS, AFTER_LAYOUT, AFTER_REFRESH, AFTER_SURVEY, QUERY,
+  KEYS, ESCAPE, PIN_SOURCES, TIP_LINES, INSPECTOR, READING, TABS, LAYOUT_OPTS, AFTER_LAYOUT, AFTER_REFRESH, AFTER_SURVEY, AFTER_OP, MENU, QUERY,
   get, post, runOp, refreshDirs, writable, isAttached, relPath, absPath,
   relayout, queueLayout, repaint, drawPins, visibleIndexOf,
   select, setFocus, reveal, activate, describe, say,
@@ -2292,7 +2347,8 @@ async function start() {
   runHooks(AFTER_SURVEY, S.survey, { full: true });
   relayout();
   drawAll();
-  window.__terrane = { S, list, scanMs: Math.round(performance.now() - t0), api: API, install: installFeatures };
+  // places: the landmarks store (S.places), when that feature is installed.
+  window.__terrane = { S, list, scanMs: Math.round(performance.now() - t0), api: API, install: installFeatures, get places() { return S.places; } };
   if (S.model.root.e) notice(`The root could not be read: ${S.model.root.e}`, { kind: 'error' });
   connectEvents();
 }
