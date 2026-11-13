@@ -1,0 +1,241 @@
+/*
+ * ============================================================================
+ * ✒ Metadata
+ *     - Title: Splash Sheet (Terrane Edition - v2.1)
+ *     - File Name: splash.css
+ *     - Relative Path: web/css/components/splash.css
+ *     - Artifact Type: stylesheet
+ *     - Version: 2.1.0
+ *     - Date: 11/12/2026
+ *     - Update: Thursday, November 12, 2026
+ *     - Author: Dennis 'dendogg' Smaltz
+ *     - A.I. Acknowledgement: Anthropic - Claude Opus 5.5
+ *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
+ *
+ * ✒ Changelog:
+ *     - 2.1.0 (11/12/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
+ *       wordmark is the framed TERRANE Dennis set the style for in
+ *       TER.svg: --t-wordmark-face (#f1f4f0, his T's face) joins the
+ *       palette and the wordmark grows to 28 to 44 px so its frames read.
+ *     - 2.0.0 (11/12/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
+ *       name line becomes the drawn TERRANE wordmark (Dennis's R and N) in
+ *       his #5a97b7, added to the scoped palette as --t-wordmark; the
+ *       Accretion fault line is gone with that sequence. The sheet never
+ *       prints.
+ *     - 1.0.0 (11/12/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
+ *       loading sheet for three sequences around the finished T.
+ *
+ * ✒ Description:
+ *     Styles the loading sheet that covers Terrane while it starts: the
+ *     drafting-sheet ground, the survey frame, the T mark, the TERRANE
+ *     wordmark, and the status line with its progress rule. The motion
+ *     itself lives in web/js/splash.js; this file only lays the sheet out
+ *     and holds its resting states.
+ *
+ * ✒ Key Features:
+ *     - Reads the interface tokens (surface, text, line, mark, type, space,
+ *       motion) from web/css/tokens.css; no colour is restated except the
+ *       T's own four-colour palette, which tokens.css does not carry
+ *     - The T palette is scoped to .splash as --t-tan, --t-brown,
+ *       --t-light-blue, --t-dark-blue, --t-face (the mark's face),
+ *       --t-wordmark-face (the letters' face) and --t-wordmark (the
+ *       solid wordmark's blue, still read by T Madness), so the SVG
+ *       gradients and fills read it through var()
+ *     - Covers the viewport from first paint, before splash.js runs, so
+ *       the page underneath never flashes
+ *     - data-contained turns the fixed sheet into an absolute one, for
+ *       previews that host the splash inside a box
+ *     - The mark scales with the viewport between 128 px and 232 px tall
+ *       and keeps the finished T's 404.356 by 367.266 proportions; the
+ *       framed wordmark scales between 28 px and 44 px tall (its drawing,
+ *       margins included) and takes its width from the ratio splash.js
+ *       sets (--splash-wm-ratio)
+ *     - The progress rule animates the registered --p number from
+ *       tokens.css, so a reported value glides instead of jumping
+ *     - Forced-colours mode keeps the mark's artwork colours and drops
+ *       the textures; reduced motion is handled in splash.js; the sheet
+ *       never prints
+ *
+ * ✒ Other Important Information:
+ *     - Dependencies: imported into layer "components" by
+ *       web/css/terrane.css; reads web/css/tokens.css; the sheet is
+ *       populated by web/js/splash.js
+ *     - Compatible platforms: current evergreen browsers (color-mix,
+ *       @property, clip-path on SVG elements)
+ *     - Layering: the sheet sits above every token layer (--z-skip + 10)
+ *       because it covers the whole interface, skip link included
+ * ----------------------------------------------------------------------------
+ */
+
+/* ---------- the T's palette (artwork colours, not interface roles) ---------- */
+
+.splash {
+  --t-tan: #d3b981;
+  --t-brown: #9d621e;
+  --t-light-blue: #78b2cd;
+  --t-dark-blue: #34749a;
+  --t-face: #ffffff;
+  --t-wordmark-face: #f1f4f0;
+  --t-wordmark: #5a97b7;
+  --splash-mark-h: clamp(128px, 30vmin, 232px);
+
+  position: fixed;
+  inset: 0;
+  z-index: calc(var(--z-skip) + 10);
+  overflow: hidden;
+  color: var(--text);
+  background: var(--surface-ground);
+}
+
+.splash[data-contained] {
+  position: absolute;
+}
+
+.splash[hidden] {
+  display: none;
+}
+
+/* ---------- the sheet: ground, grid, grain ---------- */
+
+.splash-plate {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: var(--s-4);
+  padding: var(--s-8);
+  background: var(--tex-grid);
+  background-color: var(--surface-ground);
+  isolation: isolate;
+}
+
+.splash-plate::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: var(--tex-grain);
+  pointer-events: none;
+}
+
+/* the survey frame: four corner ticks, as on the stage */
+.splash-frame {
+  position: absolute;
+  inset: var(--s-6);
+  pointer-events: none;
+}
+
+.splash-frame i {
+  position: absolute;
+  width: var(--s-4);
+  height: var(--s-4);
+  border: 0 solid var(--line);
+}
+
+.splash-frame i:nth-child(1) { top: 0; left: 0; border-top-width: var(--hair); border-left-width: var(--hair); }
+.splash-frame i:nth-child(2) { top: 0; right: 0; border-top-width: var(--hair); border-right-width: var(--hair); }
+.splash-frame i:nth-child(3) { bottom: 0; right: 0; border-bottom-width: var(--hair); border-right-width: var(--hair); }
+.splash-frame i:nth-child(4) { bottom: 0; left: 0; border-bottom-width: var(--hair); border-left-width: var(--hair); }
+
+/* ---------- the mark ---------- */
+
+.splash-mark {
+  display: block;
+  height: var(--splash-mark-h);
+  width: calc(var(--splash-mark-h) * 404.356 / 367.266);
+  overflow: visible;
+  forced-color-adjust: none;
+  margin-block-end: var(--s-3);
+}
+
+/* runtime layers the sequences switch between */
+.splash-mark [data-off] {
+  display: none;
+}
+
+/* ---------- wordmark and status ---------- */
+
+.splash-wordmark {
+  --splash-wm-h: clamp(28px, 5vmin, 44px);
+  display: block;
+  height: var(--splash-wm-h);
+  width: calc(var(--splash-wm-h) * var(--splash-wm-ratio, 7.454));
+  overflow: visible;
+  forced-color-adjust: none;
+  margin-block-end: var(--s-1);
+}
+
+.splash-status {
+  display: flex;
+  align-items: baseline;
+  gap: var(--s-2);
+  min-height: calc(var(--fs-sm) * var(--lh-base));
+  margin: 0;
+  font-family: var(--mono);
+  font-size: var(--fs-sm);
+  line-height: var(--lh-base);
+  color: var(--text-2);
+}
+
+.splash-pct {
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+}
+
+.splash-pct:empty {
+  display: none;
+}
+
+.splash-rule {
+  position: relative;
+  width: calc(var(--s-8) * 5);
+  height: 2px;
+  background: var(--line-2);
+  transition: --p var(--dur-base) var(--ease-out);
+}
+
+.splash-rule[hidden] {
+  display: none;
+}
+
+.splash-rule i {
+  position: absolute;
+  inset: 0;
+  background: var(--line);
+  transform-origin: 0 50%;
+  transform: scaleX(var(--p));
+}
+
+/* the line that leads the exit scan */
+.splash-scan {
+  position: absolute;
+  inset-inline: 0;
+  bottom: 0;
+  height: 2px;
+  background: var(--mark);
+  pointer-events: none;
+}
+
+/* ---------- user preferences and print ---------- */
+
+@media print {
+  .splash {
+    display: none;
+  }
+}
+
+@media (forced-colors: active) {
+  .splash,
+  .splash-plate {
+    background: Canvas;
+  }
+
+  .splash-plate::after {
+    background: none;
+  }
+
+  .splash-rule i {
+    background: CanvasText;
+  }
+}

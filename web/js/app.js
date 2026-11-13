@@ -1,11 +1,11 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Terrane Application (Terrane Edition - v1.3)
+ *     - Title: Terrane Application (Terrane Edition - v1.4)
  *     - File Name: app.js
  *     - Relative Path: web/js/app.js
  *     - Artifact Type: javascript
- *     - Version: 1.3.0
+ *     - Version: 1.4.0
  *     - Date: 11/12/2026
  *     - Update: Thursday, November 12, 2026
  *     - Author: Dennis 'dendogg' Smaltz
@@ -13,6 +13,10 @@
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
  *
  * ✒ Changelog:
+ *     - 1.4.0 (11/12/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
+ *       loading sheet (splash.js) covers the page from start until the
+ *       service answers and the first survey batch is drawn, naming each
+ *       stage; it leaves early on either failure so the veil can explain.
  *     - 1.3.0 (11/12/2026) [dendogg + Anthropic - Claude Opus 5.5] — Icons
  *       on menus, tabs, sort keys, actions and operations; the north arrow
  *       and storage scale over the world (hud.js); tab and lens indicators
@@ -31,11 +35,6 @@
  *       Every survey rebuilds a shared table of each folder's bytes and
  *       files by last change (S.ages), and Rescan all drops the old one.
  *       The Menu key opens the menu without WebGL instead of throwing.
- *     - 1.1.0 (11/11/2026) [dendogg + Anthropic - Claude Opus 5.5] — A
- *       progress panel with Cancel for copy, move and remove; snapshot mode
- *       (status, refusals, newer-snapshot notice); thumbnails in the
- *       inspector and the hover tip in place of original files; the
- *       journal tab marks earlier-session and purged entries.
  *     Earlier entries: see CHANGELOG.md
  *
  * ✒ Description:
@@ -46,6 +45,9 @@
  *     the same thing at the same time.
  *
  * ✒ Key Features:
+ *     - A loading sheet over the whole page while the service answers and
+ *       the first survey batch arrives; it names each stage in words and
+ *       hands over once the world has something to show
  *     - Streams the scan into the model and redraws while it is running
  *     - One selection shared by the viewport and the ledger; either can
  *       drive it, by pointer or by keyboard
@@ -97,7 +99,7 @@
  * ✒ Other Important Information:
  *     - Dependencies: model.js, layout.js, viewport.js, theme.js, ui.js,
  *       thumbs.js, timeline.js, features.js, icons.js, motion.js, hud.js,
- *       float.js
+ *       float.js, splash.js
  *     - Compatible platforms: current evergreen browsers with WebGL2
  *     - Limitations: when WebGL is unavailable the ledger, inspector,
  *       search and every operation keep working without the 3D world
@@ -118,6 +120,7 @@ import { FEATURES } from './features.js';
 import { icon } from './icons.js';
 import { countTo } from './motion.js';
 import { createHud } from './hud.js';
+import { startSplash } from './splash.js';
 import { preloadFloat } from './float.js';
 
 const $ = (id) => document.getElementById(id);
@@ -404,6 +407,7 @@ async function scanInto(dir) {
     if (!S.noGL) hideVeil();
     queueLayout();
     drawStatus();
+    endSplash();
   });
 }
 
@@ -2200,16 +2204,35 @@ function installFeatures(features) {
   }
 }
 
+/** The loading sheet (splash.js) while the page starts; null once sent away. */
+let splash = null;
+/** Sends the loading sheet away. Safe to call any number of times. */
+function endSplash() {
+  if (!splash) return;
+  splash.done();
+  splash = null;
+}
+
 async function start() {
+  try {
+    splash = startSplash({
+      cover: [document.querySelector('.skip'), $('bar'), document.querySelector('main'), $('block')],
+    });
+    splash.stage('Connecting to the local service');
+  } catch {
+    splash = null;        // no #splash host in the page: start without the sheet
+  }
   try {
     S.info = await get('info');
   } catch (err) {
+    endSplash();
     fatal('Not connected', err.message);
     return;
   }
   document.title = `${S.info.name} · Terrane`;
   S.model = new Model(S.info.name);
   S.focus = S.model.root;
+  splash?.stage('Starting the 3D world');
   try {
     S.view = new Viewport({ canvas: $('view'), labelLayer: $('tags') });
   } catch (err) {
@@ -2249,6 +2272,7 @@ async function start() {
   wireControls();
   wireKeys();
   if (!S.noGL) fatal(S.info.snapshot ? 'Reading the snapshot' : 'Surveying', S.info.root, 'busy');
+  splash?.stage(S.info.snapshot ? `Reading the snapshot of ${S.info.name}` : `Surveying ${S.info.name}`);
   S.scanning = true;
   thumbs.load(TOKEN);
   drawAll();
@@ -2256,6 +2280,7 @@ async function start() {
   try {
     await scanInto(S.model.root);
   } catch (err) {
+    endSplash();
     fatal('The survey stopped', err.message);
     return;
   }

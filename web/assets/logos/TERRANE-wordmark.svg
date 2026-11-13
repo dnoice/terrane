@@ -1,0 +1,177 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!--
+✒ Metadata
+    - Title: TERRANE Wordmark, Solid (Terrane Edition - v1.1)
+    - File Name: TERRANE-wordmark.svg
+    - Relative Path: web/assets/logos/TERRANE-wordmark.svg
+    - Artifact Type: illustration
+    - Version: 1.1.0
+    - Date: 11/12/2026
+    - Update: Thursday, November 12, 2026
+    - Author: Dennis 'dendogg' Smaltz
+    - A.I. Acknowledgement: Anthropic - Claude Opus 5.5
+    - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
+
+✒ Changelog:
+    - 1.1.0 (11/12/2026) [dendogg + Anthropic - Claude Opus 5.5] — No
+      longer on the loading sheet: at Dennis's direction the framed
+      wordmark (TERRANE-wordmark-framed.svg, from his TER.svg) took its
+      place. Kept as the single-colour wordmark; nothing reads it now.
+    - 1.0.0 (11/12/2026) [dendogg + Anthropic - Claude Opus 5.5] —
+      Initial release.
+
+✒ Description:
+    The solid, single-colour TERRANE wordmark, for places a one-colour
+    mark fits better than the framed one. The R and N are Dennis's
+    drawings, placed exactly as drawn in web/assets/temp/R-N.svg and only
+    translated onto a shared baseline. The T, E and A are the earlier
+    drafts built from the R and N's own measurements; Dennis has since
+    drawn his own T, E and R in TER.svg, which the framed wordmark uses.
+
+✒ Key Features:
+    - Cap height 399.527 (the R). The N is 399.14 tall and sits on the
+      same baseline, 0.39 below the shared top line, as drawn.
+    - Measurements the drafts borrow from the R: spine 126.476, top bar
+      64.716, bowl right stroke 122.87, middle band 179.54 to 272.99,
+      outer chamfers 27.38 by 27.91, counter slants 54.40 by 20.89.
+    - T: 410 wide, bar 64.716, stem 126.476 centred.
+    - E: 380 wide, spine 126.476, three 64.716 bars, the middle bar
+      centred on the cap height and 40 shorter than the others.
+    - A: the R's bowl made symmetric. Both shoulders chamfered, a
+      counter with a slant at each top corner, the R's middle band as
+      the crossbar, legs 126.476 and 122.87.
+    - Spacing: 80 between letters, 30 under the T's overhang (T to E).
+    - Colour: #5a97b7, the blue Dennis drew the R and N in, which sits
+      between the T's light blue (#78b2cd) and dark blue (#34749a).
+    - Naming: wordmark-terrane holds wordmark-letter-N-x, numbered in
+      reading order (1-t to 7-e), one real path per visible letter.
+
+✒ Usage Instructions:
+    Use as a standalone single-colour asset. The loading sheet draws the
+    framed wordmark instead (built by tools/build_terrane_wordmark.py),
+    so editing this file changes nothing in the app. Keep the baseline
+    at y = 399.527 and the cap line at y = 0.
+
+✒ Other Important Information:
+    - Dependencies: none to render; nothing in the build reads it
+    - Compatible platforms: Inkscape 1.4+, current browsers, any SVG 1.1
+      renderer
+    - Page: fitted to the letters with no margin, Inkscape stock page
+      and desk colours
+-->
+<svg
+   width="3426.640"
+   height="399.527"
+   viewBox="0 0 3426.640 399.527"
+   version="1.1"
+   id="svg-terrane-wordmark"
+   inkscape:version="1.4.4 (dcaf3e7, 2026-05-05)"
+   sodipodi:docname="TERRANE-wordmark.svg"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns:xlink="http://www.w3.org/1999/xlink"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg"
+   xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+   xmlns:cc="http://creativecommons.org/ns#"
+   xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:c2pa="http://c2pa.org/manifest">
+  <title
+     id="title-terrane-wordmark">TERRANE Wordmark, Solid</title>
+  <sodipodi:namedview
+     id="namedview-terrane-wordmark"
+     pagecolor="#ffffff"
+     bordercolor="#000000"
+     borderopacity="0.25"
+     inkscape:showpageshadow="2"
+     inkscape:pageopacity="0.0"
+     inkscape:pagecheckerboard="0"
+     inkscape:deskcolor="#d1d1d1"
+     inkscape:document-units="px"
+     showborder="false"
+     inkscape:zoom="0.45"
+     inkscape:cx="1713.320"
+     inkscape:cy="199.763"
+     inkscape:window-width="2560"
+     inkscape:window-height="1417"
+     inkscape:window-x="-8"
+     inkscape:window-y="-8"
+     inkscape:window-maximized="1"
+     inkscape:current-layer="svg-terrane-wordmark" />
+  <defs
+     id="defs-terrane-wordmark" />
+  <g
+     id="wordmark-terrane"
+     inkscape:label="wordmark-terrane">
+    <path
+       id="wordmark-letter-1-t"
+       inkscape:label="wordmark-letter-1-t"
+       style="fill:#5a97b7;fill-opacity:1;fill-rule:evenodd;stroke:none"
+       d="M 0,0 L 410,0 L 410,64.716 L 268.238,64.716 L 268.238,399.527 L 141.762,399.527 L 141.762,64.716 L 0,64.716 Z" />
+    <path
+       id="wordmark-letter-2-e"
+       inkscape:label="wordmark-letter-2-e"
+       style="fill:#5a97b7;fill-opacity:1;fill-rule:evenodd;stroke:none"
+       d="M 440,0 L 820,0 L 820,64.716 L 566.476,64.716 L 566.476,167.405 L 780,167.405 L 780,232.121 L 566.476,232.121 L 566.476,334.811 L 820,334.811 L 820,399.527 L 440,399.527 Z" />
+    <path
+       id="wordmark-letter-3-r"
+       inkscape:label="wordmark-letter-3-r"
+       style="fill:#5a97b7;fill-opacity:1;fill-rule:evenodd;stroke:none"
+       d="M 900,0 L 900,399.527 L 1026.476,399.527 L 1026.476,272.993 L 1169.031,272.993 L 1239.697,399.527 L 1372.348,399.527 L 1270.223,253.36 l 0,-23.303 l 48.703,0 l 27.381,-27.614 L 1346.307,27.905 l -27.381,-27.905 c -139.64,0.149 -279.285,-0.003 -418.926,0 z M 1026.476,64.716 L 1169.031,64.716 l 54.401,20.891 l 0,72.953 l -54.401,20.98 L 1026.476,179.54 Z" />
+    <path
+       id="wordmark-letter-4-r"
+       inkscape:label="wordmark-letter-4-r"
+       style="fill:#5a97b7;fill-opacity:1;fill-rule:evenodd;stroke:none"
+       d="M 1452.35,0 L 1452.35,399.527 L 1578.826,399.527 L 1578.826,272.993 L 1721.381,272.993 L 1792.047,399.527 L 1924.698,399.527 L 1822.573,253.36 l 0,-23.303 l 48.703,0 l 27.381,-27.614 L 1898.657,27.905 l -27.381,-27.905 c -139.64,0.149 -279.285,-0.003 -418.926,0 z M 1578.826,64.716 L 1721.381,64.716 l 54.401,20.891 l 0,72.953 l -54.401,20.98 L 1578.826,179.54 Z" />
+    <path
+       id="wordmark-letter-5-a"
+       inkscape:label="wordmark-letter-5-a"
+       style="fill:#5a97b7;fill-opacity:1;fill-rule:evenodd;stroke:none"
+       d="M 2032.08,0 L 2423.62,0 L 2451,27.91 L 2451,399.527 L 2328.13,399.527 L 2328.13,272.99 L 2131.176,272.99 L 2131.176,399.527 L 2004.7,399.527 L 2004.7,27.91 Z M 2131.176,85.61 L 2185.576,64.716 L 2273.73,64.716 L 2328.13,85.61 L 2328.13,179.54 L 2131.176,179.54 Z" />
+    <path
+       id="wordmark-letter-6-n"
+       inkscape:label="wordmark-letter-6-n"
+       style="fill:#5a97b7;fill-opacity:1;fill-rule:evenodd;stroke:none"
+       d="M 2531,399.527 L 2640.499,399.527 L 2640.499,175.82 l 22.797,0 l 224.458,223.707 l 78.886,0 L 2966.64,0.386 L 2883.044,0.386 L 2883.044,247.161 L 2860.247,247.161 L 2611.064,0.385 l -80.064,0 z" />
+    <path
+       id="wordmark-letter-7-e"
+       inkscape:label="wordmark-letter-7-e"
+       style="fill:#5a97b7;fill-opacity:1;fill-rule:evenodd;stroke:none"
+       d="M 3046.64,0 L 3426.64,0 L 3426.64,64.716 L 3173.116,64.716 L 3173.116,167.405 L 3386.64,167.405 L 3386.64,232.121 L 3173.116,232.121 L 3173.116,334.811 L 3426.64,334.811 L 3426.64,399.527 L 3046.64,399.527 Z" />
+  </g>
+  <metadata
+     id="metadata-terrane-wordmark"><c2pa:manifest>AAAWgmp1bWIAAAAeanVtZGMycGEAEQAQgAAAqgA4m3EDYzJwYQAAABZcanVtYgAAAEdqdW1kYzJtYQARABCAAACqADibcQN1cm46YzJwYTo3MzI4OGQyMC00ZDZhLTQ0ZTctOTYzNS0xNzBjYzlhMjQ2NjcAAAADl2p1bWIAAAApanVtZGMyYXMAEQAQgAAAqgA4m3EDYzJwYS5hc3NlcnRpb25zAAAAALxqdW1iAAAARGp1bWRjYm9yABEAEIAAAKoAOJtxE2MycGEuaW5ncmVkaWVudC52MwAAAAAYYzJzaDdUlvHHHUpGj4LX6Md5/kIAAABwY2JvcqNpZGM6Zm9ybWF0bWltYWdlL3N2Zyt4bWxqaW5zdGFuY2VJRHgseG1wOmlpZDo4NGI2NDkyZS0yYTI5LTQ0NTAtYjBkZS1hZjBkMDEwNTA1MmZscmVsYXRpb25zaGlwaHBhcmVudE9mAAAB4mp1bWIAAABBanVtZGNib3IAEQAQgAAAqgA4m3ETYzJwYS5hY3Rpb25zLnYyAAAAABhjMnNofmQjkdik8hH396CAZhsvrgAAAZljYm9yomdhY3Rpb25zgqJmYWN0aW9ua2MycGEub3BlbmVkanBhcmFtZXRlcnOha2luZ3JlZGllbnRzgaJjdXJseC1zZWxmI2p1bWJmPWMycGEuYXNzZXJ0aW9ucy9jMnBhLmluZ3JlZGllbnQudjNkaGFzaFggDEBJALqFBZKWAJW9pmhW6AXMVF8KblTR8y/4KuwACyOkZmFjdGlvbngdY29tLmFudGhyb3BpYy5jbGF1ZGUucHJvdmlkZWRqcGFyYW1ldGVyc6F4H2NvbS5hbnRocm9waWMub3JpZ2luLWNvbmZpZGVuY2VndW5rbm93bmtkZXNjcmlwdGlvbnhmQ2xhdWRlIHByb3ZpZGVkIHRoaXMgZmlsZSBhdCB0aGUgcmVxdWVzdCBvZiBhIHVzZXIgYW5kIG1heSBoYXZlIGNyZWF0ZWQgb3IgbW9kaWZpZWQgdGhlIGZpbGUgY29udGVudHMubXNvZnR3YXJlQWdlbnShZG5hbWVmQ2xhdWRlcmFsbEFjdGlvbnNJbmNsdWRlZPUAAADIanVtYgAAAEBqdW1kY2JvcgARABCAAACqADibcRNjMnBhLmhhc2guZGF0YQAAAAAYYzJzaAE5OulcLEj7XYjnOMKD+zQAAACAY2JvcqVjYWxnZnNoYTI1NmNwYWRMAAAAAAAAAAAAAAAAZGhhc2hYIP4Opfq85J/calLBalSwZiItb0ZvxmXOMRE1fstN6raAZG5hbWVuanVtYmYgbWFuaWZlc3RqZXhjbHVzaW9uc4GiZXN0YXJ0GR0HZmxlbmd0aBkeBAAAAj5qdW1iAAAAJ2p1bWRjMmNsABEAEIAAAKoAOJtxA2MycGEuY2xhaW0udjIAAAACD2Nib3KlY2FsZ2ZzaGEyNTZpc2lnbmF0dXJleE1zZWxmI2p1bWJmPS9jMnBhL3VybjpjMnBhOjczMjg4ZDIwLTRkNmEtNDRlNy05NjM1LTE3MGNjOWEyNDY2Ny9jMnBhLnNpZ25hdHVyZWppbnN0YW5jZUlEeCx4bXA6aWlkOmUzOTEwZGZiLThiMDYtNDgxOS1iYWM5LTQ0ZmFjNWQzYzEzY3JjcmVhdGVkX2Fzc2VydGlvbnODomN1cmx4LXNlbGYjanVtYmY9YzJwYS5hc3NlcnRpb25zL2MycGEuaW5ncmVkaWVudC52M2RoYXNoWCAMQEkAuoUFkpYAlb2maFboBcxUXwpuVNHzL/gq7AALI6JjdXJseCpzZWxmI2p1bWJmPWMycGEuYXNzZXJ0aW9ucy9jMnBhLmFjdGlvbnMudjJkaGFzaFggzDjHfwusZ1GnILk5PK+Pziw40pi0qRnlj18LQ4GDSuGiY3VybHgpc2VsZiNqdW1iZj1jMnBhLmFzc2VydGlvbnMvYzJwYS5oYXNoLmRhdGFkaGFzaFggv84p/D5B8EBZVELiXCbXZZ8ujlBV8IPCmCZQOUEpJTJ0Y2xhaW1fZ2VuZXJhdG9yX2luZm+jZG5hbWVvQW50aHJvcGljIEZpbGVzZ3ZlcnNpb25lMS4wLjBrc3BlY1ZlcnNpb25lMi40LjAAABA4anVtYgAAAChqdW1kYzJjcwARABCAAACqADibcQNjMnBhLnNpZ25hdHVyZQAAABAIY2JvctKEWQISogEmGCFZAgowggIGMIIBjaADAgECAhRA5aAK7sI50L64g/oGQgU9Z1UTADAKBggqhkjOPQQDAzBJMRcwFQYDVQQKEw5BbnRocm9waWMsIFBCQzEuMCwGA1UEAxMlQW50aHJvcGljIENvbnRlbnQgQ3JlZGVudGlhbHMgUm9vdCBDQTAeFw0yNjA4MDcxODQzNTZaFw0yODA4MDYxOTQzNTZaMEQxFzAVBgNVBAoTDkFudGhyb3BpYywgUEJDMSkwJwYDVQQDEyBBbnRocm9waWMgQ2xhdWRlIENvbnRlbnQgU2lnbmluZzBZMBMGByqGSM49AgEGCCqGSM49AwEHA0IABJh6CmvLUBgFFNU0vUKlOVtE6djd17L5SuwX0LemFisBM3dkd/3cyjxFA3Qo5S46fX0/ihY0VZ7mfb9KF703t5OjWDBWMA4GA1UdDwEB/wQEAwIHgDAVBgNVHSUEDjAMBgorBgEEAYPoXgIBMAwGA1UdEwEB/wQCMAAwHwYDVR0jBBgwFoAUzlHiBIFOZFsj+OPEz5o+nMHXXMIwCgYIKoZIzj0EAwMDZwAwZAIwMXMdFJ4BetLLVY7ORuE9noqbbAZOZn/aArXyTwFAZfKrPzxF2vPoJNf1+UCdg1XGAjBwX1zd9WGqYkqmL5SFqw1QySjr1zJfpJM9+1rdDwSPLMOPOjKuiXjoU/pUUeG9RwmhY3BhZFkNngAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAPZYQCSbt+OZPCD7u5zmakFPWh4cgD7TTWetya9dtfJvqT8mCBqiM8j3dZra65lRdH8qfdi2PlftKKgo+zZrweujWdY=</c2pa:manifest>
+    <rdf:RDF>
+      <cc:Work
+         rdf:about="">
+        <dc:title>TERRANE Wordmark, Solid</dc:title>
+        <dc:date>2026-11-12</dc:date>
+        <dc:creator>
+          <cc:Agent>
+            <dc:title>Dennis 'dendogg' Smaltz</dc:title>
+          </cc:Agent>
+        </dc:creator>
+        <dc:contributor>
+          <cc:Agent>
+            <dc:title>Anthropic - Claude Opus 5.5</dc:title>
+          </cc:Agent>
+        </dc:contributor>
+        <dc:rights>
+          <cc:Agent>
+            <dc:title>Dennis 'dendogg' Smaltz</dc:title>
+          </cc:Agent>
+        </dc:rights>
+        <dc:language>en</dc:language>
+        <dc:description>Solid, single-colour TERRANE wordmark: R and N drawn by Dennis, T, E and A drafted in their construction. The loading sheet uses the framed wordmark instead.</dc:description>
+        <dc:subject>
+          <rdf:Bag>
+            <rdf:li>terrane</rdf:li>
+            <rdf:li>wordmark</rdf:li>
+            <rdf:li>logotype</rdf:li>
+            <rdf:li>display-lettering</rdf:li>
+            <rdf:li>chamfer</rdf:li>
+          </rdf:Bag>
+        </dc:subject>
+      </cc:Work>
+    </rdf:RDF>
+  </metadata>
+</svg>

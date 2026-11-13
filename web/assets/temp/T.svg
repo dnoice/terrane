@@ -1,0 +1,185 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Created with Inkscape (http://www.inkscape.org/) -->
+
+<svg
+   width="91.200302"
+   height="81.136909"
+   viewBox="0 0 91.200302 81.136909"
+   version="1.1"
+   id="svg1"
+   inkscape:version="1.4.4 (dcaf3e7, 2026-05-05)"
+   sodipodi:docname="T.svg"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns:xlink="http://www.w3.org/1999/xlink"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <sodipodi:namedview
+     id="namedview1"
+     pagecolor="#ffffff"
+     bordercolor="#000000"
+     borderopacity="0.25"
+     inkscape:showpageshadow="2"
+     inkscape:pageopacity="0.0"
+     inkscape:pagecheckerboard="0"
+     inkscape:deskcolor="#d1d1d1"
+     inkscape:document-units="px"
+     showborder="false"
+     inkscape:zoom="2.7612756"
+     inkscape:cx="40.379889"
+     inkscape:cy="74.241051"
+     inkscape:window-width="2560"
+     inkscape:window-height="1417"
+     inkscape:window-x="-8"
+     inkscape:window-y="-8"
+     inkscape:window-maximized="1"
+     inkscape:current-layer="layer1" />
+  <defs
+     id="defs1">
+    <linearGradient
+       inkscape:collect="always"
+       xlink:href="#linearGradient11"
+       id="linearGradient12"
+       x1="-150.20464"
+       y1="512.91998"
+       x2="-148.71457"
+       y2="507.35898"
+       gradientUnits="userSpaceOnUse" />
+    <linearGradient
+       id="linearGradient11"
+       inkscape:collect="always">
+      <stop
+         style="stop-color:#d3b981;stop-opacity:1;"
+         offset="0"
+         id="stop11" />
+      <stop
+         style="stop-color:#9d621e;stop-opacity:1;"
+         offset="1"
+         id="stop12" />
+    </linearGradient>
+    <linearGradient
+       inkscape:collect="always"
+       xlink:href="#linearGradient2"
+       id="linearGradient3"
+       x1="-138.98364"
+       y1="507.25449"
+       x2="-138.98363"
+       y2="503.24942"
+       gradientUnits="userSpaceOnUse" />
+    <linearGradient
+       id="linearGradient2"
+       inkscape:collect="always">
+      <stop
+         style="stop-color:#9d621e;stop-opacity:1;"
+         offset="0"
+         id="stop2" />
+      <stop
+         style="stop-color:#34749a;stop-opacity:1;"
+         offset="1"
+         id="stop3" />
+    </linearGradient>
+    <linearGradient
+       inkscape:collect="always"
+       xlink:href="#linearGradient4"
+       id="linearGradient5"
+       x1="-152.9511"
+       y1="497.01096"
+       x2="-152.92664"
+       y2="513.47144"
+       gradientUnits="userSpaceOnUse" />
+    <linearGradient
+       id="linearGradient4"
+       inkscape:collect="always">
+      <stop
+         style="stop-color:#78b2cd;stop-opacity:1;"
+         offset="0"
+         id="stop4" />
+      <stop
+         style="stop-color:#d3b981;stop-opacity:1;"
+         offset="1"
+         id="stop5" />
+    </linearGradient>
+  </defs>
+  <g
+     inkscape:label="Layer 1"
+     inkscape:groupmode="layer"
+     id="layer1"
+     transform="translate(-479.00001,-281.00001)">
+    <g
+       id="g20"
+       transform="matrix(5.5106489,0,0,5.5106489,3308.8663,1125.9241)">
+      <path
+         id="rect5"
+         style="fill:#f1f4f0;fill-opacity:1;fill-rule:evenodd;stroke-width:0;stroke-linecap:round;stroke-linejoin:round;paint-order:markers fill stroke"
+         d="m -512.76367,-152.5625 v 2.72656 h 6.14844 v 10.47071 h 2.72656 v -10.47071 h 6.14844 v -2.72656 h -6.14844 -2.72656 z" />
+      <rect
+         style="fill:#78b2cd;fill-opacity:1;fill-rule:evenodd;stroke-width:0;stroke-linecap:round;stroke-linejoin:round;paint-order:markers fill stroke"
+         id="rect6"
+         width="0.76319349"
+         height="2.7265601"
+         x="-497.74023"
+         y="-152.5625" />
+      <rect
+         style="fill:#d3b981;fill-opacity:1;fill-rule:evenodd;stroke-width:0;stroke-linecap:round;stroke-linejoin:round;paint-order:markers fill stroke"
+         id="rect7"
+         width="0.76319349"
+         height="2.7265601"
+         x="-513.52686"
+         y="-152.5625" />
+      <rect
+         style="fill:#9d621e;fill-opacity:1;fill-rule:evenodd;stroke-width:0;stroke-linecap:round;stroke-linejoin:round;paint-order:markers fill stroke"
+         id="rect8"
+         width="0.76319349"
+         height="10.470708"
+         x="-507.37842"
+         y="-149.83594" />
+      <rect
+         style="fill:#34749a;fill-opacity:1;fill-rule:evenodd;stroke-width:0;stroke-linecap:round;stroke-linejoin:round;paint-order:markers fill stroke"
+         id="rect9"
+         width="0.76319349"
+         height="10.470708"
+         x="-503.88867"
+         y="-149.83594" />
+      <rect
+         style="fill:none;fill-opacity:1;fill-rule:evenodd;stroke-width:0;stroke-linecap:round;stroke-linejoin:round;paint-order:markers fill stroke"
+         id="rect10"
+         width="0.76319349"
+         height="6.1484451"
+         x="-149.83594"
+         y="496.97705"
+         transform="rotate(90)" />
+      <rect
+         style="fill:url(#linearGradient12);fill-opacity:1;fill-rule:evenodd;stroke-width:0;stroke-linecap:round;stroke-linejoin:round;paint-order:markers fill stroke"
+         id="rect11"
+         width="0.76319349"
+         height="6.9116287"
+         x="-149.83594"
+         y="506.61523"
+         transform="rotate(90)" />
+      <rect
+         style="fill:#78b2cd;fill-opacity:1;fill-rule:evenodd;stroke-width:0;stroke-linecap:round;stroke-linejoin:round;paint-order:markers fill stroke"
+         id="rect1"
+         width="0.76319587"
+         height="6.1484356"
+         x="-149.83594"
+         y="496.97705"
+         transform="rotate(90)" />
+      <rect
+         style="fill:url(#linearGradient3);fill-opacity:1;fill-rule:evenodd;stroke-width:0;stroke-linecap:round;stroke-linejoin:round;paint-order:markers fill stroke"
+         id="rect2"
+         width="0.76319349"
+         height="4.2529469"
+         x="-139.36523"
+         y="503.12549"
+         transform="rotate(90)" />
+      <rect
+         style="fill:url(#linearGradient5);fill-opacity:1;fill-rule:evenodd;stroke-width:0;stroke-linecap:round;stroke-linejoin:round;paint-order:markers fill stroke"
+         id="rect3"
+         width="0.76319349"
+         height="16.54982"
+         x="-153.3257"
+         y="496.97705"
+         transform="rotate(90)" />
+    </g>
+  </g>
+</svg>

@@ -1,10 +1,10 @@
 <!--
 ✒ Metadata
-    - Title: Package Manifest (Terrane Edition - v1.3)
+    - Title: Package Manifest (Terrane Edition - v1.5)
     - File Name: package.json
     - Relative Path: package.json
     - Artifact Type: config
-    - Version: 1.3.0
+    - Version: 1.5.0
     - Date: 11/12/2026
     - Update: Thursday, November 12, 2026
     - Author: Dennis 'dendogg' Smaltz
@@ -12,6 +12,12 @@
     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
 
 ✒ Changelog:
+    - 1.5.0 (11/12/2026) [dendogg + Anthropic - Claude Opus 5.5] — Adds
+      the wordmark script, which builds the framed TERRANE wordmark from
+      Dennis's TER.svg and R-N.svg; run it before mark.
+    - 1.4.0 (11/12/2026) [dendogg + Anthropic - Claude Opus 5.5] — Adds
+      the mark script, which regenerates web/js/terrane-mark.js (the T,
+      its grid and the TERRANE wordmark as data) from the drawings.
     - 1.3.0 (11/12/2026) [dendogg + Anthropic - Claude Opus 5.5] — Adds
       the vendor script, which fetches the pinned browser libraries once
       and verifies them offline, and raises the package version to 1.2.0
@@ -40,6 +46,11 @@
       the snapshot and thumbnails and touches no real file
     - snapshot: records a directory's structure into a dataset
     - thumbs: builds or updates the thumbnail dataset (Python and Pillow)
+    - wordmark: builds web/assets/logos/TERRANE-wordmark-framed.svg from
+      Dennis's TER.svg and R-N.svg (Python with svgelements and shapely)
+    - mark: regenerates web/js/terrane-mark.js from the T drawings and
+      the framed wordmark (Python with svgelements and shapely); run it
+      after changing any of them, and after wordmark
     - test: runs the service smoke test against a throwaway directory
     - vendor: fetches the pinned third-party browser files into
       web/vendor/ from jsDelivr; --check verifies them offline
@@ -55,6 +66,8 @@
     npm run dev -- --target "C:\path\to\directory"
     npm run snapshot -- "C:\path\to\directory"
     npm run thumbs -- --heavy-svg
+    npm run wordmark
+    npm run mark
     npm test
     npm run ui-check
     npm run ui-check -- core --pass nogl
@@ -65,7 +78,9 @@
     - Dependencies: none at run time (three.js, Motion, Floating UI,
       Lucide icons and the fonts are vendored in web/);
       the thumbnail builder needs Python 3.10+ with Pillow, and Inkscape
-      for heavy SVGs; ui-check needs Microsoft Edge or Google Chrome
+      for heavy SVGs; the wordmark and mark generators need Python
+      3.10+ with svgelements and shapely; ui-check needs Microsoft Edge or Google
+      Chrome
     - Compatible platforms: Node.js 22.5 or newer
     - License: MIT (see LICENSE); private stays true so the package is
       never published to npm by accident

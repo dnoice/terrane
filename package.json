@@ -14,6 +14,8 @@
     "dev": "node tools/dev.mjs",
     "snapshot": "node tools/snapshot.mjs",
     "thumbs": "python tools/thumbs.py",
+    "wordmark": "python tools/build_terrane_wordmark.py",
+    "mark": "python tools/build_terrane_mark.py",
     "test": "node tools/smoke-test.mjs",
     "ui-check": "node tools/ui-check.mjs",
     "vendor": "node tools/vendor.mjs",

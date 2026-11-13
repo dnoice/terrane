@@ -1,10 +1,10 @@
 <!--
 ✒ Metadata
-    - Title: Terrane Readme (Terrane Edition - v1.2)
+    - Title: Terrane Readme (Terrane Edition - v1.4)
     - File Name: README.md
     - Relative Path: README.md
     - Artifact Type: docs
-    - Version: 1.2.0
+    - Version: 1.4.0
     - Date: 11/12/2026
     - Update: Thursday, November 12, 2026
     - Author: Dennis 'dendogg' Smaltz
@@ -12,6 +12,18 @@
     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
 
 ✒ Changelog:
+    - 1.4.0 (11/12/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
+      framed wordmark and `npm run wordmark`, which builds it from
+      Dennis's TER.svg and R-N.svg; the project map lists both
+      wordmarks and the new tool.
+    - 1.3.1 (11/12/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
+      project map describes T Madness as it now stands: ten variants on
+      a slab with depth, six played with the pointer.
+    - 1.3.0 (11/12/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
+      loading sheet under Launch; `npm run mark`; the project map lists
+      the mark, the sheet, T Madness, the wordmark and the generator;
+      the interface check with the sheet in place under What was
+      verified.
     - 1.2.0 (11/12/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
       instruments over the world, the browser check and the vendoring
       tool; the project map lists the stylesheet modules and the new
@@ -72,6 +84,14 @@ node server/terrane.mjs "C:\Users\DnnsS\OneDrive\Desktop\dd1\projects"
 The service prints its address (`http://127.0.0.1:4173/`) and opens it in
 the default browser. Stop it with Ctrl+C.
 
+The page opens on a loading sheet: the T is surveyed and laid down
+stratum by stratum while the service connects and the first survey
+arrives, and the line beneath the TERRANE wordmark says which of those
+is happening. When the first batch is drawn the sheet is excavated
+away. Once the page is ready, a click or any key skips what is left of
+the intro. With reduced motion the sheet shows the finished T and leaves
+without moving.
+
 | Option | Effect |
 | ------ | ------ |
 | `--read-only` | Refuses every action that changes the disk. Start here on anything you care about. |
@@ -117,6 +137,8 @@ It does four things:
 | `node server/terrane.mjs --snapshot <folder>` | Serve a snapshot without the dev runner |
 | `npm run ui-check` | Drive the page in headless Edge or Chrome, keyboard only, with and without WebGL |
 | `npm run vendor -- --check` | Verify the vendored browser libraries against their recorded digests |
+| `npm run wordmark` | Rebuild the framed wordmark from Dennis's `TER.svg` and `R-N.svg` (Python with svgelements and shapely) |
+| `npm run mark` | Rebuild `web/js/terrane-mark.js` from the T drawings and the framed wordmark; run it after `npm run wordmark` |
 
 Datasets live in `%LOCALAPPDATA%\terrane\datasets\<name>` (on other
 systems `~/.cache/terrane/datasets`), outside the project and outside
@@ -216,12 +238,14 @@ by the Windows hidden attribute.
 | Same snapshot in Chrome on an RTX 5050 laptop GPU | Surveyed in 1.6 s; 84 MB heap; 60 fps at the overview (the display's limit); search, fly-to seven levels down, inspector and hover thumbnails exercised |
 | Thumbnails of the same tree | 11,103 rasters and 4,467 light SVGs in about 3 minutes, 255 MB; an inspector preview is one 32 KB request in place of a 2.2 MB original |
 | `npm run ui-check` on Windows 11 (11/12/2026): keyboard routes, layout budget, relation lines, seams, focus and the age table, in a WebGL pass and a pass with WebGL disabled | 314 passed; draw calls at the recorded baseline |
+| `npm run ui-check` on Linux, software rendering (11/12/2026), with the loading sheet in place: every earlier scenario, plus `splash` (the sheet covers the page and makes it inert, names each stage, keeps Tab out, a key skips it once the survey is done, the page comes back intact, reduced motion does not move) | 354 passed across the two passes: the 314 earlier checks unchanged, 40 new; draw calls at the recorded baseline |
 | Scale: synthetic 400,018 files in 28,575 folders, 12 levels deep (11/09/2026, Linux) | Scan 7 to 12 s on 2 cores; 85 MB browser heap; layout plus paint about 10 ms; pick 0.08 ms |
 
 Not verified: running on macOS; frame rate at street level in the largest
 trees on a hardware GPU; Open and Reveal reaching a desktop application on
 Windows; the progress panel driven in a browser (its service side is
-covered by `npm test`).
+covered by `npm test`); the loading sheet in Firefox and Safari, and on
+Windows.
 
 ## Continuing development
 
@@ -236,7 +260,8 @@ server/thumbs.mjs    serves the thumbnail dataset
 web/index.html       page structure
 web/css/terrane.css  stylesheet entry: cascade layers and module imports
 web/css/tokens.css   every colour, size, shadow, layer and motion value
-web/css/components/  controls, bar, ledger, stage, inspector, block, floating
+web/css/components/  controls, bar, ledger, stage, inspector, block, floating,
+                     splash (the loading sheet)
 web/css/*.css        also: fonts, base, layout, utilities, motion, print
 web/js/app.js        controller: state, service calls, panels, progress
 web/js/model.js      tree model, aggregation, search, survey
@@ -251,10 +276,18 @@ web/js/motion.js     counting figures, FLIP, springs (Motion, or WAAPI)
 web/js/hud.js        north arrow, storage scale, the print frame
 web/js/features.js   the feature modules app.js installs
 web/js/timeline.js   the shared table of bytes by last change
+web/js/splash.js     the loading sheet: survey, strata, sounding, excavation
+web/js/terrane-mark.js  the T, its grid and the wordmark as data (generated)
+web/js/t-madness.js  ten T animations on a slab with depth, six played with
+                     the pointer; not loaded by the app
+web/assets/logos/    TERRANE-wordmark-framed.svg (the loading sheet's),
+                     TERRANE-wordmark.svg (single colour)
 web/vendor/          three.js, Floating UI, Motion, Lucide; see VENDORED.md
 tools/dev.mjs        development runner (snapshot mode, kept current)
 tools/snapshot.mjs   take a structure snapshot
 tools/thumbs.py      build and update the thumbnail dataset
+tools/build_terrane_wordmark.py  generate the framed wordmark (npm run wordmark)
+tools/build_terrane_mark.py  generate web/js/terrane-mark.js (npm run mark)
 tools/ui-check.mjs   headless browser check; scenarios in tools/ui-scenarios/
 tools/vendor.mjs     fetch and verify the vendored browser libraries
 tools/               also: fixture generator, smoke test

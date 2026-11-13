@@ -36,6 +36,9 @@ here unchanged in the same edit.
 
 ## web/js/app.js
 
+- 1.4.0 (11/12/2026) [dendogg + Anthropic - Claude Opus 5.5] — The loading sheet (splash.js)
+  covers the page from start until the service answers and the first survey batch is drawn,
+  naming each stage; it leaves early on either failure so the veil can explain.
 - 1.3.0 (11/12/2026) [dendogg + Anthropic - Claude Opus 5.5] — Icons on menus, tabs, sort keys,
   actions and operations; the north arrow and storage scale over the world (hud.js); tab and lens
   indicators that slide; status figures that count to their new values; the inspector settles in
@@ -58,6 +61,9 @@ here unchanged in the same edit.
 
 ## web/index.html
 
+- 1.4.0 (11/12/2026) [dendogg + Anthropic - Claude Opus 5.5] — The loading sheet's host, first in
+  the body: the T is surveyed and laid down stratum by stratum while the service connects and the
+  first survey arrives, then the sheet is excavated away.
 - 1.3.0 (11/12/2026) [dendogg + Anthropic - Claude Opus 5.5] — Icons on every tool, the survey
   frame and instruments over the world (north arrow, storage scale), panel toggles in the view
   tools, a clear button and key hint in Find, a strata favicon, and the vendored Motion and
@@ -70,6 +76,8 @@ here unchanged in the same edit.
 
 ## web/css/terrane.css
 
+- 2.1.0 (11/12/2026) [dendogg + Anthropic - Claude Opus 5.5] — The loading sheet joins the
+  components layer (components/splash.css): the T mark, the TERRANE wordmark and the status line.
 - 2.0.0 (11/12/2026) [dendogg + Anthropic - Claude Opus 5.5] — The one stylesheet becomes the
   entry to a layered system: tokens, fonts, base, layout, seven component modules, utilities,
   motion and print, each in its own file and cascade layer. Adds icons, the highlighter sweep,
