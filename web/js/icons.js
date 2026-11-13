@@ -1,18 +1,24 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Icons (Terrane Edition - v1.1)
+ *     - Title: Icons (Terrane Edition - v1.2)
  *     - File Name: icons.js
  *     - Relative Path: web/js/icons.js
  *     - Artifact Type: javascript
- *     - Version: 1.1.0
- *     - Date: 11/12/2026
- *     - Update: Thursday, November 12, 2026
+ *     - Version: 1.2.0
+ *     - Date: 11/13/2026
+ *     - Update: Friday, November 13, 2026
  *     - Author: Dennis 'dendogg' Smaltz
  *     - A.I. Acknowledgement: Anthropic - Claude Opus 5.5
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
  *
  * ✒ Changelog:
+ *     - 1.2.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] —
+ *       withIcon, which nothing called, is gone, and so are the names keys,
+ *       root, status, north, folder and file, which named icons nothing
+ *       draws (the north arrow is drawn inline). ICON also names
+ *       the icons web/index.html draws by their Lucide names, so the same
+ *       action has one icon wherever it appears.
  *     - 1.1.0 (11/12/2026) [dendogg + Anthropic - Claude Opus 5.5] — Names
  *       for the As of stepper: time (calendar-clock), earlier and later
  *       (the left and right chevrons). Names for landmarks: places (the
@@ -32,13 +38,12 @@
  *     - icon(name) returns a decorative, aria-hidden SVG element
  *     - ICON maps the interface's actions to Lucide names in one table, so
  *       the same action has the same icon in the bar, the menu and the
- *       inspector
- *     - withIcon(button, name) prepends an icon to an existing control
- *       without disturbing its text, which tests and screen readers read
+ *       inspector; it also names the icons web/index.html draws by their
+ *       Lucide names (the view tools, the altitude), for the same reason
  *     - Any Lucide name in the sprite may be passed directly as well
  *
  * ✒ Usage Instructions:
- *     import { icon, ICON, withIcon } from './icons.js';
+ *     import { icon, ICON } from './icons.js';
  *     button.prepend(icon(ICON.rename));
  *     el('button', { class: 'btn' }, icon('trash-2'), 'Remove…');
  *
@@ -61,7 +66,6 @@ export const ICON = Object.freeze({
   guide: 'book-open',
   search: 'search',
   close: 'x',
-  keys: 'keyboard',
   zoomIn: 'zoom-in',
   zoomOut: 'zoom-out',
   turnLeft: 'rotate-ccw',
@@ -71,7 +75,6 @@ export const ICON = Object.freeze({
   overview: 'scan',
   ledger: 'panel-left',
   inspector: 'panel-right',
-  north: 'navigation-2',
   altitude: 'mountain',
   goThere: 'corner-down-right',
   open: 'square-arrow-out-up-right',
@@ -98,13 +101,9 @@ export const ICON = Object.freeze({
   dup: 'layers',
   sortDown: 'arrow-down-wide-narrow',
   sortUp: 'arrow-up-narrow-wide',
-  folder: 'folder',
-  file: 'file',
-  root: 'hard-drive',
   less: 'minus',
   more: 'plus',
   grain: 'scale',
-  status: 'radar',
   verify: 'sparkles',
   restore: 'history',
   selectAll: 'list-filter',
@@ -137,11 +136,4 @@ export function icon(name, { label, className = '' } = {}) {
   use.setAttribute('href', `${SPRITE}#${id}`);
   svg.append(use);
   return svg;
-}
-
-/** Prepends an icon to a control, once; the control's text is untouched. */
-export function withIcon(control, name) {
-  if (!control || control.querySelector(':scope > svg.icon')) return control;
-  control.prepend(icon(name));
-  return control;
 }

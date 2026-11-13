@@ -1,10 +1,10 @@
 <!--
 ✒ Metadata
-    - Title: Shipped File Changelogs (Terrane Edition - v1.2)
+    - Title: Shipped File Changelogs (Terrane Edition - v1.3)
     - File Name: CHANGELOG.md
     - Relative Path: CHANGELOG.md
     - Artifact Type: docs
-    - Version: 1.2.0
+    - Version: 1.3.0
     - Date: 11/13/2026
     - Update: Friday, November 13, 2026
     - Author: Dennis 'dendogg' Smaltz
@@ -12,6 +12,10 @@
     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
 
 ✒ Changelog:
+    - 1.3.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — Records the hardening
+      pass: app.js 1.7.0 in full, index.html 1.6.0 and viewport.js 1.5.0. Adds the sections
+      for web/js/ui.js and web/css/tokens.css, whose 1.0.0 entries left their headers with
+      the 1.3.0 releases.
     - 1.2.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — Records app.js 1.6.0 and
       terrane.css 2.3.0: the Findings sort keys, the Survey and query seams, and the
       session traverse's stylesheet; the Age lens's typical age for closed masses and the
@@ -49,6 +53,28 @@ here unchanged in the same edit.
 
 ## web/js/app.js
 
+- 1.7.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — Hardening: a folder gone from
+  disk no longer stalls every refresh; Rescan all lets go of the old tree and runs the search
+  again; the forced unfold ends at the overview or off its branch; focus survives a redraw or a
+  hidden panel; a narrow inspector drawer and a single-key setting; a page the service did not
+  serve asks it nothing. In full: refreshDirs reads a folder that is gone from disk through its
+  parent in the same pass, where it used to wait on a refresh chained behind itself, which left
+  every later refresh, Undo, Restore, F5 and B waiting for good. fullScan stops placing and lets
+  go of S.force, S.search, S.sessions, the sorted Findings and a held flight, then runs the query
+  again once the new tree is surveyed; Findings says the search will run again meanwhile.
+  forceOpen(node) opens the way to a folded folder for setFocus, reveal and J, and the unfold
+  ends at the overview (overview(): 0, Home, the view tools, the menu) or when the location
+  settles off that branch. keepFocus puts focus back on a control a redraw rebuilt (the legend's
+  kind chips, the sort keys, the Survey and Places rows, the inspector's buttons), else on its
+  container; the rich panel's sections keep whether they are open. A panel that holds focus
+  hands it to its toggle before it hides, and says so; below 860 px ] opens the inspector as a
+  drawer and its toggle says what is shown. The guide's setting keeps single-key shortcuts to
+  the world and the ledger list (WCAG 2.1.4). Unavailable inspector actions stay in the tab
+  order, aria-disabled, with their reason in their name and a visible note. The altitude and the
+  status label are written only when they change; without WebGL the canvas says what still
+  works. The ledger list is named for what it shows and keeps its cursor on its item. A page
+  whose token is still the placeholder stops before its first request (elsewhere.js explains).
+  The api gains forceOpen and overview.
 - 1.6.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — Findings sorts by Size or
   Changed; a search opens in the order it asks for and keeps the one chosen until the query
   changes, and Select all follows the order shown. The Survey tab's sections are a registry
@@ -95,6 +121,12 @@ here unchanged in the same edit.
 
 ## web/index.html
 
+- 1.6.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — js/elsewhere.js, a classic script
+  before the app, tells a page the service did not serve how to start Terrane. The altitude
+  readout is no longer a live region and the status cell announces its state, not its counting
+  figures. The lens names sit in spans so the narrow title block can show icons and keep the
+  names; the ledger's rich panel and the inspector body take focus when a redraw removes the
+  control that had it.
 - 1.5.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — An As of cell in the title block: a
   stepper for the date the world looks back to (earlier, the date or Now, later), reachable by Tab.
 - 1.4.0 (11/12/2026) [dendogg + Anthropic - Claude Opus 5.5] — The loading sheet's host, first in
@@ -151,6 +183,11 @@ here unchanged in the same edit.
 
 ## web/js/viewport.js
 
+- 1.5.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — The relation layer is drawn only
+  while it holds a line (three.js draws an empty range), and labels are placed again only when
+  the eye, the layout, the marks or the canvas change, not on a frame redrawn for a hover. The
+  overview, a selection and a search each cost one draw call fewer; the baseline was recorded
+  again (overview 6, selected 8, search 7, dupTies 9).
 - 1.4.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — The walls of an open archive's
   chamber (BOX.WALL) carry no label; its floor is labelled with the archive's name, as a folder
   is. The header no longer calls the labels readable by assistive technology: their layer is
@@ -174,5 +211,41 @@ here unchanged in the same edit.
   segments and lift are made whole and finite, so one bad set cannot blank the others; frame and
   screenOf stop at the drawn count.
 - 1.0.0 (11/09/2026) [dendogg + Anthropic - Claude Fable 5.2] — Initial release.
+
+## web/js/ui.js
+
+- 1.3.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — Unavailable menu items are reached
+  by the arrows and carry their reason as their description; the menu stops the browser's own
+  context menu the Menu key would open over it. The virtual list keeps its cursor on its item
+  when the list is redrawn, has a name and says several rows can be selected; ask() can start on
+  its confirm button.
+- 1.2.0 (11/12/2026) [dendogg + Anthropic - Claude Opus 5.5] — Menu items and notices carry
+  icons; the menu and tip are placed by Floating UI and unfold from the pointer's corner; notices
+  show their time left, pause it under the pointer, and leave with an animation while their
+  neighbours slide (FLIP); the virtual list cascades rows in when its items change;
+  slideIndicator moves the ink plate of a tab strip or segmented switch.
+- 1.1.0 (11/11/2026) [dendogg + Anthropic - Claude Opus 5.5] — The hover tip can carry a picture
+  below its lines.
+- 1.0.0 (11/09/2026) [dendogg + Anthropic - Claude Fable 5.2] — Initial release.
+
+## web/css/tokens.css
+
+- 1.3.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — --ink-3 darkened to #5a6661, so
+  --text-3 reads at 4.5:1 or more on every surface; --signal-deep and --search-text for search
+  figures as text; plaster, clay and mass tokens for the inspector's key (the twins of
+  THEME.plaster and THEME.clay); --z-drawer for the narrow inspector.
+- 1.2.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — The traverse in miniature:
+  --tex-traverse (a dashed ink arc with its chevron, for the Reading glyph) and --tex-dash (a
+  dashed ink stroke, for a working session's swatch). The Age lens ramp as primitives,
+  --ramp-age-0 to --ramp-age-5 (the twins of THEME.ageRamp), and --tex-strata, a closed mass in
+  three layers of it with a tick at half its height, for the typical-age glyph. --tex-chamber: a
+  walled floor, the archive kind's colour around chalk, for the glyph of an archive looked
+  inside.
+- 1.1.0 (11/12/2026) [dendogg + Anthropic - Claude Opus 5.5] — The crossed convention as tokens:
+  --crossed-wash (the 60% paper wash the world gives a crossed block) and --tex-crossed (the two
+  diagonals of a footprint). A role for benchmarks, --bench (verdigris, the colour of their
+  survey marks), and its wash. Sizes the ledger and the world's labels use that the scales
+  lacked: --fs-row and --fs-fig, the row padding and indent, and a tag's padding (11/13/2026).
+- 1.0.0 (11/12/2026) [dendogg + Anthropic - Claude Opus 5.5] — Initial release.
 
 <!-- ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once! -->

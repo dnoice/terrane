@@ -1,10 +1,10 @@
 <!--
 ✒ Metadata
-    - Title: Terrane Readme (Terrane Edition - v1.6)
+    - Title: Terrane Readme (Terrane Edition - v1.7)
     - File Name: README.md
     - Relative Path: README.md
     - Artifact Type: docs
-    - Version: 1.6.0
+    - Version: 1.7.0
     - Date: 11/13/2026
     - Update: Friday, November 13, 2026
     - Author: Dennis 'dendogg' Smaltz
@@ -12,6 +12,15 @@
     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
 
 ✒ Changelog:
+    - 1.7.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
+      hardening pass: a page opened anywhere but the service says how to
+      start it; the guide's single-key setting and the narrow window's
+      inspector drawer; the safety model covers the holding area by any
+      name, links followed only inside the root, a dropped stream and
+      the thumbnail cookie; What was verified records the runs of
+      11/13/2026 after the hardening; the project map lists
+      elsewhere.js and the hardening scenarios, and says what
+      tokens.css holds.
     - 1.6.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] —
       Looking further: the date scrub (T , . < >), benchmarks and the
       return point (B, H, J and the Places tab, with where places are
@@ -103,6 +112,10 @@ node server/terrane.mjs "C:\Users\DnnsS\OneDrive\Desktop\dd1\projects"
 
 The service prints its address (`http://127.0.0.1:4173/`) and opens it in
 the default browser. Stop it with Ctrl+C.
+
+Open the page only at that address. Opened from disk, from another
+server or from GitHub Pages it has no service behind it, and says so:
+it names the command that starts Terrane and links to this repository.
 
 The page opens on a loading sheet: the T is surveyed and laid down
 stratum by stratum while the service connects and the first survey
@@ -218,7 +231,12 @@ The breadcrumbs and the Contents tab follow the folder you are in. Clicking
 a breadcrumb, a ledger row, a search result or a survey entry flies you
 there. Everything can also be done from the ledger with the keyboard alone;
 the 3D view is never the only route. Press `?` in the app for the full key
-list.
+list. The guide also holds a setting for single-key shortcuts: turned
+off, letters, digits and signs act only while the world or the ledger
+list has focus, and Ctrl and Alt shortcuts act everywhere.
+
+Below 860 px wide (or at 200% zoom) the inspector folds away, and `]` or
+its toggle in the view tools opens it as a drawer over the world.
 
 ## Looking further
 
@@ -311,6 +329,14 @@ gives the path through the archive, `x.zip!/inner/file`.
   anything moves, and offers Keep both.
 - It never deletes directly. Remove moves items into `.terrane-trash`
   inside the authorized directory, so the move is atomic and reversible.
+- The holding area is refused by where it is, not only by its name: in
+  any case, by its short name, through a link or a junction that leads
+  there. Its index is read as untrusted data, so a record planted in it
+  can neither move nor delete anything outside its own slot, and the
+  holding area is used only while it is a plain folder.
+- A symbolic link is followed only to an end inside the directory, for a
+  preview, an archive listing, a hash, Open and Reveal; a copy or move
+  never carries a relative link to where it would point outside.
 - Every change records its inverse in a journal kept beside the holding
   area, so Undo works after a restart. Journal paths pass through the
   same guard as a request. Undo refuses, with the reason, if the disk has
@@ -324,7 +350,9 @@ gives the path through the archive, `x.zip!/inner/file`.
   a path on disk. The read stops at 100,000 entries, a 64 MB directory or
   4 seconds, and says what it left out.
 - The service listens on `127.0.0.1` only, checks the Host header, and
-  requires a per-session token on every API call.
+  requires a per-session token on every API call. The cookie that lets
+  thumbnails load carries a secret of its own, named for the port, which
+  opens thumbnails and nothing else.
 
 Limits worth knowing: the journal keeps the latest 500 changes;
 `.terrane-trash` lives inside your directory, so on a OneDrive folder it
@@ -344,7 +372,9 @@ by the Windows hidden attribute.
 | `npm run ui-check` on Linux, software rendering (11/12/2026), with the loading sheet in place: every earlier scenario, plus `splash` (the sheet covers the page and makes it inert, names each stage, keeps Tab out, a key skips it once the survey is done, the page comes back intact, reduced motion does not move) | 354 passed across the two passes: the 314 earlier checks unchanged, 40 new; draw calls at the recorded baseline |
 | Scale: synthetic 400,018 files in 28,575 folders, 12 levels deep (11/09/2026, Linux) | Scan 7 to 12 s on 2 cores; 85 MB browser heap; layout plus paint about 10 ms; pick 0.08 ms |
 | `npm test` on Windows 11 (11/13/2026): the service smoke test (boundary, static files and their revalidation, scan, every operation on disk, undo across a restart, progress and cancel, snapshot and read-only modes, the fixture's archives through `GET /api/inside`, the archive reader, the layout, relation lines, search tokens, the age table, the time view), then the landmarks store, working sessions, strata and archive interiors in Node | 358 passed (154, 76, 45, 33 and 50), none failed, after the Wave 2 merge |
-| `npm run ui-check` on Windows 11 (11/13/2026), Edge 157 on an RTX 5050 laptop GPU, on the default fixture of 3,126 files: 22 scenarios, the earlier ones plus `time`, `landmarks`, `interior`, `traverse` and `strata` and their on-disk variants, in a WebGL pass and a pass with WebGL disabled | 793 passed and 5 skipped (what needs `--snapshot`, or reads the sheet after it had gone) after the Wave 2 merge; two failures, the `splash` scenario's reload step in each pass, which timed out waiting for the sheet (the docs pass before the merge saw it in the pass without WebGL only); draw calls at the recorded baseline, with the time view, the Age lens and 64 benchmarks too |
+| `npm run ui-check` on Windows 11 (11/13/2026), Edge 157 on an RTX 5050 laptop GPU, on the default fixture of 3,126 files: 22 scenarios, the earlier ones plus `time`, `landmarks`, `interior`, `traverse` and `strata` and their on-disk variants, in a WebGL pass and a pass with WebGL disabled | 793 passed and 5 skipped (what needs `--snapshot`, or reads the sheet after it had gone) after the Wave 2 merge; two failures, the `splash` scenario's reload step in each pass, which timed out waiting for the sheet (the docs pass before the merge saw it in the pass without WebGL only); draw calls at the recorded baseline, with the time view and the Age lens too, and 64 benchmarks one call over it (the shared pin mesh) |
+| `npm test` on Windows 11 (11/13/2026), after the hardening pass: the smoke test adds the holding area by any name (case, a trailing dot, NTFS stream names, its 8.3 short name, a junction), planted holding records, a holding area that is a link, links that lead outside refused for hashing and Open, relative links a copy or move would aim outside, the thumbnail cookie, the scan writer when the page goes away, and source checks; the module tests add twins after a refresh, time inside an archive and the detail cache | 392 passed (181, 77, 45, 33 and 56), none failed |
+| `npm run ui-check` on Windows 11 (11/13/2026), Edge 157 on an RTX 5050 laptop GPU, after the hardening pass: 24 scenarios, the earlier ones plus `hardening` (focus kept through redraws and hidden panels, contrast, live regions, menus, the single-key setting, is:benchmark, the forced unfold, an 800 by 500 window, the page opened from disk and from another server) and `hardening-disk` (a folder deleted from outside, a list reordered under its cursor, Rescan all with a search), in a WebGL pass and a pass with WebGL disabled | 864 passed and 5 skipped; two failures, the `splash` scenario's reload step in each pass, as before; draw calls at the baseline recorded again once the empty relation layer stopped drawing (overview 6, selected 8, search 7, duplicate ties 9) |
 
 Not verified: running on macOS; frame rate at street level in the largest
 trees on a hardware GPU; Open and Reveal reaching a desktop application on
@@ -353,7 +383,9 @@ covered by `npm test`); the loading sheet in Firefox and Safari; the
 loading sheet after a reload under Edge on Windows, where the `splash`
 scenario's reload step times out waiting for it in one pass or both; an
 archive interior, the traverse and the time view in the largest trees,
-and on the 2-core software rasterizer.
+and on the 2-core software rasterizer; the page on GitHub Pages itself
+(its message was checked opened from disk and from a stand-in server);
+the inspector drawer and the menu's reasons with a screen reader.
 
 ## Continuing development
 
@@ -370,13 +402,15 @@ server/thumbs.mjs    serves the thumbnail dataset
 server/archive.mjs   reads a zip archive's directory, bounded (GET /api/inside)
 web/index.html       page structure
 web/css/terrane.css  stylesheet entry: cascade layers and module imports
-web/css/tokens.css   every colour, size, shadow, layer and motion value
+web/css/tokens.css   the colours, type and space scales, named sizes, shadows,
+                     layers and motion values the components read
 web/css/components/  controls, bar, ledger, stage, inspector, block, floating,
                      splash (the loading sheet), and one per feature: time,
                      places, traverse, strata, interior
 web/css/*.css        also: fonts, base, layout, utilities, motion, print
 web/js/app.js        controller: state, service calls, panels, progress, and
                      the registries feature modules fill
+web/js/elsewhere.js  a page the service did not serve says how to start it
 web/js/model.js      tree model, aggregation, search, survey
 web/js/layout.js     the spatial language and level of detail; BOX, STYLE, AUX
 web/js/viewport.js   3D world, camera, picking, transitions, relation lines
@@ -412,7 +446,8 @@ tools/smoke-test.mjs the service, the layout, the age table and the archive
                      reader, in Node (first in npm test)
 tools/places-test.mjs, relations-test.mjs, strata-test.mjs, interior-test.mjs
                      the features' DOM-free modules in Node (npm test)
-tools/ui-check.mjs   headless browser check; scenarios in tools/ui-scenarios/
+tools/ui-check.mjs   headless browser check; scenarios in tools/ui-scenarios/,
+                     hardening.mjs among them
 tools/make-fixture.mjs  the synthetic tree the checks run on (npm run fixture)
 tools/vendor.mjs     fetch and verify the vendored browser libraries
 docs/                ARCHITECTURE.md, ROADMAP.md
@@ -428,7 +463,7 @@ the exploration loop are in `docs/ROADMAP.md`.
 For GitHub Pages (deploy from the `main` branch, root folder), the root
 `index.html` forwards visitors to `web/`, so the interface keeps a
 single page. Pages can show the interface but cannot run it: the page
-needs the local service, so its world stays empty there.
+needs the local service, so there it says how to start Terrane instead.
 
 ## License
 

@@ -27,7 +27,10 @@
  *       a link left unused; relative links refused where a copy or move
  *       would aim them outside the root, and copied where they still
  *       point inside; and the scan writer settling when the page goes
- *       away while it waits for drain.
+ *       away while it waits for drain. A source section: one MM/DD/YYYY
+ *       formatter, no unused export in icons.js or model.js, every
+ *       sprite icon drawn, no raw colour in a component stylesheet and
+ *       no !important among the utilities.
  *     - 1.4.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — A
  *       static-files section: interface files carry a weak ETag with
  *       no-cache and answer 304 to it, the page is no-store with no ETag,
@@ -137,6 +140,8 @@
  *     - The time view, without the service: the layout looked back to
  *       every ladder step keeps the present's boxes and lowers only what
  *       changed after the date
+ *     - The source, read as text: one date formatter, no dead export in
+ *       the shared modules, no idle icon, colours only from tokens.css
  *
  * ✒ Usage Instructions:
  *     node tools/smoke-test.mjs
@@ -1583,6 +1588,56 @@ for (const [label, cam, grain, force] of timeEyes) {
 check(`looked back to each of the 19 steps from four eyes, every layout keeps the present's boxes, keys and footprints; changed files and empty folders are crossed slabs, closed masses are lowered by what they kept, nothing rises going back, and time.js agrees (${timeCounts.boxes.toLocaleString('en-US')} boxes: ${timeCounts.crossed.toLocaleString('en-US')} crossed, ${timeCounts.sunk.toLocaleString('en-US')} lowered)`,
   timeProblems.length === 0 && timeCounts.crossed > 0 && timeCounts.sunk > 0, timeProblems.join(' | '));
 check('without asOf, or with asOf null or undefined, the layout is the present one and marks nothing', presentProblems.length === 0, presentProblems.join(' | '));
+
+console.log('\nSource (no service)');
+{
+  const TOOLS = path.dirname(fileURLToPath(import.meta.url));
+  const WEBDIR = path.join(TOOLS, '..', 'web');
+  const js = (f) => fs.readFileSync(path.join(WEBDIR, 'js', f), 'utf8');
+  const mods = fs.readdirSync(path.join(WEBDIR, 'js')).filter((f) => f.endsWith('.js'));
+  const writers = mods.filter((f) => js(f).includes('getMonth() + 1'));
+  check(`the house date (MM/DD/YYYY) is written by one formatter, model.js's (${writers.join(', ')})`, JSON.stringify(writers) === '["model.js"]', writers.join(', '));
+  // Every export of the shared modules icons.js and model.js is used,
+  // by another file or by its own; a constant in capitals documents a
+  // format (the scanner's flag bits) and is left out.
+  const users = [...mods.map((f) => js(f)), ...fs.readdirSync(TOOLS).filter((f) => f.endsWith('.mjs')).map((f) => fs.readFileSync(path.join(TOOLS, f), 'utf8'))];
+  const dead = [];
+  for (const f of ['icons.js', 'model.js']) {
+    const own = js(f);
+    for (const [, name] of own.matchAll(/^export (?:const|function|class) (\w+)/gm)) {
+      if (/^[A-Z][A-Z0-9_]*$/.test(name)) continue;
+      const word = new RegExp(`\\b${name}\\b`, 'g');
+      const inOwn = (own.match(word) || []).length > 1;
+      if (!inOwn && !users.some((src) => src !== own && new RegExp(`\\b${name}\\b`).test(src))) dead.push(`${f} ${name}`);
+    }
+  }
+  check('icons.js and model.js export nothing that no module or check uses', dead.length === 0, dead.join(', '));
+  // What the page draws: index.html by Lucide name, and every name the
+  // scripts hand to icon(), through ICON when it is one of its keys.
+  const sprite = [...fs.readFileSync(path.join(WEBDIR, 'vendor', 'lucide', 'icons.svg'), 'utf8').matchAll(/<symbol id="([\w-]+)"/g)].map((m) => m[1]);
+  const page = fs.readFileSync(path.join(WEBDIR, 'index.html'), 'utf8');
+  const ICONMAP = Object.fromEntries([...js('icons.js').matchAll(/^ {2}(\w+): '([\w-]+)',$/gm)].map((m) => [m[1], m[2]]));
+  const drawn = new Set([...page.matchAll(/icons\.svg#([\w-]+)/g)].map((m) => m[1]));
+  for (const f of mods.filter((x) => x !== 'icons.js')) {
+    for (const [, call] of js(f).matchAll(/icon\(([^)]*)\)|(?:icon|\w+): '[\w-]+'/g)) {
+      for (const [, n] of (call ?? '').matchAll(/'([\w-]+)'/g)) drawn.add(ICONMAP[n] || n);
+    }
+    for (const [, n] of js(f).matchAll(/(?:icon|\w+): '([\w-]+)'/g)) drawn.add(ICONMAP[n] || n);
+  }
+  const idle = sprite.filter((id) => !drawn.has(id));
+  check(`every one of the sprite's ${sprite.length} icons is drawn by the page`, idle.length === 0, idle.join(', '));
+  const raw = [];
+  for (const f of fs.readdirSync(path.join(WEBDIR, 'css', 'components'))) {
+    // The loading sheet's palette is artwork, scoped to the sheet; a mask reads only alpha.
+    if (f === 'splash.css') continue;
+    fs.readFileSync(path.join(WEBDIR, 'css', 'components', f), 'utf8').split('\n').forEach((l, i) => {
+      if (/#[0-9a-fA-F]{3,8}\b/.test(l.replace(/\/\*.*?\*\//g, '')) && !/mask-image/.test(l)) raw.push(`${f}:${i + 1}`);
+    });
+  }
+  check('component stylesheets read their colours from tokens.css, never a raw colour', raw.length === 0, raw.join(', '));
+  const utilities = fs.readFileSync(path.join(WEBDIR, 'css', 'utilities.css'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
+  check('utilities outrank components by layer, without !important', !/!important/.test(utilities));
+}
 
 fs.rmSync(work, { recursive: true, force: true });
 console.log(`\n${passed} passed, ${failed} failed\n`);

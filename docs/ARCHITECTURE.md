@@ -1,10 +1,10 @@
 <!--
 ✒ Metadata
-    - Title: Terrane Architecture (Terrane Edition - v1.4)
+    - Title: Terrane Architecture (Terrane Edition - v1.5)
     - File Name: ARCHITECTURE.md
     - Relative Path: docs/ARCHITECTURE.md
     - Artifact Type: docs
-    - Version: 1.4.0
+    - Version: 1.5.0
     - Date: 11/13/2026
     - Update: Friday, November 13, 2026
     - Author: Dennis 'dendogg' Smaltz
@@ -12,6 +12,18 @@
     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
 
 ✒ Changelog:
+    - 1.5.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
+      hardening pass. The route diagram names info and journal, and
+      what snapshot mode answers and refuses (hash among the refusals);
+      the service section says how the holding area, links, a dropped
+      stream and the thumbnail cookie are guarded. Scale: the relation
+      layer is drawn only while it holds a line, sessions are found when
+      read, twins after a refresh walk only what was read again, and one
+      dated figure for sessions. The registry table gives the
+      controller's tip lines; key allocation covers the single-key
+      setting; a hazard for the forced unfold. Two sentences now say
+      what is true: components read colours from tokens.css (sizes
+      mostly), and a locked entry's hatch replaces a link's bands.
     - 1.4.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
       visual identity gains the conventions Stage 5 added: the crossed
       footprint and AUX, the upright verdigris benchmark mark, the
@@ -155,8 +167,10 @@ above were replaced.
 
 ```text
 browser                              service (127.0.0.1)
+  GET  /api/info                ->   the root, its name, the mode, the watcher's state
   GET  /api/scan?path=&depth=   ->   scan.mjs      NDJSON, one record per folder
   GET  /api/events              ->   fs.watch      SSE: folders that changed, job progress
+  GET  /api/journal             ->   ops.mjs       the journal and the holding area
   POST /api/op                  ->   ops.mjs       mkdir rename move copy trash open reveal
   POST /api/cancel              ->   ops.mjs       stop a running or queued job
   POST /api/undo | restore | purge
@@ -166,8 +180,8 @@ browser                              service (127.0.0.1)
   GET  /api/thumbs | thumb      ->   thumbs.mjs    image index, versioned thumbnails
            every path  ->  guard.mjs  (root-relative, lexical check, realpath check)
 
-snapshot mode (--snapshot):  scan, stat, events  ->  snapshot.mjs  (structure database)
-                             every change, open, reveal, raw, inside  ->  refused
+snapshot mode (--snapshot):  info, scan, stat, events, an empty journal  ->  snapshot.mjs
+                             every change, open, reveal, raw, inside, hash  ->  refused
 ```
 
 - **One mutation at a time**, through a queue. A batch is validated in
@@ -189,6 +203,27 @@ snapshot mode (--snapshot):  scan, stat, events  ->  snapshot.mjs  (structure da
 - **After a change, only the affected folders are re-read** (depth-1
   scan), reconciled into the model by name so selection survives, and
   any new child folder is deep-scanned. The watcher feeds the same path.
+- **The holding area is refused by where it is.** A path segment that
+  names it is refused in any case on Windows and macOS, and on Windows
+  with trailing dots or as an NTFS stream; a real location in or under
+  it is refused too, so its 8.3 short name, or a link or junction that
+  leads there, reaches nothing. Its index is read as untrusted data: a
+  record whose id or name could climb out of its slot is dropped before
+  the Journal lists it or a restore or Undo moves anything. The holding
+  area must be a plain folder, not a link, before anything is held,
+  restored, purged or journaled there.
+- **A link is followed only to an end inside the root.** Previews,
+  archive listings, hashing, Open and Reveal resolve a link to its end
+  and refuse one outside (`guard.realInside`). A copy or a move refuses
+  to carry a relative link to a folder from which it would point outside
+  the root.
+- **A stream the page drops ends.** The scan routes wait for `drain` or
+  `close`, whichever comes first, so a survey dropped while the socket is
+  full leaves no scan, and in snapshot mode no open database, behind.
+- **The thumbnail cookie is not the token.** It is named for the port
+  and holds a secret of its own that opens `/api/thumbs` and
+  `/api/thumb` only; a cookie reaches every service on the host whatever
+  its port, so it never carries the session token.
 - **State lives in one place per kind**: the disk is the truth; the model
   is a cache of it; the layout is a function of model and eye; paint is a
   function of layout and session state. Nothing is patched in place
@@ -245,21 +280,24 @@ on every side.
 | Layout cost proportional to boxes drawn, not tree size; a 70,000-box budget checked before every box | `layout.js` |
 | One instanced mesh, one draw call; drawing conventions in the fragment shader | `viewport.js` |
 | Buffer uploads cover only the boxes, pins and line vertices drawn; while boxes travel the shadow map is redrawn on every fourth frame at most | `viewport.js` |
-| Every relation set in one preallocated line buffer and one draw call | `viewport.js` |
+| Every relation set in one preallocated line buffer and one draw call, drawn only while it holds a line | `viewport.js` |
+| Labels placed again only when the eye, the layout, the marks or the canvas change | `viewport.js` |
 | Render on demand | `viewport.js` `invalidate` |
 | Picking by direct ray and box tests on typed arrays | `viewport.js` `#cast` |
 | Virtual list for folders with tens of thousands of rows | `ui.js` |
 | One age table per survey: every folder's bytes and files by last change at 20 ladder steps, in typed arrays beside the model | `timeline.js` |
-| Working sessions from one walk and one typed-array sort with no compare callback | `relations.js` |
+| Working sessions from one walk and one typed-array sort with no compare callback, found the first time something reads them after a survey | `relations.js`, `traverse.js` |
+| An open archive's twins after a refresh: only the folders read again, and any new since | `interior.js` |
 | An archive's listing read into a model of its own, then grafted; its chamber inside the same box budget | `interior.js`, `layout.js` |
 
 Cognitive scale is handled by the same mechanism as rendering scale: you
 see at most a few thousand things, chosen by where you are. From the
 overview a 400,000-file tree is about a hundred masses.
 
-The age table and the working sessions are rebuilt after each survey,
-inside the survey's debounce, and an archive is listed only when asked
-for; none of them runs on the frame path.
+The age table is rebuilt after each survey, inside the survey's
+debounce; working sessions are found the first time the Survey tab, a
+`session:` search or the traverse reads them after it; an archive is
+listed only when asked for. None of them runs on the frame path.
 
 ### Measured (Linux container, 2 cores, software rasterizer)
 
@@ -292,11 +330,12 @@ rasterizes on the CPU.
 
 | Measure | Result |
 | ------- | ------ |
-| Working sessions over 400,000 files | 113 ms, the best of three |
+| Working sessions over 400,000 files | 84.0 ms, the best of three (78.7 and 113 ms on other runs the same day; the test's ceiling is 120 ms) |
 | Age table over 400,000 files in 30,000 folders | 32.5 ms |
 | Paint under the Age lens, 9,929 boxes (1,694 closed masses) | median 0.089 ms, against 0.096 ms when masses took their newest change |
 | A 300,000-entry archive listed into a model and grafted | 150 ms; its layout from the floor, 50,305 boxes, in 94 ms |
 | Twins by name and size over 200,000 files | 5.8 ms |
+| Twins after a refresh of three folders, against a whole walk of 200,000 files | 0.01 ms, against 2.7 ms |
 
 These are Node figures on the 16-core machine. A 2-core machine like the
 Linux container above was not measured for them.
@@ -330,7 +369,8 @@ Choices and their reasons:
   image's colour and pixel size, so the world and the panels can use them
   with no image request. Thumbnails are fetched only where they are shown,
   and their URLs carry the image version and no token, so the browser
-  caches each one once, as immutable; a SameSite=Strict cookie
+  caches each one once, as immutable; a SameSite=Strict cookie named for
+  the port, holding a secret that opens thumbnails and nothing else,
   authenticates them.
 - **Opening a large file is expensive on Windows** because the antivirus
   scans it in full on open, even for an 8 KB header read. The builder
@@ -356,9 +396,12 @@ Choices and their reasons:
 - The age table is a snapshot of the tree at the last survey; until the
   next one, a folder whose contents changed answers with its old figures.
 - Drawing conventions are exclusive, one per box: a crossed slab hides a
-  link's bands or a candidate's half bands, and a twin's half bands
-  replace a link's bands. A combinable mark would need a bitfield
+  link's bands or a candidate's half bands, and a locked entry's hatch
+  replaces a link's bands. A combinable mark would need a bitfield
   attribute.
+- A relative link inside a moved folder keeps its text, so it may point
+  somewhere else from the folder's new place; anything that reads or
+  launches what a link leads to checks its real location first.
 - Where the graphics driver returns 0 from `fwidth` on a line fragment,
   dashed relation lines draw solid. The traverse is then told from
   duplicate ties by its colour and its lower arc.
@@ -486,10 +529,12 @@ direction is a survey sheet around a plaster world.
   and imports its modules into them: one each for the other layers,
   and for components one per component group (controls, bar, ledger,
   stage, inspector, block, floating, splash) and one per feature (time,
-  places, traverse, strata, interior). Components read
-  semantic roles from `tokens.css`, never raw colours; utilities outrank
-  components by layer, not by `!important`. The print sheet lays the
-  last drawn frame of the world beside the inspector.
+  places, traverse, strata, interior). Components read their colours
+  from `tokens.css`, never a raw colour (the loading sheet's artwork
+  palette is scoped to the sheet); most sizes are tokens too, while
+  component-local paddings and gaps are written in place. Utilities
+  outrank components by layer, not by `!important`. The print sheet lays
+  the last drawn frame of the world beside the inspector.
 
 ## 7. Features and their seams
 
@@ -516,7 +561,7 @@ and the rest still run.
 | `KEYS` | `{ keys, mod, run(c), when, inList, guide }`: the keyboard map and the `?` guide as one table | the controller, Time, Landmarks, Interiors |
 | `ESCAPE` | `{ active(), clear(), typing }`, first active wins: floating surface 10, placing 20, kind filter 30, Time 40, search 50, selection 70, an open archive 80 | the controller, Time, Interiors |
 | `PIN_SOURCES` | `{ pins(L, room) }`, added up in order to the 3,000-pin capacity: benchmarks 10, search 20, heavyweights 30 | the controller, Landmarks |
-| `TIP_LINES` | `{ lines(node, { i, type, L }) }`: hover lines after the name and summary | Time, Landmarks, Strata, Interiors |
+| `TIP_LINES` | `{ lines(node, { i, type, L }) }`: hover lines after the name and summary: levels 10, Strata 15, matches 20, placing 30, copies 40, pixels 50, Landmarks 50, Time 60, Interiors 70 | the controller, Time, Landmarks, Strata, Interiors |
 | `INSPECTOR.focus`, `INSPECTOR.node` | `{ build(node, ctx) }`: sections of the "You are in" summary and of a selected item | the controller, Time, Landmarks, Strata, Interiors |
 | `READING` | `{ glyph, title, text }`: a Reading the world row | the controller and every feature |
 | `TABS` | `{ label, draw, list, count, enter, key }`: a ledger tab | the controller, Landmarks (Places) |
@@ -542,13 +587,19 @@ D Q E R F stay the viewport's, I is Interiors', T , . < > are Time's, and
 B H J are Landmarks'. A reserved key is refused to any other owner, and a
 key bound twice is refused. Session traverse and Strata have no keys.
 `inList` (default true) decides whether a key acts while the ledger list
-has focus; the guide is made from the same table.
+has focus; the guide is made from the same table. The guide also holds
+the single-key setting: turned off, a key that types one character and
+needs neither Ctrl nor Alt acts only while the world or the ledger list
+has focus (WCAG 2.1.4), and Ctrl and Alt chords act everywhere. It is
+kept in this browser.
 
 ### Relation lines
 
 One preallocated line buffer of 40,000 vertices draws every named set in
-one draw call. `setRelation(key, { color, dashed, lift, arrows, legs })`
-keeps each set's endpoints in 64-bit world coordinates, and the vertices
+one draw call, and only while some set holds a line: three.js draws an
+empty range too, so the layer is hidden when it is empty.
+`setRelation(key, { color, dashed, lift, arrows, legs })` keeps each
+set's endpoints in 64-bit world coordinates, and the vertices
 are rewritten around the floating origin at every layout and uploaded by
 range. Three sets exist:
 
@@ -601,6 +652,10 @@ the first survey.
 - **Shader variants.** The box material's program cache key is its
   `onBeforeCompile` source. A second material built by the same function
   must override `customProgramCacheKey`, or it shares the first shader.
+- **The forced unfold.** A feature that must open a folded folder to
+  fly to it calls `api.forceOpen(node)`, as going there does. The unfold
+  ends when the view returns to the overview (`api.overview()`, 0) or
+  the location settles off that branch; nothing else clears it.
 - **Wording.** Features that read modification times say "changed",
   never "created", "added" or "arrived".
 
