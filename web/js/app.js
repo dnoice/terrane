@@ -19,7 +19,11 @@
  *       again; the forced unfold ends at the overview or off its
  *       branch; focus survives a redraw or a hidden panel; a narrow
  *       inspector drawer and a single-key setting; a page the service
- *       did not serve asks it nothing.
+ *       did not serve asks it nothing. Counts say "1 item" and "1
+ *       match"; an empty folder, a search with no match and a legend
+ *       with nothing to colour each say so, with no sort keys over an
+ *       empty list; Copy, Create and Rename carry icons as their
+ *       neighbours do.
  *     - 1.6.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] —
  *       Findings sorts by Size or Changed; a search opens in the order it
  *       asks for and keeps the one chosen until the query changes, and
@@ -40,16 +44,6 @@
  *       walls it in the file's colour, hatches locked entries and
  *       half-bands twins, tied as the relation set 'twins'. The api gains
  *       hostOf and listCursor.
- *     - 1.5.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — Paint
- *       draws a box the layout marks AUX.CROSSED (the time view) in the
- *       crossed convention, its colour washed 60% toward paper unless it
- *       is selected; a Contents row whose entry is crossed carries a
- *       crossed swatch and says so to assistive technology. Two seams for
- *       features: AFTER_OP hooks hear every change the service carried
- *       out (Undo included, with the paths it moved back) before the
- *       folders are re-read, and a change that stopped part way with what
- *       it finished; MENU entries add a group of context menu items;
- *       window.__terrane.places is the landmarks store.
  *     Earlier entries: see CHANGELOG.md
  *
  * ✒ Description:
@@ -77,7 +71,7 @@
  *       its bytes have not changed since
  *     - Search that dims everything else, pins the matches, and marks
  *       closed masses and scree that contain matches; Findings lists them
- *       by size or by last change
+ *       by size or by last change, and says so when nothing matches
  *     - Real operations through the service: open, reveal, copy path, new
  *       folder, rename, move, copy, duplicate, remove to holding, restore,
  *       undo; every result or refusal is reported in words
@@ -1328,7 +1322,7 @@ const nameProblem = (v) => {
 async function newFolder(dir = S.focus) {
   if (refuseInside([dir])) return;
   const v = await ask({
-    title: 'New folder', body: `Inside ${relPath(dir) || S.info.name}`, confirm: 'Create',
+    title: 'New folder', body: `Inside ${relPath(dir) || S.info.name}`, confirm: 'Create', confirmIcon: 'newFolder',
     fields: [{ name: 'name', label: 'Folder name', value: 'New folder' }], validate: nameProblem,
   });
   if (!v) return;
@@ -1342,7 +1336,7 @@ async function newFolder(dir = S.focus) {
 async function rename(node = S.primary) {
   if (!node || !node.p || refuseInside([node])) return;
   const v = await ask({
-    title: 'Rename', confirm: 'Rename', validate: nameProblem,
+    title: 'Rename', confirm: 'Rename', confirmIcon: 'rename', validate: nameProblem,
     fields: [{ name: 'name', label: node.d ? 'Folder name' : 'File name', value: node.n, selectStem: !node.d }],
   });
   if (!v || v.name === node.n) return;
@@ -1729,7 +1723,11 @@ function drawLedgerNow(keepScroll) {
   const useList = !!tab.list;
   listHost.hidden = !useList;
   rich.hidden = useList;
-  if (useList) list.setLabel(tab.id === 'contents' ? `Contents of ${S.focus.n}` : tab.label);
+  if (useList) {
+    // A tab that has no sentence for an empty list shows none, never another tab's.
+    list.setEmpty('');
+    list.setLabel(tab.id === 'contents' ? `Contents of ${S.focus.n}` : tab.label);
+  }
   tab.draw(sub, useList ? listHost : rich, keepScroll);
 }
 
@@ -1747,8 +1745,13 @@ function drawContents(sub, _host, keepScroll) {
     S.sort = { key, dir: S.sort.key === key ? -S.sort.dir : key === 'name' ? 1 : -1 };
     drawLedger();
   });
-  sub.replaceChildren(el('span', { class: 'grow', text: `${fmtCount(S.focus.c.length)} items · ${fmtBytes(S.focus.s)}` }), sortBtn('name', 'Name'), sortBtn('size', 'Size'), sortBtn('date', 'Changed'));
+  const n = S.focus.c.length;
+  // The sort keys stay together: in a narrow ledger they move under the
+  // count as one. An empty folder has nothing to sort, so it shows none.
+  sub.replaceChildren(el('span', { class: 'sub-count', text: `${fmtCount(n)} item${n === 1 ? '' : 's'} · ${fmtBytes(S.focus.s)}` }),
+    ...(n ? [el('span', { class: 'sorts' }, sortBtn('name', 'Name'), sortBtn('size', 'Size'), sortBtn('date', 'Changed'))] : []));
   list.render = (node) => rowFor(node, { total: S.focus.s });
+  list.setEmpty(S.focus.e ? `This folder could not be read (${S.focus.e}).` : S.focus.stub ? 'This folder has not been read yet.' : 'This folder is empty.');
   list.setItems(sortedContents(), keepScroll, { follow: S.primary });
 }
 
@@ -1776,6 +1779,7 @@ function findingsItems() {
 function drawFindings(sub, _host, keepScroll) {
   if (!S.search) {
     sub.replaceChildren(el('span', { class: 'grow', text: S.query && S.scanning ? 'The search runs again once the survey has finished.' : 'Type in the Find field to search every level.' }));
+    list.setEmpty('');
     list.setItems([]);
     return;
   }
@@ -1786,18 +1790,24 @@ function drawFindings(sub, _host, keepScroll) {
     drawLedger();
   });
   const note = S.search.note || '';
+  const n = S.search.list.length;
   sub.classList.add('is-rows');
-  sub.replaceChildren(
-    el('div', { class: 'sub-row' }, el('span', { class: 'grow', text: `${fmtCount(S.search.list.length)} matches · ${fmtBytes(S.search.bytes)}` }),
-      el('button', { class: 'sort', type: 'button', title: 'Select every match (up to 5,000)', onclick: () => {
+  // With no match there is nothing to select or sort: the list says so.
+  // (replaceChildren would print a null argument as the text "null".)
+  sub.replaceChildren(...[
+    el('div', { class: 'sub-row' }, el('span', { class: 'sub-count', text: `${fmtCount(n)} match${n === 1 ? '' : 'es'} · ${fmtBytes(S.search.bytes)}` }),
+      n ? el('button', { class: 'sort', type: 'button', title: 'Select every match (up to 5,000)', onclick: () => {
         S.sel = new Set(items.slice(0, 5000));
         S.primary = items[0] || null;
         repaint();
         drawInspector();
         drawLedger(true);
-      } }, icon('selectAll'), 'Select all')),
-    el('div', { class: 'sub-row' }, el('span', { class: 'grow sub-note', text: note, title: note || null }), sortBtn('size', 'Size'), sortBtn('date', 'Changed')));
+      } }, icon('selectAll'), 'Select all') : null),
+    n || note ? el('div', { class: 'sub-row' }, el('span', { class: 'sub-note', text: note, title: note || null }),
+      n ? el('span', { class: 'sorts' }, sortBtn('size', 'Size'), sortBtn('date', 'Changed')) : null) : null,
+  ].filter(Boolean));
   list.render = (node) => rowFor(node, { showPath: true });
+  list.setEmpty('Nothing on any level matches this search.');
   list.setItems(items, keepScroll, { follow: S.primary });
 }
 
@@ -2135,6 +2145,10 @@ function drawLegendNow() {
   if (S.lens === 'kind') {
     $('legend-label').textContent = 'Kind · click to isolate';
     const kinds = KINDS.map((k, i) => ({ k, i, bytes: S.focus.ks[i] })).filter((x) => x.bytes > 0).sort((a, b) => b.bytes - a.bytes);
+    if (!kinds.length) {
+      host.replaceChildren(el('span', { class: 'legend-none', text: S.focus.fc ? 'Only empty files here.' : 'No files here.' }));
+      return;
+    }
     host.replaceChildren(...kinds.map((x) => el('button', {
       class: 'chip', type: 'button', 'aria-pressed': String(S.kindFilter === x.i), title: `${x.k.label}: ${fmtBytes(x.bytes)} here`,
       onclick: () => {
@@ -2659,7 +2673,7 @@ function wireKeys() {
   INSPECTOR.focus.add({ id: 'reading', order: 90, build: () => [el('div', { class: 'section-title', text: 'Reading the world' }), el('ul', { class: 'reading' }, [...READING].map(readingRow))] });
 
   INSPECTOR.node.add({ id: 'title', order: 0, build: nodeTitle });
-  INSPECTOR.node.add({ id: 'path', order: 5, build: (node) => el('div', { class: 'insp-path' }, el('code', { text: absPath(node) }), el('button', { class: 'btn btn-small', type: 'button', text: 'Copy', onclick: () => copyPaths([node]) })) });
+  INSPECTOR.node.add({ id: 'path', order: 5, build: (node) => el('div', { class: 'insp-path' }, el('code', { text: absPath(node) }), el('button', { class: 'btn btn-small', type: 'button', title: 'Copy path (Ctrl+C)', onclick: () => copyPaths([node]) }, icon('copyPath'), 'Copy')) });
   INSPECTOR.node.add({ id: 'facts', order: 10, build: nodeFacts });
   INSPECTOR.node.add({ id: 'composition', order: 20, build: (node) => (node.d ? composition(node) : null) });
   INSPECTOR.node.add({ id: 'copies', order: 30, build: nodeCopies });

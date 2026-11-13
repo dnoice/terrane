@@ -16,7 +16,9 @@
  *     - 1.1.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] —
  *       Working sessions are found when something reads them (Working
  *       sessions, a session: search, the traverse), not after every
- *       survey. The date and plural helpers come from model.js.
+ *       survey. The date and plural helpers come from model.js. A row
+ *       for a session that crossed midnight puts its second date under
+ *       the first in a narrow ledger instead of cutting it off.
  *     - 1.0.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] —
  *       Initial release.
  *
@@ -195,7 +197,10 @@ export function install(api) {
 
   function row(s, k) {
     const f = sessionFacts(s);
-    const time = when(f.start, f.end);
+    // A session that crossed midnight carries two dates: in a narrow ledger
+    // the second goes under the first, rather than being cut off.
+    const [from, to] = when(f.start, f.end).split(' – ');
+    const time = to ? el('span', { class: 'when' }, el('span', { text: `${from} – ` }), el('span', { text: to })) : from;
     const place = `${plural(f.places, 'place')} · ${relPath(f.common) || '/'}`;
     const label = `Session ${k}: ${plural(f.count, 'file')} in ${plural(f.places, 'place')} changed ${spoken(f.start, f.end)}${f.bulk ? ', written at once' : ''}, ${where(f)}. Find them.`;
     return el('button', { class: 'item session-row', type: 'button', 'data-session': String(k), 'aria-label': label, title: `session:${k}`, onclick: () => find(k) },

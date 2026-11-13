@@ -20,7 +20,9 @@
       not its counting figures. The lens names sit in spans so the
       narrow title block can show icons and keep the names; the ledger's
       rich panel and the inspector body take focus when a redraw removes
-      the control that had it.
+      the control that had it. The placing banner's buttons carry icons,
+      and Cancel names its key; Find's example tokens are single-spaced,
+      so the whole line fits the field at full width.
     - 1.5.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — An As
       of cell in the title block: a stepper for the date the world looks
       back to (earlier, the date or Now, later), reachable by Tab.
@@ -98,7 +100,7 @@
       <svg class="icon" aria-hidden="true"><use href="vendor/lucide/icons.svg#search"/></svg>
       <label class="sr" for="q">Find in this directory</label>
       <input id="q" type="search" autocomplete="off" spellcheck="false"
-             placeholder="Find  ·  name  *.psd  ext:mp4  >50mb  older:1y  is:empty">
+             placeholder="Find · name *.psd ext:mp4 >50mb older:1y is:empty">
       <span id="q-count" aria-live="polite"></span>
       <kbd class="search-hint" aria-hidden="true">/</kbd>
       <button class="search-clear" id="q-clear" type="button" aria-label="Clear Find (Escape)" title="Clear (Escape)">
@@ -145,8 +147,10 @@
 
       <div id="placing" hidden>
         <span id="placing-text"></span>
-        <button class="btn btn-primary btn-small" id="placing-here" type="button">Place where I am</button>
-        <button class="btn btn-small" id="placing-cancel" type="button">Cancel</button>
+        <button class="btn btn-primary btn-small" id="placing-here" type="button">
+          <svg class="icon" aria-hidden="true"><use href="vendor/lucide/icons.svg#folder-input"/></svg>Place where I am</button>
+        <button class="btn btn-small" id="placing-cancel" type="button" title="Cancel (Escape)">
+          <svg class="icon" aria-hidden="true"><use href="vendor/lucide/icons.svg#x"/></svg>Cancel</button>
       </div>
 
       <div class="hud hud-north">

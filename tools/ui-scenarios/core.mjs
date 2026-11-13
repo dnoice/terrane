@@ -1,16 +1,23 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Core Interface Scenarios (Terrane Edition - v1.0)
+ *     - Title: Core Interface Scenarios (Terrane Edition - v1.1)
  *     - File Name: core.mjs
  *     - Relative Path: tools/ui-scenarios/core.mjs
  *     - Artifact Type: test
- *     - Version: 1.0.0
- *     - Date: 11/11/2026
- *     - Update: Wednesday, November 11, 2026
+ *     - Version: 1.1.0
+ *     - Date: 11/13/2026
+ *     - Update: Friday, November 13, 2026
  *     - Author: Dennis 'dendogg' Smaltz
  *     - A.I. Acknowledgement: Anthropic - Claude Opus 5.5
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
+ *
+ * ✒ Changelog:
+ *     - 1.1.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
+ *       ledger's count is read as the page now writes it: "1 item" for
+ *       a folder holding one entry, "N items" otherwise.
+ *     - 1.0.0 (11/11/2026) [dendogg + Anthropic - Claude Opus 5.5] —
+ *       Initial release.
  *
  * ✒ Description:
  *     The keyboard routes Terrane already has, checked in a real browser
@@ -82,7 +89,7 @@ const core = {
           focus: T.S.focus.n, crumb: [...document.querySelectorAll('#crumbs .crumb')].at(-1)?.textContent, sub: document.getElementById('ledger-sub').textContent,
         }));
         t.check('the location follows the camera into the folder', at.focus === first.n && at.crumb === first.n, JSON.stringify(at));
-        t.check('the ledger lists the folder', at.sub.startsWith(`${first.items.toLocaleString('en-US')} items`), at.sub);
+        t.check('the ledger lists the folder', at.sub.startsWith(`${first.items.toLocaleString('en-US')} item${first.items === 1 ? '' : 's'}`), at.sub);
         await t.shot('inside-first-folder');
         await t.key('Backspace');
         await t.settle();

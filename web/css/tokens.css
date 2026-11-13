@@ -18,7 +18,10 @@
  *       on every surface; --signal-deep and --search-text for search
  *       figures as text; plaster, clay and mass tokens for the
  *       inspector's key (the twins of THEME.plaster and THEME.clay);
- *       --z-drawer for the narrow inspector.
+ *       --z-drawer for the narrow inspector. --tool-h, --north,
+ *       --hud-inset and --hud-lift set the instruments over the world on
+ *       two rows, so the scale, the view tools, operations in progress
+ *       and notices never stand on one another.
  *     - 1.2.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
  *       traverse in miniature: --tex-traverse (a dashed ink arc with its
  *       chevron, for the Reading glyph) and --tex-dash (a dashed ink
@@ -57,7 +60,8 @@
  *     - Derived tints made with color-mix in OKLCH, so a primitive change
  *       carries through every wash and hover
  *     - A type scale on Archivo's width axis plus DM Mono for figures
- *     - A 4 px space scale and named control sizes
+ *     - A 4 px space scale and named control sizes, the instruments'
+ *       inset and their second row over the world among them
  *     - Hard offset elevation, the drafting-sheet shadow
  *     - Motion tokens, including a spring curve written with linear()
  *     - Registered custom properties (@property) so progress, heading
@@ -213,6 +217,12 @@
   --row-indent: 28px;  /* where a rich ledger row's text starts, past its mark */
   --tag-pad-y: 3px;    /* a label standing over the world */
   --tag-pad-x: 5px;
+  --tool-h: 32px;      /* a button of the view tools strip over the world */
+  --north: 46px;       /* the north arrow's dial */
+  --hud-inset: var(--s-6);  /* the instruments' distance from the world's edges */
+  /* The second row of instruments, clear above the view tools strip:
+     operations in progress, notices, and the storage scale in a narrow world. */
+  --hud-lift: calc(var(--hud-inset) + var(--tool-h) + 2 * var(--hair) + var(--s-3));
   --icon-xs: 12px;
   --icon-sm: 14px;
   --icon: 16px;

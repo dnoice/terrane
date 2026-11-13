@@ -15,7 +15,12 @@
  * ✒ Changelog:
  *     - 1.1.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] —
  *       The unused .panel-tool leaves the hidden list; the actions'
- *       note joins it.
+ *       note joins it. The title block follows the location bar, so the
+ *       first page carries it; the inspector breaks across pages inside
+ *       its frame instead of running under the title block; buttons and
+ *       the Actions heading stay off the paper; the chosen lens is inked
+ *       without the screen's measured plate; the wordmark keeps its word
+ *       and the status its whole figures.
  *     - 1.0.0 (11/12/2026) [dendogg + Anthropic - Claude Opus 5.5] —
  *       Initial release.
  *
@@ -29,7 +34,8 @@
  *     - A4 landscape with drawing-sheet margins
  *     - The page grid flattens to normal flow so long panels can break
  *       across pages
- *     - Controls, notices, menus, tips and tools are not printed
+ *     - The title block under the location bar, on the first page
+ *     - Controls, buttons, notices, menus, tips and tools are not printed
  *     - Ink on white: textures and washes removed, rules kept
  *     - Sections and fact rows never split across a page break
  *
@@ -44,24 +50,47 @@
 :root { --tex-grain: none; --surface-panel: #fff; --surface-ground: #fff; --surface-control: #fff; }
 
 html, body { height: auto; overflow: visible; background: #fff; }
-body { display: block; font-size: 10.5pt; print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+/* The title block follows the location bar, so the first page carries it
+   beside the drawing however many pages the inspector runs to. */
+body { display: flex; flex-direction: column; font-size: 10.5pt; print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+#block { order: 1; }
+main { order: 2; }
 
 .skip, .bar-tools, .search, #notices, #menu, #tip, dialog, #jobs, .view-tools, .hud, #placing, #veil,
 .frame, .actions-grid, .actions-why, .search-clear, #ledger { display: none !important; }
 
+/* Paper has nothing to press: the inspector's buttons (Copy, Set benchmark,
+   Close an archive) go, and so does the Actions heading over the grid that
+   is gone. The sentences beside them stay. */
+#inspector-body .btn, #inspector-body .section-title:has(+ .actions-grid) { display: none !important; }
+
+/* A sheet carries its name and its figures whole, whatever the page's
+   width: the wordmark's word, and the status figures on two lines rather
+   than cut. The legend's title names the lens. */
+.wordmark span { display: inline; }
+#status { height: auto; white-space: normal; }
+#status > :last-child { overflow: visible; }
+
 #bar { display: flex; height: auto; padding: 0 0 8px; border-bottom: 1.5pt solid #000; }
-#crumbs { mask-image: none; overflow: visible; flex-wrap: wrap; }
+#crumbs { justify-content: flex-start; mask-image: none; overflow: visible; flex-wrap: wrap; }
 
 main { display: grid; grid-template-columns: 1fr 74mm; gap: 6mm; margin: 6mm 0; transition: none; }
 #stage { height: 120mm; border: 1pt solid #000; break-inside: avoid; }
-#inspector { visibility: visible !important; opacity: 1 !important; border: 1pt solid #000; overflow: visible; }
-#inspector-body { overflow: visible; }
+/* Block layout, not the screen's flex column: a long inspector breaks across
+   pages and its frame grows with it, instead of its last rows running out
+   of the frame and under the title block. */
+#inspector { display: block; visibility: visible !important; opacity: 1 !important; border: 1pt solid #000; overflow: visible; }
+#inspector-body { display: block; overflow: visible; }
 
 .facts > div, .reading li, .comp-key li, .section-title { break-inside: avoid; }
 .section-title { break-after: avoid; }
 
-#block { border-top: 1.5pt solid #000; break-inside: avoid; }
-.cell { padding: 4px 10px; }
+#block { border-top: 0; border-bottom: 1pt solid #000; break-inside: avoid; }
+.cell { padding: 4px 10px 6px; }
+/* The lens's ink plate is measured on screen; on paper the chosen lens is
+   simply inked. */
+.seg::before { display: none; }
+.seg button[aria-checked='true'] { background-color: var(--ink); }
 
 *, *::before, *::after { animation: none !important; transition: none !important; box-shadow: none !important; }
 

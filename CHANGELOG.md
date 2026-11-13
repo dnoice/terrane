@@ -15,7 +15,8 @@
     - 1.3.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — Records the hardening
       pass: app.js 1.7.0 in full, index.html 1.6.0 and viewport.js 1.5.0. Adds the sections
       for web/js/ui.js and web/css/tokens.css, whose 1.0.0 entries left their headers with
-      the 1.3.0 releases.
+      the 1.3.0 releases. The polish pass that followed extends the same five entries, and
+      app.js's header rolls its 1.5.0 entry out to this file's copy.
     - 1.2.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — Records app.js 1.6.0 and
       terrane.css 2.3.0: the Findings sort keys, the Survey and query seams, and the
       session traverse's stylesheet; the Age lens's typical age for closed masses and the
@@ -74,7 +75,13 @@ here unchanged in the same edit.
   status label are written only when they change; without WebGL the canvas says what still
   works. The ledger list is named for what it shows and keeps its cursor on its item. A page
   whose token is still the placeholder stops before its first request (elsewhere.js explains).
-  The api gains forceOpen and overview.
+  The api gains forceOpen and overview. Polish: the ledger's counts say "1 item" and "1 match";
+  an empty folder, a search with no match and a kind legend with nothing to colour each say so
+  in a sentence (the list's through setEmpty, which its name carries too), and Findings with no
+  match offers no Select all or sort keys, nor Contents of an empty folder its sort keys; the
+  Contents and Findings sort keys sit in one group that moves under the count in a narrow
+  ledger; the inspector's Copy, and New folder's Create and Rename's confirm buttons carry icons
+  as their neighbours do. The header's 1.5.0 entry rolled out to keep it within 40 lines.
 - 1.6.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — Findings sorts by Size or
   Changed; a search opens in the order it asks for and keeps the one chosen until the query
   changes, and Select all follows the order shown. The Survey tab's sections are a registry
@@ -126,7 +133,8 @@ here unchanged in the same edit.
   readout is no longer a live region and the status cell announces its state, not its counting
   figures. The lens names sit in spans so the narrow title block can show icons and keep the
   names; the ledger's rich panel and the inspector body take focus when a redraw removes the
-  control that had it.
+  control that had it. The placing banner's buttons carry icons, and Cancel names its key;
+  Find's example tokens are single-spaced, so the whole line fits the field at full width.
 - 1.5.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — An As of cell in the title block: a
   stepper for the date the world looks back to (earlier, the date or Now, later), reachable by Tab.
 - 1.4.0 (11/12/2026) [dendogg + Anthropic - Claude Opus 5.5] — The loading sheet's host, first in
@@ -187,7 +195,10 @@ here unchanged in the same edit.
   while it holds a line (three.js draws an empty range), and labels are placed again only when
   the eye, the layout, the marks or the canvas change, not on a frame redrawn for a hover. The
   overview, a selection and a search each cost one draw call fewer; the baseline was recorded
-  again (overview 6, selected 8, search 7, dupTies 9).
+  again (overview 6, selected 8, search 7, dupTies 9). A label's overlap test measures the tag
+  as drawn (LABEL_BOX: a folder's expanded capitals and its 9 px leader line, a file's mono, a
+  mark's pin below it) with a 2 px gap, so no tag stands across another or over another's line;
+  before, a folder's tag was measured as narrow as a file's and 20 px tall.
 - 1.4.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — The walls of an open archive's
   chamber (BOX.WALL) carry no label; its floor is labelled with the archive's name, as a folder
   is. The header no longer calls the labels readable by assistive technology: their layer is
@@ -218,7 +229,8 @@ here unchanged in the same edit.
   by the arrows and carry their reason as their description; the menu stops the browser's own
   context menu the Menu key would open over it. The virtual list keeps its cursor on its item
   when the list is redrawn, has a name and says several rows can be selected; ask() can start on
-  its confirm button.
+  its confirm button. A closed menu keeps its items while it fades out (160 ms), then lets them
+  go; an empty list shows the sentence setEmpty gives it, and its name carries the same words.
 - 1.2.0 (11/12/2026) [dendogg + Anthropic - Claude Opus 5.5] — Menu items and notices carry
   icons; the menu and tip are placed by Floating UI and unfold from the pointer's corner; notices
   show their time left, pause it under the pointer, and leave with an animation while their
@@ -233,7 +245,9 @@ here unchanged in the same edit.
 - 1.3.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — --ink-3 darkened to #5a6661, so
   --text-3 reads at 4.5:1 or more on every surface; --signal-deep and --search-text for search
   figures as text; plaster, clay and mass tokens for the inspector's key (the twins of
-  THEME.plaster and THEME.clay); --z-drawer for the narrow inspector.
+  THEME.plaster and THEME.clay); --z-drawer for the narrow inspector. --tool-h, --north,
+  --hud-inset and --hud-lift set the instruments over the world on two rows, so the scale, the
+  view tools, operations in progress and notices never stand on one another.
 - 1.2.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — The traverse in miniature:
   --tex-traverse (a dashed ink arc with its chevron, for the Reading glyph) and --tex-dash (a
   dashed ink stroke, for a working session's swatch). The Age lens ramp as primitives,

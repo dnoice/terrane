@@ -19,7 +19,9 @@
  *       own context menu the Menu key would open over it. The virtual
  *       list keeps its cursor on its item when the list is redrawn, has
  *       a name and says several rows can be selected; ask() can start
- *       on its confirm button.
+ *       on its confirm button. A closed menu keeps its items while it
+ *       fades out; an empty list shows the sentence setEmpty gives it,
+ *       and its name carries the same words.
  *     - 1.2.0 (11/12/2026) [dendogg + Anthropic - Claude Opus 5.5] — Menu
  *       items and notices carry icons; the menu and tip are placed by
  *       Floating UI and unfold from the pointer's corner; notices show
@@ -52,7 +54,8 @@
  *       action (Undo, Keep both), and wait while the pointer rests on them
  *     - Virtual list renders only visible rows, keeps its cursor on its
  *       item across a redraw, has a name, supports roving keyboard
- *       focus, and marks a fresh list so its rows can cascade in
+ *       focus, and marks a fresh list so its rows can cascade in; empty,
+ *       it says so in a sentence (setEmpty) and in its name
  *     - slideIndicator(container, item) for tab strips and switches
  *
  * ✒ Usage Instructions:
@@ -60,6 +63,7 @@
  *     openMenu(x, y, [{ label: 'Rename', icon: 'rename', hint: 'F2', run }, 'sep']);
  *     const values = await ask({ title, fields: [{ name, label, value }] });
  *     notice('Moved 3 items', { action: { label: 'Undo', run: undo } });
+ *     list.setEmpty('This folder is empty.');
  *
  * ✒ Other Important Information:
  *     - Dependencies: icons.js, float.js, motion.js
@@ -104,19 +108,28 @@ export const floatingOpen = () => closeCurrent !== null;
 
 /* ---------- context menu ---------- */
 
+// How long a closed menu keeps its items: a little over its fade out
+// (--dur-instant in floating.css).
+const MENU_FADE = 160;
+let menuSeq = 0;
+
 export function openMenu(x, y, items, { title } = {}) {
   const host = document.getElementById('menu');
   const returnTo = document.activeElement;
   hideTip();
+  // Closing keeps the items while the stylesheet fades the menu out, then
+  // lets them go, unless another menu has opened in the meantime.
   const close = () => {
     host.hidden = true;
-    host.replaceChildren();
+    const ticket = ++menuSeq;
+    setTimeout(() => { if (ticket === menuSeq && host.hidden) host.replaceChildren(); }, MENU_FADE);
     document.removeEventListener('pointerdown', outside, true);
     if (closeCurrent === close) closeCurrent = null;
     returnTo?.focus?.({ preventScroll: true });
   };
   const outside = (e) => { if (!host.contains(e.target)) close(); };
   claim(close);
+  menuSeq++;
   host.replaceChildren();
   if (title) host.append(el('div', { class: 'menu-title', text: title }));
   let seq = 0;
@@ -295,14 +308,19 @@ export class VirtualList {
     this.items = [];
     this.cursor = 0;
     this.entering = 0;
+    this.empty = '';
+    this.label = label || null;
     this.spacer = el('div', { class: 'vl-spacer' });
     this.rows = el('div', { class: 'vl-rows' });
+    // What an empty list says where its rows would be. It is drawn for the
+    // eye only: the list's name carries the same sentence (setEmpty).
+    this.note = el('p', { class: 'vl-empty', 'aria-hidden': 'true', hidden: true });
     host.classList.add('vl');
     host.tabIndex = 0;
     host.setAttribute('role', 'listbox');
     if (label) host.setAttribute('aria-label', label);
     if (multiple) host.setAttribute('aria-multiselectable', 'true');
-    host.replaceChildren(this.spacer, this.rows);
+    host.replaceChildren(this.spacer, this.rows, this.note);
     host.addEventListener('scroll', () => this.draw(true));
     new ResizeObserver(() => this.draw()).observe(host);
     host.addEventListener('keydown', (e) => {
@@ -340,6 +358,8 @@ export class VirtualList {
     if (at < 0 && follow != null) at = items.indexOf(follow);
     this.cursor = at >= 0 ? at : Math.min(this.cursor, Math.max(0, items.length - 1));
     this.spacer.style.height = `${items.length * this.rowHeight}px`;
+    this.note.hidden = !!items.length || !this.empty;
+    if (this.label != null) this.setLabel(this.label);
     if (!keepScroll) this.host.scrollTop = 0;
     // A new list cascades in; a redraw of the same one does not.
     if (fresh && items.length) {
@@ -352,7 +372,20 @@ export class VirtualList {
 
   /** Names the list for assistive technology, as what it shows changes. */
   setLabel(label) {
-    if (this.host.getAttribute('aria-label') !== label) this.host.setAttribute('aria-label', label);
+    this.label = label;
+    const name = !this.items.length && this.empty ? `${label}: ${this.empty}` : label;
+    if (this.host.getAttribute('aria-label') !== name) this.host.setAttribute('aria-label', name);
+  }
+
+  /**
+   * The sentence the list shows while it holds no items, such as "This
+   * folder is empty."; '' shows nothing. It is kept until set again.
+   */
+  setEmpty(text = '') {
+    this.empty = text;
+    this.note.textContent = text;
+    this.note.hidden = !!this.items.length || !text;
+    if (this.label != null) this.setLabel(this.label);
   }
 
   setCursor(i, scroll) {

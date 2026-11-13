@@ -1,16 +1,23 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Location Scenario (Terrane Edition - v1.0)
+ *     - Title: Location Scenario (Terrane Edition - v1.1)
  *     - File Name: focus.mjs
  *     - Relative Path: tools/ui-scenarios/focus.mjs
  *     - Artifact Type: test
- *     - Version: 1.0.0
- *     - Date: 11/12/2026
- *     - Update: Thursday, November 12, 2026
+ *     - Version: 1.1.0
+ *     - Date: 11/13/2026
+ *     - Update: Friday, November 13, 2026
  *     - Author: Dennis 'dendogg' Smaltz
  *     - A.I. Acknowledgement: Anthropic - Claude Opus 5.5
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
+ *
+ * ✒ Changelog:
+ *     - 1.1.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
+ *       ledger's count is read as the page now writes it: "1 item" for
+ *       a folder holding one entry, "N items" otherwise.
+ *     - 1.0.0 (11/12/2026) [dendogg + Anthropic - Claude Opus 5.5] —
+ *       Initial release.
  *
  * ✒ Description:
  *     Checks "where you are" in both passes. Without WebGL there is no
@@ -89,7 +96,7 @@ function shows(t, label, w, { inspector = false } = {}) {
   const fmt = w.items.toLocaleString('en-US');
   const ok = w.crumbs.length === w.depth + 1 && w.crumbs.at(-1) === w.name
     && w.current.length === 1 && w.current[0] === w.name
-    && w.sub.startsWith(`${fmt} items`) && w.listed
+    && w.sub.startsWith(`${fmt} item${w.items === 1 ? '' : 's'}`) && w.listed
     && w.chips === w.kinds && w.up === w.depth > 0
     && (!inspector || w.youAreIn === w.name);
   return t.check(label, ok, JSON.stringify({ ...w, sub: w.sub.slice(0, 40) }));

@@ -17,7 +17,10 @@
  *       The narrow rules live here, in the components layer where they
  *       apply: below 1240 px the altitude gives way, below 1100 px the
  *       lens shows icons and keeps its names, below 860 px the status
- *       cell narrows, so the legend and the status stay on screen.
+ *       cell narrows, so the legend and the status stay on screen. A
+ *       folder with nothing to colour says so in the legend; status
+ *       figures end in an ellipsis rather than mid-figure; sizes come
+ *       from the type scale.
  *     - 1.0.0 (11/12/2026) [dendogg + Anthropic - Claude Opus 5.5] —
  *       Initial release.
  *
@@ -83,10 +86,12 @@
 
 #legend { display: flex; align-items: center; gap: 4px; height: 26px; overflow: hidden; mask-image: linear-gradient(to left, transparent, #000 24px); }
 #legend > * { animation: fade-in var(--dur-base) var(--ease-out) both; }
-.rampbar { display: flex; align-items: center; gap: 8px; font: 400 11px / 1 var(--mono); color: var(--text-2); white-space: nowrap; }
+/* A folder with nothing to colour says so instead of leaving the cell blank. */
+.legend-none { padding: 0 var(--s-1); color: var(--text-2); font: 400 var(--fs-sm) / 1 var(--sans); white-space: nowrap; }
+.rampbar { display: flex; align-items: center; gap: 8px; font: 400 var(--fs-fig) / 1 var(--mono); color: var(--text-2); white-space: nowrap; }
 .rampbar i { display: block; width: 180px; height: 12px; border: var(--border); transform-origin: left; animation: grow-x var(--dur-slow) var(--ease-out-expo) both; }
 
-.readout { display: block; min-width: 150px; height: 26px; font: 500 12px / 26px var(--mono); white-space: nowrap; }
+.readout { display: block; min-width: 150px; height: 26px; font: 500 var(--fs-row) / 26px var(--mono); white-space: nowrap; }
 
 #status {
   display: flex;
@@ -99,6 +104,8 @@
   white-space: nowrap;
   text-overflow: ellipsis;
 }
+/* The figures end in an ellipsis when the cell is narrow, not cut mid-figure. */
+#status > :last-child { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 
 /* ---------- the status lamp ---------- */
 

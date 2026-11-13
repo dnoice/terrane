@@ -23,7 +23,9 @@
       controller's tip lines; key allocation covers the single-key
       setting; a hazard for the forced unfold. Two sentences now say
       what is true: components read colours from tokens.css (sizes
-      mostly), and a locked entry's hatch replaces a link's bands.
+      mostly), and a locked entry's hatch replaces a link's bands. The
+      polish pass: the instruments' two rows over the world, and the
+      print sheet's title block, inspector and buttons.
     - 1.4.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
       visual identity gains the conventions Stage 5 added: the crossed
       footprint and AUX, the upright verdigris benchmark mark, the
@@ -532,9 +534,14 @@ direction is a survey sheet around a plaster world.
   places, traverse, strata, interior). Components read their colours
   from `tokens.css`, never a raw colour (the loading sheet's artwork
   palette is scoped to the sheet); most sizes are tokens too, while
-  component-local paddings and gaps are written in place. Utilities
-  outrank components by layer, not by `!important`. The print sheet lays
-  the last drawn frame of the world beside the inspector.
+  component-local paddings and gaps are written in place; the
+  instruments over the world stand on two rows set by tokens
+  (`--hud-inset`, `--hud-lift`), so the storage scale, the view tools,
+  operations in progress and notices never cover one another. Utilities
+  outrank components by layer, not by `!important`. The print sheet puts
+  the title block under the location bar and lays the last drawn frame
+  of the world beside the inspector, which runs on across pages in its
+  frame; nothing that is pressed is printed.
 
 ## 7. Features and their seams
 

@@ -16,7 +16,11 @@
  *     - 1.1.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] —
  *       Find's clear button is hidden, not only transparent, while Find
  *       is empty, so Tab passes it; the count and the clear button's
- *       hover use --search-text.
+ *       hover use --search-text. The breadcrumbs keep their end, where
+ *       you are, in view when the path is longer than the bar, and a
+ *       focused crumb's ring sits inside the bar instead of being cut.
+ *       Find's example tokens show whole at full width, and end in an
+ *       ellipsis where the field is narrower, instead of cut mid-token.
  *     - 1.0.0 (11/12/2026) [dendogg + Anthropic - Claude Opus 5.5] —
  *       Initial release.
  *
@@ -45,7 +49,7 @@
   position: relative;
   z-index: 2;
   display: grid;
-  grid-template-columns: auto minmax(120px, 1fr) minmax(220px, 420px) auto;
+  grid-template-columns: auto minmax(120px, 1fr) minmax(220px, 440px) auto;
   align-items: center;
   gap: 18px;
   padding: 0 14px;
@@ -81,6 +85,10 @@
 #crumbs {
   display: flex;
   align-items: center;
+  /* While the path fits it stands from the left (the last crumb's margin
+     takes the room); once it overflows, its end, where you are, stays in
+     view and the start goes under the fade, however the bar is resized. */
+  justify-content: flex-end;
   min-width: 0;
   overflow: hidden;
   font: 500 var(--fs-md) / 1 var(--mono);
@@ -101,6 +109,9 @@
   text-overflow: ellipsis;
 }
 #crumbs .crumb[aria-current] { flex-shrink: 0; color: var(--text); font-weight: 500; }
+#crumbs > :last-child { margin-right: auto; }
+/* The bar clips the crumbs top and bottom; the ring sits inside. */
+#crumbs .crumb:focus-visible { outline-offset: calc(var(--focus-offset) * -1); }
 #crumbs .crumb[aria-current]::after {
   content: '';
   position: absolute;
@@ -137,6 +148,10 @@
 }
 .search input::-webkit-search-cancel-button { display: none; }
 .search input::placeholder { color: var(--text-3); }
+/* Empty, the field needs room only for its key hint, not for the count and
+   the clear button; where its example tokens do not all fit, an ellipsis
+   says there is more. */
+.search input:placeholder-shown { padding-right: 36px; text-overflow: ellipsis; }
 .search input:focus { outline: none; background: var(--surface-field); box-shadow: var(--shadow-1); }
 .search:focus-within > .icon { color: var(--text); }
 .search-hint {

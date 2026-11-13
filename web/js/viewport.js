@@ -17,7 +17,10 @@
  *       The relation layer is drawn only while it holds a line
  *       (three.js draws an empty range), and labels are placed again
  *       only when the eye, the layout, the marks or the canvas change,
- *       not on a frame redrawn for a hover.
+ *       not on a frame redrawn for a hover. A label's overlap test
+ *       measures the tag as drawn (LABEL_BOX: a folder's expanded
+ *       capitals and its leader line, a mark's pin), so no tag stands
+ *       across another or over another's line.
  *     - 1.4.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
  *       walls of an open archive's chamber (BOX.WALL) carry no label; its
  *       floor is labelled with the archive's name, as a folder is. The
@@ -119,6 +122,21 @@ const CAPACITY = 72000;
 const PIN_CAPACITY = 3000;
 // Mark tags placed before every other label, so they win every collision.
 const MARKS_MAX = 12;
+/**
+ * How much room a label takes on screen, from its text, for the overlap
+ * test (stage.css and places.css draw them): a width per character and the
+ * padding and borders around it, and how far it reaches above and below
+ * its anchor. A folder's tag is expanded capitals with a leader line 9 px
+ * long under it; a file's is mono, close to its anchor; a mark's is a
+ * bordered sentence over its upright pin, which no other tag may cover.
+ * LABEL_GAP keeps a hair of paper between two tags.
+ */
+const LABEL_BOX = {
+  dir: { ch: 8.8, pad: 14, up: 19, down: 11 },
+  file: { ch: 6.3, pad: 8, up: 15, down: 1 },
+  mark: { ch: 6.6, pad: 14, up: 19, down: 24 },
+};
+const LABEL_GAP = 2;
 // The sun's 4096 x 4096 shadow map costs more to draw than the view does.
 // While boxes travel it is redrawn on every fourth frame at most, and again
 // on the frame where they arrive.
@@ -1207,14 +1225,17 @@ export class Viewport {
       const taken = [];
       const tryPlace = (i, px, cls, text, y, lift) => {
         const o = i * 6;
-        const width = text.length * (cls === 'tag-file' ? 6.3 : 6.6) + 12;
+        const box = cls === 'tag-file' ? LABEL_BOX.file : cls.startsWith('tag-dir') ? LABEL_BOX.dir : LABEL_BOX.mark;
+        const width = text.length * box.ch + box.pad;
         if (width > px * 1.2 + 24) return false;
         v.set(g[o], y, g[o + 2]).project(this.camera);
         if (v.z < -1 || v.z > 1) return false;
         const sx = (v.x * 0.5 + 0.5) * this.w;
         const sy = (-v.y * 0.5 + 0.5) * this.h - lift;
         if (sx < 20 || sx > this.w - 20 || sy < 14 || sy > this.h - 8) return false;
-        const rect = [sx - width / 2, sy - 18, sx + width / 2, sy + 2];
+        // The whole tag, its shadow and a folder's leader line included,
+        // so no tag is drawn across another or over another's line.
+        const rect = [sx - width / 2 - LABEL_GAP, sy - box.up - LABEL_GAP, sx + width / 2 + LABEL_GAP, sy + box.down + LABEL_GAP];
         for (const t of taken) if (rect[0] < t[2] && rect[2] > t[0] && rect[1] < t[3] && rect[3] > t[1]) return false;
         taken.push(rect);
         let el = pool[used];
