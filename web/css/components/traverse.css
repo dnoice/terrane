@@ -1,0 +1,88 @@
+/*
+ * ============================================================================
+ * ✒ Metadata
+ *     - Title: Session Traverse (Terrane Edition - v1.0)
+ *     - File Name: traverse.css
+ *     - Relative Path: web/css/components/traverse.css
+ *     - Artifact Type: stylesheet
+ *     - Version: 1.0.0
+ *     - Date: 11/13/2026
+ *     - Update: Friday, November 13, 2026
+ *     - Author: Dennis 'dendogg' Smaltz
+ *     - A.I. Acknowledgement: Anthropic - Claude Opus 5.5
+ *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
+ *
+ * ✒ Description:
+ *     Working sessions on the sheet: the Survey tab's rows, the dashed
+ *     ink of the traverse in miniature wherever the ledger and the
+ *     inspector name it, and the Findings sub-line that came with it,
+ *     which now carries sort keys and a note under the count.
+ *
+ * ✒ Key Features:
+ *     - Findings sub-line in two rows: the count and Select all as
+ *       before, then a note (a session's window, a route cut short) and
+ *       the Size and Changed keys; a long note wraps instead of hiding
+ *     - Session rows: a dashed ink swatch, the date and times in
+ *       figures, places and the folder holding them, the file count
+ *     - "Written at once" as a small ink-outlined label on bulk rows,
+ *       under the time when the column is too narrow for both
+ *     - Reading glyph: a dashed arc with its chevron
+ *
+ * ✒ Other Important Information:
+ *     - Dependencies: tokens.css (--tex-traverse, --tex-dash, spacing and
+ *       type), layout.css (.panel-sub), ledger.css (.item, .swatch),
+ *       inspector.css (.glyph); imported into layer(components) by
+ *       terrane.css
+ *     - Compatible platforms: current evergreen browsers
+ * ----------------------------------------------------------------------------
+ */
+
+/* ---------- Findings: the sub-line in two rows ---------- */
+
+.panel-sub.is-rows {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0;
+  padding: 0;
+}
+.sub-row {
+  display: flex;
+  align-items: center;
+  gap: var(--s-1);
+  min-height: var(--control-h);
+  padding: 0 var(--s-2) 0 var(--row-pad-x);
+}
+.sub-row + .sub-row { border-top: var(--border-3); }
+.sub-row .sub-note {
+  padding: var(--s-1) 0;
+  white-space: normal;
+  line-height: var(--lh-snug);
+  color: var(--text-2);
+}
+.sub-row .sub-note:empty { padding: 0; }
+
+/* ---------- Survey: Working sessions ---------- */
+
+.swatch.is-traverse { background: var(--tex-dash), var(--paper); }
+/* The label goes under the time when the column is too narrow for both. */
+.session-row .nm {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--s-1) var(--s-2);
+  font-variant-numeric: tabular-nums;
+}
+.session-row .bulk {
+  flex: none;
+  white-space: nowrap;
+  padding: 0 var(--s-1);
+  border: var(--border);
+  font: 600 var(--fs-3xs) / var(--lh-snug) var(--sans);
+  font-stretch: var(--wdth-wide);
+  letter-spacing: var(--track-wide);
+  text-transform: uppercase;
+}
+
+/* ---------- Reading the world ---------- */
+
+.glyph.g-traverse { border-color: var(--line-3); background: var(--tex-traverse), var(--paper); }

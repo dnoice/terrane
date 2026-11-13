@@ -1,16 +1,25 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Age Table (Terrane Edition - v1.0)
+ *     - Title: Age Table (Terrane Edition - v1.1)
  *     - File Name: timeline.js
  *     - Relative Path: web/js/timeline.js
  *     - Artifact Type: javascript
- *     - Version: 1.0.0
- *     - Date: 11/12/2026
- *     - Update: Thursday, November 12, 2026
+ *     - Version: 1.1.0
+ *     - Date: 11/13/2026
+ *     - Update: Friday, November 13, 2026
  *     - Author: Dennis 'dendogg' Smaltz
  *     - A.I. Acknowledgement: Anthropic - Claude Opus 5.5
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
+ *
+ * ✒ Changelog:
+ *     - 1.1.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — Each
+ *       folder's median step is found once, when the table is built, and
+ *       kept beside its row, so medianStep() is one lookup: the Age lens
+ *       asks it for every closed mass on every paint. The answers are the
+ *       same as before.
+ *     - 1.0.0 (11/12/2026) [dendogg + Anthropic - Claude Opus 5.5] —
+ *       Initial release.
  *
  * ✒ Description:
  *     One table of every folder's bytes and files by last change, measured
@@ -28,7 +37,8 @@
  *     - Per folder and step: changed bytes, changed files, and the share
  *       kept (unchanged), weighted by bytes
  *     - The byte-weighted median step and the step where everything has
- *       changed, for choosing where a view starts and ends
+ *       changed, for choosing where a view starts and ends; the median is
+ *       found at the build and kept, so asking for it costs one lookup
  *     - Six strata (under a day, a week, a month, a year, three years,
  *       older) read as differences between ladder steps, so they always
  *       agree with the steps
@@ -67,8 +77,9 @@
  *       arrival. A file with no time (0) never counts as changed and sits
  *       in the oldest stratum
  *     - Performance: one O(entries) walk plus 21 adds per folder, and 12
- *       bytes per folder and cell: 23 ms and 7.9 MB for 400,000 files in
- *       28,571 folders on a 16-core machine. An accessor is one Map lookup
+ *       bytes per folder and cell (one more per folder for its median):
+ *       23 ms and 7.9 MB for 400,000 files in 28,571 folders on a 16-core
+ *       machine. An accessor is one Map lookup
  *     - The table is a snapshot: until the next survey rebuilds it, a
  *       folder whose contents changed answers with its old figures
  * ----------------------------------------------------------------------------
@@ -111,8 +122,9 @@ class AgeTable {
   #slots;
   #bytes;
   #files;
+  #median;
 
-  constructor(anchor, T, Tf, slots, bytes, files, ms) {
+  constructor(anchor, T, Tf, slots, bytes, files, median, ms) {
     /** The moment the ladder looks back from (ms). */
     this.anchor = anchor;
     /** The date of each step, newest first: T[0] is the anchor. Frozen. */
@@ -124,6 +136,7 @@ class AgeTable {
     this.#slots = slots;
     this.#bytes = bytes;
     this.#files = files;
+    this.#median = median;
     Object.freeze(this);
   }
 
@@ -215,7 +228,8 @@ class AgeTable {
    * step also stands for anything older; -1 means there are no files.
    */
   medianStep(node) {
-    return this.#reach(node, 0.5);
+    const slot = node.d ? this.#slots.get(node) : undefined;
+    return slot === undefined ? this.#reach(node, 0.5) : this.#median[slot];
   }
 
   /** The first step at which every file has changed; the last step when some never do; -1 with no files. */
@@ -319,17 +333,32 @@ export function buildAgeTable(root, anchor = Date.now()) {
       files[p + k] += files[o + k];
     }
   }
-  // Bins become "changed after T[k]"; the last cell is the total.
+  // Bins become "changed after T[k]"; the last cell is the total. Each
+  // folder's median step is found here once: the first step where half
+  // its bytes (half its files, when they hold none) have changed; the last
+  // step when that is older still; -1 with no files.
+  const median = new Int8Array(n);
   for (let i = 0; i < n; i++) {
     const o = i * W;
     for (let k = 1; k < W; k++) {
       bytes[o + k] += bytes[o + k - 1];
       files[o + k] += files[o + k - 1];
     }
+    const tf = files[o + STEPS];
+    if (!tf) {
+      median[i] = -1;
+      continue;
+    }
+    const tb = bytes[o + STEPS];
+    const row = tb > 0 ? bytes : files;
+    const need = (tb > 0 ? tb : tf) * 0.5;
+    let k = 0;
+    while (k < STEPS - 1 && row[o + k] < need) k++;
+    median[i] = k;
   }
   if (n < cap) {
     bytes = bytes.slice(0, n * W);
     files = files.slice(0, n * W);
   }
-  return new AgeTable(anchor, T, Tf, slots, bytes, files, now() - t0);
+  return new AgeTable(anchor, T, Tf, slots, bytes, files, median, now() - t0);
 }
