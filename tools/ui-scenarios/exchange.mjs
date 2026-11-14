@@ -19,7 +19,8 @@
  * ✒ Description:
  *     Checks what Terrane lets out of the page and back in, in a real
  *     browser, keyboard first, with WebGL on and off: lists saved as CSV
- *     files and read back against the rows the ledger listed.
+ *     files and read back against the rows the ledger listed, and places
+ *     saved as a file and taken in again.
  *
  * ✒ Key Features:
  *     - 'export' (read-only fixture, both passes): downloads are allowed
@@ -33,6 +34,16 @@
  *       opened with Enter on its summary and Largest files pressed; Empty
  *       folders from the command palette; an empty folder says "Nothing
  *       to export: this folder is empty." and saves nothing
+ *     - 'places-file' (read-only fixture, both passes): B and H in edge
+ *       cases and a saved search; Export places, reached with Tab, saves
+ *       terrane-places-fixture-<day>.json holding all three for this root
+ *       and the live directory; Forget all and the search forgotten;
+ *       Import places… answered through the file picker
+ *       (Page.setInterceptFileChooserDialog, DOM.setFileInputFiles) says
+ *       "3 added, 0 updated, 0 skipped." and puts all three back, the
+ *       benchmark found in the tree; a file for another root, one of the
+ *       snapshot and one that is not a places file are each refused with
+ *       their sentence and change nothing; the same file twice skips all
  *
  * ✒ Usage Instructions:
  *     node tools/ui-check.mjs export --port 5040 --no-shots
@@ -308,4 +319,173 @@ const exportLists = {
   },
 };
 
-export default [exportLists];
+/* ---------- places-file ---------- */
+
+/**
+ * Presses Enter on the focused control, which opens a file picker, and
+ * answers the picker with file through DevTools (Page.fileChooserOpened,
+ * then DOM.setFileInputFiles), as a person choosing the file would.
+ */
+async function chooseFile(t, file) {
+  const page = t.page;
+  let opened = null;
+  const off = page.cdp.on((msg) => {
+    if (msg.sessionId === page.sessionId && msg.method === 'Page.fileChooserOpened') opened = msg.params;
+  });
+  try {
+    await t.key('Enter');
+    const end = Date.now() + 6000;
+    while (!opened) {
+      if (Date.now() > end) throw new Error('No file picker opened');
+      await t.sleep(40);
+    }
+    await page.send('DOM.setFileInputFiles', { files: [file], backendNodeId: opened.backendNodeId });
+  } finally {
+    off();
+  }
+}
+
+/** The places store and the saved searches as plain values. */
+const placesState = (t) => t.app((T) => ({
+  benchmarks: T.S.places.benchmarks.map((b) => ({ rel: b.rel, at: b.m.at, found: !!b.node })),
+  ret: T.S.places.ret ? T.S.places.ret.rel : null,
+  saved: T.S.searches.saved.map((x) => `${x.name}=${x.query}`),
+}));
+
+/** Forgets every benchmark, the return point and every saved search, without asking. */
+const forgetEverything = (t) => t.app((T) => {
+  T.S.places.clear();
+  T.S.places.flush();
+  for (const x of [...T.S.searches.saved]) T.S.searches.forget(x.id);
+  return true;
+});
+
+/** Shows the Places tab and focuses the summary of its Export and import section. */
+const toFileSection = (t) => t.app((T) => {
+  T.S.tab = 'places';
+  T.api.drawLedger();
+  document.querySelector('#ledger-rich details.places-file > summary')?.focus();
+  return document.activeElement?.matches('details.places-file > summary') ?? false;
+});
+
+const placesFile = {
+  name: 'places-file',
+  title: 'Places file: a benchmark, the return point and a saved search exported, forgotten, imported back; foreign files refused',
+  data: 'fixture',
+  async run(t) {
+    await t.settle();
+    await forgetEverything(t);
+    const dl = await downloads(t);
+    const work = fs.mkdtempSync(path.join(os.tmpdir(), 'terrane-places-'));
+    await t.page.send('DOM.enable').catch(() => {});
+    await t.page.send('Page.setInterceptFileChooserDialog', { enabled: true });
+    try {
+      // A benchmark and a return point in edge cases, and a saved search.
+      await goInto(t, 'edge cases');
+      await t.app((T) => {
+        T.api.select(null);
+        T.S.tab = 'contents';
+        T.api.drawLedger();
+        document.getElementById('ledger-list').focus();
+        return true;
+      });
+      await t.key('b');
+      await t.waitFor((T) => T.S.places.benchmarks.some((b) => b.rel === 'edge cases' && b.node), { what: 'the benchmark on edge cases', timeout: 8000 });
+      await t.key('h');
+      await t.waitFor((T) => T.S.places.ret?.rel === 'edge cases', { what: 'the return point' });
+      await t.app((T) => !!T.S.searches.save('Markdown here', 'ext:md in:"edge cases"').entry);
+      const start = await placesState(t);
+
+      // Export places, reached with Tab and pressed with Enter.
+      t.check('the Places tab ends with Export and import', await toFileSection(t)
+        && await t.eval(() => [...document.querySelectorAll('#ledger-rich > details')].at(-1)?.classList.contains('places-file')));
+      await t.tabTo('#ledger-rich [data-k="places-export"]');
+      await t.key('Enter');
+      const got = await dl.next();
+      const root = await t.app((T) => T.S.info.root);
+      let doc = null;
+      try {
+        doc = JSON.parse(got.text);
+      } catch { /* checked below */ }
+      t.check(`Export places saves ${got.name}`, got.name === `terrane-places-fixture-${today()}.json`, got.name);
+      t.check('it is a places file of format 1, for this root and the live directory, dated now',
+        doc?.terrane === 'places' && doc.format === 1 && doc.root === root && doc.source === 'live' && Math.abs(Date.parse(doc.exportedAt) - Date.now()) < 120000, JSON.stringify(doc && { ...doc, benchmarks: doc.benchmarks?.length }));
+      t.check('with the benchmark, the return point and the saved search',
+        doc?.benchmarks?.length === 1 && doc.benchmarks[0].rel === 'edge cases' && doc.ret?.rel === 'edge cases'
+        && doc.searches?.length === 1 && doc.searches[0].name === 'Markdown here' && doc.searches[0].query === 'ext:md in:"edge cases"', JSON.stringify(doc?.searches));
+      const saidOut = await noticeLike(t, /^Exported .* to terrane-places-/);
+      t.check(`and it says "${saidOut}"`, saidOut === `Exported 1 benchmark, the return point and 1 saved search to ${got.name}.`, saidOut);
+      const file = path.join(work, got.name);
+      fs.writeFileSync(file, got.text);
+
+      // Forget all, then the saved search too.
+      await t.tabTo('#ledger-rich [data-k="forget-all"]', { back: true });
+      await t.key('Enter');
+      await t.waitFor(() => document.getElementById('dialog').open, { what: 'the Forget all question' });
+      await t.tabTo('#dialog button[type=submit]');
+      await t.key('Enter');
+      await t.waitFor((T) => !T.S.places.benchmarks.length && !T.S.places.ret, { what: 'everything forgotten' });
+      await t.app((T) => { for (const x of [...T.S.searches.saved]) T.S.searches.forget(x.id); return true; });
+      const gone = await placesState(t);
+      t.check('Forget all leaves no benchmark and no return point, and the saved search is forgotten', !gone.benchmarks.length && !gone.ret && !gone.saved.length, JSON.stringify(gone));
+
+      // Import places… through the file picker.
+      await toFileSection(t);
+      await t.tabTo('#ledger-rich [data-k="places-import"]');
+      await chooseFile(t, file);
+      const saidIn = await noticeLike(t, /^Imported from /);
+      t.check(`Import places… with that file says "${saidIn}"`, saidIn === `Imported from ${got.name}: 3 added, 0 updated, 0 skipped.`, saidIn);
+      const back = await t.until((T) => T.S.places.benchmarks.length === 1 && T.S.places.benchmarks[0].node && T.S.places.ret && T.S.searches.saved.length === 1, { timeout: 4000 });
+      const now = await placesState(t);
+      t.check('the benchmark (found in the tree), the return point and the saved search are back as they were',
+        !!back && same(now, start), `${JSON.stringify(now)} vs ${JSON.stringify(start)}`);
+      t.check('the Places tab lists the benchmark again', await t.eval(() => [...document.querySelectorAll('#ledger-rich details.bench .nm')].some((n) => n.textContent === 'edge cases')));
+      t.check('focus stays on Import places…', await t.eval(() => document.activeElement?.dataset?.k === 'places-import'));
+
+      // Files that are not for here.
+      const variant = (name, change) => {
+        const f = path.join(work, name);
+        fs.writeFileSync(f, JSON.stringify(change(JSON.parse(got.text))));
+        return f;
+      };
+      const elsewhere = path.join(path.dirname(root), 'elsewhere');
+      const refusals = [
+        [variant('other-root.json', (d) => ({ ...d, root: elsewhere })), `This file holds places for ${elsewhere}, not ${root}. Nothing was imported.`],
+        [variant('snapshot.json', (d) => ({ ...d, source: 'snapshot' })), "This file holds the snapshot's places, and these places are the live directory's: a benchmark is only compared with what it was measured from. Nothing was imported."],
+        [variant('not-places.json', (d) => ({ ...d, terrane: 'view' })), 'This is not a Terrane places file.'],
+      ];
+      await t.app((T) => { T.S.places.clear(); T.S.places.flush(); return true; });
+      for (const [f, want] of refusals) {
+        await t.eval(() => document.querySelector('[data-k="places-import"]')?.focus());
+        await chooseFile(t, f);
+        const said = await noticeLike(t, new RegExp(`^${want.slice(0, 18).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`));
+        const after = await placesState(t);
+        t.check(`${path.basename(f)} is refused: "${said}", and nothing changes`, said === want && !after.benchmarks.length && !after.ret && after.saved.length === 1, `${said} | ${JSON.stringify(after)}`);
+      }
+
+      // The same file twice: the second time everything is skipped.
+      await t.eval(() => document.querySelector('[data-k="places-import"]')?.focus());
+      await chooseFile(t, file);
+      await t.waitFor((T) => T.S.places.benchmarks.length === 1, { what: 'the first import of the file' });
+      await t.eval(() => document.querySelector('[data-k="places-import"]')?.focus());
+      await chooseFile(t, file);
+      const twice = await t.until((_T, n) => [...document.querySelectorAll('#notices .notice-text')].map((x) => x.textContent).find((x) => x === `Imported from ${n}: 0 added, 0 updated, 3 skipped.`) || null, { args: [got.name], timeout: 6000 });
+      const end = await placesState(t);
+      t.check('importing the same file again skips all three and changes nothing', !!twice && end.benchmarks.length === 1 && end.ret === 'edge cases' && end.saved.length === 1, `${twice} | ${JSON.stringify(end)}`);
+    } finally {
+      await t.page.send('Page.setInterceptFileChooserDialog', { enabled: false }).catch(() => {});
+      await dl.close();
+      fs.rmSync(work, { recursive: true, force: true });
+      await forgetEverything(t);
+      await t.app((T) => {
+        T.S.tab = 'contents';
+        T.api.select(null);
+        T.api.setFocus(T.S.model.root);
+        return true;
+      });
+      await t.settle();
+    }
+  },
+};
+
+export default [exportLists, placesFile];

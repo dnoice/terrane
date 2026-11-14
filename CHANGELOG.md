@@ -24,7 +24,7 @@
       acting on many extend those of app.js and landmarks.js, and acting on many itself
       those of terrane.css and features.js: the batch rename, duplicate cleanup and copy
       as. Getting things in and out extends those of ui.js and features.js: download()
-      and the lists saved as CSV.
+      and the lists saved as CSV; then that of landmarks.js: places export and import.
     - 1.4.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — Records app.js 1.8.0:
       single-key shortcuts are off unless turned on in the guide.
     - 1.3.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — Records the hardening
@@ -405,7 +405,20 @@ here unchanged in the same edit.
   after the return point. A batch rename (body type 'renames') carries benchmarks along by
   the pairs the service answers (res.renamed); one that stopped part way, by each item's
   path to its entry in res.results, where it now is, leaving out an item that kept its
-  name.
+  name. Export and import, the tab's last section and two palette commands, carries
+  places between browsers, profiles and addresses. Export places saves
+  terrane-places-<directory>-YYYY-MM-DD.json: { terrane: 'places', format: 1, root,
+  source ('live' or 'snapshot'), exportedAt, benchmarks, ret, searches }, the benchmarks
+  and the return point from the store's exportData() and the saved searches as kept.
+  Import places… clicks a file input kept in the section (the palette's command shows
+  the tab first, inside the frame that keeps the key's activation for the picker). A
+  file over 2 MB, one that is not JSON, not terrane 'places' of format 1 or of no known
+  source is "not a Terrane places file"; one for another root (compared exactly, in any
+  case on Windows and macOS) or another source is refused with a sentence naming both,
+  and nothing changes. Otherwise the store's importData() takes the benchmarks and the
+  return point, the searches store's mergeSaved() the saved searches, the benchmarks are
+  found in the tree, and the notice says "Imported from <file>: 3 added, 1 updated, 2
+  skipped." (and how many did not fit in 64), with an Undo that puts back both.
 - 1.2.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — A Find that asks
   is:benchmark runs again whenever the benchmarks change, so Findings, its count, the pins
   and the dimming follow; J opens a folded return point through api.forceOpen, so the
