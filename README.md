@@ -14,7 +14,8 @@
 ✒ Changelog:
     - 1.16.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] —
       Reading the world: the conventions are listed in the Guide's tab
-      of that name, no longer in the inspector.
+      of that name, no longer in the inspector. What was verified
+      records the runs.
     - 1.15.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] —
       Travelling: flavors, so the mouse steers the world as Blender,
       AutoCAD, SketchUp, Maya, 3ds Max, Rhino, SolidWorks, Unity,
@@ -720,6 +721,8 @@ browser holds two copies of it, about 300 MB per million entries.
 | Steady conventions and Blender's view controls on Windows 11 (11/14/2026), Edge 157 on an RTX 5050 laptop GPU: `npm test`, and `node tools/ui-check.mjs --no-shots`, both passes, on the default fixture, with the new `views` scenario (hatching and bands drawn with the floating origin moved and moved back under the same eye; the middle button's orbit, grab and fly; the numpad views). With the old origin-relative coordinates put back, the same check finds 6,045 and 11,984 pixels moved | `npm test`: 797 passed, 0 failed. The interface check: 1424 passed, 0 failed, 6 skipped; 7 of 840,160 pixels differ with the fix |
 
 | Flavors on Windows 11 (11/14/2026), Edge 157 on an RTX 5050 laptop GPU: `npm test` with the new `flavors-test`, and `node tools/ui-check.mjs --no-shots`, both passes, on the default fixture, with `views` making every drag of every flavor with the mouse and judging what the eye did | `npm test`: 874 passed, 0 failed (77 in `flavors-test`). The interface check: 1438 passed, 1 failed, 6 skipped; the failure was the full-upload picture in `transitions`, one byte of one pixel a level apart, which the check now ignores while still counting anything over two levels (`transitions` again: 33 passed, 0 failed) |
+
+| The Guide window on Windows 11 (11/14/2026), Edge 157 on an RTX 5050 laptop GPU: `npm test`, and `node tools/ui-check.mjs --no-shots`, both passes, on the default fixture, with `seams`, `strata`, `time` and `interiors` reading Reading the world from the Guide's tab and `hardening` reaching the single-key setting in its Settings tab | `npm test`: 874 passed, 0 failed. The interface check: 1439 passed, 0 failed, 6 skipped |
 
 Not verified: running on macOS; frame rate at street level in the largest
 trees on a hardware GPU; Open and Reveal reaching a desktop application on
