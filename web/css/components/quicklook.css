@@ -1,0 +1,158 @@
+/*
+ * ============================================================================
+ * ✒ Metadata
+ *     - Title: Quick Look (Terrane Edition - v1.0)
+ *     - File Name: quicklook.css
+ *     - Relative Path: web/css/components/quicklook.css
+ *     - Artifact Type: stylesheet
+ *     - Version: 1.0.0
+ *     - Date: 11/13/2026
+ *     - Update: Friday, November 13, 2026
+ *     - Author: Dennis 'dendogg' Smaltz
+ *     - A.I. Acknowledgement: Anthropic - Claude Opus 5.5
+ *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
+ *
+ * ✒ Changelog:
+ *     - 1.0.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] —
+ *       Initial release.
+ *
+ * ✒ Description:
+ *     Quick look (P): a large sheet in the shared dialog that shows one
+ *     file, its facts in a ruled head above and its keys in a foot line
+ *     below. It reads as the rest of the sheet does: paper, ink rules, a
+ *     hard shadow, mono for figures and text.
+ *
+ * ✒ Key Features:
+ *     - dialog.is-look: about 1,100 px by 86% of the window, never wider
+ *       than 92% of it
+ *     - The head: the kind swatch and the name, Close at the right, the
+ *       facts, the position in the list and the cut note in mono beneath
+ *     - One scroll container for the body: text as a grid of a sticky
+ *       gutter of line numbers beside a pre that keeps its lines whole;
+ *       a picture or a player centred and fitted; facts as a definition
+ *       list under a sentence
+ *     - The focus ring of the body is drawn inside its edge
+ *     - A foot line naming the keys, in mono, as the palette's does
+ *
+ * ✒ Other Important Information:
+ *     - Dependencies: tokens.css, base.css (kbd), ledger.css (.swatch),
+ *       inspector.css (.facts), controls.css (.btn), floating.css
+ *       (dialog); web/js/quicklook.js builds the sheet
+ *     - Compatible platforms: current evergreen browsers
+ * ----------------------------------------------------------------------------
+ */
+
+dialog.is-look {
+  width: min(1100px, 92vw);
+  height: 86vh;
+  max-height: 86vh;
+}
+.is-look .sheet {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.look-head {
+  display: grid;
+  flex: none;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--s-1) var(--s-3);
+  padding: var(--s-3) var(--s-4);
+  border-bottom: var(--border);
+  background: var(--surface-field);
+}
+.look-title { display: flex; align-items: center; gap: var(--s-2); min-width: 0; }
+.look-title .swatch { flex: none; }
+.look-name {
+  margin: 0;
+  overflow: hidden;
+  font: 700 var(--fs-xl) / 1.2 var(--sans);
+  font-stretch: 104%;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.look-meta { display: flex; flex-wrap: wrap; grid-column: 1 / -1; gap: 0 var(--s-3); }
+.look-facts, .look-where, .look-cut {
+  margin: 0;
+  color: var(--text-2);
+  font: 400 var(--fs-xs) / 1.5 var(--mono);
+  font-variant-numeric: tabular-nums;
+}
+.look-where { color: var(--text); }
+.look-cut { padding: 0 var(--s-1); background: var(--mark-soft); color: var(--text); }
+
+.look-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+  background: var(--surface-control);
+}
+.look-body:focus-visible { outline-offset: calc(var(--focus-offset) * -1); }
+
+/* Text: line numbers beside the lines, in one scroll container. */
+.look-body.is-text {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+}
+.look-gutter, .look-text {
+  margin: 0;
+  padding: var(--s-2) var(--s-3);
+  font: 400 var(--fs-sm) / 1.5 var(--mono);
+  white-space: pre;
+  tab-size: 4;
+}
+.look-gutter {
+  position: sticky;
+  left: 0;
+  min-height: 100%;
+  border-right: var(--border-3);
+  background: var(--surface-field);
+  color: var(--text-3);
+  text-align: right;
+  user-select: none;
+}
+.look-text { min-width: max-content; color: var(--text); }
+
+/* A picture or a player, fitted and centred. */
+.look-body.is-picture, .look-body.is-media {
+  display: grid;
+  place-items: center;
+  padding: var(--s-4);
+}
+.look-body.is-picture img, .look-body.is-media video {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  border: var(--border-3);
+  background: var(--surface-field);
+}
+.look-body.is-media audio { width: min(560px, 100%); }
+
+.look-note, .look-why {
+  margin: 0;
+  padding: var(--s-4);
+  color: var(--text-2);
+  font-size: var(--fs-md);
+  text-wrap: pretty;
+}
+.look-about { max-width: 720px; padding-bottom: var(--s-4); }
+.look-about .look-why { padding-bottom: var(--s-2); color: var(--text); }
+.look-about .facts { padding: 0 var(--s-4); }
+.look-about code { font: 400 var(--fs-xs) / 1.4 var(--mono); overflow-wrap: anywhere; }
+
+.look-foot {
+  flex: none;
+  margin: 0;
+  padding: var(--s-1) var(--s-4);
+  border-top: var(--border-2);
+  color: var(--text-3);
+  font: 500 var(--fs-xs) / 1.6 var(--mono);
+}
+.look-foot kbd { margin-right: 2px; }
+
+/* The inspector's Quick look button stands under the preview. */
+.look-action { margin-top: var(--s-2); }

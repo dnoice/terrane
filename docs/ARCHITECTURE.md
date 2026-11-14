@@ -1,10 +1,10 @@
 <!--
 ✒ Metadata
-    - Title: Terrane Architecture (Terrane Edition - v1.6)
+    - Title: Terrane Architecture (Terrane Edition - v1.7)
     - File Name: ARCHITECTURE.md
     - Relative Path: docs/ARCHITECTURE.md
     - Artifact Type: docs
-    - Version: 1.6.0
+    - Version: 1.7.0
     - Date: 11/13/2026
     - Update: Friday, November 13, 2026
     - Author: Dennis 'dendogg' Smaltz
@@ -12,6 +12,22 @@
     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
 
 ✒ Changelog:
+    - 1.7.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — Wave
+      3, quality of life, on branch qol. The stack names the warm start,
+      the fuzzy ranking and the CSV writer; the open-world table notes
+      the warm start and the remembered view. The service section adds
+      GET /api/warm, POST /api/terminal, the renames operation, byte
+      ranges on /api/raw, an Undo that resumes, the port Windows refuses
+      and a section on the warm start and its reconciliation in the
+      page. Scale and the measured tables add the warm cache, adopt and
+      the palette's ranking; the datasets add the warm cache; the known
+      limitations add two trees during a catch-up, verification kept
+      per file, the browser storage keys and a sentence said twice.
+      Section 7 lists the new modules, the registries COMMANDS,
+      LEDGER_SUB, AFTER_FOCUS, AFTER_SELECT, TAB_SECTIONS, RENAME_MANY,
+      DUP_GROUP and INSPECTOR.many, the api's additions, openSheet,
+      the storage keys and the address, P and Ctrl+K in the key
+      allocation, and the warm start among the hazards.
     - 1.6.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
       single-key setting is off unless turned on in the guide, and
       the interface check turns it on for every page it opens.
@@ -76,10 +92,12 @@
     - The spatial model and why it was rebuilt
     - World management: level of detail, budgets, coordinates
     - Service design and data flow, archive listing included
-    - Datasets for development against real data
+    - The warm start: the cache, its checks and the catch-up
+    - Datasets for development against real data, and the warm cache
     - The visual identity and every drawing convention
-    - Feature modules and their seams: registries, key allocation,
-      relation sets, code tables, the shared age table
+    - Feature modules and their seams: registries, the api, sheets,
+      browser storage, key allocation, relation sets, code tables, the
+      shared age table
     - Measurements and known limitations
 
 ✒ Other Important Information:
@@ -104,6 +122,9 @@
 | Scan transport | NDJSON over a streamed HTTP response | Progressive, backpressured, cancellable, no protocol code | WebSocket |
 | Change transport | Server-sent events | One-way, auto-reconnecting, built in | WebSocket, polling |
 | Archive reading | The zip central directory parsed in the service with Node built-ins | A listing needs only the directory at the end of the file; nothing is extracted, so no decompressor and no library touch untrusted bytes beyond it | An unzip library; extracting to a temporary folder |
+| Warm start | The page's own whole survey copied as it streams into a gzipped NDJSON file in the dataset home, drawn at once on the next launch and checked by a full survey in the background | No second walk of the disk; the cache is the scan's own stream, so the page reads it with the code that reads a survey; gzip is a Node built-in | Validating the cache by folder modification times, as Stage 4 planned: a full survey in the background is simpler to make correct, and the world can be read and travelled meanwhile |
+| Fuzzy ranking | A scorer of its own (`fuzzy.js`): a subsequence pre-test, dynamic programming in typed arrays, a top-k buffer | About 6 ms a query over 200,000 names, in a page that runs only vendored code | A fuzzy-search library |
+| CSV export | Written in the page (`csv.js`) and saved through a Blob | No service route, so it works in snapshot and read-only mode | A service endpoint; a CSV library |
 
 ## 2. The spatial model
 
@@ -167,30 +188,34 @@ above were replaced.
 | Multiple navigation scales | Done: scale-proportional flight, plus jumps from breadcrumbs, ledger, search and survey |
 | Coordinate management | Done: floating origin. Layout is computed in 64-bit; instance positions are sent to the GPU relative to the eye, re-based at every layout. A file twelve levels down, four orders of magnitude smaller than the world, renders without jitter |
 | Procedural generation | Done in the sense that matters: all geometry is generated from data at run time |
-| World streaming of data | Not done. The service streams the scan, but the browser then holds the whole tree. See Roadmap stage 4 |
+| World streaming of data | Not done. The service streams the scan, but the browser then holds the whole tree. A warm start draws the last complete survey at once and checks it against the disk in the background. See Roadmap stage 4 |
 | Regions that are not confined to a ground plane | Partly. Elevation carries nesting, so the world has real relief, but it is a landscape, not a volume. A zip archive can be entered as a walled floor on its own file's footprint. Bridges between related regions and vertical organisation are not attempted. See Roadmap stage 5 |
-| Landmarks and waypoints | A first form: benchmarks stand as survey marks that say what changed since they were set, and one return point can be marked and flown back to. No trail of where you have been |
+| Landmarks and waypoints | A first form: benchmarks stand as survey marks that say what changed since they were set, and one return point can be marked and flown back to. A reload comes back to where you stood, and the address names the folder. No trail of where you have been |
 | Paths through the world | A first form: the traverse draws a working session from file to file in the order they changed |
 
 ## 3. Service
 
 ```text
 browser                              service (127.0.0.1)
-  GET  /api/info                ->   the root, its name, the mode, the watcher's state
-  GET  /api/scan?path=&depth=   ->   scan.mjs      NDJSON, one record per folder
+  GET  /api/info                ->   the root, its name, the mode, the watcher's state, the warm cache
+  GET  /api/scan?path=&depth=   ->   scan.mjs      NDJSON, one record per folder; a whole survey is
+                                                   also copied into the warm cache (warm.mjs)
+  GET  /api/warm                ->   warm.mjs      the last complete survey, as the scan's NDJSON
   GET  /api/events              ->   fs.watch      SSE: folders that changed, job progress
   GET  /api/journal             ->   ops.mjs       the journal and the holding area
-  POST /api/op                  ->   ops.mjs       mkdir rename move copy trash open reveal
+  POST /api/op                  ->   ops.mjs       mkdir rename renames move copy trash open reveal
   POST /api/cancel              ->   ops.mjs       stop a running or queued job
   POST /api/undo | restore | purge
+  POST /api/terminal            ->   ops.mjs       a terminal, the folder as its working directory
   POST /api/hash                ->   SHA-1         duplicate verification
-  GET  /api/stat | raw          ->   metadata, sandboxed preview bytes
+  GET  /api/stat | raw          ->   metadata, sandboxed preview bytes, one byte range
   GET  /api/inside?path=        ->   archive.mjs   a zip's directory, as scan records
   GET  /api/thumbs | thumb      ->   thumbs.mjs    image index, versioned thumbnails
            every path  ->  guard.mjs  (root-relative, lexical check, realpath check)
 
 snapshot mode (--snapshot):  info, scan, stat, events, an empty journal  ->  snapshot.mjs
-                             every change, open, reveal, raw, inside, hash  ->  refused
+                             every change, open, reveal, terminal, raw, inside, hash,
+                             warm  ->  refused
 ```
 
 - **One mutation at a time**, through a queue. A batch is validated in
@@ -209,6 +234,52 @@ snapshot mode (--snapshot):  info, scan, stat, events, an empty journal  ->  sna
   pairs. A move, copy or removal that stops part way answers with
   `results`, the paths it finished, which are journaled like a whole
   change. The page follows both by path (section 7, `AFTER_OP`).
+- **A batch rename is checked whole.** The `renames` operation takes 1
+  to 5,000 items, `{ path, name }`, and checks every one before the
+  first rename: the guard, the name (`checkName`), no path twice, no
+  item inside another, no new name taken by anything but the item itself
+  (so chains and swaps are refused), and no two new names alike in one
+  folder as the filesystem compares names (`guard.foldName`). Unchanged
+  items are skipped. It is journaled as one entry, "Renamed N items",
+  undone as moves, and answers `renamed`, the `[from, to]` pairs. One
+  that stops part way journals what it finished as "Partial rename (k
+  of n)" and throws with `results`, item by item, and `affected`.
+- **An Undo that stops part way resumes.** When a move back fails after
+  some pairs went back (a folder another program holds as its working
+  directory, say), the journal entry keeps only the pairs still out and
+  the journal is saved before the error is thrown, so the next Undo
+  resumes, after a restart too, and older entries stay reachable. The
+  error is a 500 with the system's code, `moved`, `affected` and a
+  sentence that says how many items went back and why the rest did not;
+  `fail()` passes such a worded sentence through instead of the stock
+  one for its code.
+- **A terminal is launched, never a command line.** `POST /api/terminal
+  { path }` has the token, Host and JSON checks of every POST, is
+  refused in read-only mode (`EREADONLY`) and snapshot mode
+  (`ESNAPSHOT`), reaches a folder through its parent's real location
+  and its own (`ENOTDIR` for anything else), and is not queued with the
+  changes, as Open is not. `terminalPlan(platform, env)` gives the
+  programs to try, in order, each with fixed arguments: on Windows
+  `wt.exe -d .`, then `%ComSpec% /d /c start cmd.exe` (a `cmd.exe`
+  started directly with no console input closes at once); on macOS
+  `open -a Terminal .`; elsewhere `x-terminal-emulator`, then
+  `gnome-terminal`. The folder is the working directory and never an
+  argument, every launch has `shell: false`, a program that is not
+  installed (`ENOENT`) passes to the next, and when none is left the
+  answer is `ELAUNCH` (501) naming what was tried. With
+  `TERRANE_LAUNCH_LOG` set, every launch (Open and Reveal too) is
+  written to that file as `{ cmd, args, cwd }` and nothing is started.
+- **Previews answer one byte range.** `GET /api/raw` keeps every check
+  it made and makes them first. A single range (`a-b`, `a-` or `-n`)
+  answers 206 with `Content-Range`, at most 8 MiB at a time, so a media
+  element can play and seek; a range past the end, or any range of an
+  empty file, answers 416 with `bytes */size`; several ranges or another
+  unit get the whole-file answer as before. Every answer carries
+  `Accept-Ranges`, and the bytes stream through `pipeline()`, so a
+  reader the page drops is closed.
+- **A port that is taken is passed over.** `EADDRINUSE`, and on Windows
+  `EACCES` for a port another program holds exclusively, moves the
+  service to the next port, up to 20 times.
 - **After a change, only the affected folders are re-read** (depth-1
   scan), reconciled into the model by name so selection survives, and
   any new child folder is deep-scanned. The watcher feeds the same path.
@@ -300,6 +371,75 @@ on every side.
 - **Snapshot mode refuses it** with `ESNAPSHOT` (403) and a sentence: a
   snapshot holds names, sizes and dates, not what a file contains.
 
+### Warm start
+
+`server/warm.mjs` keeps the last complete survey of the root, and the
+page draws it before it reads anything from disk.
+
+- **A copy, never a walk of its own.** When the page surveys the whole
+  root (`GET /api/scan` with path `''` and no depth), the records are
+  gzipped into a temporary file of this process as they stream, one JSON
+  line per batch, while folders, files and bytes are counted. The copy
+  becomes the cache, `warm-<sha256(root), 16 hex>.ndjson.gz` in the
+  dataset home, only when the survey ran to its end with the page still
+  there; the meta beside it (format, root, `takenAt`, the counts, the
+  data file's size, the version) is then written atomically. A survey
+  dropped part way, a depth-1 survey and a sub-folder survey write
+  nothing. Commits run one at a time, a rename Windows refuses (`EPERM`,
+  `EBUSY`, `EACCES`) is tried again, and temporary files another process
+  left more than ten minutes ago are swept. Nothing the writer does can
+  fail the survey it copies.
+- **Read back only when it checks out.** `readWarm` accepts a meta only
+  of format 1, naming exactly this root, with finite counts, and only
+  while the data file has the size the meta records. `GET /api/info`
+  then carries `warm: { takenAt, folders, files, bytes }`. `GET
+  /api/warm` has the token and Host checks, is `no-store` and `nosniff`,
+  and streams the file as it is, with `Content-Encoding: gzip`, when the
+  page accepts gzip, and decompressed otherwise. It answers `ENOWARM`
+  (404) when there is no cache or with `--no-warm`, and `ESNAPSHOT`
+  (403) in snapshot mode, which keeps none.
+- **Never inside the tree it records.** `warmInside` resolves the cache
+  folder's real location (the nearest part that exists, the rest added
+  back) and compares it with the root as the platform compares names.
+  When it is the root or under it (`TERRANE_DATA` set there, or a home
+  folder or a whole drive given as the root), the warm start is off in
+  every mode: `info.warm` is null, `ENOWARM` says why, and the service
+  says so once when it starts. Otherwise `--read-only` still writes the
+  cache, which is outside the directory, and `--no-warm` writes nothing.
+- **Drawn at once.** With `info.warm` set, and not in snapshot mode,
+  `start()` sets `S.warm`, says "Drawing <name> as it was on MM/DD/YYYY
+  HH:MM" on the loading sheet and reads `GET /api/warm` into the model.
+  When the root's counts match the meta's (`root.dc + 1` folders,
+  `root.fc` files), it surveys, runs `AFTER_SURVEY` with `{ full: true,
+  warm: true }`, lays out, draws and hands over from the sheet, with a
+  notice that the tree is shown as the last session surveyed it. A
+  stream that breaks, or counts that differ, set the tree aside with a
+  notice, and the page surveys from nothing. The change stream connects
+  as soon as the warm tree is drawn, so a change made during the
+  catch-up is noted rather than lost.
+- **The catch-up.** `catchUp()` streams `GET /api/scan` into a model of
+  its own, touching nothing in `S`, and notes the eye relative to the
+  box of the folder you are in. `Model.adopt` then takes the new tree
+  on: each folder's children are matched by name and kind, and every
+  node still there is kept, so the selection, the focus, benchmarks and
+  every feature's references stay valid. What left is pruned;
+  `AFTER_REFRESH(null)` runs, then the survey and `AFTER_SURVEY` with
+  `{ full: false, settled: true }`; `S.warm` is cleared and the search
+  runs again. The world is laid out with the location held and, if the
+  folder's box moved, the eye is put back where it stood relative to
+  it. The folders the change stream asked for meanwhile are read again,
+  and a notice says how many files changed, are here now and are gone. A
+  catch-up that fails keeps the warm tree, says so with Survey again,
+  and the status reads "Last session · not surveyed"; a Rescan all
+  stops it.
+- **Changes wait, and say why.** While `S.warm` is set, `writable()`
+  names the wait, so every change control shows unavailable with that
+  reason, and `runOp` (Open and Reveal aside), Undo, Restore, Purge and
+  the change keys refuse with a sentence before a dialog asks or
+  anything is sent. `readOnlyMode()` gives the service's own mode
+  without the wait, for what Terrane does not change itself, such as a
+  terminal.
+
 ## 4. Scale
 
 | Technique | Where |
@@ -318,6 +458,11 @@ on every side.
 | Working sessions from one walk and one typed-array sort with no compare callback, found the first time something reads them after a survey | `relations.js`, `traverse.js` |
 | An open archive's twins after a refresh: only the folders read again, and any new since | `interior.js` |
 | An archive's listing read into a model of its own, then grafted; its chamber inside the same box budget | `interior.js`, `layout.js` |
+| The warm cache copied from the survey the page asked for, as it streams, never from a walk of its own | `warm.mjs` |
+| A fresh tree taken on in one walk with a stack, children matched by name and kind, no key strings built | `model.js` `adopt` |
+| Fuzzy ranking: a subsequence pre-test rejects most names, the best placement by one pass per query character over preallocated typed arrays, the best few kept in a small sorted buffer | `fuzzy.js` |
+| The palette's places built when it opens and kept until the next survey or refresh; ranked 60 ms after the last key | `palette.js` |
+| Quick searches counted in one walk that tests all four, the first time the section is open after a survey | `presets.js` |
 
 Cognitive scale is handled by the same mechanism as rendering scale: you
 see at most a few thousand things, chosen by where you are. From the
@@ -365,20 +510,33 @@ rasterizes on the CPU.
 | A 300,000-entry archive listed into a model and grafted | 150 ms; its layout from the floor, 50,305 boxes, in 94 ms |
 | Twins by name and size over 200,000 files | 5.8 ms |
 | Twins after a refresh of three folders, against a whole walk of 200,000 files | 0.01 ms, against 2.7 ms |
+| The palette's ranking over 200,000 names | about 6 ms a query (the test's ceiling is 150 ms) |
+| `Model.adopt` of a 200,000-file tree | 23 ms (the test's ceiling is 400 ms) |
 
 These are Node figures on the 16-core machine. A 2-core machine like the
 Linux container above was not measured for them.
+
+### Measured (Windows 11, RTX 5050 laptop GPU, 11/13/2026, the warm start)
+
+| Measure | Result |
+| ------- | ------ |
+| A whole survey of 15,126 files, with the cache copied and without, in Node | 95.2 ms median, against 95.0 ms |
+| `GET /api/warm` from a 260 KB cache of the same tree | 6.4 ms |
+| First box drawn, cold then warm, 3,126 files, Edge 157 | 231 then 185 ms with WebGL; 185 then 119 ms without (another run: 273 then 205, and 227 then 143) |
+| First box drawn, cold then warm, 15,126 files, Edge 157 | 321 then 203 ms with WebGL; 279 then 120 ms without |
 
 ## 5. Datasets
 
 Two SQLite files per mirrored directory, kept in
 `%LOCALAPPDATA%\terrane\datasets\<name>`, outside the project and outside
-OneDrive.
+OneDrive, and beside them the warm cache of any directory Terrane is
+started on. `TERRANE_DATA` names another place for all of them.
 
 | Dataset | Written by | Read by | Shape |
 | ------- | ---------- | ------- | ----- |
 | `structure-<time>.db` | `snapshot.mjs`, through the live scanner | snapshot mode | `folders` (path-indexed, breadth-first ids), `files`, an `entries` view, `meta` |
 | `thumbs.db` | `tools/thumbs.py` | `thumbs.mjs`, both modes | one row per image: version, status, size in pixels, average colour, 4×4 grid, 160 and 480 px WebP or gzipped SVG source |
+| `warm-<hash>.ndjson.gz`, `warm-<hash>.json` | `warm.mjs`, from the page's whole survey | `GET /api/warm`, live mode only | the scanner's records, one gzipped JSON line per batch; a meta with the format, root, time taken, counts and the data file's size |
 
 Choices and their reasons:
 
@@ -409,13 +567,24 @@ Choices and their reasons:
 ### Known limitations
 
 - The browser holds the whole tree: about 150 MB per million entries.
+  While a warm start's catch-up runs it holds two, about 300 MB per
+  million; `--no-warm` avoids that.
+- The warm cache is the last complete survey, taken when a session
+  started or at a Rescan all. A session's later refreshes are not in
+  it, so the warm notice dates the tree by that survey, and the
+  catch-up, a full survey, is what checks it; folder times are not
+  used to skip what did not change.
 - One folder draws at most 5,000 entries individually; the rest are scree
   until you are close enough for the largest of them to matter.
 - On Linux the recursive watcher is skipped above 15,000 folders.
 - Sizes are logical sizes. Sparse files and hard links are not detected.
 - Duplicate candidates are files of identical size until verified;
   verification of files over 16 MB samples three megabytes and is
-  reported as probable.
+  reported as probable. What Verify proved is kept per file (its hash,
+  mode, size and last change) and survives a refresh while the size and
+  last change do; a file rewritten with both kept passes for unchanged
+  until duplicate cleanup hashes the group again before it moves
+  anything.
 - Shadows soften at very small scales.
 - Touch input is limited to one-finger slide and tap.
 - The time view, working sessions and strata read modification times:
@@ -434,11 +603,21 @@ Choices and their reasons:
 - Where the graphics driver returns 0 from `fwidth` on a line fragment,
   dashed relation lines draw solid. The traverse is then told from
   duplicate ties by its colour and its lower arc.
-- Places live in the browser's per-origin storage: another browser,
-  profile or port sees none, and a snapshot's benchmarks are kept apart
-  from the live directory's.
+- Places, the kept view and the searches live in the browser's
+  per-origin storage: another browser, profile or port sees none, and a
+  snapshot's are kept apart from the live directory's. A places file
+  carries benchmarks, the return point and saved searches across; the
+  kept view and the history stay where they are.
 - Archive interiors cover the zip family only, one archive at a time;
   search does not reach inside, and entry contents and CRCs are not read.
+- Quick look reads the first 256 KB of a text. A picture with no
+  thumbnail is shown only when it is 2 MB or less and not an SVG;
+  otherwise it is described.
+- A batch rename refuses a chain or a swap outright rather than ordering
+  it through temporary names, because Undo could not reverse it.
+- `say()` sets the live region's text, so a sentence said twice in a
+  row, such as Quick look's "First file", leaves it unchanged, and a
+  screen reader may not say it again.
 
 ## 6. Visual identity
 
@@ -553,12 +732,20 @@ direction is a survey sheet around a plaster world.
   the intro once the page is ready. The mark's pigments and the letters'
   face are scoped to the sheet: they are identity, not meaning, and the
   interface never uses them.
+- **Sheets**: the command palette, Quick look and the batch rename open
+  in the page's one dialog with a class of their own: ruled heads, the
+  highlighter and an ink bar on the palette's active option, Quick
+  look's text beside a gutter of line numbers, and the batch rename's
+  rows that cannot be renamed on a garnet wash. They are modal, so the
+  page's keys rest while one is open, and Escape closes each with focus
+  back where it was.
 - **Stylesheet structure**: `web/css/terrane.css` declares the layers
   `tokens, fonts, base, layout, components, utilities, motion, print`
   and imports its modules into them: one each for the other layers,
   and for components one per component group (controls, bar, ledger,
   stage, inspector, block, floating, splash) and one per feature (time,
-  places, traverse, strata, interior). Components read their colours
+  places, traverse, strata, interior, palette, searches, quicklook,
+  presets, batch). Components read their colours
   from `tokens.css`, never a raw colour (the loading sheet's artwork
   palette is scoped to the sheet); most sizes are tokens too, while
   component-local paddings and gaps are written in place; the
@@ -572,16 +759,25 @@ direction is a survey sheet around a plaster world.
 
 ## 7. Features and their seams
 
-Stage 5's features each live in one module and reach the controller only
+Each feature lives in one module and reaches the controller only
 through the `api` that `install(api)` is handed. `web/js/features.js`
-lists them in install order: `time.js` (the date scrub), `landmarks.js`
-(benchmarks and the return point, with the DOM-free store `places.js`),
-`traverse.js` (working sessions, with the DOM-free `relations.js`),
-`strata.js` (bytes by last change) and `interior.js` (archive interiors).
-`api` is frozen: the session state `S`, the registries below, and the
-controller functions a feature needs to read the tree, travel, redraw and
-speak. A module that throws while installing is named in a notice, and
-the others still start.
+lists them in install order. Stage 5's come first: `time.js` (the date
+scrub), `landmarks.js` (benchmarks, the return point and places files,
+with the DOM-free store `places.js`), `traverse.js` (working sessions
+and Changed with it, with the DOM-free `relations.js`), `strata.js`
+(bytes by last change) and `interior.js` (archive interiors). Wave 3's
+follow: `palette.js` (the command palette, with the DOM-free
+`fuzzy.js`), `resume.js` (the remembered view and links) and
+`searches.js` (search history, saved searches and `in:`), both keeping
+their data through the DOM-free `memory.js`; `quicklook.js`;
+`presets.js` (the selection's total and the quick searches);
+`batch.js` (the batch rename, with the DOM-free `rename.js`);
+`dupes.js` (duplicate cleanup); `copyas.js`; `exports.js` (lists as
+CSV, with the DOM-free `csv.js`); and `terminal.js`. `api` is frozen:
+the session state `S`, the registries below, and the controller
+functions a feature needs to read the tree, travel, redraw and speak. A
+module that throws while installing is named in a notice, and the
+others still start.
 
 ### Registries
 
@@ -592,34 +788,88 @@ and the rest still run.
 
 | Registry | An entry | Filled by |
 | -------- | -------- | --------- |
-| `KEYS` | `{ keys, mod, run(c), when, inList, guide }`: the keyboard map and the `?` guide as one table | the controller, Time, Landmarks, Interiors |
+| `KEYS` | `{ keys, mod, run(c), when, inList, guide, labels, palette, gl }`: the keyboard map, the `?` guide and the palette's actions as one table. `labels` gives one palette item per key (the lenses 1 to 4, the panels `[ ]`), `palette: false` keeps a key out of it (the arrows, Enter, the menu key), and `gl: true` marks it unavailable without WebGL (V, 0) | the controller, Time, Landmarks, Interiors, Palette (Ctrl+K), Quick look (P); guide rows only from Search history, Totals and Batch rename |
 | `ESCAPE` | `{ active(), clear(), typing }`, first active wins: floating surface 10, placing 20, kind filter 30, Time 40, search 50, selection 70, an open archive 80 | the controller, Time, Interiors |
 | `PIN_SOURCES` | `{ pins(L, room) }`, added up in order to the 3,000-pin capacity: benchmarks 10, search 20, heavyweights 30 | the controller, Landmarks |
 | `TIP_LINES` | `{ lines(node, { i, type, L }) }`: hover lines after the name and summary: levels 10, Strata 15, matches 20, placing 30, copies 40, pixels 50, Landmarks 50, Time 60, Interiors 70 | the controller, Time, Landmarks, Strata, Interiors |
-| `INSPECTOR.focus`, `INSPECTOR.node` | `{ build(node, ctx) }`: sections of the "You are in" summary and of a selected item | the controller, Time, Landmarks, Strata, Interiors |
-| `READING` | `{ glyph, title, text }`: a Reading the world row | the controller and every feature |
+| `INSPECTOR.focus`, `INSPECTOR.node` | `{ build(node, ctx) }`: sections of the "You are in" summary (Landmarks 28, Terminal 30) and of a selected item (Changed with it 32, Landmarks 35, Terminal 55, Quick look 62) | the controller, Time, Landmarks, Strata, Interiors, Session traverse, Quick look, Terminal |
+| `INSPECTOR.many` | `{ build(nodes, ctx) }` with ctx `{ ro, off }`: sections after the Actions grid of a selection of several | Batch rename |
+| `READING` | `{ glyph, title, text }`: a Reading the world row | the controller and every Stage 5 feature |
 | `TABS` | `{ label, draw, list, count, enter, key }`: a ledger tab | the controller, Landmarks (Places) |
-| `SURVEY` | `{ build(survey) }`: a Survey tab section | the controller, Session traverse (Working sessions, first at 5) |
+| `TAB_SECTIONS` | `{ tab, build() }`: a section a feature adds to a tab another one draws; the tab's draw appends `api.tabSections(tab)` after its own | Search history (Saved searches in Places, 30) |
+| `SURVEY` | `{ build(survey) }`: a Survey tab section: Working sessions 5, Quick searches 7, the controller's lists 10 to 50, Export as CSV 95 | the controller, Session traverse, Totals and quick searches, Export |
+| `LEDGER_SUB` | `{ tab, build(ctx) }`, ctx `{ items, search, focus }`: controls on the Contents or Findings count row, in a `span.sub-tools` after the sort keys, each with a `data-k` so a redraw keeps focus on it: the selection's total 10, Save search… 50, Export CSV 60 | Totals, Search history, Export |
 | `LAYOUT_OPTS` | `{ options(opts) }`, merged into the layout's one options object | Time (`asOf`), Interiors (`inside`, `aliases`) |
-| `MENU` | `{ items(node, ctx) }`: a group of context menu items after Open, Reveal and Copy path, or at the end for the folder you are in | Landmarks, Interiors |
-| `QUERY.is`, `QUERY.prefix` | `is:<word>` and `<name>:<value>` search tokens; built-in tokens cannot be replaced | Landmarks (`is:benchmark`), Session traverse (`session:N`) |
-| `AFTER_LAYOUT` | `run(L)` at the end of every relayout | Landmarks, Session traverse |
-| `AFTER_REFRESH` | `run(dirs)` once a refresh has pruned selection, focus and trail | Landmarks, Interiors |
-| `AFTER_SURVEY` | `run(survey, { full })` after every survey; the age table is rebuilt first, at 10 | the controller and every feature |
-| `AFTER_OP` | `run(body, res)` once the service has carried out a change, before the affected folders are re-read: Undo included (`res.moved`), and a change that stopped part way (`res.partial`, `res.results`) | Landmarks |
-| `AFTER_QUERY` | `run(search, query)` whenever the search runs; it may set `search.sort` and `search.note` for Findings | Session traverse |
+| `MENU` | `{ items(node, ctx), many(nodes, ctx) }`, at least one: `items` is a group after Open, Reveal and Copy path, or at the end for the folder you are in; `many` follows Copy paths in the menu of several, ctx `{ ro, off }` | Landmarks, Interiors, Session traverse, Remembered view (Copy link), Batch rename, Copy as, Terminal |
+| `COMMANDS` | `{ section, items() }`, each item `{ label, detail, hint, run(), off }`: the palette's actions that have no key, asked each time it opens; `off` is the reason an item cannot run | Landmarks, Session traverse, Palette, Remembered view, Search history, Totals and quick searches, Batch rename, Duplicate cleanup, Copy as, Export, Terminal |
+| `RENAME_MANY` | `{ run(nodes) }`, the first entry wins: what F2 does with more than one item selected; with one, F2 is the single rename | Batch rename |
+| `DUP_GROUP` | `{ build(group, ctx) }`, ctx `{ node, where, ro }`: under a group of duplicate candidates, in the inspector's copies (`where: 'inspector'`) and after each group in the Survey (`'survey'`) | Duplicate cleanup |
+| `QUERY.is`, `QUERY.prefix` | `is:<word>` and `<name>:<value>` search tokens; built-in tokens cannot be replaced | Landmarks (`is:benchmark`), Session traverse (`session:N`), Search history (`in:`) |
+| `AFTER_LAYOUT` | `run(L)` at the end of every relayout | Landmarks, Session traverse, Remembered view |
+| `AFTER_REFRESH` | `run(dirs)` once a refresh has pruned selection, focus and trail; `null` after a warm start's catch-up | Landmarks, Interiors, Palette |
+| `AFTER_SURVEY` | `run(survey, { full, warm, settled })` after every survey: `full` for a whole survey, `warm` for one of the last session's tree, `settled` for the catch-up's; the age table is rebuilt first, at 10, and the kept view is put back at 80 | the controller and every Stage 5 feature, Palette, Remembered view |
+| `AFTER_OP` | `run(body, res)` once the service has carried out a change, before the affected folders are re-read: Undo included (`res.moved`), a batch rename (`res.renamed`, the pairs), and a change or an Undo that stopped part way (`res.partial`, with `res.results` or `res.moved`) | Landmarks |
+| `AFTER_QUERY` | `run(search, query)` whenever the search runs; it may set `search.sort` and `search.note` for Findings | Session traverse, Search history |
+| `AFTER_FOCUS` | `run(dir)` once the folder you are in has changed: `moveFocus`, and a refresh, a catch-up or Rescan all that moved it (`focusMoved`) | Remembered view |
+| `AFTER_SELECT` | `run(sel, primary)` at the end of every selection change, quiet ones and `selectAll` included | Remembered view, Totals |
 
 `AFTER_OP` is what lets Landmarks follow Terrane's own renames and moves,
 and their undo, by path before the tree changes, after a reload too.
 `MENU` lets a feature offer its actions where the controller's are, and
 shows them unavailable, with the reason, where they do not apply.
+`AFTER_FOCUS` and `AFTER_SELECT` run often: a hook must be cheap and
+defer anything that is not, as the remembered view saves a second
+later.
+
+### The api, sheets and browser storage
+
+Wave 3 added to the `api`: `setLens`; `selectAll(nodes, primary)`;
+`copyText(text, said, fail)`, the one clipboard write and its refusal;
+`listItems()`, the ledger list's rows in the order shown, and
+`cursorTo(node)`; `rescan`, the whole survey again; `tabSections(tab)`;
+`rawUrl(node, max)`, the address of a file's bytes for a preview;
+`relLabel(node)`, a path relative to the root, joined with `/`, the
+root as `.` and an archive entry as `dir/x.zip!/inner/file`; and
+`readOnlyMode()`, the service's own mode without a warm start's wait.
+`S.searches` is the searches store. In the ledger list, Ctrl with an
+arrow, Page Up or Down, Home or End moves the cursor without selecting.
+
+`ui.js` gains `openSheet(build, { className, label, onKey })`, a sheet
+in the shared dialog for what is richer than `ask()`: the palette,
+Quick look and the batch rename. It takes the floating slot, is modal,
+returns focus to the opener on close, and `close(then)` runs `then` in
+the next animation frame after the dialog's own return of focus, so an
+action that moves focus keeps it. `download(filename, text, type)`
+saves text through a Blob with no service call, and `notice()` returns
+a function that withdraws its notice.
+
+What features keep lives in the browser's `localStorage`, per origin,
+under one key per directory, with `|snapshot` appended for a snapshot:
+`terrane.places.v1|<root>` (benchmarks and the return point),
+`terrane.view.v1|<root>` (the kept view) and
+`terrane.searches.v1|<root>` (history and saved searches), beside the
+one setting `terrane.single-keys`. Every read is checked field by field
+before it is used, and saved searches are merged per id before each
+write, so two tabs keep each other's. When the browser refuses storage,
+the view and the searches say so once and keep working in memory until
+the tab closes. The address,
+`#/<folder>` with every segment percent-encoded, follows the folder you
+are in through `replaceState`; it never reaches the service, because
+the browser does not send a fragment.
 
 ### Key allocation
 
 `KEY_OWNERS` in `app.js` fixes the plain keys a feature may bind: W A S
-D Q E R F stay the viewport's, I is Interiors', T , . < > are Time's, and
-B H J are Landmarks'. A reserved key is refused to any other owner, and a
-key bound twice is refused. Session traverse and Strata have no keys.
+D Q E R F stay the viewport's, I is Interiors', T , . < > are Time's,
+B H J are Landmarks', and P is Quick look's. A reserved key is refused
+to any other owner, and a key bound twice is refused. The palette binds
+the chord Ctrl+K, which acts everywhere but in a text field, where the
+browser keeps it. Session traverse, Strata and the rest of Wave 3 bind
+no key: the batch rename takes F2 through `RENAME_MANY`,
+search history claims ArrowUp and ArrowDown inside Find only, and
+Quick look's arrows, Home and End act inside its sheet. Their guide
+rows sit in the guide's sections Finding your way, Looking closer and
+Acting on many.
 `inList` (default true) decides whether a key acts while the ledger list
 has focus; the guide is made from the same table. The guide also holds
 the single-key setting. It is off unless turned on there: a key that
@@ -695,6 +945,18 @@ the first survey.
   fly to it calls `api.forceOpen(node)`, as going there does. The unfold
   ends when the view returns to the overview (`api.overview()`, 0) or
   the location settles off that branch; nothing else clears it.
+- **The warm start.** While `S.warm` is set the tree is the last
+  session's. A feature that changes the disk asks `api.writable()`,
+  which names the wait, and says so before a dialog asks anything; one
+  that changes nothing Terrane tracks, as a terminal does not, asks
+  `api.readOnlyMode()`. A feature that measures the tree waits for the
+  settled survey (`AFTER_SURVEY` with `settled`): B waits, and the
+  benchmarks' notice of what changed is never given of the last
+  session's tree.
+- **Focus by its hook.** The address and the kept view follow
+  `AFTER_FOCUS`, so code that moves `S.focus` other than through
+  `moveFocus` calls `focusMoved(was)` once it has pruned the tree, as a
+  refresh, a catch-up and Rescan all do.
 - **Wording.** Features that read modification times say "changed",
   never "created", "added" or "arrived".
 

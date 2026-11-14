@@ -1,11 +1,11 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Session Traverse (Terrane Edition - v1.1)
+ *     - Title: Session Traverse (Terrane Edition - v1.2)
  *     - File Name: traverse.css
  *     - Relative Path: web/css/components/traverse.css
  *     - Artifact Type: stylesheet
- *     - Version: 1.1.0
+ *     - Version: 1.2.0
  *     - Date: 11/13/2026
  *     - Update: Friday, November 13, 2026
  *     - Author: Dennis 'dendogg' Smaltz
@@ -13,6 +13,10 @@
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
  *
  * ✒ Changelog:
+ *     - 1.2.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
+ *       inspector's Changed with it: its sentence, and the file's nearest
+ *       sessionmates with the file itself in their midst, marked with the
+ *       session's dashed swatch on a highlighter wash.
  *     - 1.1.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] —
  *       The Findings sub-line wraps in a narrow ledger: a note longer
  *       than the room beside the sort keys takes the whole width and
@@ -37,6 +41,8 @@
  *       figures, places and the folder holding them, the file count
  *     - "Written at once" as a small ink-outlined label on bulk rows,
  *       under the time when the column is too narrow for both
+ *     - Changed with it in the inspector: a sentence, then the nearest
+ *       files in time, the selected one in its place on a highlighter wash
  *     - Reading glyph: a dashed arc with its chevron
  *
  * ✒ Other Important Information:
@@ -102,6 +108,13 @@
   letter-spacing: var(--track-wide);
   text-transform: uppercase;
 }
+
+/* ---------- Inspector: Changed with it ---------- */
+
+.session-note { margin: 0; padding: var(--s-1) var(--s-3) var(--s-2); color: var(--text-2); font-size: var(--fs-row); text-wrap: pretty; }
+.session-near { margin-bottom: var(--s-2); }
+.session-near .item.is-self { background: var(--mark-wash); }
+.session-near .item.is-self .path { color: var(--text-2); }
 
 /* ---------- Reading the world ---------- */
 

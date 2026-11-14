@@ -2,11 +2,11 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Terrane Service (Terrane Edition - v1.4)
+ *     - Title: Terrane Service (Terrane Edition - v1.6)
  *     - File Name: terrane.mjs
  *     - Relative Path: server/terrane.mjs
  *     - Artifact Type: CLI
- *     - Version: 1.4.0
+ *     - Version: 1.6.0
  *     - Date: 11/13/2026
  *     - Update: Friday, November 13, 2026
  *     - Author: Dennis 'dendogg' Smaltz
@@ -14,6 +14,50 @@
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
  *
  * ✒ Changelog:
+ *     - 1.6.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] —
+ *       Reports version 1.4.0 in GET /api/info: Wave 3 is merged.
+ *     - 1.5.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — GET
+ *       /api/raw answers one byte range, so Quick look's audio and video
+ *       elements can play and seek: bytes=a-b, a- or -n gets 206 with
+ *       Content-Range and Content-Length, at most 8 MiB at a time (the
+ *       browser asks again for the rest); a range that starts at or past
+ *       the end gets 416, whose Content-Range gives the size after an
+ *       asterisk; several ranges or a malformed header get the whole-file
+ *       answer as before. Every answer carries
+ *       Accept-Ranges; X-Terrane-Truncated stays on the 200 only. Media
+ *       files carry their own types (mp4, m4v, webm, mov, ogv, mp3, m4a,
+ *       aac, wav, flac, ogg, oga, opus). Every check before the bytes is
+ *       unchanged and comes first, and snapshot mode still refuses. The
+ *       bytes are streamed through pipeline(), so a reader the page drops
+ *       is closed rather than left open. A preferred port that Windows
+ *       refuses with EACCES, because another program holds it
+ *       exclusively, is passed over for the next one, as a port in use
+ *       always was, instead of stopping the service. POST /api/terminal
+ *       { path } opens a terminal in a folder (ops.terminal): the token,
+ *       the Host check and the JSON rule as for every POST, refused in
+ *       read-only mode, and in snapshot mode with a sentence of its own.
+ *       A warm start (server/warm.mjs): a whole survey of the root (GET
+ *       /api/scan with path '' and no depth) is copied into a gzipped
+ *       cache in the dataset home as it streams, and the copy is made the
+ *       cache only when the survey ran to its end with the page still
+ *       there; a dropped survey leaves nothing. GET /api/info carries
+ *       warm: { takenAt, folders, files, bytes }, or null. GET /api/warm
+ *       answers the cache as the scan's NDJSON (no-store, nosniff): the
+ *       file as it is with Content-Encoding gzip when the page accepts
+ *       it, decompressed otherwise, through pipeline() so it ends when
+ *       the page goes away; ENOWARM 404 when there is none or with
+ *       --no-warm, and ESNAPSHOT in snapshot mode, where no cache is
+ *       kept. --no-warm turns it off. Read-only mode keeps the cache
+ *       too, since it is written in the dataset home and never inside
+ *       the root: a dataset home whose real location is inside the root
+ *       (warmInside: TERRANE_DATA there, or a home folder or a whole
+ *       drive as the root) turns the warm start off, said once at
+ *       startup and in ENOWARM's sentence, so nothing is written inside
+ *       the directory and no survey records the cache's own files. The
+ *       --help text says what --read-only still writes. Error bodies
+ *       carry moved, the paths an Undo that stopped part way carried
+ *       back; an error marked worded keeps its own sentence instead of
+ *       the stock explanation of its code.
  *     - 1.4.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — POST
  *       /api/hash reads a file only once its real location is proved
  *       inside the root and outside the holding area, as /api/raw and
@@ -57,8 +101,9 @@
  *     The local service behind Terrane. It is given exactly one directory on
  *     the command line, serves the interface on the loopback address, and
  *     exposes that directory (and nothing else) to the browser: progressive
- *     scanning, metadata, previews, archive contents, guarded file
- *     operations, undo, and live change notifications.
+ *     scanning, the last complete survey kept for a warm start, metadata,
+ *     previews, archive contents, guarded file operations, undo, a
+ *     terminal in a folder, and live change notifications.
  *
  * ✒ Key Features:
  *     - Explicit authorization: no directory argument, no service
@@ -75,7 +120,9 @@
  *       three sampled megabytes plus size beyond that, reported as such),
  *       of files whose real location is inside the root
  *     - Sandboxed raw-file endpoint for previews: capped length, nosniff,
- *       and a CSP sandbox so a previewed HTML or SVG file cannot run
+ *       and a CSP sandbox so a previewed HTML or SVG file cannot run; one
+ *       byte range at a time (206, 416) for audio and video, at most 8 MiB
+ *       per answer
  *     - Archive interiors: a zip's central directory read without
  *       unpacking (server/archive.mjs), bounded in entries, directory
  *       size and time, with anything left out stated in a sentence
@@ -89,6 +136,14 @@
  *       the port, whose secret opens thumbnails and nothing else
  *     - Interface files revalidated by a weak ETag (no-cache, 304 when
  *       unchanged); the page, which holds the token, is never stored
+ *     - POST /api/terminal { path }: a terminal whose working directory
+ *       is that folder, never an argument; refused in read-only and
+ *       snapshot mode, since a terminal can change anything
+ *     - A warm start: the last complete survey of the root is kept in the
+ *       dataset home (names, sizes, dates and flags, never contents) and
+ *       served by GET /api/warm, so the next launch draws at once while
+ *       the page surveys the directory again; --no-warm turns it off,
+ *       and it is off while the dataset home is inside the directory
  *     - Zero npm dependencies; three.js and the fonts are vendored in web/
  *
  * ✒ Usage Instructions:
@@ -102,6 +157,7 @@
  *     node server/terrane.mjs ~/Music --read-only
  *     node server/terrane.mjs /srv/share --port 5050 --no-open
  *     node server/terrane.mjs . --no-watch
+ *     node server/terrane.mjs . --no-warm
  *     node server/terrane.mjs --snapshot "%LOCALAPPDATA%\terrane\datasets\projects"
  *
  * ✒ Command-Line Arguments:
@@ -112,9 +168,14 @@
  *         --thumbs <db>   Thumbnail dataset to serve (default: thumbs.db in
  *                         the dataset folder for the root).
  *     Safety:
- *         --read-only     Refuse every operation that changes the disk.
+ *         --read-only     Refuse every operation that changes the directory.
+ *                         The tree of the last survey is still written to
+ *                         the dataset home outside it (never inside it);
+ *                         add --no-warm to write nothing at all.
  *     Processing:
  *         --no-watch      Do not watch for outside changes (manual refresh).
+ *         --no-warm       Keep no tree of the last survey and serve none: every
+ *                         launch surveys the directory before it draws.
  *     Output:
  *         --port <n>      Preferred port (default 4173; next free is used).
  *         --no-open       Do not open the browser automatically.
@@ -128,6 +189,10 @@
  *       page's meta tag and the X-Terrane-Token header; the cookie, which
  *       the browser sends to every port on this host, carries only the
  *       thumbnail secret
+ *     - Privacy: the warm cache holds real file names, as a snapshot does;
+ *       it is kept in the dataset home, outside the project, and only
+ *       while that home's real location is outside the authorized
+ *       directory; otherwise none is kept
  *     - Limitations: on Linux the recursive watcher is skipped above 15,000
  *       folders, where its setup cost stops being reasonable; the interface
  *       then offers manual refresh
@@ -141,14 +206,17 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { spawn } from 'node:child_process';
+import zlib from 'node:zlib';
+import { pipeline } from 'node:stream';
 import { makeGuard, GuardError, HOLD_DIR, relParts } from './guard.mjs';
 import { scan, pump } from './scan.mjs';
 import { makeOps } from './ops.mjs';
 import { openSnapshots, listSnapshots, datasetHome, slugOf } from './snapshot.mjs';
 import { openThumbs } from './thumbs.mjs';
 import { inspect } from './archive.mjs';
+import { warmWriter, readWarm, warmPaths, warmInside } from './warm.mjs';
 
-const VERSION = '1.3.0';
+const VERSION = '1.4.0';
 const WEB = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'web');
 
 const args = process.argv.slice(2);
@@ -166,11 +234,14 @@ if (!usageOk || flag('--help')) {
   console.error([
     '',
     '  Terrane ' + VERSION,
-    '  Usage: node server/terrane.mjs <directory> [--read-only] [--port n] [--no-open] [--no-watch]',
+    '  Usage: node server/terrane.mjs <directory> [--read-only] [--port n] [--no-open] [--no-watch] [--no-warm]',
     '         node server/terrane.mjs --snapshot <folder or .db> [--port n] [--no-open]',
     '',
     '  Terrane only works inside the directory you name here. With --snapshot it',
     '  shows a recorded structure instead and touches no real files at all.',
+    '  --read-only refuses every change to the directory. The tree of the last',
+    '  survey is still kept in the dataset home outside it (TERRANE_DATA moves it;',
+    '  --no-warm keeps none), and never when that home is inside the directory.',
     '',
   ].join('\n'));
   process.exit(usageOk ? 0 : 1);
@@ -196,6 +267,17 @@ if (snapshotArg) {
   }
 }
 const readOnly = flag('--read-only') || !!snap;
+// The tree of the last complete survey, kept in the dataset home so the
+// next launch can draw at once; read-only mode keeps it too, since it is
+// never written inside the root. Off in snapshot mode, which is a
+// recorded tree already, and with --no-warm. Off as well when the dataset
+// home's real location is inside the root (TERRANE_DATA there, or a home
+// folder or a whole drive as the root): the cache would be a write inside
+// the directory, recorded by the survey it records, and seen by the
+// watcher. Said once at startup.
+const warmWanted = !snap && !flag('--no-warm');
+const warmBlocked = warmWanted && await warmInside(guard.root);
+const warmOn = warmWanted && !warmBlocked;
 
 // The thumbnail dataset sits beside the structure snapshots. It is opened
 // lazily so one built after the service started is still picked up.
@@ -219,6 +301,42 @@ const IMAGE_MIME = {
   '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.gif': 'image/gif', '.webp': 'image/webp',
   '.svg': 'image/svg+xml', '.bmp': 'image/bmp', '.avif': 'image/avif', '.ico': 'image/x-icon',
 };
+// What Quick look plays: an <audio> or <video> element asks for these in ranges.
+const MEDIA_MIME = {
+  '.mp4': 'video/mp4', '.m4v': 'video/mp4', '.webm': 'video/webm', '.mov': 'video/quicktime', '.ogv': 'video/ogg',
+  '.mp3': 'audio/mpeg', '.m4a': 'audio/mp4', '.aac': 'audio/aac', '.wav': 'audio/wav', '.flac': 'audio/flac',
+  '.ogg': 'audio/ogg', '.oga': 'audio/ogg', '.opus': 'audio/ogg',
+};
+/** The most bytes one ranged answer of /api/raw carries; the browser asks again for the rest. */
+const RANGE_MAX = 8 * 1024 * 1024;
+
+/**
+ * The one byte range a Range header asks of a file of `size` bytes:
+ * { start, end } (end inclusive, at most RANGE_MAX bytes and never past
+ * the end), 'unsatisfiable' when it starts at or past the end (a suffix
+ * of 0 included), or null when there is no header, it names several
+ * ranges, another unit, or is malformed: the whole-file answer serves
+ * those as before.
+ */
+function byteRange(header, size) {
+  if (typeof header !== 'string') return null;
+  const m = /^bytes=(\d*)-(\d*)$/.exec(header.trim());
+  if (!m || (m[1] === '' && m[2] === '')) return null;
+  if (m[1] === '') {
+    const suffix = Number(m[2]);
+    if (suffix === 0 || size === 0) return 'unsatisfiable';
+    const start = Math.max(0, size - suffix);
+    return { start, end: Math.min(size - 1, start + RANGE_MAX - 1) };
+  }
+  const start = Number(m[1]);
+  const end = m[2] === '' ? Infinity : Number(m[2]);
+  if (end < start) return null;
+  if (start >= size) return 'unsatisfiable';
+  return { start, end: Math.min(end, size - 1, start + RANGE_MAX - 1) };
+}
+
+/** Streams bytes start to end (inclusive) of a file; a failure or a closed socket ends both sides. */
+const sendBytes = (real, start, end, res) => pipeline(fs.createReadStream(real, { start, end }), res, () => {});
 
 const json = (res, status, body) => {
   res.writeHead(status, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
@@ -227,7 +345,10 @@ const json = (res, status, body) => {
 
 const fail = (res, err) => {
   const status = err instanceof GuardError ? err.status : 500;
-  const explain = {
+  // A system error's own message names absolute paths and codes, so its
+  // code is explained instead; an error marked worded already says why
+  // in words (a rename or an Undo that stopped part way), and is kept.
+  const explain = err.worded ? null : {
     EACCES: 'Permission denied by the operating system.',
     EPERM: 'The operating system did not permit this.',
     EBUSY: 'The item is in use by another program.',
@@ -239,8 +360,10 @@ const fail = (res, err) => {
       ok: false, code: err.code || 'EIO', message: explain || err.message, affected: err.affected || [],
       // An archive refusal names the format found and the one the name suggests.
       ...(err.format !== undefined ? { format: err.format } : {}), ...(err.claimed ? { claimed: err.claimed } : {}),
-      // A change that stopped part way names what it finished.
+      // A change that stopped part way names what it finished; an Undo
+      // that stopped part way, what it carried back.
       ...(Array.isArray(err.results) ? { results: err.results } : {}),
+      ...(Array.isArray(err.moved) ? { moved: err.moved } : {}),
     });
   } else res.end();
 };
@@ -302,10 +425,14 @@ const snapInfo = () => ({
   version: VERSION, root: snapMeta.root, name: snapMeta.name, sep: snapMeta.sep, platform: snapMeta.platform,
   readOnly: true, watch: 'snapshot',
   snapshot: { takenAt: snapMeta.takenAt, folders: snapMeta.folders, files: snapMeta.files, bytes: snapMeta.bytes },
+  warm: null,
 });
 
 async function snapshotApi(req, res, route, q) {
-  if (req.method !== 'GET') throw new GuardError('ESNAPSHOT', SNAP_REFUSAL, 403);
+  if (req.method !== 'GET') {
+    if (route === 'terminal') throw new GuardError('ESNAPSHOT', 'Snapshot mode: Terrane is showing a recorded copy of the directory structure, so it opens no terminal, which would work on the real directory. Start Terrane on the real directory to do this.', 403);
+    throw new GuardError('ESNAPSHOT', SNAP_REFUSAL, 403);
+  }
   if (route === 'info') return json(res, 200, snapInfo());
   if (route === 'scan') {
     const rel = relParts(q.get('path') || '').join('/');
@@ -355,7 +482,66 @@ async function snapshotApi(req, res, route, q) {
   if (route === 'journal') return json(res, 200, { journal: [], holding: [], snapshot: true });
   if (route === 'raw') throw new GuardError('ESNAPSHOT', 'Previews of the original file are not available in snapshot mode: a snapshot holds names, sizes and dates, not contents.', 403);
   if (route === 'inside') throw new GuardError('ESNAPSHOT', 'Looking inside an archive is not available in snapshot mode: a snapshot holds names, sizes and dates, not what a file contains. Start Terrane on the real directory to do this.', 403);
+  if (route === 'warm') throw new GuardError('ESNAPSHOT', 'Snapshot mode keeps no tree from an earlier session: the snapshot is itself a recorded tree.', 403);
   throw new GuardError('EROUTE', 'No such endpoint.', 404);
+}
+
+/* ---------- warm start ---------- */
+
+/** What the page is told of the kept tree: when it was taken and what it holds. */
+const warmInfo = (m) => (m ? { takenAt: m.takenAt, folders: m.folders, files: m.files, bytes: m.bytes } : null);
+
+/**
+ * The survey's batches, passed on as they come and copied into the cache.
+ * The copy becomes the cache only when the survey ran to its end with the
+ * page still there; a survey the page dropped part way leaves nothing.
+ */
+async function* teeWarm(source, signal) {
+  const w = warmWriter(guard.root, { version: VERSION });
+  let finished = false;
+  try {
+    for await (const batch of source) {
+      w.push(batch);
+      yield batch;
+    }
+    finished = !signal.aborted;
+  } finally {
+    if (finished) w.commit();
+    else w.abort();
+  }
+}
+
+/**
+ * GET /api/warm: the kept tree as the scan's NDJSON, the file itself when
+ * the page accepts gzip, decompressed otherwise. The file is opened and
+ * its size checked against the meta before anything is answered.
+ */
+async function warmApi(req, res) {
+  const m = warmOn ? await readWarm(guard.root) : null;
+  const none = () => new GuardError('ENOWARM', warmOn
+    ? 'No tree from an earlier session is kept for this directory.'
+    : warmBlocked
+      ? 'Terrane keeps no tree from an earlier session here: its dataset home is inside this directory, where the cache would change the tree it records. Set TERRANE_DATA to a folder outside it.'
+      : 'Terrane was started with --no-warm, so it keeps no tree from an earlier session.', 404);
+  if (!m) throw none();
+  let fh;
+  try {
+    fh = await fsp.open(warmPaths(guard.root).data, 'r');
+    if ((await fh.stat()).size !== m.size) throw none();
+  } catch (err) {
+    await fh?.close().catch(() => {});
+    throw err instanceof GuardError ? err : none();
+  }
+  const gz = /\bgzip\b/.test(String(req.headers['accept-encoding'] || ''));
+  res.writeHead(200, {
+    'Content-Type': 'application/x-ndjson', 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff', Vary: 'Accept-Encoding',
+    ...(gz ? { 'Content-Encoding': 'gzip' } : {}),
+  });
+  // pipeline ends every stream when one fails or the page goes away.
+  const src = fh.createReadStream();
+  if (gz) pipeline(src, res, () => {});
+  else pipeline(src, zlib.createGunzip(), res, () => {});
+  return undefined;
 }
 
 function startWatch(dirCount) {
@@ -478,6 +664,7 @@ async function api(req, res, url) {
       return json(res, 200, {
         version: VERSION, root: guard.root, name: path.basename(guard.root) || guard.root, sep: path.sep,
         platform: process.platform, readOnly, watch: watchState,
+        warm: warmOn ? warmInfo(await readWarm(guard.root)) : null,
       });
     }
     if (route === 'scan') {
@@ -488,8 +675,12 @@ async function api(req, res, url) {
       const ac = new AbortController();
       res.on('close', () => ac.abort());
       res.writeHead(200, { 'Content-Type': 'application/x-ndjson', 'Cache-Control': 'no-store' });
-      return pump(res, scan(abs, { depth, signal: ac.signal, isRoot: rel === '' }), ac.signal);
+      const source = scan(abs, { depth, signal: ac.signal, isRoot: rel === '' });
+      // Only a whole survey of the root is kept for the next launch.
+      const whole = rel === '' && !q.get('depth');
+      return pump(res, whole && warmOn ? teeWarm(source, ac.signal) : source, ac.signal);
     }
+    if (route === 'warm') return warmApi(req, res);
     if (route === 'stat') {
       const abs = guard.resolve(q.get('path') || '');
       await guard.assertParentInside(abs);
@@ -511,15 +702,29 @@ async function api(req, res, url) {
       const real = await guard.realInside(abs);
       const st = await fsp.stat(real);
       if (!st.isFile()) throw new GuardError('ENOTFILE', 'Not a regular file.');
-      const max = Math.min(Number(q.get('max')) || 262144, 32 * 1024 * 1024);
-      const type = IMAGE_MIME[path.extname(abs).toLowerCase()] || 'text/plain; charset=utf-8';
-      res.writeHead(200, {
-        'Content-Type': type, 'X-Content-Type-Options': 'nosniff', 'Cache-Control': 'no-store',
+      const ext = path.extname(abs).toLowerCase();
+      const headers = {
+        'Content-Type': IMAGE_MIME[ext] || MEDIA_MIME[ext] || 'text/plain; charset=utf-8',
+        'X-Content-Type-Options': 'nosniff', 'Cache-Control': 'no-store',
         'Content-Security-Policy': "sandbox; default-src 'none'; style-src 'unsafe-inline'",
-        'X-Terrane-Truncated': st.size > max ? '1' : '0',
-      });
+        'Accept-Ranges': 'bytes',
+      };
+      // One range (a media element's, or anyone's): 206 with at most
+      // RANGE_MAX bytes, 416 past the end; several ranges or a malformed
+      // header get the whole-file answer below, capped by max.
+      const range = byteRange(req.headers.range, st.size);
+      if (range === 'unsatisfiable') {
+        res.writeHead(416, { ...headers, 'Content-Range': `bytes */${st.size}`, 'Content-Length': 0 });
+        return res.end();
+      }
+      if (range) {
+        res.writeHead(206, { ...headers, 'Content-Range': `bytes ${range.start}-${range.end}/${st.size}`, 'Content-Length': range.end - range.start + 1 });
+        return sendBytes(real, range.start, range.end, res);
+      }
+      const max = Math.min(Number(q.get('max')) || 262144, 32 * 1024 * 1024);
+      res.writeHead(200, { ...headers, 'X-Terrane-Truncated': st.size > max ? '1' : '0' });
       if (st.size === 0) return res.end();
-      return fs.createReadStream(real, { start: 0, end: Math.min(st.size, max) - 1 }).on('error', () => res.end()).pipe(res);
+      return sendBytes(real, 0, Math.min(st.size, max) - 1, res);
     }
     if (route === 'inside') {
       // The /raw sequence: lexical check, parent's real location, the
@@ -573,6 +778,8 @@ async function api(req, res, url) {
     if (route === 'restore') return json(res, 200, await ops.restore(body.ids || []));
     if (route === 'purge') return json(res, 200, await ops.purge());
     if (route === 'cancel') return json(res, 200, ops.cancel(String(body.job || '')));
+    // Not queued with the changes, as Open is; refused in read-only mode.
+    if (route === 'terminal') return json(res, 200, await ops.terminal(body.path));
     if (route === 'hash') {
       const paths = (body.paths || []).slice(0, 4000);
       const results = new Array(paths.length);
@@ -670,7 +877,10 @@ const server = http.createServer(async (req, res) => {
 
 const listen = (attempt = 0) => {
   server.once('error', (err) => {
-    if (err.code === 'EADDRINUSE' && attempt < 20) {
+    // A port another program holds is EADDRINUSE, or on Windows EACCES
+    // when that program bound it exclusively (a system service on every
+    // address, as on 5040): either way the next one is tried.
+    if ((err.code === 'EADDRINUSE' || err.code === 'EACCES') && attempt < 20) {
       port += 1;
       listen(attempt + 1);
     } else {
@@ -688,7 +898,8 @@ const listen = (attempt = 0) => {
           `  Taken                : ${new Date(snapMeta.takenAt).toLocaleString('en-US')} (${snapMeta.files.toLocaleString('en-US')} files)`,
           '  Mode                 : snapshot (no real file is read or changed)']
         : [`  Authorized directory : ${guard.root}`,
-          `  Mode                 : ${readOnly ? 'read-only' : 'read and write (no overwrite, no direct delete)'}`]),
+          `  Mode                 : ${readOnly ? 'read-only' : 'read and write (no overwrite, no direct delete)'}`,
+          ...(warmBlocked ? [`  Warm start           : off. The dataset home (${warmPaths(guard.root).dir}) is inside the directory; set TERRANE_DATA to a folder outside it.`] : [])]),
       `  Open                 : ${address}`,
       '',
       '  Ctrl+C to stop.',

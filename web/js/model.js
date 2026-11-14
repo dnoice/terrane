@@ -1,11 +1,11 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Tree Model (Terrane Edition - v1.3)
+ *     - Title: Tree Model (Terrane Edition - v1.4)
  *     - File Name: model.js
  *     - Relative Path: web/js/model.js
  *     - Artifact Type: javascript
- *     - Version: 1.3.0
+ *     - Version: 1.4.0
  *     - Date: 11/13/2026
  *     - Update: Friday, November 13, 2026
  *     - Author: Dennis 'dendogg' Smaltz
@@ -13,6 +13,17 @@
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
  *
  * ✒ Changelog:
+ *     - 1.4.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] —
+ *       Double quotes keep spaces in one search token and are dropped:
+ *       "two words" is one name term, and in:"My Folder" reaches its
+ *       prefix as the value my folder and the raw My Folder. IMAGE_EXT
+ *       and TEXT_EXT, the extensions a preview shows as a picture or
+ *       reads as text, for the inspector and Quick look alike. ext: and
+ *       kind: take comma lists, any of them: kind:video,audio,image.
+ *       adopt(fresh) takes on a fresh model of the same directory and
+ *       keeps every node still there (matched by name and kind), with
+ *       fresh's totals and every folder dirty; it returns kept, added,
+ *       removed and changed, for the warm start's catch-up.
  *     - 1.3.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] —
  *       fmtDay (MM/DD/YYYY) and plural are the one date formatter and
  *       count wording every module imports; fmtDate builds on fmtDay.
@@ -21,8 +32,7 @@
  *       search grammar takes is: words and name:value tokens from the
  *       caller, so a feature can make itself searchable; is: looks up
  *       only real words, so is:constructor no longer matches everything.
- *     - 1.0.0 (11/09/2026) [dendogg + Anthropic - Claude Fable 5.2] —
- *       Initial release.
+ *     Earlier entries: see CHANGELOG.md
  *
  * ✒ Description:
  *     The in-browser copy of the scanned directory tree. It ingests scan
@@ -39,9 +49,16 @@
  *     - Reconcile: re-reads one folder, preserves the identity of entries
  *       that still exist (selection survives), and reports which new child
  *       folders need a deep scan
- *     - Nine content kinds derived from the extension
+ *     - Adopt: takes on a whole fresh model of the same directory, keeping
+ *       the identity of every entry still there, so a tree drawn from the
+ *       last session can be brought up to date without losing the
+ *       selection, the focus or anything else that holds a node
+ *     - Nine content kinds derived from the extension, and the one list
+ *       of extensions a preview shows as a picture or reads as text
  *     - Search grammar: free text, glob, ext:, kind:, is:, size and age
- *       comparisons, all combinable
+ *       comparisons, all combinable; ext: and kind: take a comma list of
+ *       any of them; double quotes keep spaces in one term or one prefix
+ *       value
  *     - Extensible search: callers add is: words and name:value tokens
  *       without changing the grammar here; built-in ones cannot be replaced
  *     - Survey: largest files, heavyweight files, empty folders, unreadable
@@ -52,6 +69,7 @@
  *     const model = new Model('projects');
  *     model.ingest(records, idMap, model.root);   // streaming scan
  *     const { added } = model.reconcile(dir, records);  // after a change
+ *     const { changed, added: here, removed } = model.adopt(freshModel);
  *     const hits = runSearch(model, parseQuery('ext:psd >50mb older:1y'));
  *     parseQuery('is:benchmark', { is: { benchmark: (n) => marked.has(n) } });
  *     parseQuery('session:2', { prefix: { session: (v) => inWindow(v) } });
@@ -61,9 +79,11 @@
  *     *.test.js         glob on the name
  *     ext:mp4 >1gb      video files over a gigabyte
  *     kind:image newer:30d
+ *     kind:video,audio  either kind            ext:jpg,png  either extension
  *     is:empty          empty folders          is:dup   duplicate candidates
  *     is:hidden         dot-named entries      is:link  symbolic links
  *     is:sealed         folders that could not be read
+ *     "two words"       a name containing the two words with their space
  *
  * ✒ Other Important Information:
  *     - Dependencies: none
@@ -116,6 +136,11 @@ export function kindOf(name) {
   if (lower === 'readme' || lower === 'license' || lower === 'changelog') return 1;
   return 8;
 }
+
+/** Extensions a preview shows as a picture: the inspector's and Quick look's one list. */
+export const IMAGE_EXT = new Set(['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'bmp', 'avif', 'ico']);
+/** Extensions a preview reads as text besides the code and data kinds; an svg is shown as a picture first. */
+export const TEXT_EXT = new Set(['txt', 'md', 'markdown', 'rst', 'log', 'nfo', 'tex', 'svg']);
 
 /* ---------- formatting ---------- */
 
@@ -313,6 +338,62 @@ export class Model {
     return { added, removed: [...oldDirs.values(), ...oldFiles.values()] };
   }
 
+  /**
+   * Takes on a fresh model of the same directory and keeps every node
+   * that is still there, so whatever holds one (the selection, the
+   * focus, a benchmark, a box in transition) holds it still. Both trees
+   * are walked from their roots; a folder's children are matched by name
+   * and kind (folder or file). A matched file keeps its node and takes
+   * size, date and flags from fresh; a matched folder keeps its node and
+   * is walked in turn; a new one is fresh's node, hung from the old
+   * folder; one that is gone is dropped. Every old folder takes its
+   * totals from fresh and is marked dirty, so the layout sorts it again.
+   * Returns { kept, added, removed, changed }: entries kept, entries here
+   * now and gone (a folder with all it holds), and files whose size or
+   * date changed. fresh is spent: its new nodes now belong here.
+   */
+  adopt(fresh) {
+    let kept = 0;
+    let added = 0;
+    let removed = 0;
+    let changed = 0;
+    const stack = [this.root, fresh.root];
+    while (stack.length) {
+      const neu = stack.pop();
+      const old = stack.pop();
+      const had = new Map();
+      for (const ch of old.c) had.set(ch.n, ch);
+      const next = new Array(neu.c.length);
+      for (let i = 0; i < neu.c.length; i++) {
+        const nc = neu.c[i];
+        const oc = had.get(nc.n);
+        if (oc && !oc.d === !nc.d) {
+          had.delete(nc.n);
+          kept++;
+          if (nc.d) stack.push(oc, nc);
+          else {
+            if (oc.s !== nc.s || oc.m !== nc.m) changed++;
+            oc.s = nc.s;
+            oc.m = nc.m;
+            oc.f = nc.f;
+          }
+          next[i] = oc;
+        } else {
+          nc.p = old;
+          added += nc.d ? 1 + nc.dc + nc.fc : 1;
+          next[i] = nc;
+        }
+      }
+      // What is left was not matched: gone, or now of the other kind.
+      for (const gone of had.values()) removed += gone.d ? 1 + gone.dc + gone.fc : 1;
+      old.c = next;
+      Object.assign(old, {
+        s: neu.s, m: neu.m, e: neu.e, stub: neu.stub, fc: neu.fc, dc: neu.dc, h: neu.h, mm: neu.mm, ks: neu.ks.slice(), dirty: true,
+      });
+    }
+    return { kept, added, removed, changed };
+  }
+
   find(rel) {
     if (!rel) return this.root;
     let node = this.root;
@@ -371,27 +452,65 @@ const SIZE_UNIT = { b: 1, k: 1024, kb: 1024, m: 1024 ** 2, mb: 1024 ** 2, g: 102
 const AGE_UNIT = { h: 1 / 24, d: 1, w: 7, mo: 30.4, m: 30.4, y: 365.25 };
 
 /**
+ * Splits a query into tokens. Whitespace splits only outside double
+ * quotes, and the quotes are dropped: '"two words"' is one token, and so
+ * is 'in:"My Folder"' ('in:My Folder'). A quote left open runs to the end.
+ * quoted is true for a token that begins with a quote: it is a literal
+ * name term, never a prefix, a glob or a size.
+ */
+function tokenize(text) {
+  const out = [];
+  let cur = '';
+  let open = false;
+  let quoted = false;
+  let started = false;
+  const end = () => {
+    if (started && cur) out.push({ raw: cur, quoted });
+    cur = '';
+    quoted = false;
+    started = false;
+  };
+  for (const ch of text) {
+    if (ch === '"') {
+      if (!started) quoted = true;
+      started = true;
+      open = !open;
+    } else if (!open && /\s/.test(ch)) end();
+    else {
+      cur += ch;
+      started = true;
+    }
+  }
+  end();
+  return out;
+}
+
+/**
  * Turns a query into a predicate over nodes, or null when it is empty.
  * ext.is adds is:<word> tests ({ word: (node) => boolean }); ext.prefix
  * adds name:value tokens ({ name: (value, raw) => predicate }), where
  * value is lower-cased and raw keeps its case. A predicate that is not a
  * function matches nothing. Built-in words and prefixes (ext, kind, is,
- * older, newer) cannot be replaced.
+ * older, newer) cannot be replaced. Double quotes keep spaces in one
+ * token: "two words" is a name term, in:"My Folder" a value.
  */
 export function parseQuery(text, ext = {}) {
   const isExt = ext?.is || {};
   const prefixExt = ext?.prefix || {};
   const tests = [];
   const terms = [];
-  for (const raw of text.trim().split(/\s+/).filter(Boolean)) {
+  for (const { raw, quoted } of tokenize(text)) {
     const tok = raw.toLowerCase();
     let m;
-    if ((m = tok.match(/^ext:\.?(.+)$/))) {
-      const e = m[1];
-      tests.push((n) => !n.d && extOf(n.n) === e);
+    if (quoted) terms.push(tok);
+    else if ((m = tok.match(/^ext:\.?(.+)$/))) {
+      // A comma list is any of them: ext:jpg,png,.gif.
+      const exts = new Set(m[1].split(',').map((e) => e.replace(/^\./, '')).filter(Boolean));
+      tests.push((n) => !n.d && exts.has(extOf(n.n)));
     } else if ((m = tok.match(/^kind:(.+)$/))) {
-      const k = KINDS.findIndex((x) => x.key.startsWith(m[1]) || x.label.toLowerCase().startsWith(m[1]));
-      tests.push((n) => !n.d && n.k === k);
+      // kind:video,audio is either kind; a word that names no kind matches nothing.
+      const kinds = new Set(m[1].split(',').filter(Boolean).map((w) => KINDS.findIndex((x) => x.key.startsWith(w) || x.label.toLowerCase().startsWith(w))));
+      tests.push((n) => !n.d && kinds.has(n.k));
     } else if ((m = tok.match(/^is:(.+)$/))) {
       const what = m[1];
       const table = {

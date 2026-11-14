@@ -2,11 +2,11 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Service Smoke Test (Terrane Edition - v1.5)
+ *     - Title: Service Smoke Test (Terrane Edition - v1.6)
  *     - File Name: smoke-test.mjs
  *     - Relative Path: tools/smoke-test.mjs
  *     - Artifact Type: test
- *     - Version: 1.5.0
+ *     - Version: 1.6.0
  *     - Date: 11/13/2026
  *     - Update: Friday, November 13, 2026
  *     - Author: Dennis 'dendogg' Smaltz
@@ -14,6 +14,62 @@
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
  *
  * ✒ Changelog:
+ *     - 1.6.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
+ *       search-token section checks double quotes: a quoted term keeps
+ *       its space, a quoted prefix value reaches its maker whole (in:"My
+ *       Folder"), a token that begins with a quote is a literal name, an
+ *       open quote runs to the end and empty quotes add nothing. A
+ *       previews section asks GET /api/raw for byte ranges: bytes=10-19
+ *       exactly, bytes=0- on the 24 MB file cut at 8 MiB, an end past the
+ *       file, a suffix, 416 past the end with the size, several ranges, a
+ *       reversed one or another unit served whole as before, every answer
+ *       guarded (nosniff, sandbox, no-store, Accept-Ranges), the media
+ *       types, and the token, the holding area, a climbing path and a
+ *       link that leads outside refused; snapshot mode refuses a range.
+ *       The search tokens: ext: and kind: take comma lists, any of them;
+ *       a word that names no kind adds nothing, and a list combines with
+ *       other tokens. A batch rename section on the first service:
+ *       renames moves three files across two folders, answers its pairs,
+ *       adds exactly one journal entry, and one Undo restores every name
+ *       by content hash; an existing sibling, two new names alike (and
+ *       alike but for case where case does not matter), a chain, a swap,
+ *       an item inside another, an invalid name, the holding area's name
+ *       in any case, a path twice, more than 5,000 items, no list,
+ *       traversal, the holding area and a missing path are each refused
+ *       with nothing changed and nothing journaled; a case-only rename
+ *       works and is undone; an unchanged batch is answered and not
+ *       journaled. In-process, a batch rename whose second file is in
+ *       use throws with results and affected, is journaled as a partial
+ *       rename, and its Undo carries the finished name back. The
+ *       read-only and snapshot services refuse it. A terminal section
+ *       boots on 5045 with TERRANE_LAUNCH_LOG and on 5046 read-only: 401
+ *       without the token, 415 for another content type; the root and a
+ *       folder named "term dir & ; %" each log one launch whose working
+ *       directory is the real path and whose arguments never hold it; a
+ *       file is ENOTDIR, traversal 400, the holding area 403, a junction
+ *       outside EOUTSIDE, none logged; Open is logged and starts nothing;
+ *       read-only is EREADONLY with its sentence and nothing logged; the
+ *       snapshot service answers ESNAPSHOT. terminalPlan for Windows,
+ *       macOS and Linux; in-process, a stand-in spawn proves the next
+ *       terminal is tried after ENOENT, the 501 when none is there, and a
+ *       stop on any other error. A source check: no exec( (a RegExp's
+ *       .exec( aside), no shell: true and nothing but spawn imported from
+ *       child_process in ops.mjs or terrane.mjs. Every service it boots is
+ *       given TERRANE_DATA, a temporary folder of its own removed at the
+ *       end, so the warm start's cache of its surveys never reaches the
+ *       real dataset home. In-process, an Undo that stops part way: one
+ *       whose first item cannot go back says nothing was changed; one
+ *       that stops after the first says how many went back and how many
+ *       are left, answers moved and affected, and the journal on disk
+ *       keeps only the pairs still out; after a restart the next Undo
+ *       resumes, and the entry before it is undone after that. On
+ *       Windows, through the service, a folder held open as a child
+ *       process's working directory stops an Undo with 500 EBUSY and
+ *       that sentence whole, and once let go the next Undo finishes.
+ *       A source check: every entry a tracked web/ header held at the
+ *       last commit, or where the branch left main (git show, when git
+ *       is there), and holds no longer opens its CHANGELOG.md entry word
+ *       for word, whitespace aside.
  *     - 1.5.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
  *       hardening checks. Through the service: the holding area refused
  *       under every other spelling (case, a trailing dot, NTFS stream
@@ -105,8 +161,8 @@
  *     - Planted holding-area records and a holding area that is a link,
  *       in-process; relative links refused where a move or copy would aim
  *       them outside the root; the scan writer when the page goes away
- *     - Every mutation verified on disk: mkdir, rename, move, copy,
- *       duplicate, remove to holding, restore
+ *     - Every mutation verified on disk: mkdir, rename, a batch rename,
+ *       move, copy, duplicate, remove to holding, restore
  *     - Collision checks: nothing is overwritten and nothing moves when a
  *       batch is refused; "keep both" picks a free name
  *     - Persistence: the service is stopped and started again, and the
@@ -121,27 +177,42 @@
  *     - Snapshot mode: written outside the tree it records, replays a live
  *       scan exactly, refuses every change and every content read
  *     - Read-only mode refuses mutations
+ *     - A terminal in a folder, with every launch written to a log
+ *       instead of started: the folder only as the working directory,
+ *       every refusal before a launch, the plan for three platforms, and
+ *       its order through a stand-in spawn
  *     - Archive interiors: the fixture's archives listed through the
  *       service, every refusal by status and sentence, the bounds, and a
  *       tree unchanged by listing; snapshot mode refuses listing
  *     - The archive reader, without the service: hand-built zips for
  *       names, dates, flags, escaping names, bounds and damage
  *     - Undo answers and partial changes, in-process: the paths moved
- *       back, and the paths finished before a simulated failure
+ *       back, and the paths finished before a simulated failure, a batch
+ *       rename's included; an Undo that stops part way resumes, after a
+ *       restart too, and on Windows a folder held open stops one
+ *     - The batch rename: one journal entry undone whole, and every
+ *       refusal (taken names, chains and swaps, nesting, invalid and
+ *       reserved names, the bound, traversal) before anything changes
  *     - Duplicate hashing distinguishes true copies from same-size files
+ *     - Previews: one byte range per answer, at most 8 MiB, 416 past the
+ *       end, the whole-file answer for anything else, media types, and
+ *       every refusal kept
  *     - Layout safety, without the service: the box budget holds at every
  *       box, so no layout can pass the viewport's capacity
  *     - Relation lines, without the service or a browser: the vertices the
  *       viewport writes for ties, routes and chevrons
- *     - Search tokens, without the service: the grammar answers as before
- *       and takes is: words and name:value tokens from its caller
+ *     - Search tokens, without the service: the grammar answers as before,
+ *       takes is: words and name:value tokens from its caller, and keeps
+ *       spaces inside double quotes
  *     - The age table, without the service: changed bytes and files per
  *       folder and step equal a brute-force walk, and the strata add up
  *     - The time view, without the service: the layout looked back to
  *       every ladder step keeps the present's boxes and lowers only what
  *       changed after the date
  *     - The source, read as text: one date formatter, no dead export in
- *       the shared modules, no idle icon, colours only from tokens.css
+ *       the shared modules, no idle icon, colours only from tokens.css,
+ *       no shell anywhere the service launches a program, and every
+ *       entry a web/ header rolled out kept word for word in CHANGELOG.md
  *
  * ✒ Usage Instructions:
  *     node tools/smoke-test.mjs
@@ -152,9 +223,11 @@
  *     - Dependencies: Node.js built-ins only; server/terrane.mjs,
  *       server/snapshot.mjs, server/archive.mjs, tools/make-fixture.mjs,
  *       web/js/layout.js, web/js/model.js, web/js/timeline.js,
- *       web/js/time.js, and web/js/viewport.js with the vendored three.js
+ *       web/js/time.js, and web/js/viewport.js with the vendored three.js;
+ *       git, when present, for the rolled-out header entries
  *     - Compatible platforms: Node.js 22.5+; the symbolic-link checks are
- *       skipped where links cannot be created
+ *       skipped where links cannot be created, the held-folder Undo
+ *       everywhere but Windows, and the rolled-out entries without git
  *     - Performance: about 10 seconds; the second service runs with
  *       TERRANE_SLOW_COPY_MS so a 24 MB copy takes long enough to cancel
  * ----------------------------------------------------------------------------
@@ -166,12 +239,15 @@ import path from 'node:path';
 import http from 'node:http';
 import crypto from 'node:crypto';
 import zlib from 'node:zlib';
-import { spawn } from 'node:child_process';
+import { spawn, execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
 const SERVER = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'server', 'terrane.mjs');
 const BIG = 24 * 1024 * 1024;
 const work = fs.mkdtempSync(path.join(os.tmpdir(), 'terrane-smoke-'));
+// The dataset home every service here is given (TERRANE_DATA): a warm
+// start's cache and any thumbnail lookup land here, never in the real one.
+const dataHome = fs.mkdtempSync(path.join(os.tmpdir(), 'terrane-smoke-data-'));
 const root = path.join(work, 'root');
 const outside = path.join(work, 'outside');
 fs.mkdirSync(path.join(root, 'docs', 'drafts'), { recursive: true });
@@ -355,7 +431,7 @@ function recordPaths(records) {
 
 async function boot(extra, port, env = {}, { withRoot = true } = {}) {
   const child = spawn(process.execPath, [SERVER, ...(withRoot ? [root] : []), '--no-open', '--no-watch', '--port', String(port), ...extra], {
-    stdio: ['ignore', 'pipe', 'inherit'], env: { ...process.env, ...env },
+    stdio: ['ignore', 'pipe', 'inherit'], env: { ...process.env, TERRANE_DATA: dataHome, ...env },
   });
   const actual = await new Promise((resolve, reject) => {
     let buf = '';
@@ -510,6 +586,192 @@ check('restore puts a held item back', r.status === 200 && has('media', 'z.bin')
 console.log('\nDuplicates');
 r = await s.post('/api/hash', { paths: ['media/x.bin', 'media/y.bin', 'media/z.bin'] });
 check('hashing separates true copies from same-size files', r.body.results[0].hash === r.body.results[1].hash && r.body.results[0].hash !== r.body.results[2].hash);
+
+console.log('\nBatch rename');
+{
+  // Files of its own, removed at the end of the section. Every change it
+  // makes is undone here, so the undo chain further down finds each one
+  // already undone and the tree as it began.
+  const rn = path.join(root, 'rn');
+  fs.mkdirSync(path.join(rn, 'one'), { recursive: true });
+  fs.mkdirSync(path.join(rn, 'two'));
+  for (const [rel, text] of [['one/a.txt', 'alpha'], ['one/b.txt', 'bravo'], ['one/keep.txt', 'keep'], ['two/c.txt', 'charlie']]) fs.writeFileSync(path.join(rn, ...rel.split('/')), text);
+  const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+  const start = snapshot(rn);
+  const entries = async () => (await s.get('/api/journal')).body.journal;
+  const j0 = (await entries()).length;
+  r = await s.op({ type: 'renames', items: [{ path: 'rn/one/a.txt', name: 'A1.txt' }, { path: 'rn/one/b.txt', name: 'B1.txt' }, { path: 'rn/two/c.txt', name: 'C1.txt' }] });
+  check('renames moves three files across two folders to their new names, contents intact',
+    r.status === 200 && read('rn', 'one', 'A1.txt') === 'alpha' && read('rn', 'one', 'B1.txt') === 'bravo' && read('rn', 'two', 'C1.txt') === 'charlie'
+    && same(fs.readdirSync(path.join(rn, 'one')).sort(), ['A1.txt', 'B1.txt', 'keep.txt']) && same(fs.readdirSync(path.join(rn, 'two')), ['C1.txt']), JSON.stringify(r.body));
+  check('it answers renamed, the [from, to] pairs in item order, and the two folders as affected',
+    same(r.body.renamed, [['rn/one/a.txt', 'rn/one/A1.txt'], ['rn/one/b.txt', 'rn/one/B1.txt'], ['rn/two/c.txt', 'rn/two/C1.txt']]) && same([...r.body.affected].sort(), ['rn/one', 'rn/two']) && r.body.undoable,
+    JSON.stringify(r.body));
+  const j1 = await entries();
+  check('the journal gains exactly one entry for the batch', j1.length === j0 + 1 && j1.at(-1).label === 'Renamed 3 items', JSON.stringify(j1.slice(j0)));
+  r = await s.post('/api/undo');
+  check('one Undo restores every name, by content hash, and says what it moved back',
+    r.status === 200 && same(snapshot(rn), start) && r.body.label === 'Undid: Renamed 3 items' && r.body.moved?.length === 3, JSON.stringify(r.body));
+
+  /** The batch is refused with this status and sentence, and nothing under rn changed. */
+  const refused = async (items, status, sentence) => {
+    const res = await s.op({ type: 'renames', items });
+    const ok = res.status === status && sentence.test(res.body.message || '') && same(snapshot(rn), start);
+    return ok || `${res.status} ${JSON.stringify(res.body)}`;
+  };
+  const verdict = (x) => (x === true ? '' : x);
+  let v = await refused([{ path: 'rn/two/c.txt', name: 'c2.txt' }, { path: 'rn/one/a.txt', name: 'keep.txt' }], 409, /^"keep\.txt" already exists in the folder of "a\.txt"\. Nothing was changed\.$/);
+  check('a new name an existing sibling has refuses the whole batch, and nothing changes', v === true, verdict(v));
+  v = await refused([{ path: 'rn/one/a.txt', name: 'same.txt' }, { path: 'rn/one/b.txt', name: 'same.txt' }], 409, /would both be named "same\.txt"/);
+  check('two items given one new name are refused before anything changes', v === true, verdict(v));
+  if (process.platform === 'win32' || process.platform === 'darwin') {
+    v = await refused([{ path: 'rn/one/a.txt', name: 'Same.txt' }, { path: 'rn/one/b.txt', name: 'same.TXT' }], 409, /would both be named/);
+    check('and two new names alike but for case, where case does not matter', v === true, verdict(v));
+  }
+  v = await refused([{ path: 'rn/one/a.txt', name: 'b.txt' }, { path: 'rn/one/b.txt', name: 'c.txt' }], 409, /is the name of another item in this batch now.*two steps/);
+  const swap = await refused([{ path: 'rn/one/a.txt', name: 'b.txt' }, { path: 'rn/one/b.txt', name: 'a.txt' }], 409, /two steps/);
+  check('a chain and a swap are refused: Undo could not reverse them', v === true && swap === true, `${verdict(v)} ${verdict(swap)}`);
+  v = await refused([{ path: 'rn/one', name: 'uno' }, { path: 'rn/one/a.txt', name: 'x.txt' }], 400, /^"a\.txt" is inside "one", which is renamed in the same batch\. Rename them in two steps\./);
+  check('an item inside another item of the batch is refused', v === true, verdict(v));
+  v = await refused([{ path: 'rn/one/a.txt', name: 'x/y.txt' }], 400, /slashes/);
+  const blank = await refused([{ path: 'rn/one/a.txt', name: '' }], 400, /name is required/);
+  check('an invalid name is refused', v === true && blank === true, `${verdict(v)} ${verdict(blank)}`);
+  v = await refused([{ path: 'rn/one/a.txt', name: 'fine.txt' }, { path: 'rn/one/b.txt', name: '.terrane-trash' }], 400, /reserved by Terrane/);
+  const upper = await refused([{ path: 'rn/one/b.txt', name: '.TERRANE-TRASH' }], 400, /reserved by Terrane/);
+  check('the holding area\'s name is refused, in any case, and the good item before it is not renamed', v === true && upper === true, `${verdict(v)} ${verdict(upper)}`);
+  v = await refused([{ path: 'rn/one/a.txt', name: 'x.txt' }, { path: 'rn/one/a.txt', name: 'y.txt' }], 400, /listed twice/);
+  check('the same path twice is refused', v === true, verdict(v));
+  v = await refused(Array.from({ length: 5001 }, (_, i) => ({ path: 'rn/one/a.txt', name: `n${i}.txt` })), 400, /^At most 5,000 items can be renamed at once; 5,001 were sent\.$/);
+  const none = await refused([], 400, /Nothing was selected/);
+  const notList = await refused('rn/one/a.txt', 400, /Nothing was selected/);
+  check('more than 5,000 items, none, or no list are refused', v === true && none === true && notList === true, `${verdict(v)} ${verdict(none)} ${verdict(notList)}`);
+  v = await refused([{ path: '../outside/keep.txt', name: 'x.txt' }], 400, /Relative segments/);
+  const held = await refused([{ path: '.terrane-trash', name: 'x' }], 403, /holding area/i);
+  const gone = await refused([{ path: 'rn/one/nothing.txt', name: 'x.txt' }], 404, /no longer exists/);
+  check('traversal, the holding area and a path that is not there are refused, and nothing outside changes',
+    v === true && held === true && gone === true && fs.readFileSync(path.join(outside, 'keep.txt'), 'utf8') === 'outside', `${verdict(v)} ${verdict(held)} ${verdict(gone)}`);
+  check('none of the refusals reached the journal', (await entries()).length === j0 + 1);
+  r = await s.op({ type: 'renames', items: [{ path: 'rn/one/a.txt', name: 'A.txt' }] });
+  check('a case-only rename works', r.status === 200 && fs.readdirSync(path.join(rn, 'one')).includes('A.txt') && !fs.readdirSync(path.join(rn, 'one')).includes('a.txt'), JSON.stringify(r.body));
+  r = await s.post('/api/undo');
+  check('and its Undo gives the old case back', r.status === 200 && same(snapshot(rn), start), JSON.stringify(r.body));
+  r = await s.op({ type: 'renames', items: [{ path: 'rn/one/a.txt', name: 'a.txt' }] });
+  check('a batch where nothing changes is answered, and not journaled', r.status === 200 && r.body.label === 'Names unchanged' && !r.body.undoable && (await entries()).length === j0 + 2,
+    JSON.stringify(r.body));
+  // Windows refuses to rename a folder a program holds as its working
+  // directory, as a terminal opened there does: an Undo that meets one
+  // stops part way, and the next Undo finishes once it is free.
+  if (process.platform === 'win32') {
+    const held = path.join(rn, 'held');
+    for (const n of ['h1', 'h2', 'h3']) fs.mkdirSync(path.join(held, n), { recursive: true });
+    const names = () => fs.readdirSync(held).sort();
+    r = await s.op({ type: 'renames', items: ['h1', 'h2', 'h3'].map((n, i) => ({ path: `rn/held/${n}`, name: `g${i + 1}` })) });
+    const holder = spawn(process.execPath, ['-e', 'setInterval(() => {}, 1000)'], { cwd: path.join(held, 'g2'), stdio: 'ignore' });
+    const exited = new Promise((res) => holder.once('exit', res));
+    await wait(300);
+    r = await s.post('/api/undo');
+    check('an Undo that meets a folder held open stops part way: 500 EBUSY, a sentence of how many went back, moved and affected',
+      r.status === 500 && r.body.code === 'EBUSY'
+      && r.body.message === 'Undo stopped at "g2" after putting back 1 of 3 items: it is in use by another program. Undo again to put back the other 2.'
+      && same(r.body.moved, [['rn/held/g3', 'rn/held/h3']]) && r.body.affected.includes('rn/held') && same(names(), ['g1', 'g2', 'h3']),
+      JSON.stringify({ body: r.body, names: names() }));
+    holder.kill();
+    await exited;
+    r = await s.post('/api/undo');
+    check('let go, the next Undo puts the other two back and says so; the entries before it stay in reach',
+      r.status === 200 && r.body.label === 'Undid: Renamed 3 items' && same(r.body.moved, [['rn/held/g2', 'rn/held/h2'], ['rn/held/g1', 'rn/held/h1']]) && same(names(), ['h1', 'h2', 'h3'])
+      && (await entries()).at(-1).undone, JSON.stringify({ body: r.body, names: names() }));
+  } else console.log('  skip  an Undo that meets a folder held open (Windows only: elsewhere a working directory can be renamed)');
+  fs.rmSync(rn, { recursive: true, force: true });
+}
+
+console.log('\nPreviews and byte ranges');
+{
+  // Files of known content, removed again at the end of the section.
+  const ALPHA = '0123456789abcdefghijklmnopqrstuvwxyz';
+  const made = [['range.txt', ALPHA], ['clip.mp4', Buffer.alloc(64, 1)], ['song.mp3', Buffer.alloc(64, 2)], ['empty.txt', '']];
+  for (const [n, body] of made) fs.writeFileSync(path.join(root, 'media', n), body);
+  /** GET /api/raw with the body as bytes; token null sends none. */
+  const raw = (rel, headers = {}, token = s.token, max = null) => new Promise((resolve, reject) => {
+    const q = new URLSearchParams({ path: rel, ...(max !== null ? { max: String(max) } : {}) });
+    const req = http.get({ host: '127.0.0.1', port: s.port, path: `/api/raw?${q}`, headers: { ...headers, ...(token ? { 'X-Terrane-Token': token } : {}) } }, (res) => {
+      const chunks = [];
+      res.on('data', (c) => chunks.push(c));
+      res.on('end', () => resolve({ status: res.statusCode, headers: res.headers, body: Buffer.concat(chunks) }));
+    });
+    req.on('error', reject);
+  });
+  const SANDBOX = "sandbox; default-src 'none'; style-src 'unsafe-inline'";
+  const guarded = (h) => h['x-content-type-options'] === 'nosniff' && h['content-security-policy'] === SANDBOX && h['cache-control'] === 'no-store' && h['accept-ranges'] === 'bytes';
+
+  const mid = await raw('media/range.txt', { Range: 'bytes=10-19' });
+  check('bytes=10-19 answers 206 with exactly those ten bytes, Content-Range and Content-Length',
+    mid.status === 206 && mid.body.toString() === 'abcdefghij' && mid.headers['content-range'] === 'bytes 10-19/36' && mid.headers['content-length'] === '10',
+    `${mid.status} ${mid.headers['content-range']} ${mid.body}`);
+  check('a 206 keeps nosniff, the CSP sandbox and no-store, says Accept-Ranges, and carries no X-Terrane-Truncated',
+    guarded(mid.headers) && !('x-terrane-truncated' in mid.headers), JSON.stringify(mid.headers));
+  const movie = path.join(root, 'big', 'movie.bin');
+  const head8 = fs.readFileSync(movie).subarray(0, 8 * 1024 * 1024);
+  const open = await raw('big/movie.bin', { Range: 'bytes=0-' });
+  check(`bytes=0- on a ${(BIG / 1024 / 1024).toFixed(0)} MB file is capped at 8 MiB, the first 8 MiB exactly, and says the whole size`,
+    open.status === 206 && open.body.length === 8 * 1024 * 1024 && open.body.equals(head8) && open.headers['content-range'] === `bytes 0-8388607/${BIG}` && open.headers['content-length'] === '8388608',
+    `${open.status} ${open.headers['content-range']} ${open.body.length}`);
+  const later = await raw('big/movie.bin', { Range: `bytes=${BIG - 1000}-${BIG + 5000}` });
+  check('an end past the file is cut at its last byte',
+    later.status === 206 && later.body.length === 1000 && later.headers['content-range'] === `bytes ${BIG - 1000}-${BIG - 1}/${BIG}` && later.body.equals(fs.readFileSync(movie).subarray(BIG - 1000)),
+    `${later.status} ${later.headers['content-range']}`);
+  const tail = await raw('media/range.txt', { Range: 'bytes=-5' });
+  check('the suffix bytes=-5 gives the last five bytes', tail.status === 206 && tail.body.toString() === 'vwxyz' && tail.headers['content-range'] === 'bytes 31-35/36', `${tail.status} ${tail.headers['content-range']} ${tail.body}`);
+  const longTail = await raw('media/range.txt', { Range: 'bytes=-500' });
+  check('a suffix longer than the file gives the whole file', longTail.status === 206 && longTail.body.toString() === ALPHA && longTail.headers['content-range'] === 'bytes 0-35/36');
+  const past = await raw('media/range.txt', { Range: 'bytes=36-' });
+  const far = await raw('media/range.txt', { Range: 'bytes=100-200' });
+  const none = await raw('media/range.txt', { Range: 'bytes=-0' });
+  const empty = await raw('media/empty.txt', { Range: 'bytes=0-' });
+  check('a range that starts at or past the end, a suffix of 0, or any range of an empty file answers 416 with bytes */size and no body',
+    [past, far, none].every((r) => r.status === 416 && r.headers['content-range'] === 'bytes */36' && r.body.length === 0) && empty.status === 416 && empty.headers['content-range'] === 'bytes */0'
+    && guarded(past.headers), [past, far, none, empty].map((r) => `${r.status} ${r.headers['content-range']}`).join(', '));
+  const multi = await raw('media/range.txt', { Range: 'bytes=0-1,4-5' });
+  const reversed = await raw('media/range.txt', { Range: 'bytes=5-2' });
+  const unit = await raw('media/range.txt', { Range: 'items=0-1' });
+  const plain = await raw('media/range.txt');
+  check('several ranges, a reversed range or another unit are ignored: the whole-file answer, 200, as without a Range',
+    [multi, reversed, unit, plain].every((r) => r.status === 200 && r.body.toString() === ALPHA && r.headers['x-terrane-truncated'] === '0' && !r.headers['content-range']),
+    [multi, reversed, unit, plain].map((r) => r.status).join(' '));
+  check('the 200 says Accept-Ranges too, and keeps nosniff, the sandbox and no-store', guarded(plain.headers), JSON.stringify(plain.headers));
+  const capped = await raw('big/movie.bin', {}, s.token, 4096);
+  check('without a Range the cap still holds and says it cut', capped.status === 200 && capped.body.length === 4096 && capped.headers['x-terrane-truncated'] === '1');
+  const mp4 = await raw('media/clip.mp4', { Range: 'bytes=0-' });
+  const mp3 = await raw('media/song.mp3');
+  check('.mp4 and .mp3 carry their media types, ranged or not',
+    mp4.status === 206 && mp4.headers['content-type'] === 'video/mp4' && mp4.body.length === 64 && mp3.status === 200 && mp3.headers['content-type'] === 'audio/mpeg',
+    `${mp4.headers['content-type']} ${mp3.headers['content-type']}`);
+  check('a text file stays text/plain', plain.headers['content-type'] === 'text/plain; charset=utf-8');
+  // A refusal is the service's JSON error, never bytes of the file.
+  const refused = (r, status, code) => r.status === status && !r.headers['content-range'] && JSON.parse(r.body.toString() || '{}').code === code;
+  const noToken = await raw('media/range.txt', { Range: 'bytes=0-3' }, null);
+  check('a range without the token is refused with 401 and no bytes', refused(noToken, 401, 'ETOKEN'), `${noToken.status} ${noToken.body}`);
+  const held = await raw('.terrane-trash/journal.json', { Range: 'bytes=0-10' });
+  check('a range in the holding area is refused with 403', held.status === 403 && !held.headers['content-range'], `${held.status} ${held.body}`);
+  const climb = await raw('../outside/keep.txt', { Range: 'bytes=0-3' });
+  check('a range of a path that climbs out is refused', climb.status === 400 && !climb.headers['content-range'], `${climb.status} ${climb.body}`);
+  // A link that leads outside: the root's own link where links can be made,
+  // else a junction, which Windows lets anyone make.
+  let outLink = linked ? 'escape/keep.txt' : null;
+  const junction = path.join(root, 'media', 'out-j');
+  if (!outLink) {
+    try {
+      fs.symlinkSync(outside, junction, 'junction');
+      outLink = 'media/out-j/keep.txt';
+    } catch { /* no links here at all */ }
+  }
+  if (outLink) {
+    const through = await raw(outLink, { Range: 'bytes=0-3' });
+    check(`a range through a link that leads outside is refused with 403 (${outLink})`, refused(through, 403, 'EOUTSIDE'), `${through.status} ${through.body}`);
+  } else console.log('  note  no link or junction can be made here; the link check is left out');
+  fs.rmSync(junction, { force: true });
+  for (const [n] of made) fs.rmSync(path.join(root, 'media', n), { force: true });
+}
 
 console.log('\nThe holding area by any name, links and the thumbnail cookie');
 {
@@ -714,6 +976,62 @@ console.log('\nUndo answers and changes that stop part way (no service)');
     err?.status === 500 && JSON.stringify(err.results) === JSON.stringify(['three']) && !at('three') && at('four'), JSON.stringify(err && { results: err.results, message: err.message }));
   u = await o.undo();
   check('an undo that moved nothing by path answers without moved', u.moved === undefined && at('three'), JSON.stringify(u));
+  // A batch rename whose second file is in use (EBUSY on Windows).
+  for (const n of ['r1.txt', 'r2.txt', 'r3.txt']) fs.writeFileSync(path.join(opsRoot, 'four', n), n);
+  err = null;
+  failOn('r2.txt');
+  try {
+    await o.run({ type: 'renames', items: [{ path: 'four/r1.txt', name: 's1.txt' }, { path: 'four/r2.txt', name: 's2.txt' }, { path: 'four/r3.txt', name: 's3.txt' }] });
+  } catch (e) {
+    err = e;
+  } finally {
+    fsp.rename = rename;
+  }
+  check('a batch rename that stops part way throws with results, where each item before it now is, and affected; what it finished stays',
+    err?.status === 500 && JSON.stringify(err.results) === JSON.stringify(['four/s1.txt']) && JSON.stringify(err.affected) === JSON.stringify(['four'])
+    && at('four', 's1.txt') && !at('four', 'r1.txt') && at('four', 'r2.txt') && at('four', 'r3.txt') && /^Renaming stopped at "r2\.txt" after 1 of 3 items: /.test(err.message),
+    JSON.stringify(err && { results: err.results, affected: err.affected, message: err.message }));
+  check('and it is journaled as a partial rename', (await o.journal()).at(-1)?.label === 'Partial rename (1 of 3)', JSON.stringify((await o.journal()).at(-1)));
+  u = await o.undo();
+  check('whose Undo carries the one finished name back', JSON.stringify(u.moved) === JSON.stringify([['four/s1.txt', 'four/r1.txt']]) && at('four', 'r1.txt') && !at('four', 's1.txt'), JSON.stringify(u));
+  // An Undo that stops part way: what went back stays back, the entry
+  // keeps the rest, and the next Undo resumes, after a restart too.
+  fs.mkdirSync(path.join(opsRoot, 'five'));
+  for (const n of ['u1', 'u2', 'u3']) fs.writeFileSync(path.join(opsRoot, 'five', n), n);
+  await o.run({ type: 'mkdir', parent: 'five', name: 'earlier' });
+  await o.run({ type: 'renames', items: ['u1', 'u2', 'u3'].map((n, i) => ({ path: `five/${n}`, name: `v${i + 1}` })) });
+  const undoFailing = async (name) => {
+    failOn(name);
+    try {
+      await o.undo();
+      return null;
+    } catch (e) {
+      return e;
+    } finally {
+      fsp.rename = rename;
+    }
+  };
+  const lastSaved = () => JSON.parse(fs.readFileSync(path.join(opsRoot, '.terrane-trash', 'journal.json'), 'utf8')).entries.at(-1);
+  err = await undoFailing('v3');
+  check('an Undo whose first item cannot go back says nothing was changed, and leaves its entry whole',
+    err?.status === 500 && err.worded && /^Undo could not put "v3" back: it is in use by another program\. Nothing was changed\.$/.test(err.message) && !err.moved
+    && at('five', 'v1') && at('five', 'v2') && at('five', 'v3') && lastSaved().undo.pairs.length === 3, JSON.stringify(err && { message: err.message, moved: err.moved }));
+  err = await undoFailing('v2');
+  check('an Undo that stops part way says how many went back and how many are left, with moved and affected',
+    err?.status === 500 && err.code === 'EBUSY' && err.worded
+    && /^Undo stopped at "v2" after putting back 1 of 3 items: it is in use by another program\. Undo again to put back the other 2\.$/.test(err.message)
+    && JSON.stringify(err.moved) === JSON.stringify([['five/v3', 'five/u3']]) && JSON.stringify(err.affected) === JSON.stringify(['five'])
+    && at('five', 'u3') && !at('five', 'v3') && at('five', 'v1') && at('five', 'v2'),
+    JSON.stringify(err && { code: err.code, message: err.message, moved: err.moved, affected: err.affected }));
+  check('the journal on disk keeps the entry, not undone, with only the two pairs still out',
+    lastSaved().undone === false && JSON.stringify(lastSaved().undo.pairs) === JSON.stringify([['five/u1', 'five/v1'], ['five/u2', 'five/v2']]), JSON.stringify(lastSaved()));
+  o = makeOps(g, {});
+  u = await o.undo();
+  check('after a restart the next Undo resumes: the other two go back, and moved names only them',
+    JSON.stringify(u.moved) === JSON.stringify([['five/v2', 'five/u2'], ['five/v1', 'five/u1']]) && /^Undid: Renamed 3 items/.test(u.label)
+    && at('five', 'u1') && at('five', 'u2') && at('five', 'u3') && !at('five', 'v1') && !at('five', 'v2'), JSON.stringify(u));
+  u = await o.undo();
+  check('and the entry before it is within reach of Undo again', u.ok && !at('five', 'earlier'), JSON.stringify(u));
 }
 
 console.log('\nHolding-area records, the holding area itself and links that move (no service)');
@@ -876,7 +1194,13 @@ check('the service says which snapshot it is showing', info.snapshot?.takenAt ==
 r = await sm.op({ type: 'mkdir', parent: '', name: 'from-snapshot' });
 const u = await sm.post('/api/undo');
 check('snapshot mode refuses every change', r.status === 403 && u.status === 403 && /snapshot/i.test(r.body.message) && !has('from-snapshot'));
+r = await sm.op({ type: 'renames', items: [{ path: 'docs/b.txt', name: 'z.txt' }] });
+check('a batch rename too', r.status === 403 && r.body.code === 'ESNAPSHOT' && has('docs', 'b.txt') && !has('docs', 'z.txt'), JSON.stringify(r.body));
+r = await sm.post('/api/terminal', { path: '' });
+check('a terminal too, with ESNAPSHOT and a sentence of its own', r.status === 403 && r.body.code === 'ESNAPSHOT' && /opens no terminal/.test(r.body.message), JSON.stringify(r.body));
 check('snapshot mode never reads file contents', (await sm.get('/api/raw?path=docs/b.txt')).status === 403);
+r = await sm.request('GET', '/api/raw?path=docs/b.txt', { token: sm.token, headers: { Range: 'bytes=0-2' } });
+check('nor a byte range of one: ESNAPSHOT, no bytes', r.status === 403 && r.body.code === 'ESNAPSHOT' && !r.headers['content-range'], `${r.status} ${JSON.stringify(r.body)}`);
 r = await sm.get('/api/inside?path=docs/b.txt');
 check('snapshot mode refuses to look inside an archive, with ESNAPSHOT and a sentence',
   r.status === 403 && r.body.code === 'ESNAPSHOT' && /snapshot mode/i.test(r.body.message) && !r.body.records, JSON.stringify(r.body));
@@ -888,8 +1212,142 @@ console.log('\nRead-only mode');
 const ro = await boot(['--read-only'], 4395);
 r = await ro.op({ type: 'mkdir', parent: '', name: 'nope' });
 check('read-only refuses mutations with an explanation', r.status === 403 && /read-only/i.test(r.body.message) && !has('nope'));
+r = await ro.op({ type: 'renames', items: [{ path: 'docs/b.txt', name: 'z.txt' }] });
+check('a batch rename too', r.status === 403 && /read-only/i.test(r.body.message) && has('docs', 'b.txt') && !has('docs', 'z.txt'), JSON.stringify(r.body));
 check('read-only still scans', (await ro.get('/api/scan?path=')).status === 200);
 await ro.stop();
+
+console.log('\nOpen a terminal (TERRANE_LAUNCH_LOG: nothing is started)');
+{
+  const { makeGuard } = await import('../server/guard.mjs');
+  const { makeOps, terminalPlan } = await import('../server/ops.mjs');
+  const { EventEmitter } = await import('node:events');
+  const log = path.join(work, 'launch.log');
+  const roLog = path.join(work, 'launch-read-only.log');
+  const lines = (f) => (fs.existsSync(f) ? fs.readFileSync(f, 'utf8').split('\n').filter(Boolean).map((l) => JSON.parse(l)) : []);
+  const odd = 'term dir & ; %';
+  fs.mkdirSync(path.join(root, odd));
+  let termLink = false;
+  try {
+    fs.symlinkSync(outside, path.join(root, 'term-escape'), 'junction');
+    termLink = true;
+  } catch { /* no link here */ }
+  const real = (...p) => fs.realpathSync.native(path.join(root, ...p));
+  /** A POST with any content type, for the JSON rule. */
+  const rawPost = (port, route, text, type, token) => new Promise((resolve, reject) => {
+    const req = http.request({ host: '127.0.0.1', port, path: route, method: 'POST', headers: { 'Content-Type': type, 'Content-Length': Buffer.byteLength(text), ...(token ? { 'X-Terrane-Token': token } : {}) } }, (res) => {
+      let t = '';
+      res.on('data', (c) => { t += c; });
+      res.on('end', () => resolve({ status: res.statusCode, text: t }));
+    });
+    req.on('error', reject);
+    req.end(text);
+  });
+
+  const tw = await boot([], 5045, { TERRANE_LAUNCH_LOG: log });
+  const term = (body) => tw.request('POST', '/api/terminal', { token: tw.token, body });
+  r = await tw.request('POST', '/api/terminal', { body: { path: '' } });
+  check('POST /api/terminal without the token is 401', r.status === 401 && r.body.code === 'ETOKEN', JSON.stringify(r.body));
+  r = await rawPost(tw.port, '/api/terminal', JSON.stringify({ path: '' }), 'text/plain', tw.token);
+  check('with another content type it is 415', r.status === 415, `${r.status} ${r.text}`);
+  check('neither reached a launch', lines(log).length === 0);
+
+  const plan = terminalPlan(process.platform, process.env);
+  r = await term({ path: '' });
+  let got = lines(log);
+  check('the root opens a terminal: one launch, the plan\'s first, whose working directory is the root\'s real path',
+    r.status === 200 && r.body.ok && got.length === 1 && got[0].cmd === plan[0].cmd && JSON.stringify(got[0].args) === JSON.stringify(plan[0].args) && got[0].cwd === fs.realpathSync.native(root),
+    `${r.status} ${JSON.stringify(r.body)} ${JSON.stringify(got)}`);
+  r = await term({ path: odd });
+  got = lines(log);
+  check(`a folder named "${odd}" opens in its real path, and no argument holds the path`,
+    r.status === 200 && got.length === 2 && got[1].cwd === real(odd) && got.every((l) => l.args.every((a) => !a.includes(odd) && !a.includes(root) && !a.includes(work))),
+    `${r.status} ${JSON.stringify(got[1])}`);
+  r = await term({ path: 'docs/b.txt' });
+  check('a file is refused: ENOTDIR, 400, "b.txt is not a folder."', r.status === 400 && r.body.code === 'ENOTDIR' && r.body.message === 'b.txt is not a folder.', JSON.stringify(r.body));
+  r = await term({ path: '../outside' });
+  const climb = r.status;
+  r = await term({ path: '.terrane-trash' });
+  const held = r.status;
+  r = await term({ path: 'no such folder' });
+  const missing = r.status;
+  r = await term({});
+  check('traversal is 400, the holding area 403, a folder that is not there 404, and no path 400', climb === 400 && held === 403 && missing === 404 && r.status === 400, `${climb} ${held} ${missing} ${r.status}`);
+  if (termLink) {
+    r = await term({ path: 'term-escape' });
+    check('a link that leads outside the root is refused with EOUTSIDE before anything is launched', r.status === 403 && r.body.code === 'EOUTSIDE', JSON.stringify(r.body));
+  }
+  check('none of the refusals reached a launch', lines(log).length === 2, JSON.stringify(lines(log).slice(2)));
+  r = await tw.op({ type: 'open', path: 'docs/b.txt' });
+  const opened = lines(log)[2];
+  check('Open goes to the launch log too, and starts nothing', r.status === 200 && lines(log).length === 3 && opened?.args.some((a) => a.endsWith('b.txt')) && opened.cwd === null, JSON.stringify(opened));
+  await tw.stop();
+
+  const tr = await boot(['--read-only'], 5046, { TERRANE_LAUNCH_LOG: roLog });
+  r = await tr.request('POST', '/api/terminal', { token: tr.token, body: { path: '' } });
+  check('read-only mode refuses a terminal with EREADONLY and its sentence, and launches nothing',
+    r.status === 403 && r.body.code === 'EREADONLY' && r.body.message === 'Terrane was started in read-only mode, so it does not open a terminal, from which anything on disk could be changed.' && lines(roLog).length === 0,
+    JSON.stringify(r.body));
+  await tr.stop();
+
+  // The plan, for every platform.
+  const win = terminalPlan('win32', { ComSpec: 'C:\\Windows\\system32\\cmd.exe' });
+  check('Windows: Windows Terminal in ".", then ComSpec asked to start a console of its own, both detached and shown',
+    JSON.stringify(win) === JSON.stringify([
+      { cmd: 'wt.exe', args: ['-d', '.'], detached: true, windowsHide: false },
+      { cmd: 'C:\\Windows\\system32\\cmd.exe', args: ['/d', '/c', 'start', 'cmd.exe'], detached: true, windowsHide: false },
+    ]) && terminalPlan('win32', {})[1].cmd === 'cmd.exe', JSON.stringify(win));
+  check('macOS: open -a Terminal .', JSON.stringify(terminalPlan('darwin', {}).map((x) => [x.cmd, x.args])) === JSON.stringify([['open', ['-a', 'Terminal', '.']]]));
+  check('Linux: x-terminal-emulator, then gnome-terminal, with no arguments',
+    JSON.stringify(terminalPlan('linux', {}).map((x) => [x.cmd, x.args])) === JSON.stringify([['x-terminal-emulator', []], ['gnome-terminal', []]]));
+
+  // In-process, with a stand-in for spawn: the plan's order, nothing started.
+  const g = await makeGuard(root);
+  const fake = (codes) => {
+    const calls = [];
+    const fn = (cmd, args, opts) => {
+      calls.push({ cmd, args, opts });
+      const child = new EventEmitter();
+      child.unref = () => {};
+      setImmediate(() => (codes[cmd] ? child.emit('error', Object.assign(new Error(`spawn ${cmd} ${codes[cmd]}`), { code: codes[cmd] })) : child.emit('spawn')));
+      return child;
+    };
+    return { calls, fn };
+  };
+  if (plan.length > 1) {
+    const f = fake({ [plan[0].cmd]: 'ENOENT' });
+    const res = await makeOps(g, { spawn: f.fn }).terminal(odd);
+    check(`when ${plan[0].cmd} is not there the next terminal is tried, with the folder as its working directory, no shell, detached`,
+      res.ok && f.calls.length === 2 && f.calls[1].cmd === plan[1].cmd && f.calls.every((c) => c.opts.cwd === real(odd) && c.opts.shell === false && c.opts.detached === true && c.opts.stdio === 'ignore'),
+      JSON.stringify(f.calls.map((c) => [c.cmd, c.opts.cwd, c.opts.shell])));
+  }
+  const none = fake(Object.fromEntries(plan.map((x) => [x.cmd, 'ENOENT'])));
+  let threw = null;
+  try {
+    await makeOps(g, { spawn: none.fn }).terminal('');
+  } catch (e) {
+    threw = e;
+  }
+  check(`when no terminal is there: ELAUNCH, 501, "No terminal was found: tried ${plan.map((x) => x.cmd).join(', ')}."`,
+    threw?.code === 'ELAUNCH' && threw.status === 501 && threw.message === `No terminal was found: tried ${plan.map((x) => x.cmd).join(', ')}.` && none.calls.length === plan.length, threw?.message);
+  const denied = fake({ [plan[0].cmd]: 'EACCES' });
+  threw = null;
+  try {
+    await makeOps(g, { spawn: denied.fn }).terminal('');
+  } catch (e) {
+    threw = e;
+  }
+  check('any other failure stops there, with the system\'s code', threw?.code === 'ELAUNCH' && /EACCES/.test(threw.message) && denied.calls.length === 1, threw?.message);
+  threw = null;
+  try {
+    await makeOps(g, { readOnly: true, spawn: none.fn }).terminal('');
+  } catch (e) {
+    threw = e;
+  }
+  check('a read-only ops refuses before trying anything', threw?.code === 'EREADONLY' && none.calls.length === plan.length);
+  fs.rmSync(path.join(root, odd), { recursive: true, force: true });
+  if (termLink) fs.rmSync(path.join(root, 'term-escape'), { force: true, recursive: false });
+}
 
 console.log('\nArchive interiors (the fixture\'s archives, through the service)');
 const { makeFixture, unseal } = await import('./make-fixture.mjs');
@@ -1375,6 +1833,19 @@ const hits = (q, ext) => {
 const plain = ['report', 'ext:js', 'is:empty', '>1kb', 'older:1h', 'kind:code', '*.md', 'foo:bar'].map((q) => JSON.stringify(hits(q)));
 check('without feature tokens every query answers as before', JSON.stringify(plain)
   === JSON.stringify([['Report-2026.pdf'], ['a.js', 'b.js'], ['empty.txt'], ['Report-2026.pdf'], ['Report-2026.pdf', 'Session', 'a.js', 'b.js', 'empty.txt', 'notes.md'], ['a.js', 'b.js'], ['notes.md'], []].map((x) => JSON.stringify(x))), plain.join(' '));
+{
+  const lists = {
+    ext: hits('ext:js,md'), dotted: hits('ext:.pdf,.md'), kinds: hits('kind:code,document'), media: hits('kind:video,audio,image'),
+    unknown: hits('kind:code,nonsense'), bare: hits('ext:,'), sized: hits('kind:code,document >1kb'), one: hits('kind:doc'),
+  };
+  check('ext: and kind: take a comma list, any of them: ext:js,md, ext:.pdf,.md, kind:code,document',
+    JSON.stringify(lists.ext) === '["a.js","b.js","notes.md"]' && JSON.stringify(lists.dotted) === '["Report-2026.pdf","notes.md"]'
+    && JSON.stringify(lists.kinds) === '["Report-2026.pdf","a.js","b.js","empty.txt","notes.md"]' && JSON.stringify(lists.one) === '["Report-2026.pdf","empty.txt","notes.md"]',
+    JSON.stringify(lists));
+  check('a listed word that names no kind adds nothing, a list of nothing matches nothing, and a list combines with other tokens',
+    JSON.stringify(lists.media) === '[]' && JSON.stringify(lists.unknown) === '["a.js","b.js"]' && JSON.stringify(lists.bare) === '[]' && JSON.stringify(lists.sized) === '["Report-2026.pdf"]',
+    JSON.stringify(lists));
+}
 const marked = new Set();
 let seenRaw = null;
 const ext = {
@@ -1403,6 +1874,26 @@ try {
 }
 check('is: and prefix lookups use real words only: is:constructor and is:__proto__ match nothing and do not throw',
   !protoErr && JSON.stringify(protoHits.slice(0, 3)) === '[[],[],[]]', protoErr || JSON.stringify(protoHits));
+// Double quotes: whitespace splits only outside them, and they are dropped.
+const qq = new Model('root');
+qq.ingest([
+  [0, -1, 'root', NOW, 0, ['two words.txt', 10, NOW, 0, 'two.txt', 10, NOW, 0, 'words two.md', 10, NOW, 0, 'a*b.txt', 10, NOW, 0]],
+  [1, 0, 'My Folder', NOW, 0, ['inner.txt', 5, NOW, 0]],
+], [], qq.root);
+const qhits = (q, ext) => {
+  const pred = parseQuery(q, ext);
+  return pred ? JSON.stringify(runSearch(qq, pred).list.map((x) => x.n).sort()) : null;
+};
+check('a quoted term keeps its space: "two words" finds the one name with both words in that order, unquoted both names with both words',
+  qhits('"two words"') === '["two words.txt"]' && qhits('two words') === '["two words.txt","words two.md"]', `${qhits('"two words"')} ${qhits('two words')}`);
+let inSeen = null;
+const inExt = { prefix: { in: (v, raw) => { inSeen = [v, raw]; return (n) => n.p?.n.toLowerCase() === v; } } };
+check('a quoted prefix value reaches its maker whole, lower-cased and as typed, without the quotes',
+  qhits('in:"My Folder"', inExt) === '["inner.txt"]' && JSON.stringify(inSeen) === '["my folder","My Folder"]', `${qhits('in:"My Folder"', inExt)} ${JSON.stringify(inSeen)}`);
+check('a token that begins with a quote is a literal name term, never a prefix or a glob: "ext:md" finds nothing, "a*b" finds a*b.txt only',
+  qhits('"ext:md"') === '[]' && qhits('"a*b"') === '["a*b.txt"]' && qhits('a*b') === '[]', `${qhits('"ext:md"')} ${qhits('"a*b"')} ${qhits('a*b')}`);
+check('a quote left open runs to the end, and empty quotes add nothing',
+  qhits('"two wo') === '["two words.txt"]' && qhits('two ""') === qhits('two') && qhits('""') === null, `${qhits('"two wo')} ${qhits('two ""')} ${qhits('""')}`);
 
 console.log('\nAge table (no service)');
 const { buildAgeTable, LADDER_DAYS, STEPS, BAND_STEPS, BANDS, DAY } = await import(new URL('../web/js/timeline.js', import.meta.url));
@@ -1637,8 +2128,74 @@ console.log('\nSource (no service)');
   check('component stylesheets read their colours from tokens.css, never a raw colour', raw.length === 0, raw.join(', '));
   const utilities = fs.readFileSync(path.join(WEBDIR, 'css', 'utilities.css'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
   check('utilities outrank components by layer, without !important', !/!important/.test(utilities));
+  const launchers = ['ops.mjs', 'terrane.mjs'].filter((f) => {
+    const src = fs.readFileSync(path.join(TOOLS, '..', 'server', f), 'utf8');
+    // child_process's exec runs a shell; a RegExp's .exec( launches nothing.
+    const imported = [...src.matchAll(/import\s*\{([^}]*)\}\s*from\s*'node:child_process'/g)].flatMap((m) => m[1].split(',').map((x) => x.trim()));
+    return /(?<![.\w$])exec(?:Sync)?\(/.test(src) || /shell:\s*true/.test(src) || imported.some((x) => /^exec(?:Sync)?\b/.test(x));
+  });
+  check('the service never runs a shell: no exec( or shell: true in ops.mjs or terrane.mjs, and nothing but spawn from child_process',
+    launchers.length === 0, launchers.join(', '));
+
+  // A shipped header keeps three entries, and one it rolls out must reach
+  // CHANGELOG.md word for word. Every entry a tracked web/ header held at
+  // the last commit, or where this branch left main, and holds no longer
+  // must open its CHANGELOG.md entry, whitespace aside.
+  const REPO = path.join(TOOLS, '..');
+  const flat = (t) => t.replace(/\s+/g, ' ').trim();
+  const headerEntries = (text) => {
+    const out = new Map();
+    const lines = text.replace(/\r/g, '').split('\n');
+    let cur = null;
+    for (const l of lines.slice(lines.findIndex((x) => x.includes('✒ Changelog')) + 1)) {
+      if (l.includes('✒ ')) break;
+      const t = l.replace(/^\s*\*?\s?/, '').trim();
+      const m = t.match(/^- (\d+\.\d+\.\d+) \(/);
+      if (!t || t.startsWith('Earlier entries')) cur = null;
+      else if (m) out.set(cur = m[1], t);
+      else if (cur) out.set(cur, `${out.get(cur)} ${t}`);
+    }
+    return out;
+  };
+  const kept = new Map();
+  let file = null;
+  let cur = null;
+  for (const l of fs.readFileSync(path.join(REPO, 'CHANGELOG.md'), 'utf8').replace(/\r/g, '').split('\n')) {
+    const h = l.match(/^## (\S+)/);
+    const m = l.match(/^- (\d+\.\d+\.\d+) \(/);
+    if (h) kept.set(file = h[1], new Map());
+    else if (file && m) kept.get(file).set(cur = m[1], l);
+    else if (file && cur && l.trim()) kept.get(file).set(cur, `${kept.get(file).get(cur)} ${l}`);
+    else cur = null;
+  }
+  const git = (...a) => {
+    try {
+      return execFileSync('git', a, { cwd: REPO, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] });
+    } catch {
+      return null;
+    }
+  };
+  const bases = [git('rev-parse', 'HEAD'), git('merge-base', 'HEAD', 'main')].map((x) => x?.trim()).filter(Boolean);
+  if (bases.length) {
+    const lost = [];
+    let rolled = 0;
+    for (const [rel, entries] of kept) {
+      const now = headerEntries(fs.readFileSync(path.join(REPO, rel), 'utf8'));
+      for (const base of new Set(bases)) {
+        const then = git('show', `${base}:${rel}`);
+        if (!then) continue;
+        for (const [v, text] of headerEntries(then)) {
+          if (now.has(v)) continue;
+          rolled++;
+          if (!flat(entries.get(v) || '').startsWith(flat(text))) lost.push(`${rel} ${v} (since ${base.slice(0, 7)})`);
+        }
+      }
+    }
+    check(`every entry a web/ header rolled out since the last commit or main (${rolled}) opens its CHANGELOG.md entry word for word`, lost.length === 0, [...new Set(lost)].join(', '));
+  } else console.log('  skip  rolled-out header entries against CHANGELOG.md (no git history here)');
 }
 
 fs.rmSync(work, { recursive: true, force: true });
+fs.rmSync(dataHome, { recursive: true, force: true });
 console.log(`\n${passed} passed, ${failed} failed\n`);
 process.exit(failed ? 1 : 0);

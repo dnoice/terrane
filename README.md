@@ -1,10 +1,10 @@
 <!--
 ✒ Metadata
-    - Title: Terrane Readme (Terrane Edition - v1.9)
+    - Title: Terrane Readme (Terrane Edition - v1.10)
     - File Name: README.md
     - Relative Path: README.md
     - Artifact Type: docs
-    - Version: 1.9.0
+    - Version: 1.10.0
     - Date: 11/13/2026
     - Update: Friday, November 13, 2026
     - Author: Dennis 'dendogg' Smaltz
@@ -12,6 +12,22 @@
     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
 
 ✒ Changelog:
+    - 1.10.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] —
+      Wave 3, quality of life, on branch qol. Launch covers the warm
+      start, `--no-warm` and the port Windows refuses; Travelling gains
+      finding your way (the command palette, the remembered view and its
+      address, search history, saved searches, `in:` and quoted terms);
+      Looking further gains Quick look, the selection's total, the quick
+      searches, the Untouched order, Changed with it and places carried
+      as a file; Doing things to files gains gathering by keyboard, the
+      batch rename, duplicate cleanup, copy as, lists saved as CSV, a
+      terminal opened in a folder and an Undo that resumes. The safety
+      model covers the renames and terminal routes, byte ranges, the
+      warm cache and the address; the commands name npm test's nine
+      checks and what the checks never write or launch; What was
+      verified records the final runs on branch qol; Not verified adds
+      what Wave 3 could not see; the project map lists the new modules,
+      stylesheets and checks.
     - 1.9.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — Single-key
       shortcuts are off unless turned on in the guide, and the key
       section says how to reach them. What was verified records the
@@ -75,21 +91,29 @@
 
 ✒ Description:
     How to launch Terrane, how to develop and check it against real data
-    without touching that data, how to read and travel its world, and
-    what it shows beyond the ground plane: a date scrub, landmarks,
-    working sessions, strata and archive interiors. Also what it can do
-    to files, how those actions are kept safe, and where to start when
+    without touching that data, how to read and travel its world and
+    find a place again, and what it shows beyond the ground plane: a
+    date scrub, landmarks, working sessions, strata, archive interiors
+    and a quick look at a file. Also what it can do to files, one or many
+    at a time, how those actions are kept safe, and where to start when
     continuing development.
 
 ✒ Key Features:
-    - Launch instructions for Windows, macOS and Linux
+    - Launch instructions for Windows, macOS and Linux, and the warm
+      start that draws the last session's tree at once
     - Development mode: snapshots and thumbnails of a real directory
     - The visual language in one table, the features' conventions
       included
     - Travel, selection and operation controls
-    - Looking further: time, landmarks, working sessions, strata and
-      archive interiors, with their keys and where places are kept
-    - Safety model and its limits, the archive listing included
+    - Finding your way: the command palette, the remembered view and its
+      address, search history, saved searches and `in:`
+    - Looking further: time, landmarks, working sessions, strata,
+      archive interiors, Quick look, totals and quick searches, with
+      their keys and where places and searches are kept
+    - Acting on many: the batch rename, duplicate cleanup, copy as, lists
+      saved as CSV and a terminal opened in a folder
+    - Safety model and its limits, the archive listing, the new routes
+      and the warm cache included
     - The checks (npm test, ui-check), what was verified, and what was
       not
     - Project map for continuing development
@@ -138,12 +162,26 @@ away. Once the page is ready, a click or any key skips what is left of
 the intro. With reduced motion the sheet shows the finished T and leaves
 without moving.
 
+From the second launch on, the page starts warm. The service keeps the
+last complete survey of the directory (names, sizes, dates and flags,
+never what a file holds) in the dataset home, the folder described under
+Developing against real data, and the page draws that tree at once,
+with a notice that it shows the directory as the last
+session surveyed it. It then surveys the directory again in the
+background. Until that survey is in, changes wait and say so, while
+opening, revealing, copying and a terminal do not; then the world takes
+on what changed, keeping the folder you are in, the selection and the
+eye, and a notice says how many files changed, are here now and are
+gone. A kept tree that cannot be read whole is set aside, and the page
+surveys afresh and says so.
+
 | Option | Effect |
 | ------ | ------ |
-| `--read-only` | Refuses every action that changes the disk. Start here on anything you care about. |
-| `--port <n>` | Preferred port. The next free one is used if it is taken. |
+| `--read-only` | Refuses every action that changes the disk. Start here on anything you care about. The warm start's tree is still kept in the dataset home, outside the directory. |
+| `--port <n>` | Preferred port. The next free one is used if it is taken, or on Windows refused because another program holds it. |
 | `--no-open` | Does not open the browser. |
 | `--no-watch` | Does not watch for outside changes; use Refresh. |
+| `--no-warm` | Keeps no tree of the last survey and serves none: every launch surveys before it draws, and the service writes nothing to the dataset home. |
 
 ```bash
 node server/terrane.mjs "E:\digiSpace" --read-only
@@ -181,7 +219,7 @@ It does four things:
 | `npm run thumbs -- --huge` | Also thumbnail images over 80 megapixels, one at a time |
 | `npm run thumbs -- --heavy-svg` | Also render SVGs over 512 KB through Inkscape |
 | `node server/terrane.mjs --snapshot <folder>` | Serve a snapshot without the dev runner |
-| `npm test` | The service smoke test on a throwaway directory, then the Node checks of landmarks (`places-test`), working sessions (`relations-test`), strata (`strata-test`) and archive interiors (`interior-test`) |
+| `npm test` | The service smoke test on a throwaway directory, then the Node checks of landmarks (`places-test`), working sessions (`relations-test`), strata (`strata-test`), archive interiors (`interior-test`), finding your way (`finding-test`), the batch rename (`rename-test`), CSV export (`export-test`) and the warm start (`warm-test`) |
 | `npm run ui-check` | Drive the page in headless Edge or Chrome, keyboard only, with and without WebGL, on a fresh fixture in the OS temp folder; compares draw calls with the recorded baseline |
 | `npm run ui-check -- time --pass nogl` | One scenario in one pass; `npm run ui-check -- --list` names every scenario |
 | `npm run vendor -- --check` | Verify the vendored browser libraries against their recorded digests |
@@ -190,9 +228,19 @@ It does four things:
 
 Datasets live in `%LOCALAPPDATA%\terrane\datasets\<name>` (on other
 systems `~/.cache/terrane/datasets`), outside the project and outside
-OneDrive. They hold real file names, so they stay local. Both are SQLite
-files and can be queried directly, for example
+OneDrive; `TERRANE_DATA` names another place for them. They hold real
+file names, so they stay local. Both are SQLite files and can be
+queried directly, for example
 `SELECT folder, name, size FROM entries ORDER BY size DESC LIMIT 20`.
+The warm start's cache sits in the same folder for its directory, as
+`warm-<hash>.ndjson.gz` and its meta `warm-<hash>.json`, and holds the
+same kind of data as a snapshot. Snapshot mode keeps none.
+
+The checks never write to the real dataset home and never launch a
+program. Every service `npm test` and `npm run ui-check` start keeps its
+data in a `TERRANE_DATA` folder of its own, and where a check asks for
+Open, Reveal or a terminal, the launch is written to a
+`TERRANE_LAUNCH_LOG` file as one line instead of being started.
 
 ## Reading the world
 
@@ -252,6 +300,51 @@ lets single-key shortcuts act wherever focus is.
 Below 860 px wide (or at 200% zoom) the inspector folds away, and `]` or
 its toggle in the view tools opens it as a drawer over the world.
 
+### Finding your way
+
+| Input | Effect |
+| ----- | ------ |
+| Ctrl+K | The command palette: every action, and every folder and file by a few typed letters |
+| ↑ ↓ in Find | Earlier and later searches |
+| `in:<folder>` in Find | Only what lies inside that folder, at any depth |
+| `"two words"` in Find | One term with a space in it; `in:"My Folder"` too |
+
+**The command palette.** Ctrl+K opens one field over the page, from the
+world, the ledger or a button (in Find, Ctrl+K stays the browser's). It
+lists every action in the guide, each lens and each panel on a line of
+its own, and the actions features offer that have no key: saved and
+quick searches, Copy link, exports, a terminal. An action that cannot
+run here stays listed with its reason. Typed letters also rank every
+folder and file in the tree by fuzzy match on the name, or on the path
+once the query holds a `/`. The arrows, Home and End move through the
+list, Enter runs the choice and Escape closes. A folder chosen is flown
+to; a file is revealed and selected; either way Contents shows it with
+the list's cursor on it.
+
+**The remembered view.** A reload comes back where you were: the folder,
+the lens, the tab, the selection and, with WebGL, where the eye stood,
+with a sentence saying so. The address names the folder you are in, as
+in `http://127.0.0.1:4173/#/docs/notes`, so a bookmark or a link opens
+Terrane there while the service runs at that address; Copy link, in the
+context menu and the palette, puts it on the clipboard. Changing the
+address goes there: a folder is opened, a file's folder is opened and
+the file selected, and an address that names nothing says so and is put
+back.
+
+**Search history and saved searches.** ArrowUp in Find brings back the
+last 20 searches, newest first, and ArrowDown steps forward again to
+what you were typing; each step runs the search and is said. Save
+search… on the Findings count row keeps the search under a name, up to
+50; the Places tab's Saved searches runs or forgets each one, with Undo,
+and the palette runs them too. `in:` keeps a search to one folder:
+`in:.` is the folder you are in, `in:./x` a folder under it, anything
+else is read from the root; Findings says which folder it found, or that
+there is none.
+
+The view and the searches are kept in this browser for this directory,
+like places: another browser, profile or port keeps its own, and a
+snapshot's are kept apart from the live directory's.
+
 ## Looking further
 
 | Input | Effect |
@@ -263,6 +356,7 @@ its toggle in the view tools opens it as a drawer over the world.
 | H | Mark a return point where you stand |
 | J | Fly back to the return point; J again comes back |
 | I | Look inside the zip archive you are on; I again, or Escape with nothing selected, closes it |
+| P | Quick look at the selected file; ← → step through the list shown, and P or Escape closes it |
 | `session:N` in Find | The N-th newest working session (`session:1` is the newest) |
 
 **Time.** The world looks back to one of 19 dates on a fixed ladder, from
@@ -283,7 +377,15 @@ and their undo, carry benchmarks along; a folder renamed or removed from
 outside is marked missing, with Forget, and never silently dropped.
 Places are kept in this browser for this directory at this address: another
 browser, profile or port keeps its own, and benchmarks of a snapshot are
-kept apart from those of the live directory.
+kept apart from those of the live directory. To carry them across,
+Export places (in the Places tab or the palette) saves the benchmarks,
+the return point and the saved searches as
+`terrane-places-<directory>-YYYY-MM-DD.json`, and Import places… takes
+the file in elsewhere. A benchmark already there is updated only when
+the file's measurement is newer, at most 64 are kept, and the notice's
+Undo puts everything back. A file for another directory, or for a
+snapshot when the live directory is open (or the reverse), is refused
+and nothing changes.
 
 **Working sessions.** Files whose last changes follow each other within 30
 minutes make a session; folders whose names start with a dot are left
@@ -291,13 +393,19 @@ out. The Survey tab's Working sessions section lists the newest 40, and a
 session written at once (an extraction, a copy or an install) is labelled
 so. Enter on a row puts `session:N` in Find: Findings lists its files in
 the order they changed, and the world draws the traverse through them.
-ArrowDown and Enter in Findings step from stop to stop.
+ArrowDown and Enter in Findings step from stop to stop. A selected
+file's inspector says what changed with it: its session, the eight files
+nearest to it in time with their times, and Show all as `session:N`; the
+context menu's "Show its working session" and the palette do the same,
+and a file in no session says why.
 
 **Strata.** The inspector's Bytes by last change, for the folder you are
 in or a selected folder, splits its bytes into six strata (under a day, a
 week, a month, a year, three years, older) with a sentence such as "81% of
 these bytes have not changed in over a year". The Age lens colours a
-closed mass by the same table.
+closed mass by the same table, and Contents sorts by it too: Untouched
+lists the longest untouched first, a folder by its typical age and a
+file by its last change.
 
 **Archive interiors.** I on a zip archive (or a jar, war, ear, apk, aab,
 whl, xpi, nupkg, vsix or ipa) reads its directory through the service
@@ -308,6 +416,27 @@ breadcrumbs go through it, and a path inside reads `x.zip!/inner/file`.
 Nothing inside can be changed, opened or revealed. The interior closes
 when the archive changes on disk, and is unavailable in snapshot mode.
 Other formats are named and refused, and search does not reach inside.
+
+**Quick look.** P, the inspector's Quick look or the palette shows the
+selected file in a large sheet before anything is opened: its text, the
+first 256 KB with line numbers; its picture, as the 480 px thumbnail, or
+the file itself only when it is 2 MB or less and not an SVG; its sound
+or film, in the browser's own player, which reads it in byte ranges and
+never plays by itself. A link, an archive entry and any other kind get
+their facts and a sentence, and so does everything but a picture's
+thumbnail in snapshot mode. ← and → step to the previous and next file
+of the list shown, Contents or Findings, Home and End to the first and
+last; a long line or a long text scrolls to its edge first, and a
+player keeps its own keys.
+
+**Totals and quick searches.** While more than one item is selected,
+the Contents and Findings count rows say what the selection weighs, as
+in "3 selected · 1.2 GB", counting an item inside another selected
+folder once. The Survey tab's Quick searches counts four common
+questions, Big and stale (`>100mb older:1y`), Large media
+(`kind:video,audio,image >50mb`), Changed this week (`newer:7d`) and
+Empty folders (`is:empty is:folder`), and Enter runs one into Findings.
+`ext:` and `kind:` take comma lists, as these do.
 
 In the time view, working sessions and strata, "changed" means a file's
 last modification time. A copy, a checkout or an extraction restamps the
@@ -321,17 +450,78 @@ arrived.
 | Open | Double-click, Enter, inspector | Handed to the operating system's default application |
 | Reveal | Menu, inspector | Opens the system file manager at the item |
 | Copy path | Ctrl+C, menu, inspector | Absolute path |
+| Copy name, relative path | Menu, palette | For one item, a selection or the folder you are in |
+| Open a terminal | Menu, inspector, palette | In a folder, a file's folder or the folder you are in |
 | New folder | N, toolbar, menu | |
 | Rename | F2, menu, inspector | |
+| Rename several | F2 with several selected, menu, inspector, palette | A preview of every new name; one change, one Undo |
 | Move, Copy | M, menu, drag a ledger row | Click a destination plateau, or travel there and choose Place where I am. Anything that takes longer than a moment shows progress and a Cancel button |
 | Duplicate | Ctrl+D | Copies in place as `name copy.ext` |
 | Remove | Del | Moves to the holding area. Nothing is deleted |
-| Undo | Ctrl+Z, toolbar, Journal tab | Reverses the latest change |
+| Keep one copy | Survey and inspector, under verified duplicates; palette | The other copies move to the holding area |
+| Export CSV | Contents and Findings count rows, Survey, palette | Saved by the browser; nothing goes through the service |
+| Undo | Ctrl+Z, toolbar, Journal tab | Reverses the latest change. One that stops part way says how many items went back, and Undo again finishes it |
 | Restore, Purge | Journal tab | Purge is the only permanent deletion and asks first |
 
 Inside an open archive, Open, Reveal and every change to an entry are
 refused with a sentence before anything is sent to the service. Copy path
 gives the path through the archive, `x.zip!/inner/file`.
+
+**Acting on many.** In the ledger list, Ctrl with an arrow, Page Up or
+Down, Home or End moves the cursor without changing the selection, and
+Space adds or drops the row, so a selection can be gathered from the
+keyboard. F2 with more than one item selected opens the batch rename:
+Find and Replace (literal text, or a regular expression with `$1` to
+`$9`), Match case, whether the extension takes part, the case, a counter
+before or after the name, and the extension, over a table of what each
+item is now, what it becomes and why it cannot. Rows with a problem come
+first, and Apply stays unavailable, with the reason beside it, while any
+row has one: two new names alike in one folder, a new name another item
+has now (a swap is one, and Undo could not reverse it), an item inside a
+folder renamed in the same batch, or a name the system refuses. The
+service checks the whole batch again before the first rename and
+journals it as one change, so one Undo puts every name back. A batch
+holds up to 5,000 items; read-only and snapshot mode refuse it, and so
+does an open archive.
+
+**Duplicate cleanup.** Under a group of duplicate candidates that Verify
+by content has confirmed, in the Survey and in the inspector, Keep
+newest and Keep oldest (and the inspector's Keep this one) keep one file
+and move the other copies to the holding area as one change. A
+confirmation names what is kept, what moves and the size reclaimed. The
+copies are hashed again first, and one that changed since it was
+verified stops the whole move. A group compared by sampling, its files
+over 16 MB, is called probable and its confirmation says so; a group
+not yet verified offers only Verify by content. A verification survives
+a refresh for every file whose size and last change are unchanged.
+
+**Copy as.** Ctrl+C copies absolute paths. The context menu and the
+palette also copy names, and paths relative to the directory, for one
+item, a selection or the folder you are in. Relative paths use `/` on
+every platform, the directory itself reads `.`, and an archive entry
+reads `x.zip!/inner/file`.
+
+**Lists as CSV.** Export CSV on the Contents and Findings count rows
+saves the rows listed, in the order shown. The Survey's last section,
+Export as CSV, saves its largest files, duplicate candidates (with each
+file's group and whether it was confirmed), empty folders, sealed
+folders (with the error) and symbolic links, and the palette offers all
+seven. The columns are name, path, kind, size_bytes and modified (ISO
+8601, UTC), and the file is named
+`terrane-<directory>-<list>-YYYY-MM-DD.csv`. It is made in the page, so
+it works in every mode. A text cell that begins with `=`, `+`, `-`, `@`,
+a tab or a carriage return is written with a leading apostrophe, so a
+spreadsheet shows it as text instead of running it as a formula.
+
+**A terminal here.** "Open a terminal here" on a folder, "in its folder"
+on a file and "in this folder" for the folder you are in, the
+inspector's Terminal here and the palette ask the service to start the
+system's terminal with that folder as its working directory: Windows
+Terminal (`wt.exe -d .`), else a new `cmd.exe` window, on Windows;
+Terminal on macOS; `x-terminal-emulator`, else `gnome-terminal`, on
+Linux. A terminal can change anything, so read-only and snapshot mode
+show it unavailable with the reason, as do an open archive and a folder
+that cannot be read.
 
 ### Safety model
 
@@ -358,6 +548,35 @@ gives the path through the archive, `x.zip!/inner/file`.
 - A cancelled copy removes only the paths it created, newest first, and
   folders only when empty. Items finished before the cancel stay and can
   be undone.
+- A batch rename is checked whole before its first rename: every path
+  through the guard, every new name against the system's rules, no path
+  twice, no item inside another, no new name that something else has
+  now (so chains and swaps are refused), and no two new names alike in
+  one folder as the filesystem compares names. One that stops part way
+  journals what it finished.
+- An Undo that stops part way, because another program holds an item,
+  keeps in the journal only what is still to go back, and saves it
+  before it says how many items went back, so Undo again resumes, after
+  a restart too.
+- A terminal starts only in a folder whose real location is inside the
+  root and outside the holding area. The folder is its working
+  directory, never an argument; the programs and their arguments are a
+  fixed list, started with `shell: false`, so no command line is ever
+  built from a path. Read-only and snapshot mode refuse it.
+- Sound and film are read in byte ranges of at most 8 MiB, after the
+  same checks as any preview; snapshot mode refuses every read of a
+  file's bytes.
+- The warm cache holds what a snapshot holds: names, sizes, dates and
+  flags, never what a file contains. It is written only from a survey of
+  the whole directory that ran to its end, and read back only when its
+  meta names exactly this directory and its size agrees. `--read-only`
+  still writes it, in the dataset home outside the directory, and
+  `--no-warm` writes nothing. When the dataset home's real location is
+  inside the directory (`TERRANE_DATA` set there, or a home folder or a
+  whole drive given as the directory), no cache is kept, and the service
+  says so when it starts.
+- The address names a folder, never the token, and what follows `#` is
+  not sent by the browser, so it never reaches the service.
 - Looking inside an archive reads only its directory, through the same
   checks as a preview: the file's real location must be inside the root.
   It extracts and writes nothing, and an entry's name is never joined to
@@ -374,7 +593,8 @@ gives the path through the archive, `x.zip!/inner/file`.
 Limits worth knowing: the journal keeps the latest 500 changes;
 `.terrane-trash` lives inside your directory, so on a OneDrive folder it
 will sync until purged; hidden items are detected by dot prefix only, not
-by the Windows hidden attribute.
+by the Windows hidden attribute; while a warm start checks its tree the
+browser holds two copies of it, about 300 MB per million entries.
 
 ## What was verified
 
@@ -395,6 +615,9 @@ by the Windows hidden attribute.
 | The final sanity sweep on Windows 11 (11/13/2026), after the polish pass: `node --check` on every script outside `web/vendor/`, `npm test`, `npm run vendor -- --check`, and `npm run ui-check` in both passes with Edge 157 on an RTX 5050 laptop GPU and the default fixture of 3,126 files | No syntax error in 57 scripts; 392 passed (181, 77, 45, 33 and 56), none failed; every vendored file matches the manifest; 867 passed and 5 skipped, with the `splash` reload step failing once in each pass as before; draw calls at the baseline. The same results again after the merge into `main` as Terrane 1.3.0 |
 | `npm run ui-check` on Windows 11 (11/13/2026), Edge 157 on an RTX 5050 laptop GPU, after the load screen fix: the `splash` reload step reads a record the page keeps of the sheet from its first frame, because with reduced motion the sheet left 48 to 98 ms after it appeared, before the first look | 879 passed, 0 failed, 5 skipped; draw calls at the baseline |
 | `npm run ui-check` on Windows 11 (11/13/2026), Edge 157 on an RTX 5050 laptop GPU, with single-key shortcuts off by default: the interface check turns them on for every page it opens, and `hardening` clears the setting to check the default (T on a toolbar button starts nothing, T in the world looks back; turned on in the guide, T on the button acts and the choice is kept) | 879 passed, 0 failed, 5 skipped |
+| The warm start on Windows 11 (11/13/2026), Edge 157 on an RTX 5050 laptop GPU: the first box drawn on a cold launch, then on a warm one; a survey with its copy into the cache; `GET /api/warm` | 3,126 files: 231 then 185 ms with WebGL, 185 then 119 ms without (273 then 205, and 227 then 143, in the final sweep's run); 15,126 files: 321 then 203 ms, 279 then 120 ms; a survey of 15,126 files 95.2 ms median with the copy against 95.0 ms without; `/api/warm` 6.4 ms from a 260 KB cache |
+| `npm test` on Windows 11 (11/13/2026), after Wave 3: the smoke test adds quoted search terms and comma lists, byte ranges on `/api/raw`, the batch rename whole and part way, an Undo that resumes after a restart, the terminal route and its refusals, source checks that nothing reaches a shell, and a check that every entry a `web/` header rolled out is in `CHANGELOG.md`; then the module checks, now with `finding-test` (the palette's ranking, 200,000 names in about 6 ms a query; the kept view; the address; search history and saved searches), `rename-test`, `export-test` (every name of a fresh fixture read back by a strict RFC 4180 parser) and `warm-test` (the cache through the service, a cache inside the root refused, `Model.adopt` of 200,000 files in 23 ms) | 704 passed (255, 97, 57, 33, 57, 52, 54, 31 and 68), none failed |
+| The final sweep of Wave 3 on Windows 11 (11/13/2026): `node --check` on every script outside `web/vendor/`, `npm test`, `npm run vendor -- --check`, and `node tools/ui-check.mjs --no-shots --port 5080` in both passes with Edge 157 on an RTX 5050 laptop GPU and the default fixture of 3,126 files: 37 scenarios, the earlier ones plus `palette`, `resume`, `searches`, `quicklook`, `presets`, `changed-with`, `batch-rename`, `dupes`, `copy-as`, `export`, `places-file`, `terminal` and `warm` | No syntax error in 81 scripts; 704 passed, none failed; every vendored file matches the manifest; 1369 passed, 0 failed, 6 skipped (744 and 2 with WebGL, 625 and 4 without: what needs `--snapshot`, the `splash` check for a sheet gone before the first look, and without WebGL two checks of the world); draw calls at the baseline. Not yet merged into `main` |
 
 Not verified: running on macOS; frame rate at street level in the largest
 trees on a hardware GPU; Open and Reveal reaching a desktop application on
@@ -403,7 +626,17 @@ covered by `npm test`); the loading sheet in Firefox and Safari; an
 archive interior, the traverse and the time view in the largest trees,
 and on the 2-core software rasterizer; the page on GitHub Pages itself
 (its message was checked opened from disk and from a stand-in server);
-the inspector drawer and the menu's reasons with a screen reader.
+the inspector drawer and the menu's reasons with a screen reader. From
+Wave 3: a terminal launched for real on any platform (every check reads
+the launch log or a stand-in spawn, so no window opened; `wt.exe` was
+found on the Windows machine, but the `cmd.exe` fallback, macOS and
+Linux were never seen to open one); Quick look playing sound and film
+or decoding a picture (the fixture's media and pictures are zeros, so
+the checks prove the requests and the fallback sentences); duplicate
+cleanup of a sampled group on real data (the fixture has no identical
+files over 16 MB); a places file carried between two browsers; the
+warm start beyond 15,126 files; the palette, Quick look and the batch
+rename with a screen reader.
 
 ## Continuing development
 
@@ -418,23 +651,27 @@ server/transfer.mjs  measured, cancellable copy that cleans up after itself
 server/snapshot.mjs  structure snapshots: write, replay, dataset home
 server/thumbs.mjs    serves the thumbnail dataset
 server/archive.mjs   reads a zip archive's directory, bounded (GET /api/inside)
+server/warm.mjs      the warm start's cache: teed from a whole survey, read
+                     back only when it checks out (GET /api/warm)
 web/index.html       page structure
 web/css/terrane.css  stylesheet entry: cascade layers and module imports
 web/css/tokens.css   the colours, type and space scales, named sizes, shadows,
                      layers and motion values the components read
 web/css/components/  controls, bar, ledger, stage, inspector, block, floating,
                      splash (the loading sheet), and one per feature: time,
-                     places, traverse, strata, interior
+                     places, traverse, strata, interior, palette, searches,
+                     quicklook, presets, batch
 web/css/*.css        also: fonts, base, layout, utilities, motion, print
-web/js/app.js        controller: state, service calls, panels, progress, and
-                     the registries feature modules fill
+web/js/app.js        controller: state, service calls, panels, progress, the
+                     warm start, and the registries feature modules fill
 web/js/elsewhere.js  a page the service did not serve says how to start it
-web/js/model.js      tree model, aggregation, search, survey
+web/js/model.js      tree model, aggregation, search, survey, adopt
 web/js/layout.js     the spatial language and level of detail; BOX, STYLE, AUX
 web/js/viewport.js   3D world, camera, picking, transitions, relation lines
 web/js/theme.js      colours shared with the stylesheet
 web/js/thumbs.js     the only way the page shows an image
-web/js/ui.js         menu, dialog, notices, tip, indicators, virtual list
+web/js/ui.js         menu, dialog, sheets, notices, tip, indicators, virtual
+                     list, downloads
 web/js/icons.js      the only way the page draws an icon (Lucide sprite)
 web/js/float.js      places the menu and tip beside a point (Floating UI)
 web/js/motion.js     counting figures, FLIP, springs (Motion, or WAAPI)
@@ -444,10 +681,25 @@ web/js/timeline.js   the shared table of bytes by last change (S.ages)
 web/js/time.js       Time: the date scrub, T , . < >, the As of stepper
 web/js/landmarks.js  Landmarks: benchmarks, the return point, the Places tab
 web/js/places.js     the landmarks store, DOM-free: measure, compare, persist
-web/js/traverse.js   Session traverse: Working sessions, session:N, the route
+web/js/traverse.js   Session traverse: Working sessions, session:N, the route,
+                     Changed with it
 web/js/relations.js  working sessions and their route, DOM-free
 web/js/strata.js     Strata: bytes by last change, the Age lens's typical age
 web/js/interior.js   Interiors: I, the walled floor, twins, the lock
+web/js/palette.js    Command palette: Ctrl+K, every action, folder and file
+web/js/fuzzy.js      the palette's fuzzy scoring and ranking, DOM-free
+web/js/resume.js     Remembered view and links: a reload, the address, Copy link
+web/js/searches.js   Search history, saved searches and in:
+web/js/memory.js     what resume.js and searches.js keep, DOM-free
+web/js/quicklook.js  Quick look: P, a file in a large sheet
+web/js/presets.js    the selection's total, Quick searches, gathering by keyboard
+web/js/batch.js      Batch rename: F2 on several, its rules and preview
+web/js/rename.js     the batch rename's names and refusals, DOM-free
+web/js/dupes.js      Duplicate cleanup: keep one verified copy
+web/js/copyas.js     Copy as: names and relative paths
+web/js/exports.js    lists saved as CSV
+web/js/csv.js        the CSV text and its file names, DOM-free
+web/js/terminal.js   Open a terminal here
 web/js/splash.js     the loading sheet: survey, strata, sounding, excavation
 web/js/terrane-mark.js  the T, its grid and the wordmark as data (generated)
 web/js/t-madness.js  ten T animations on a slab with depth, six played with
@@ -462,10 +714,16 @@ tools/build_terrane_wordmark.py  generate the framed wordmark (npm run wordmark)
 tools/build_terrane_mark.py  generate web/js/terrane-mark.js (npm run mark)
 tools/smoke-test.mjs the service, the layout, the age table and the archive
                      reader, in Node (first in npm test)
-tools/places-test.mjs, relations-test.mjs, strata-test.mjs, interior-test.mjs
+tools/places-test.mjs, relations-test.mjs, strata-test.mjs, interior-test.mjs,
+tools/finding-test.mjs, rename-test.mjs, export-test.mjs
                      the features' DOM-free modules in Node (npm test)
+tools/warm-test.mjs  the warm cache through the service, and Model.adopt
+                     (last in npm test)
 tools/ui-check.mjs   headless browser check; scenarios in tools/ui-scenarios/,
-                     hardening.mjs among them
+                     among them hardening.mjs, finding.mjs (palette, resume,
+                     searches), looking.mjs (quicklook, presets,
+                     changed-with), many.mjs (batch-rename, dupes, copy-as),
+                     exchange.mjs (export, places-file, terminal), warm.mjs
 tools/make-fixture.mjs  the synthetic tree the checks run on (npm run fixture)
 tools/vendor.mjs     fetch and verify the vendored browser libraries
 docs/                ARCHITECTURE.md, ROADMAP.md

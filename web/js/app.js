@@ -1,11 +1,11 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Terrane Application (Terrane Edition - v1.8)
+ *     - Title: Terrane Application (Terrane Edition - v1.9)
  *     - File Name: app.js
  *     - Relative Path: web/js/app.js
  *     - Artifact Type: javascript
- *     - Version: 1.8.0
+ *     - Version: 1.9.0
  *     - Date: 11/13/2026
  *     - Update: Friday, November 13, 2026
  *     - Author: Dennis 'dendogg' Smaltz
@@ -13,41 +13,43 @@
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
  *
  * ✒ Changelog:
+ *     - 1.9.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] —
+ *       Seams for the command palette, the remembered view and saved
+ *       searches: COMMANDS (palette actions with no key), LEDGER_SUB
+ *       (controls on the ledger's count row), AFTER_FOCUS and
+ *       AFTER_SELECT hooks, and TAB_SECTIONS with api.tabSections. The
+ *       key table takes labels, palette: false and gl: true for the
+ *       palette. The api gains setLens, selectAll (Findings' Select all
+ *       uses it), copyText (copyPaths uses it), listItems, cursorTo,
+ *       rescan and tabSections; S gains the searches slot. Find's own
+ *       keys give way to a feature's listener that claimed one first.
+ *       Looking before you act: P is Quick look's in KEY_OWNERS, the api
+ *       gains rawUrl, and the preview's picture and text extensions are
+ *       model.js's IMAGE_EXT and TEXT_EXT. Contents sorts Untouched too,
+ *       by typical age; Ctrl with an arrow moves the list's cursor and
+ *       leaves the selection, so Space can gather several rows.
+ *       Acting on many: RENAME_MANY (F2 with several selected runs the
+ *       first entry; with one, the single rename), MENU entries' many()
+ *       after Copy paths, INSPECTOR.many after the Actions grid of
+ *       several, DUP_GROUP under each group of copies, and api.relLabel.
+ *       A verified group keeps its hash, a survey after a refresh keeps
+ *       what Verify proved of files unchanged since, and Verify first
+ *       runs a survey still queued. The inspector of several no longer
+ *       prints "null" where no reason is due. Starting fast: a warm
+ *       start draws the tree the service kept (GET /api/warm) at once
+ *       and checks it with a survey in the background (catchUp, then
+ *       Model.adopt, keeping every node); S.warm meanwhile, when changes
+ *       wait with a sentence and writable() names why, while
+ *       readOnlyMode() (in the api) does not; a tree that cannot be read
+ *       whole is set aside, said, and surveyed afresh. scanStream takes
+ *       a route and a signal; window.__terrane gains firstDrawMs and warm.
+ *       A refresh, the catch-up or Rescan all that moves the folder you
+ *       are in runs AFTER_FOCUS (focusMoved); an Undo that stopped part
+ *       way runs AFTER_OP with moved and reads its folders again.
  *     - 1.8.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] —
  *       Single-key shortcuts are off unless turned on in the guide:
  *       letters, digits and signs act while the world or the ledger
  *       list has focus, and Ctrl and Alt chords act everywhere.
- *     - 1.7.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] —
- *       Hardening: a folder gone from disk no longer stalls every
- *       refresh; Rescan all lets go of the old tree and runs the search
- *       again; the forced unfold ends at the overview or off its
- *       branch; focus survives a redraw or a hidden panel; a narrow
- *       inspector drawer and a single-key setting; a page the service
- *       did not serve asks it nothing. Counts say "1 item" and "1
- *       match"; an empty folder, a search with no match and a legend
- *       with nothing to colour each say so, with no sort keys over an
- *       empty list; Copy, Create and Rename carry icons as their
- *       neighbours do.
- *     - 1.6.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] —
- *       Findings sorts by Size or Changed; a search opens in the order it
- *       asks for and keeps the one chosen until the query changes, and
- *       Select all follows the order shown. The Survey tab's sections are
- *       a registry (SURVEY), AFTER_QUERY hooks hear every run of the
- *       search and may give Findings its order and a note, and setQuery
- *       puts a query in Find and runs it at once. Under the Age lens a
- *       closed mass shows its typical age, the median step of its bytes
- *       in the age table (strata.js), instead of its newest change; the
- *       legend says so. Inside an open archive, which the table does not
- *       hold, a closed mass keeps its newest change, and while one is
- *       open the legend's title says that too. An archive opened with I
- *       (interior.js) hangs from its file: isAttached, updateWhere,
- *       stepSelection, goUp, refreshDirs, the crumbs and absPath
- *       (x.zip!/inner/file) follow the graft, and a flight into it lands
- *       where it was going. runOp refuses any change under it before
- *       anything is sent; the keys, menu and inspector say why. Paint
- *       walls it in the file's colour, hatches locked entries and
- *       half-bands twins, tied as the relation set 'twins'. The api gains
- *       hostOf and listCursor.
  *     Earlier entries: see CHANGELOG.md
  *
  * ✒ Description:
@@ -62,6 +64,11 @@
  *       the first survey batch arrives; it names each stage in words and
  *       hands over once the world has something to show
  *     - Streams the scan into the model and redraws while it is running
+ *     - A warm start: the tree the service kept from the last complete
+ *       survey is drawn at once and checked by a survey in the
+ *       background; the location, the selection and the eye stay where
+ *       they are, changes wait until it is done, and a notice says what
+ *       changed since the last session
  *     - One selection shared by the viewport and the ledger; either can
  *       drive it, by pointer or by keyboard
  *     - Location follows the eye: the folder you are in is derived from
@@ -76,9 +83,15 @@
  *     - Search that dims everything else, pins the matches, and marks
  *       closed masses and scree that contain matches; Findings lists them
  *       by size or by last change, and says so when nothing matches
+ *     - Contents sorts by name, size, last change or Untouched: typical
+ *       age from the age table, longest untouched first
  *     - Real operations through the service: open, reveal, copy path, new
  *       folder, rename, move, copy, duplicate, remove to holding, restore,
  *       undo; every result or refusal is reported in words
+ *     - Verify by content splits duplicate candidates by their hash; what
+ *       it proved survives a refresh while each file keeps its size and
+ *       last change, and a verified group keeps its hash for the features
+ *       that act on it
  *     - Placing mode and drag-and-drop for choosing a destination either
  *       in the world, in the ledger, or on a breadcrumb
  *     - After every change only the affected folders are re-read
@@ -94,9 +107,11 @@
  *       the one lock in runOp know the graft, and nothing inside is ever
  *       fetched, changed, opened or revealed
  *     - Seams for features: ordered registries (KEYS, ESCAPE, PIN_SOURCES,
- *       TIP_LINES, INSPECTOR, READING, TABS, SURVEY, LAYOUT_OPTS, MENU)
- *       and hook lists (AFTER_LAYOUT, AFTER_REFRESH, AFTER_SURVEY,
- *       AFTER_OP, AFTER_QUERY), so a feature adds entries from its own
+ *       TIP_LINES, INSPECTOR focus, node and many, READING, TABS, SURVEY,
+ *       LAYOUT_OPTS, MENU, COMMANDS, LEDGER_SUB, TAB_SECTIONS,
+ *       RENAME_MANY, DUP_GROUP) and hook lists
+ *       (AFTER_LAYOUT, AFTER_REFRESH, AFTER_SURVEY, AFTER_OP, AFTER_QUERY,
+ *       AFTER_FOCUS, AFTER_SELECT), so a feature adds entries from its own
  *       file instead of editing these functions
  *     - One key table drives the keyboard, the guide and the fixed key
  *       allocation; a reserved key can only be bound by its owner
@@ -120,22 +135,34 @@
  *         api.SURVEY.add({ id: 'sessions', order: 5, build: (sv) => el(...) });
  *         api.AFTER_QUERY.add({ id: 'route', run: (search, query) => {} });
  *         api.setQuery('session:1');   // into Find, run at once
+ *         api.COMMANDS.add({ id: 'link', section: 'Links', items: () => [{ label, run }] });
+ *         api.LEDGER_SUB.add({ id: 'save', tab: 'findings', build: (ctx) => button });
+ *         api.TAB_SECTIONS.add({ id: 'saved', tab: 'places', build: () => details });
+ *         api.AFTER_FOCUS.add({ id: 'hash', run: (dir) => {} });
+ *         api.RENAME_MANY.add({ id: 'batch', run: (nodes) => openSheet(nodes) });
+ *         api.MENU.add({ id: 'copyas', many: (nodes, ctx) => [{ label, run }] });
+ *         api.DUP_GROUP.add({ id: 'dupes', build: (group, ctx) => el(...) });
  *     Every entry has a unique id; order (default 50) places it.
  *
  * ✒ Other Important Information:
  *     - Dependencies: model.js, layout.js, viewport.js, theme.js, ui.js,
  *       thumbs.js, timeline.js, strata.js (the Age lens's mass colours),
- *       features.js, icons.js, motion.js, hud.js, float.js, splash.js
+ *       places.js (anchorOf, poseRelative, vantage: the eye through a
+ *       warm start's catch-up), features.js, icons.js, motion.js, hud.js,
+ *       float.js, splash.js
  *     - Compatible platforms: current evergreen browsers with WebGL2
  *     - Limitations: when WebGL is unavailable the ledger, inspector,
- *       search and every operation keep working without the 3D world
+ *       search and every operation keep working without the 3D world;
+ *       during a warm start's catch-up the page holds two trees, about
+ *       twice 150 MB per million entries
  * ----------------------------------------------------------------------------
  */
 
 import {
-  Model, KINDS, FLAG_LINK, FLAG_HIDDEN, extOf, fmtBytes, fmtCount, fmtDate, fmtAge, freshness, relPath, depthOf,
-  isAncestor, parseQuery, runSearch,
+  Model, KINDS, FLAG_LINK, FLAG_HIDDEN, IMAGE_EXT, TEXT_EXT, extOf, fmtBytes, fmtCount, fmtDate, fmtAge, freshness, relPath, depthOf,
+  isAncestor, parseQuery, runSearch, plural,
 } from './model.js';
+import { anchorOf, poseRelative, vantage } from './places.js';
 import { buildLayout, BOX, STYLE, AUX } from './layout.js';
 import { Viewport } from './viewport.js';
 import { THEME, mixHex, ramp, cssHex } from './theme.js';
@@ -166,16 +193,22 @@ const S = {
   lens: 'kind', grain: 1, kindFilter: -1, force: null, lastEye: null,
   query: '', search: null,
   survey: null, scanning: false, watch: 'idle',
+  // A warm start: the tree from the last session is drawn while the
+  // directory is surveyed again ({ takenAt, pending: the folders to read
+  // again once it has been, failed }); null otherwise. Changes wait while
+  // it is set.
+  warm: null,
   placing: null, drag: null,
   tab: 'contents', sort: { key: 'size', dir: -1 },
   // The Findings order a person chose; null keeps the search's own default.
   findSort: null,
   layoutTimer: 0, surveyTimer: 0,
   // Owned by feature modules, null until one fills it: the date scrub,
-  // the open archive interior, benchmarks and the return point, and
-  // working sessions. ages is the shared age table (timeline.js), rebuilt
-  // after every survey and null until the first one.
-  time: null, interior: null, places: null, ages: null, sessions: null,
+  // the open archive interior, benchmarks and the return point, working
+  // sessions, and the search history and saved searches. ages is the
+  // shared age table (timeline.js), rebuilt after every survey and null
+  // until the first one.
+  time: null, interior: null, places: null, ages: null, sessions: null, searches: null,
 };
 
 /* ====================================================================== */
@@ -234,13 +267,15 @@ function runHooks(reg, ...args) {
 /**
  * The fixed key allocation for plain keys (no Ctrl, Cmd or Alt). A
  * reserved key is refused to any entry whose owner is not its owner. The
- * canvas keeps its travel keys; Session and Strata have no keys.
+ * canvas keeps its travel keys; P is Quick look's; Session and Strata have
+ * no keys.
  */
 const KEY_OWNERS = Object.freeze({
   w: 'viewport', a: 'viewport', s: 'viewport', d: 'viewport', q: 'viewport', e: 'viewport', r: 'viewport', f: 'viewport',
   i: 'interiors',
   t: 'time', ',': 'time', '.': 'time', '<': 'time', '>': 'time',
   b: 'landmarks', h: 'landmarks', j: 'landmarks',
+  p: 'quicklook',
 });
 const keyName = (k) => (k.length === 1 ? k.toLowerCase() : k);
 
@@ -254,7 +289,10 @@ const keyName = (k) => (k.length === 1 ? k.toLowerCase() : k);
  * has focus. run(c) gets { e, k, t, ctrl, alt, inList, onCanvas } and
  * returns false, exactly, when the key was not used, so the browser keeps
  * it. An entry with a guide row and no keys documents the pointer or the
- * canvas's own keys.
+ * canvas's own keys. Three fields are for the command palette only:
+ * labels ({ key: label }, one palette item per key), palette: false (not
+ * offered there) and gl: true (offered as unavailable without WebGL); c
+ * then carries palette: true.
  */
 const KEYS = registry('KEYS', (x, list) => {
   const mod = x.mod || '';
@@ -325,11 +363,15 @@ const TIP_LINES = registry('TIP_LINES', needs('TIP_LINES', 'lines'));
  * changes are unavailable, or null) and, for node, lockRoot and visible.
  * Node orders: title 0, path 5, facts 10, composition 20, copies 30,
  * actions 50, preview 60. Focus orders: title 0, facts 10, composition 20,
- * Reading the world 90.
+ * Reading the world 90. INSPECTOR.many: sections after the Actions grid of
+ * a selection of several, { id, owner, order, build(nodes, ctx) }, where
+ * ctx is { ro, off } (off: why changes are unavailable for this
+ * selection, an archive's lock included, or null).
  */
 const INSPECTOR = Object.freeze({
   focus: registry('INSPECTOR.focus', needs('INSPECTOR.focus', 'build')),
   node: registry('INSPECTOR.node', needs('INSPECTOR.node', 'build')),
+  many: registry('INSPECTOR.many', needs('INSPECTOR.many', 'build')),
 });
 
 /** READING: the "Reading the world" rows: { id, order, glyph, title, text }. */
@@ -366,12 +408,14 @@ const AFTER_REFRESH = registry('AFTER_REFRESH', needs('AFTER_REFRESH', 'run'));
 const AFTER_SURVEY = registry('AFTER_SURVEY', needs('AFTER_SURVEY', 'run'));
 /**
  * AFTER_OP run(body, res) once the service has carried out a change: body
- * is what was asked ({ type: 'rename', path, name }, { type: 'move',
- * paths, dest }, ...; { type: 'undo' } for Undo) and res its answer
- * (renamed, results, label; for an Undo, moved: the [from, to] paths it
- * carried back). A change that stopped part way runs it too, with res
- * { partial: true, results, label }: what it finished. It runs before the
- * affected folders are re-read, so a feature that names places by path
+ * is what was asked ({ type: 'rename', path, name }, { type: 'renames',
+ * items: [{ path, name }] }, { type: 'move', paths, dest }, ...; { type:
+ * 'undo' } for Undo) and res its answer (renamed: a path, or for renames
+ * the [from, to] pairs; results, label; for an Undo, moved: the [from, to]
+ * paths it carried back). A change that stopped part way runs it too, with res
+ * { partial: true, results, label }: what it finished; an Undo that stopped
+ * part way, with { partial: true, moved, label }: what it carried back. It
+ * runs before the affected folders are re-read, so a feature that names places by path
  * can follow Terrane's own renames and moves (and their undo) before the
  * tree changes.
  */
@@ -379,12 +423,33 @@ const AFTER_OP = registry('AFTER_OP', needs('AFTER_OP', 'run'));
 
 /**
  * MENU: context menu items from features: { id, order, items(node, ctx)
- * -> item[] | null }, where node is the item the menu is for (null for
- * the folder you are in) and ctx is { ro }. Items take openMenu's shape
- * and appear as a group after the first one (Open, Reveal, Copy path) or,
- * for the folder you are in, at the end. A selection of many has none.
+ * -> item[] | null, many(nodes, ctx) -> item[] | null }, at least one of
+ * the two. items: node is the item the menu is for (null for the folder
+ * you are in) and ctx is { ro }; they appear as a group after the first
+ * one (Open, Reveal, Copy path) or, for the folder you are in, at the
+ * end. many: the selection of several, ctx { ro, off }; they follow
+ * Copy paths.
  */
-const MENU = registry('MENU', needs('MENU', 'items'));
+const MENU = registry('MENU', (x) => {
+  if (typeof x.items !== 'function' && typeof x.many !== 'function') throw new TypeError(`MENU: "${x.id}" needs items() or many().`);
+});
+
+/**
+ * RENAME_MANY: what F2 does with more than one item selected: { id, owner,
+ * run(nodes) }; the first entry wins. With one item, or none registered,
+ * F2 renames the one item as it always has.
+ */
+const RENAME_MANY = registry('RENAME_MANY', needs('RENAME_MANY', 'run'));
+
+/**
+ * DUP_GROUP: what a feature adds under a group of duplicate candidates:
+ * { id, owner, order, build(group, ctx) -> Element | Element[] | null }.
+ * group is one of S.survey.dupGroups ({ size, files, waste, verified,
+ * mode, hash }); ctx is { node, where, ro }: the inspected file and
+ * 'inspector' in the inspector's copies, null and 'survey' after each
+ * group's rows in the Survey tab.
+ */
+const DUP_GROUP = registry('DUP_GROUP', needs('DUP_GROUP', 'build'));
 
 /** QUERY: search tokens for parseQuery: is.<word>(node) and prefix.<name>(value, raw) -> predicate. */
 const QUERY = Object.freeze({ is: {}, prefix: {} });
@@ -406,7 +471,50 @@ const AFTER_QUERY = registry('AFTER_QUERY', needs('AFTER_QUERY', 'run'));
  */
 const SURVEY = registry('SURVEY', needs('SURVEY', 'build'));
 
-for (const reg of [KEYS, ESCAPE, PIN_SOURCES, TIP_LINES, INSPECTOR.focus, INSPECTOR.node, READING, TABS, LAYOUT_OPTS, AFTER_LAYOUT, AFTER_REFRESH, AFTER_SURVEY, AFTER_OP, MENU, AFTER_QUERY, SURVEY]) Object.freeze(reg);
+/**
+ * COMMANDS: what the command palette offers besides the keys, actions
+ * that have none: { id, owner, order, section, items() -> [{ label,
+ * detail?, hint?, run(), off?: string | null }] }. items() runs each time
+ * the palette opens, so it can say what applies now; an item that cannot
+ * run gives the reason as off. A static command returns one item.
+ */
+const COMMANDS = registry('COMMANDS', needs('COMMANDS', 'items'));
+
+/**
+ * LEDGER_SUB: controls on the ledger's count row: { id, owner, order,
+ * tab: 'contents' | 'findings', build(ctx) -> Element | Element[] | null },
+ * where ctx is { items (the rows in the order shown), search, focus }.
+ * They stand in a span.sub-tools after the count and its keys (Findings:
+ * its first sub-row). Every control carries data-k, so a redraw keeps
+ * focus on it.
+ */
+const LEDGER_SUB = registry('LEDGER_SUB', (x) => {
+  if (x.tab !== 'contents' && x.tab !== 'findings') throw new TypeError(`LEDGER_SUB: "${x.id}" needs tab 'contents' or 'findings'.`);
+  needs('LEDGER_SUB', 'build')(x);
+});
+
+/**
+ * AFTER_FOCUS run(dir) once the folder you are in has changed: moveFocus,
+ * and a refresh, the catch-up or Rescan all that moved it (focusMoved).
+ * AFTER_SELECT run(sel, primary) at the end of every selection change,
+ * select() (quiet ones included) and selectAll(). Both run often: a hook
+ * must be cheap, and defer anything that is not.
+ */
+const AFTER_FOCUS = registry('AFTER_FOCUS', needs('AFTER_FOCUS', 'run'));
+const AFTER_SELECT = registry('AFTER_SELECT', needs('AFTER_SELECT', 'run'));
+
+/**
+ * TAB_SECTIONS: sections a feature adds to a tab another one draws: { id,
+ * owner, order, tab, build() -> Element | null }. The tab's draw appends
+ * api.tabSections(tab), in order; one that throws is reported and left out.
+ */
+const TAB_SECTIONS = registry('TAB_SECTIONS', (x) => {
+  if (typeof x.tab !== 'string' || !x.tab) throw new TypeError(`TAB_SECTIONS: "${x.id}" needs a tab.`);
+  needs('TAB_SECTIONS', 'build')(x);
+});
+
+for (const reg of [KEYS, ESCAPE, PIN_SOURCES, TIP_LINES, INSPECTOR.focus, INSPECTOR.node, INSPECTOR.many, READING, TABS, LAYOUT_OPTS, AFTER_LAYOUT, AFTER_REFRESH, AFTER_SURVEY, AFTER_OP, MENU, AFTER_QUERY, SURVEY,
+  COMMANDS, LEDGER_SUB, AFTER_FOCUS, AFTER_SELECT, TAB_SECTIONS, RENAME_MANY, DUP_GROUP]) Object.freeze(reg);
 
 /* ====================================================================== */
 /* service                                                                */
@@ -420,8 +528,9 @@ async function asError(res) {
   const err = new Error(body.message || `The service answered ${res.status}.`);
   err.code = body.code || String(res.status);
   err.affected = body.affected || [];
-  // A change that stopped part way names what it finished.
+  // A change that stopped part way names what it finished; an Undo, what it carried back.
   if (Array.isArray(body.results)) err.results = body.results;
+  if (Array.isArray(body.moved)) err.moved = body.moved;
   return err;
 }
 
@@ -444,24 +553,36 @@ async function post(route, body = {}) {
   return res.json();
 }
 
-async function scanStream(rel, depth, onBatch) {
-  const params = new URLSearchParams({ path: rel });
+/**
+ * Streams scanner records from the service, one batch to onBatch per
+ * line: /api/scan for rel to depth (0: all of it), or another route that
+ * answers the same NDJSON (/api/warm, the tree from the last session).
+ * signal stops it.
+ */
+async function scanStream(rel, depth, onBatch, { route = 'scan', signal } = {}) {
+  const params = new URLSearchParams(route === 'scan' ? { path: rel } : {});
   if (depth) params.set('depth', depth);
-  const res = await fetch(`/api/scan?${params}`, { headers: { 'X-Terrane-Token': TOKEN } });
+  const res = await fetch(`/api/${route}?${params}`, { headers: { 'X-Terrane-Token': TOKEN }, signal });
   if (!res.ok) throw await asError(res);
   const reader = res.body.getReader();
   const dec = new TextDecoder();
   let buf = '';
-  for (;;) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    buf += dec.decode(value, { stream: true });
-    let nl;
-    while ((nl = buf.indexOf('\n')) >= 0) {
-      const line = buf.slice(0, nl);
-      buf = buf.slice(nl + 1);
-      if (line) onBatch(JSON.parse(line));
+  try {
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buf += dec.decode(value, { stream: true });
+      let nl;
+      while ((nl = buf.indexOf('\n')) >= 0) {
+        const line = buf.slice(0, nl);
+        buf = buf.slice(nl + 1);
+        if (line) onBatch(JSON.parse(line));
+      }
     }
+  } catch (err) {
+    // A line that is not JSON (a kept tree cut short) lets the stream go.
+    reader.cancel().catch(() => {});
+    throw err;
   }
 }
 
@@ -479,6 +600,23 @@ const absPath = (node) => {
   }
   const rel = relPath(node);
   return rel ? S.info.root + S.info.sep + rel.split('/').join(S.info.sep) : S.info.root;
+};
+
+/**
+ * A node's path as a person reads it inside the directory: absPath without
+ * the root and its separator, joined with '/'; the root itself is '.',
+ * and inside an open archive it reads dir/x.zip!/inner/file.
+ */
+const relLabel = (node) => {
+  const I = S.interior;
+  if (I) {
+    const inner = [];
+    for (let a = node; a; a = a.p) {
+      if (a === I.root) return `${relLabel(I.host)}!/${inner.reverse().join('/')}`;
+      inner.push(a.n);
+    }
+  }
+  return relPath(node) || '.';
 };
 
 /* ====================================================================== */
@@ -521,8 +659,16 @@ function hostOf(node) {
 }
 
 let refreshChain = Promise.resolve();
-/** Re-reads the given folders (root-relative paths) and merges the result. */
+/**
+ * Re-reads the given folders (root-relative paths) and merges the result.
+ * While the tree from the last session is being checked (S.warm) they
+ * are noted and read once it has been; the promise settles then.
+ */
 function refreshDirs(rels) {
+  if (S.warm) {
+    for (const rel of rels) S.warm.pending.add(rel);
+    return S.warm.done;
+  }
   refreshChain = refreshChain.then(async () => {
     const dirs = new Set();
     for (const rel of rels) {
@@ -559,11 +705,13 @@ function refreshDirs(rels) {
       const { added } = S.model.reconcile(dir, records);
       for (const child of added) await scanInto(child);
     }
+    const was = S.focus;
     for (const n of [...S.sel]) if (!isAttached(n)) S.sel.delete(n);
     if (S.primary && !isAttached(S.primary)) S.primary = [...S.sel].at(-1) || null;
     if (!isAttached(S.focus)) S.focus = S.model.root;
     S.trail = S.trail.filter(isAttached);
     runHooks(AFTER_REFRESH, dirs);
+    focusMoved(was);
     if (S.search) runQuery();
     queueLayout(40);
     queueSurvey();
@@ -574,22 +722,28 @@ function refreshDirs(rels) {
 
 function queueSurvey() {
   clearTimeout(S.surveyTimer);
-  S.surveyTimer = setTimeout(() => {
-    const verified = new Map((S.model.dupGroups || []).filter((g) => g.verified).map((g) => [g.files.map(relPath).sort().join('|'), g]));
-    S.survey = S.model.survey();
-    for (const g of S.survey.dupGroups) {
-      const v = verified.get(g.files.map(relPath).sort().join('|'));
-      if (v) { g.verified = true; g.mode = v.mode; }
-    }
-    runHooks(AFTER_SURVEY, S.survey, { full: false });
-    repaint();
-    if (S.tab === 'survey') drawLedger();
-    drawLegend();
-  }, 500);
+  S.surveyTimer = setTimeout(surveyNow, 500);
 }
 
+/** Compiles the survey of the tree as it is now; a queued one runs here instead. */
+function surveyNow() {
+  clearTimeout(S.surveyTimer);
+  S.surveyTimer = 0;
+  S.survey = S.model.survey();
+  S.survey.dupGroups = keepVerified(S.survey.dupGroups);
+  S.model.dupGroups = S.survey.dupGroups;
+  runHooks(AFTER_SURVEY, S.survey, { full: false });
+  repaint();
+  if (S.tab === 'survey') drawLedger();
+  drawLegend();
+}
+
+/** The change stream, once connected: after the first survey, or once a warm start has drawn its tree. */
+let events = null;
 function connectEvents() {
+  if (events) return;
   const es = new EventSource(`/api/events?${new URLSearchParams({ t: TOKEN, dirs: S.model.root.dc })}`);
+  events = es;
   es.onmessage = (e) => {
     const msg = JSON.parse(e.data);
     if (msg.type === 'job') return onJob(msg);
@@ -612,9 +766,18 @@ function connectEvents() {
 }
 
 async function fullScan() {
+  // A survey of the whole directory replaces the tree from the last
+  // session too: its own survey stops, and what waited for it is let go.
+  const W = S.warm;
+  if (W) {
+    catching?.abort();
+    S.warm = null;
+    W.release();
+  }
   S.scanning = true;
   stopPlacing();
   const name = S.info.name;
+  const was = S.focus;
   S.model = new Model(name);
   S.focus = S.model.root;
   S.sel.clear();
@@ -632,6 +795,7 @@ async function fullScan() {
   findCache = { search: null, key: '', items: [] };
   hold = null;
   drawAll();
+  focusMoved(was);
   thumbs.reload(TOKEN);
   try {
     await scanInto(S.model.root);
@@ -645,6 +809,156 @@ async function fullScan() {
   if (S.query && !S.search) runQuery();
   relayout();
   drawAll();
+}
+
+/* ====================================================================== */
+/* warm start: the tree from the last session, then a survey to catch up  */
+/* ====================================================================== */
+
+/** Why changes wait during a warm start, as a menu or button gives a reason. */
+const WARM_WAIT = 'the tree from the last session is still being checked';
+/** The same as the sentence a refused change says. */
+const WARM_SENTENCE = `Changes wait while ${WARM_WAIT}. They are available again once the directory has been surveyed.`;
+
+/** performance.now() when the first layout that drew a box was made; null before. */
+let firstDrawMs = null;
+/** Whether this page was drawn from the tree from the last session, and when its catch-up ended. */
+const warmRecord = { used: false, settledMs: null };
+/** The catch-up survey's AbortController while it runs. */
+let catching = null;
+
+/** A new S.warm: what the page is waiting for, and a promise that settles once it has caught up. */
+function warmState(takenAt) {
+  let release;
+  const done = new Promise((r) => { release = r; });
+  return { takenAt, pending: new Set(), failed: false, done, release, notice: null };
+}
+
+/**
+ * Says that changes wait, when they do, and returns true. Every change
+ * refuses while the tree from the last session is checked; this says so
+ * before a dialog asks for a name or a destination.
+ */
+function refuseWarm() {
+  if (!S.warm) return false;
+  notice(WARM_SENTENCE, { kind: 'info' });
+  return true;
+}
+
+/**
+ * Draws the tree the service kept from the last complete survey, before
+ * anything is read from disk. Resolves to true once it is drawn; false
+ * when it could not be read whole (a stream that broke, counts that do
+ * not match its meta), and the page then surveys from nothing.
+ */
+async function warmStart(w) {
+  const idMap = [];
+  try {
+    await scanStream('', 0, (records) => S.model.ingest(records, idMap, S.model.root), { route: 'warm' });
+  } catch {
+    return false;
+  }
+  const r = S.model.root;
+  if (r.dc + 1 !== w.folders || r.fc !== w.files) return false;
+  S.scanning = false;
+  warmRecord.used = true;
+  if (!S.noGL) hideVeil();
+  clearTimeout(S.layoutTimer);
+  S.layoutTimer = 0;
+  S.survey = S.model.survey();
+  runHooks(AFTER_SURVEY, S.survey, { full: true, warm: true });
+  relayout();
+  drawAll();
+  endSplash();
+  return true;
+}
+
+/**
+ * Surveys the directory as it is now while the tree from the last
+ * session stays on screen, then takes the new tree on node by node
+ * (Model.adopt), so the selection, the location, benchmarks and anything
+ * else that holds a node keep it. The eye stays where it was relative to
+ * the folder you are in. Changes wait until then; the folders the change
+ * stream or a refresh asked for meanwhile are read afterwards, so what
+ * changed while the survey ran is not lost.
+ */
+async function catchUp() {
+  const W = S.warm;
+  if (!W || catching) return;
+  W.failed = false;
+  drawStatus();
+  const ac = new AbortController();
+  catching = ac;
+  const fresh = new Model(S.info.name);
+  const idMap = [];
+  try {
+    await scanStream('', 0, (records) => fresh.ingest(records, idMap, fresh.root), { signal: ac.signal });
+  } catch (err) {
+    if (ac.signal.aborted || S.warm !== W) return;
+    W.failed = true;
+    drawStatus();
+    notice(`The directory could not be surveyed again (${err.message}). The tree from the last session stays on screen, and changes wait until a survey has checked it.`,
+      { kind: 'error', ms: 30000, action: { label: 'Survey again', run: catchUp } });
+    return;
+  } finally {
+    if (catching === ac) catching = null;
+  }
+  if (ac.signal.aborted || S.warm !== W) return;
+  // Where the eye stands relative to the box of the folder you are in,
+  // unless it is on its way somewhere.
+  let at = null;
+  if (!S.noGL && S.layout && !S.view.flight && !S.view.keys?.size) {
+    const i = S.layout.index.get(S.focus);
+    if (i !== undefined && i < S.view.n) {
+      const a = anchorOf(S.layout, i);
+      at = { dir: S.focus, a, pose: poseRelative(S.view.pose(), a) };
+    }
+  }
+  const counts = S.model.adopt(fresh);
+  const was = S.focus;
+  for (const n of [...S.sel]) if (!isAttached(n)) S.sel.delete(n);
+  if (S.primary && !isAttached(S.primary)) S.primary = [...S.sel].at(-1) || null;
+  if (!isAttached(S.focus)) S.focus = S.model.root;
+  S.trail = S.trail.filter(isAttached);
+  runHooks(AFTER_REFRESH, null);
+  focusMoved(was);
+  clearTimeout(S.surveyTimer);
+  S.surveyTimer = 0;
+  S.survey = S.model.survey();
+  S.survey.dupGroups = keepVerified(S.survey.dupGroups);
+  S.model.dupGroups = S.survey.dupGroups;
+  runHooks(AFTER_SURVEY, S.survey, { full: false, settled: true });
+  // The tree is checked: changes, benchmarks and refreshes go ahead again.
+  S.warm = null;
+  W.notice?.();
+  if (S.search) runQuery();
+  clearTimeout(S.layoutTimer);
+  S.layoutTimer = 0;
+  // The location holds through the new layout while the eye stands where
+  // it was; if the folder's box moved as the totals changed, the eye
+  // moves with it and the location holds while it stands there.
+  const held = hold;
+  if (at && isAttached(at.dir)) hold = { dir: at.dir, goal: S.view.pose() };
+  relayout();
+  hold = held;
+  if (at && isAttached(at.dir)) {
+    const i = S.layout.index.get(at.dir);
+    if (i !== undefined && i < S.view.n) {
+      const a = anchorOf(S.layout, i);
+      if (a.x !== at.a.x || a.y !== at.a.y || a.z !== at.a.z || a.w !== at.a.w) {
+        S.view.flyTo(vantage(at.pose, a), 0);
+        hold = { dir: at.dir, goal: S.view.pose() };
+      }
+    }
+  }
+  drawAll();
+  warmRecord.settledMs = Math.round(performance.now());
+  const pending = [...W.pending];
+  (pending.length ? refreshDirs(pending) : Promise.resolve()).then(W.release, W.release);
+  const { changed, added, removed } = counts;
+  notice(changed || added || removed
+    ? `Surveyed again: ${plural(changed, 'file')} changed, ${fmtCount(added)} here now, ${fmtCount(removed)} gone since the last session.`
+    : 'Nothing changed since the last session.', { kind: 'info' });
 }
 
 /* ====================================================================== */
@@ -673,6 +987,7 @@ function relayout({ animate = true } = {}) {
     }
   }
   S.layout = buildLayout(S.model.root, opts);
+  if (firstDrawMs === null && S.layout.n > 0) firstDrawMs = Math.round(performance.now());
   S.view.setLayout(S.layout, paint(), { animate });
   syncViewSelection();
   drawPins();
@@ -743,6 +1058,17 @@ function moveFocus(dir) {
   if (!S.primary) drawInspector();
   drawLegend();
   $('b-up').toggleAttribute('disabled', !S.focus.p);
+  runHooks(AFTER_FOCUS, dir);
+}
+
+/**
+ * AFTER_FOCUS for a location the controller moved without moveFocus: a
+ * refresh, the warm start's catch-up or Rescan all found the folder you
+ * were in (was) gone and put you at the root, or a hook moved you. The
+ * address and the kept view hear it as they hear any move.
+ */
+function focusMoved(was) {
+  if (S.focus !== was) runHooks(AFTER_FOCUS, S.focus);
 }
 
 /**
@@ -1033,6 +1359,20 @@ function select(node, { add = false, quiet = false } = {}) {
   drawInspector();
   if (!quiet) drawLedger(true);
   if (S.primary) say(S.sel.size > 1 ? `${S.sel.size} items selected` : describe(S.primary));
+  runHooks(AFTER_SELECT, S.sel, S.primary);
+}
+
+/**
+ * Selects nodes at once, primary (default the first) as the one the
+ * inspector shows: Findings' Select all, and a selection put back.
+ */
+function selectAll(nodes, primary = null) {
+  S.sel = new Set(nodes);
+  S.primary = primary && S.sel.has(primary) ? primary : nodes[0] ?? null;
+  repaint();
+  drawInspector();
+  drawLedger(true);
+  runHooks(AFTER_SELECT, S.sel, S.primary);
 }
 
 /**
@@ -1152,7 +1492,14 @@ function stepSelection(key) {
 /* operations                                                             */
 /* ====================================================================== */
 
-const writable = () => (S.info.snapshot ? 'snapshot mode' : S.info.readOnly ? 'read-only mode' : null);
+/** Why the service refuses every change for as long as it runs: 'snapshot mode', 'read-only mode', or null. */
+const readOnlyMode = () => (S.info.snapshot ? 'snapshot mode' : S.info.readOnly ? 'read-only mode' : null);
+/**
+ * Why nothing can be changed now, as a menu or a button gives a reason,
+ * or null: the service's mode, or a warm start whose tree is still being
+ * checked against the disk.
+ */
+const writable = () => readOnlyMode() || (S.warm ? WARM_WAIT : null);
 
 /* ---------- long operations: progress and cancel ---------- */
 
@@ -1262,6 +1609,9 @@ async function runOp(body, { silent = false } = {}) {
     notice(locked, { kind: 'info' });
     return null;
   }
+  // While the tree from the last session is checked, changes wait;
+  // opening and revealing what is on disk do not.
+  if (body.type !== 'open' && body.type !== 'reveal' && refuseWarm()) return null;
   let id = null;
   if (LONG_OPS.has(body.type)) {
     id = newJobId();
@@ -1293,6 +1643,7 @@ async function runOp(body, { silent = false } = {}) {
 }
 
 async function undo() {
+  if (refuseWarm()) return;
   try {
     const res = await post('undo');
     runHooks(AFTER_OP, { type: 'undo' }, res);
@@ -1300,6 +1651,11 @@ async function undo() {
     await refreshDirs(res.affected);
     if (S.tab === 'journal') drawLedger();
   } catch (err) {
+    // An Undo that stopped part way carried some paths back: features
+    // follow them, and their folders are read again, as for a whole one.
+    if (err.moved?.length) runHooks(AFTER_OP, { type: 'undo' }, { ok: false, partial: true, label: err.message, moved: err.moved, affected: err.affected });
+    if (err.affected?.length) refreshDirs(err.affected);
+    if (S.tab === 'journal') drawLedger();
     notice(err.message, { kind: err.code === 'ENOUNDO' ? 'info' : 'error' });
   }
 }
@@ -1324,7 +1680,7 @@ const nameProblem = (v) => {
 };
 
 async function newFolder(dir = S.focus) {
-  if (refuseInside([dir])) return;
+  if (refuseInside([dir]) || refuseWarm()) return;
   const v = await ask({
     title: 'New folder', body: `Inside ${relPath(dir) || S.info.name}`, confirm: 'Create', confirmIcon: 'newFolder',
     fields: [{ name: 'name', label: 'Folder name', value: 'New folder' }], validate: nameProblem,
@@ -1338,7 +1694,7 @@ async function newFolder(dir = S.focus) {
 }
 
 async function rename(node = S.primary) {
-  if (!node || !node.p || refuseInside([node])) return;
+  if (!node || !node.p || refuseInside([node]) || refuseWarm()) return;
   const v = await ask({
     title: 'Rename', confirm: 'Rename', confirmIcon: 'rename', validate: nameProblem,
     fields: [{ name: 'name', label: node.d ? 'Folder name' : 'File name', value: node.n, selectStem: !node.d }],
@@ -1356,7 +1712,7 @@ const tops = (nodes) => nodes.filter((n) => !nodes.some((o) => o !== n && isAnce
 
 function startPlacing(type, nodes = [...S.sel]) {
   nodes = tops(movable(nodes));
-  if (!nodes.length || refuseInside(nodes)) return;
+  if (!nodes.length || refuseInside(nodes) || refuseWarm()) return;
   closeFloating();
   S.placing = { type, nodes };
   $('placing').hidden = false;
@@ -1396,7 +1752,7 @@ async function transfer(type, nodes, dest) {
 
 async function duplicate(nodes = [...S.sel]) {
   nodes = tops(movable(nodes));
-  if (refuseInside(nodes)) return;
+  if (refuseInside(nodes) || refuseWarm()) return;
   const byParent = new Map();
   for (const n of nodes) byParent.set(n.p, [...(byParent.get(n.p) || []), n]);
   for (const [parent, list] of byParent) await runOp({ type: 'copy', paths: list.map(relPath), dest: relPath(parent) });
@@ -1404,7 +1760,7 @@ async function duplicate(nodes = [...S.sel]) {
 
 async function remove(nodes = [...S.sel]) {
   nodes = tops(movable(nodes));
-  if (!nodes.length || refuseInside(nodes)) return;
+  if (!nodes.length || refuseInside(nodes) || refuseWarm()) return;
   const size = nodes.reduce((a, n) => a + n.s, 0);
   const what = nodes.length === 1 ? `"${nodes[0].n}"` : `${nodes.length} items`;
   const ok = await ask({
@@ -1414,18 +1770,66 @@ async function remove(nodes = [...S.sel]) {
   if (ok) await runOp({ type: 'trash', paths: nodes.map(relPath) });
 }
 
-async function copyPaths(nodes = [...S.sel]) {
-  if (!nodes.length) nodes = [S.focus];
-  const text = nodes.map(absPath).join('\n');
+/**
+ * Puts text on the clipboard and says so with said; when the browser
+ * refuses, says that instead, with fail as the rest of the sentence.
+ * Resolves to true when the text was copied.
+ */
+async function copyText(text, said, fail = '') {
   try {
     await navigator.clipboard.writeText(text);
-    notice(nodes.length === 1 ? 'Path copied to the clipboard' : `${nodes.length} paths copied to the clipboard`);
+    notice(said);
+    return true;
   } catch {
-    notice('The browser did not allow clipboard access. The path is shown in the inspector.', { kind: 'error' });
+    notice(`The browser did not allow clipboard access.${fail ? ` ${fail}` : ''}`, { kind: 'error' });
+    return false;
   }
 }
 
+async function copyPaths(nodes = [...S.sel]) {
+  if (!nodes.length) nodes = [S.focus];
+  await copyText(nodes.map(absPath).join('\n'), nodes.length === 1 ? 'Path copied to the clipboard' : `${nodes.length} paths copied to the clipboard`,
+    'The path is shown in the inspector.');
+}
+
+/**
+ * What Verify by content proved, per file node: { hash, mode, s, m } as
+ * read. A survey after a refresh rebuilds the candidates by size; a group
+ * whose every file was read and has kept its size and last change since
+ * is split by content again, as Verify split it, so a refresh elsewhere
+ * no longer forgets a verification (a same-size file that matched none
+ * stays out). Node references only: a Rescan all starts afresh.
+ */
+const proved = new WeakMap();
+
+/** The candidates with what was proved put back: verified groups by content where nothing changed. */
+function keepVerified(groups) {
+  let changed = false;
+  const out = [];
+  for (const g of groups) {
+    const rec = g.files.map((f) => proved.get(f));
+    if (!rec.every((r, i) => r && r.s === g.files[i].s && r.m === g.files[i].m)) {
+      out.push(g);
+      continue;
+    }
+    changed = true;
+    const buckets = new Map();
+    g.files.forEach((f, i) => buckets.set(rec[i].hash, [...(buckets.get(rec[i].hash) || []), f]));
+    for (const f of g.files) f.dup = 0;
+    for (const [hash, list] of buckets) {
+      if (list.length > 1) out.push({ size: g.size, files: list, waste: g.size * (list.length - 1), verified: true, mode: proved.get(list[0]).mode, hash });
+    }
+  }
+  if (!changed) return groups;
+  out.sort((a, b) => b.waste - a.waste);
+  out.forEach((g, i) => g.files.forEach((f) => { f.dup = i + 1; }));
+  return out;
+}
+
 async function verifyDuplicates() {
+  // A survey still queued after a refresh holds the files as they are
+  // now; the one shown may hold nodes a refresh has replaced since.
+  if (S.surveyTimer) surveyNow();
   const groups = S.survey.dupGroups;
   const files = [];
   for (const g of groups) {
@@ -1442,6 +1846,7 @@ async function verifyDuplicates() {
     return;
   }
   const hashOf = new Map(files.map((f, i) => [f, results[i]]));
+  for (const [f, h] of hashOf) if (h && !h.error) proved.set(f, { hash: h.hash, mode: h.mode, s: f.s, m: f.m });
   const out = [];
   for (const g of groups) {
     if (!hashOf.has(g.files[0])) {
@@ -1455,7 +1860,9 @@ async function verifyDuplicates() {
       buckets.set(h.hash, [...(buckets.get(h.hash) || []), f]);
     }
     for (const list of buckets.values()) {
-      if (list.length > 1) out.push({ size: g.size, files: list, waste: g.size * (list.length - 1), verified: true, mode: hashOf.get(list[0]).mode });
+      // The hash is kept with the group, so an action on it can tell a
+      // file that changed since it was verified.
+      if (list.length > 1) out.push({ size: g.size, files: list, waste: g.size * (list.length - 1), verified: true, mode: hashOf.get(list[0]).mode, hash: hashOf.get(list[0]).hash });
     }
     for (const f of g.files) f.dup = 0;
   }
@@ -1479,6 +1886,7 @@ async function verifyDuplicates() {
 function menuExtras(node, ctx) {
   const out = [];
   for (const m of MENU) {
+    if (typeof m.items !== 'function') continue;
     try {
       const got = m.items(node, ctx);
       if (got?.length) out.push(...got.filter(Boolean));
@@ -1487,6 +1895,21 @@ function menuExtras(node, ctx) {
     }
   }
   return out.length ? ['sep', ...out] : [];
+}
+
+/** Menu items the MENU entries add for a selection of several (many()), in order; they follow Copy paths. */
+function menuMany(nodes, ctx) {
+  const out = [];
+  for (const m of MENU) {
+    if (typeof m.many !== 'function') continue;
+    try {
+      const got = m.many(nodes, ctx);
+      if (got?.length) out.push(...got.filter(Boolean));
+    } catch (err) {
+      console.error(`MENU "${m.id}" failed:`, err);
+    }
+  }
+  return out;
 }
 
 function menuFor(node, x, y) {
@@ -1517,6 +1940,7 @@ function menuFor(node, x, y) {
       { label: `Copy ${nodes.length} items to…`, icon: 'copy', run: () => startPlacing('copy'), ...shut(inside) },
       { label: 'Duplicate in place', icon: 'duplicate', hint: 'Ctrl+D', run: () => duplicate(), ...shut(inside) },
       { label: 'Copy paths', icon: 'copyPath', hint: 'Ctrl+C', run: () => copyPaths() },
+      ...menuMany(nodes, { ro, off: inside ? 'inside an archive' : ro }),
       'sep',
       { label: `Remove ${nodes.length} items…`, icon: 'remove', hint: 'Del', danger: true, run: () => remove(), ...shut(inside) },
     ];
@@ -1553,9 +1977,12 @@ function drawAll() {
   drawLegend();
   drawStatus();
   $('b-up').toggleAttribute('disabled', !S.focus?.p);
+  const off = writable();
   for (const id of ['b-new', 'b-undo']) {
-    $(id).toggleAttribute('disabled', !!S.info.readOnly);
-    if (S.info.readOnly) $(id).title = `Unavailable: Terrane is in ${S.info.snapshot ? 'snapshot' : 'read-only'} mode`;
+    const b = $(id);
+    b.dataset.title ??= b.title;
+    b.toggleAttribute('disabled', !!off);
+    b.title = !off ? b.dataset.title : off === WARM_WAIT ? `Unavailable: ${WARM_WAIT}` : `Unavailable: Terrane is in ${off}`;
   }
 }
 
@@ -1602,7 +2029,7 @@ function rowFor(node, { showPath = false, total } = {}) {
   const mark = S.interior?.rowMark(node);
   const cls = (node.d ? (node.e ? 'swatch is-sealed' : node.c.length ? 'swatch is-dir' : 'swatch is-empty') : 'swatch') + (crossed ? ' is-crossed' : '') + (mark ? ` ${mark.cls}` : '');
   const share = total ? Math.max(0, Math.min(1, node.s / total)) : 0;
-  const row = el('div', { class: `row${S.sel.has(node) ? ' is-selected' : ''}`, draggable: node.p && !S.info.readOnly && !hostOf(node) ? 'true' : null, 'aria-selected': S.sel.has(node) ? 'true' : 'false', title: showPath ? relPath(node) : node.n },
+  const row = el('div', { class: `row${S.sel.has(node) ? ' is-selected' : ''}`, draggable: node.p && !writable() && !hostOf(node) ? 'true' : null, 'aria-selected': S.sel.has(node) ? 'true' : 'false', title: showPath ? relPath(node) : node.n },
     el('span', { class: cls, style: node.d ? null : { background: cssHex(KINDS[node.k].color) } }),
     el('span', { class: 'row-name' }, node.n, node.d ? el('small', { text: node.e ? node.e : fmtCount(node.fc) }) : showPath ? el('small', { text: relPath(node.p) || '/' }) : null,
       crossed ? el('span', { class: 'sr', text: `, changed since ${S.time.date}` }) : null, mark ? el('span', { class: 'sr', text: mark.sr }) : null),
@@ -1631,11 +2058,32 @@ function rowFor(node, { showPath = false, total } = {}) {
   return row;
 }
 
+const byName = (a, b) => a.n.localeCompare(b.n, undefined, { numeric: true, sensitivity: 'base' });
+
+/**
+ * The Untouched order, longest untouched first: by typical age, the median
+ * step of the age table (a file by its own step), the larger step first;
+ * then the older last change; then the name. Before the first age table,
+ * and inside an open archive, whose folders the table does not hold, by
+ * the last change alone, oldest first, then the name.
+ */
+function untouchedOrder() {
+  const ages = S.ages;
+  if (!ages || hostOf(S.focus)) return (a, b) => changedAt(a) - changedAt(b) || byName(a, b);
+  const steps = new Map();
+  const stepOf = (n) => {
+    let k = steps.get(n);
+    if (k === undefined) steps.set(n, (k = ages.medianStep(n)));
+    return k;
+  };
+  return (a, b) => stepOf(b) - stepOf(a) || changedAt(a) - changedAt(b) || byName(a, b);
+}
+
 function sortedContents() {
   const { key, dir } = S.sort;
   const items = [...S.focus.c];
-  const cmp = key === 'name' ? (a, b) => a.n.localeCompare(b.n, undefined, { numeric: true, sensitivity: 'base' })
-    : key === 'date' ? (a, b) => (a.d ? a.mm : a.m) - (b.d ? b.mm : b.m) : (a, b) => a.s - b.s;
+  const cmp = key === 'name' ? byName : key === 'date' ? (a, b) => changedAt(a) - changedAt(b)
+    : key === 'untouched' ? untouchedOrder() : (a, b) => a.s - b.s;
   items.sort((a, b) => cmp(a, b) * dir);
   return items;
 }
@@ -1735,28 +2183,78 @@ function drawLedgerNow(keepScroll) {
   tab.draw(sub, useList ? listHost : rich, keepScroll);
 }
 
-/** A sort key toggle for the ledger's sub-line; the chosen one shows its direction. */
-function sortToggle(label, on, dir, onclick) {
-  return el('button', {
-    class: 'sort', type: 'button', 'aria-pressed': String(on),
-    title: on ? `Sorted by ${label.toLowerCase()}, ${dir < 0 ? 'descending' : 'ascending'}; click to reverse` : `Sort by ${label.toLowerCase()}`,
-    onclick,
-  }, label, on ? icon(dir < 0 ? 'sortDown' : 'sortUp') : null);
+/**
+ * A sort key toggle for the ledger's sub-line; the chosen one shows its
+ * direction. titles ({ off, up, down }) names an order that ascending and
+ * descending do not describe.
+ */
+function sortToggle(label, on, dir, onclick, titles = null) {
+  const title = titles ? (on ? `${dir < 0 ? titles.down : titles.up}; click to reverse` : titles.off)
+    : on ? `Sorted by ${label.toLowerCase()}, ${dir < 0 ? 'descending' : 'ascending'}; click to reverse` : `Sort by ${label.toLowerCase()}`;
+  return el('button', { class: 'sort', type: 'button', 'aria-pressed': String(on), title, onclick }, label, on ? icon(dir < 0 ? 'sortDown' : 'sortUp') : null);
+}
+
+/** The Untouched key's titles: its order is by typical age, not by a value up or down. */
+const UNTOUCHED = Object.freeze({
+  off: 'Longest untouched first (typical age)',
+  up: 'Sorted longest untouched first (typical age)',
+  down: 'Sorted most recently touched first (typical age)',
+});
+
+/**
+ * The controls LEDGER_SUB entries add to a tab's count row, in a
+ * span.sub-tools; null when there are none. One that throws is reported
+ * and left out.
+ */
+function subTools(tab, ctx) {
+  const parts = [];
+  for (const x of LEDGER_SUB) {
+    if (x.tab !== tab) continue;
+    try {
+      const r = x.build(ctx);
+      if (Array.isArray(r)) parts.push(...r.flat(Infinity));
+      else parts.push(r);
+    } catch (err) {
+      console.error(`LEDGER_SUB "${x.id}" failed:`, err);
+    }
+  }
+  const got = parts.filter(Boolean);
+  return got.length ? el('span', { class: 'sub-tools' }, ...got) : null;
+}
+
+/** The sections TAB_SECTIONS entries add to a tab, in order, for its draw to append. */
+function tabSections(tab) {
+  const out = [];
+  for (const x of TAB_SECTIONS) {
+    if (x.tab !== tab) continue;
+    try {
+      const r = x.build();
+      if (r) out.push(r);
+    } catch (err) {
+      console.error(`TAB_SECTIONS "${x.id}" failed:`, err);
+    }
+  }
+  return out;
 }
 
 function drawContents(sub, _host, keepScroll) {
-  const sortBtn = (key, label) => sortToggle(label, S.sort.key === key, S.sort.dir, () => {
-    S.sort = { key, dir: S.sort.key === key ? -S.sort.dir : key === 'name' ? 1 : -1 };
+  // Name and Untouched start in their natural order (dir 1), size and
+  // Changed largest and newest first; a second press reverses.
+  const sortBtn = (key, label, titles) => sortToggle(label, S.sort.key === key, S.sort.dir, () => {
+    S.sort = { key, dir: S.sort.key === key ? -S.sort.dir : key === 'name' || key === 'untouched' ? 1 : -1 };
     drawLedger();
-  });
+  }, titles);
   const n = S.focus.c.length;
+  const items = sortedContents();
+  const tools = subTools('contents', { items, search: S.search, focus: S.focus });
   // The sort keys stay together: in a narrow ledger they move under the
   // count as one. An empty folder has nothing to sort, so it shows none.
   sub.replaceChildren(el('span', { class: 'sub-count', text: `${fmtCount(n)} item${n === 1 ? '' : 's'} · ${fmtBytes(S.focus.s)}` }),
-    ...(n ? [el('span', { class: 'sorts' }, sortBtn('name', 'Name'), sortBtn('size', 'Size'), sortBtn('date', 'Changed'))] : []));
+    ...(n ? [el('span', { class: 'sorts' }, sortBtn('name', 'Name'), sortBtn('size', 'Size'), sortBtn('date', 'Changed'), sortBtn('untouched', 'Untouched', UNTOUCHED))] : []),
+    ...(tools ? [tools] : []));
   list.render = (node) => rowFor(node, { total: S.focus.s });
   list.setEmpty(S.focus.e ? `This folder could not be read (${S.focus.e}).` : S.focus.stub ? 'This folder has not been read yet.' : 'This folder is empty.');
-  list.setItems(sortedContents(), keepScroll, { follow: S.primary });
+  list.setItems(items, keepScroll, { follow: S.primary });
 }
 
 /**
@@ -1800,13 +2298,8 @@ function drawFindings(sub, _host, keepScroll) {
   // (replaceChildren would print a null argument as the text "null".)
   sub.replaceChildren(...[
     el('div', { class: 'sub-row' }, el('span', { class: 'sub-count', text: `${fmtCount(n)} match${n === 1 ? '' : 'es'} · ${fmtBytes(S.search.bytes)}` }),
-      n ? el('button', { class: 'sort', type: 'button', title: 'Select every match (up to 5,000)', onclick: () => {
-        S.sel = new Set(items.slice(0, 5000));
-        S.primary = items[0] || null;
-        repaint();
-        drawInspector();
-        drawLedger(true);
-      } }, icon('selectAll'), 'Select all') : null),
+      n ? el('button', { class: 'sort', type: 'button', title: 'Select every match (up to 5,000)', onclick: () => selectAll(items.slice(0, 5000), items[0]) }, icon('selectAll'), 'Select all') : null,
+      subTools('findings', { items, search: S.search, focus: S.focus })),
     n || note ? el('div', { class: 'sub-row' }, el('span', { class: 'sub-note', text: note, title: note || null }),
       n ? el('span', { class: 'sorts' }, sortBtn('size', 'Size'), sortBtn('date', 'Changed')) : null) : null,
   ].filter(Boolean));
@@ -1848,16 +2341,19 @@ function drawSurvey(sub, host) {
 function surveyDuplicates(sv) {
   const verifiedGroups = sv.dupGroups.filter((g) => g.verified);
   const waste = sv.dupGroups.reduce((a, g) => a + g.waste, 0);
+  const reclaimable = verifiedGroups.reduce((a, g) => a + g.waste, 0);
+  const ro = writable();
   const dupBody = [];
   if (sv.dupGroups.length) {
     dupBody.push(el('p', { class: 'note', text: verifiedGroups.length
-      ? `${fmtCount(verifiedGroups.length)} groups confirmed identical by content. Unconfirmed groups share only their size.`
+      ? `${fmtCount(verifiedGroups.length)} group${verifiedGroups.length === 1 ? '' : 's'} confirmed identical by content, ${fmtBytes(reclaimable)} reclaimable. Unconfirmed groups share only their size.`
       : `Files of identical size, up to ${fmtBytes(waste)} if all are true copies. Size alone is only a hint.` }));
     dupBody.push(el('div', { class: 'actions' }, el('button', { class: 'btn btn-small', type: 'button', onclick: verifyDuplicates }, icon('verify'), 'Verify by content'),
       el('button', { class: 'btn btn-small', type: 'button', onclick: () => setLens('dup') }, icon('eye'), 'Show in the world')));
     for (const g of sv.dupGroups.slice(0, 60)) {
       dupBody.push(el('div', { class: 'group-head', text: `${g.files.length} × ${fmtBytes(g.size)} · ${g.verified ? (g.mode === 'sampled' ? 'probable (sampled)' : 'identical') : 'same size'}` }));
       for (const f of g.files.slice(0, 12)) dupBody.push(itemButton(f, ''));
+      dupBody.push(...dupExtras(g, { node: null, where: 'survey', ro }));
     }
   } else dupBody.push(el('p', { class: 'note', text: 'No files of 4 KB or more share a size.' }));
   return section('Duplicate candidates', fmtCount(sv.dupGroups.length), false, dupBody);
@@ -1881,6 +2377,7 @@ async function drawJournal(sub, host) {
   const entries = [...data.journal].reverse();
   host.replaceChildren(
     el('details', { open: true }, el('summary', {}, 'Changes', el('span', { class: 'n', text: fmtCount(entries.length) })),
+      !ro && S.warm ? el('p', { class: 'note', text: WARM_SENTENCE }) : null,
       entries.length ? null : el('p', { class: 'note', text: ro ? 'Read-only mode: nothing can be changed.' : 'Nothing has been changed yet.' }),
       entries.length ? el('p', { class: 'note', text: 'Kept in .terrane-trash with the holding area, so Undo still works after Terrane restarts.' }) : null,
       entries.some((e) => !e.undone) && !ro ? el('div', { class: 'actions' }, el('button', { class: 'btn btn-small', type: 'button', onclick: undo }, icon('undo'), 'Undo latest')) : null,
@@ -1892,6 +2389,7 @@ async function drawJournal(sub, host) {
       data.holding.map((h) => el('div', { class: 'item is-static' }, el('span', { class: 'swatch' }),
         el('span', {}, el('span', { class: 'nm', text: h.name }), el('span', { class: 'path', text: `from ${h.origin} · ${fmtDate(h.at)}` })),
         ro ? el('span') : el('button', { class: 'btn btn-small', type: 'button', onclick: async () => {
+          if (refuseWarm()) return;
           try {
             const res = await post('restore', { ids: [h.id] });
             notice(res.label);
@@ -1902,6 +2400,7 @@ async function drawJournal(sub, host) {
           drawLedger();
         } }, icon('restore'), 'Restore'))),
       data.holding.length && !ro ? el('div', { class: 'actions' }, el('button', { class: 'btn btn-small btn-danger', type: 'button', onclick: async () => {
+        if (refuseWarm()) return;
         const ok = await ask({ title: 'Purge the holding area?', danger: true, confirm: 'Delete permanently',
           body: `${data.holding.length} held item${data.holding.length === 1 ? '' : 's'} will be deleted from disk. This is the one action in Terrane that cannot be undone.` });
         if (!ok) return;
@@ -1916,9 +2415,6 @@ async function drawJournal(sub, host) {
 }
 
 /* ---------- inspector ---------- */
-
-const IMAGE_EXT = new Set(['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'bmp', 'avif', 'ico']);
-const TEXT_EXT = new Set(['txt', 'md', 'markdown', 'rst', 'log', 'nfo', 'tex', 'svg']);
 
 function fact(label, ...value) {
   return el('div', {}, el('dt', { text: label }), el('dd', {}, ...value));
@@ -1991,7 +2487,10 @@ function drawInspectorNow() {
       el('div', { class: 'actions-grid' }, actionButton('Move to…', () => startPlacing('move'), { off, icon: 'move' }), actionButton('Copy to…', () => startPlacing('copy'), { off, icon: 'copy' }),
         actionButton('Duplicate', () => duplicate(), { off, icon: 'duplicate' }), actionButton('Copy paths', () => copyPaths(), { icon: 'copyPath' }),
         actionButton('Remove…', () => remove(), { off, danger: true, icon: 'remove' }), actionButton('Clear selection', () => select(null), { icon: 'clear' })),
-      offNote(off),
+      // replaceChildren would print a null argument as the text "null".
+      ...[offNote(off)].filter(Boolean),
+      // Sections features add for a selection of several (INSPECTOR.many).
+      ...buildSections(INSPECTOR.many, nodes, { ro, off }),
     );
     return;
   }
@@ -2065,14 +2564,30 @@ function nodeFacts(node, ctx) {
     !ctx.visible ? fact('In the world', 'inside the framed mass or scree; fly to it to see it') : null);
 }
 
-function nodeCopies(node) {
+function nodeCopies(node, ctx) {
   if (node.d || !node.dup || !S.survey) return null;
   const g = S.survey.dupGroups[node.dup - 1];
   if (!g) return null;
   return [
     el('div', { class: 'section-title', text: g.verified ? (g.mode === 'sampled' ? 'Probable copies' : 'Identical copies') : 'Same-size candidates' }),
     el('div', {}, g.files.filter((f) => f !== node).slice(0, 8).map((f) => itemButton(f, ''))),
+    ...dupExtras(g, { node, where: 'inspector', ro: ctx?.ro ?? writable() }),
   ];
+}
+
+/** What DUP_GROUP entries add under a group of duplicate candidates; one that throws is reported and left out. */
+function dupExtras(group, ctx) {
+  const out = [];
+  for (const x of DUP_GROUP) {
+    try {
+      const r = x.build(group, ctx);
+      if (Array.isArray(r)) out.push(...r.flat(Infinity));
+      else out.push(r);
+    } catch (err) {
+      console.error(`DUP_GROUP "${x.id}" failed:`, err);
+    }
+  }
+  return out.filter(Boolean);
 }
 
 function nodeActions(node, { ro, lockRoot, visible, inside }) {
@@ -2198,7 +2713,10 @@ function drawStatus() {
   const r = S.model.root;
   let cls = 'pulse';
   let label;
-  if (S.scanning) { cls += ' is-busy'; label = 'Surveying'; }
+  if (S.warm) {
+    cls += S.warm.failed ? ' is-off' : ' is-busy';
+    label = S.warm.failed ? 'Last session · not surveyed' : 'Last session · surveying';
+  } else if (S.scanning) { cls += ' is-busy'; label = 'Surveying'; }
   else if (S.watch === 'snapshot') { cls += ' is-off'; label = `Snapshot · ${fmtDate(S.info.snapshot.takenAt)}`; }
   else if (S.watch === 'live') label = 'Live';
   else if (S.watch === 'lost') { cls += ' is-off'; label = 'Service stopped'; }
@@ -2459,6 +2977,9 @@ function wireControls() {
   $('b-help').onclick = showGuide;
   $('q').addEventListener('input', onQuery);
   $('q').addEventListener('keydown', (e) => {
+    // A feature's listener, installed first, may claim a key (the search
+    // history's arrows).
+    if (e.defaultPrevented) return;
     if (e.key === 'Escape') { clearQuery(); $('view').focus(); }
     if (e.key === 'Enter' || e.key === 'ArrowDown') { e.preventDefault(); $('ledger-list').focus(); }
   });
@@ -2566,18 +3087,18 @@ function wireKeys() {
   core({ id: 'guide-travel', guide: [GO, 'W A S D', 'Move (Shift: faster)'] });
   core({ id: 'guide-turn', guide: [GO, 'Q  E', 'Turn'] });
   core({ id: 'guide-rise', guide: [GO, 'R  F', 'Rise / descend'] });
-  core({ id: 'descend', keys: ['v'], run: () => { S.view.descend(); }, guide: [GO, 'V', 'Drop to eye level'] });
-  core({ id: 'overview', keys: ['0', 'Home'], run: () => { overview(); }, guide: [GO, '0', 'Rise to the overview'] });
+  core({ id: 'descend', keys: ['v'], gl: true, run: () => { S.view.descend(); }, guide: [GO, 'V', 'Drop to eye level'] });
+  core({ id: 'overview', keys: ['0', 'Home'], gl: true, run: () => { overview(); }, guide: [GO, '0', 'Rise to the overview'] });
   core({ id: 'fly-to-selection', keys: ['g'], run: () => { if (S.primary) reveal(S.primary); }, guide: [GO, 'G', 'Fly to the selection'] });
   core({ id: 'closer', keys: ['+', '='], run: () => { S.view.zoomAt(0.7); } });
   core({ id: 'farther', keys: ['-', '_'], run: () => { S.view.zoomAt(1.45); } });
   core({ id: 'guide-double-click', guide: [GO, 'Double-click', 'Fly to folder / open file'] });
   core({ id: 'guide-click', guide: [SEL, 'Click', 'Select'] });
   core({ id: 'guide-ctrl-click', guide: [SEL, 'Ctrl+click', 'Add to selection'] });
-  core({ id: 'sibling', keys: ['ArrowLeft', 'ArrowRight'], when: (c) => c.onCanvas, run: (c) => { stepSelection(c.k); }, guide: [SEL, '← →', 'Previous / next sibling'] });
-  core({ id: 'parent-child', keys: ['ArrowUp', 'ArrowDown'], when: (c) => c.onCanvas, run: (c) => { stepSelection(c.k); }, guide: [SEL, '↑ ↓', 'Parent / first child'] });
+  core({ id: 'sibling', keys: ['ArrowLeft', 'ArrowRight'], palette: false, when: (c) => c.onCanvas, run: (c) => { stepSelection(c.k); }, guide: [SEL, '← →', 'Previous / next sibling'] });
+  core({ id: 'parent-child', keys: ['ArrowUp', 'ArrowDown'], palette: false, when: (c) => c.onCanvas, run: (c) => { stepSelection(c.k); }, guide: [SEL, '↑ ↓', 'Parent / first child'] });
   core({
-    id: 'activate', keys: ['Enter'], inList: false, when: (c) => !c.t.closest?.('button, summary, a'),
+    id: 'activate', keys: ['Enter'], inList: false, palette: false, when: (c) => !c.t.closest?.('button, summary, a'),
     run: () => {
       if (S.placing && S.primary?.d) transfer(S.placing.type, S.placing.nodes, S.primary);
       else activate(S.primary);
@@ -2588,20 +3109,34 @@ function wireKeys() {
   core({ id: 'back', mod: 'alt', keys: ['ArrowLeft'], run: () => { goBack(); }, guide: [SEL, 'Alt+←', 'Back'] });
   core({ id: 'find', keys: ['/'], run: () => { $('q').focus(); }, guide: [SEL, '/', 'Find'] });
   core({ id: 'guide-escape', guide: [SEL, 'Esc', 'Cancel, clear'] });
-  core({ id: 'panels', keys: ['[', ']'], run: (c) => { togglePanel(c.k === '[' ? 'ledger' : 'inspector'); }, guide: [SEL, '[  ]', 'Hide ledger / inspector'] });
-  core({ id: 'lens', keys: ['1', '2', '3', '4'], run: (c) => { setLens(['kind', 'age', 'size', 'dup'][Number(c.k) - 1]); }, guide: [SEL, '1 – 4', 'Lens'] });
+  core({
+    id: 'panels', keys: ['[', ']'], labels: { '[': 'Hide or show the ledger', ']': 'Hide or show the inspector' },
+    run: (c) => { togglePanel(c.k === '[' ? 'ledger' : 'inspector'); }, guide: [SEL, '[  ]', 'Hide ledger / inspector'],
+  });
+  core({
+    id: 'lens', keys: ['1', '2', '3', '4'], labels: { 1: 'Lens: kind', 2: 'Lens: age', 3: 'Lens: size', 4: 'Lens: duplicates' },
+    run: (c) => { setLens(['kind', 'age', 'size', 'dup'][Number(c.k) - 1]); }, guide: [SEL, '1 – 4', 'Lens'],
+  });
   core({ id: 'new-folder', keys: ['n'], run: () => { newFolder(S.primary?.d && S.sel.size === 1 ? S.primary : S.focus); }, guide: [CHG, 'N', 'New folder'] });
-  core({ id: 'rename', keys: ['F2'], run: () => { rename(); }, guide: [CHG, 'F2', 'Rename'] });
+  // With several selected, F2 is the batch rename a feature offers (RENAME_MANY).
+  core({
+    id: 'rename', keys: ['F2'],
+    run: () => {
+      if (S.sel.size > 1 && RENAME_MANY.size) [...RENAME_MANY][0].run([...S.sel]);
+      else rename();
+    },
+    guide: [CHG, 'F2', 'Rename'],
+  });
   core({
     id: 'move', keys: ['m'],
     run: () => {
-      if (refuseInside([...S.sel])) return;
+      if (refuseInside([...S.sel]) || refuseWarm()) return;
       if (!writable()) startPlacing('move');
       else notice('Read-only mode: nothing can be moved.', { kind: 'info' });
     },
     guide: [CHG, 'M', 'Move to…'],
   });
-  core({ id: 'duplicate', mod: 'ctrl', keys: ['d'], run: () => { if (!refuseInside([...S.sel]) && !writable()) duplicate(); }, guide: [CHG, 'Ctrl+D', 'Duplicate'] });
+  core({ id: 'duplicate', mod: 'ctrl', keys: ['d'], run: () => { if (!refuseInside([...S.sel]) && !refuseWarm() && !writable()) duplicate(); }, guide: [CHG, 'Ctrl+D', 'Duplicate'] });
   core({ id: 'remove', keys: ['Delete'], run: () => { remove(); }, guide: [CHG, 'Del', 'Remove to holding area'] });
   core({ id: 'undo', mod: 'ctrl', keys: ['z'], run: () => { undo(); }, guide: [CHG, 'Ctrl+Z', 'Undo'] });
   core({
@@ -2616,7 +3151,7 @@ function wireKeys() {
   });
   core({ id: 'guide-drag-row', guide: [CHG, 'Drag a row', 'Drop on a folder, breadcrumb or plateau'] });
   core({
-    id: 'menu', keys: ['ContextMenu', 'F10'], when: (c) => c.k === 'ContextMenu' || c.e.shiftKey,
+    id: 'menu', keys: ['ContextMenu', 'F10'], palette: false, when: (c) => c.k === 'ContextMenu' || c.e.shiftKey,
     run: () => {
       const i = visibleIndexOf(S.primary);
       // Without WebGL screenOf returns nothing; the menu opens mid-window.
@@ -2730,13 +3265,28 @@ function wireKeys() {
 const API = Object.freeze({
   S, KEY_OWNERS,
   KEYS, ESCAPE, PIN_SOURCES, TIP_LINES, INSPECTOR, READING, TABS, LAYOUT_OPTS, AFTER_LAYOUT, AFTER_REFRESH, AFTER_SURVEY, AFTER_OP, MENU, QUERY,
-  AFTER_QUERY, SURVEY,
-  get, post, runOp, refreshDirs, writable, isAttached, hostOf, relPath, absPath,
+  AFTER_QUERY, SURVEY, COMMANDS, LEDGER_SUB, AFTER_FOCUS, AFTER_SELECT, TAB_SECTIONS, RENAME_MANY, DUP_GROUP,
+  get, post, runOp, refreshDirs, writable, isAttached, hostOf, relPath, absPath, relLabel,
+  // The service's own mode, without the wait of a warm start: what refuses
+  // something that is not a change Terrane makes, such as a terminal.
+  readOnlyMode,
+  // The address of a file's bytes for a preview: at most max of them
+  // without a Range header (0: the service's default, 256 KB).
+  rawUrl,
   // The ledger row the keyboard cursor is on, or null.
   listCursor: () => (list?.items.length ? list.items[list.cursor] ?? null : null),
+  // The ledger list's rows, in the order shown.
+  listItems: () => list?.items ?? [],
+  // Moves the list's cursor to node and scrolls to it; false when it is not listed.
+  cursorTo: (node) => {
+    const i = list ? list.items.indexOf(node) : -1;
+    if (i >= 0) list.setCursor(i, true);
+    return i >= 0;
+  },
   relayout, queueLayout, repaint, drawPins, visibleIndexOf,
-  select, setFocus, reveal, activate, describe, say, forceOpen, overview,
-  drawAll, drawTabs, drawLedger, drawInspector, drawLegend, drawStatus, runQuery, setQuery,
+  select, selectAll, setFocus, reveal, activate, describe, say, forceOpen, overview, setLens, copyText,
+  rescan: fullScan,
+  drawAll, drawTabs, drawLedger, drawInspector, drawLegend, drawStatus, runQuery, setQuery, tabSections,
   el, notice, section, itemButton, actionButton, fact, shareBar, pct,
 });
 
@@ -2820,8 +3370,11 @@ async function start() {
     render: (n) => rowFor(n),
     onKey: (e, node) => {
       if (!node) return;
-      if (e.key.startsWith('Arrow') || e.key.startsWith('Page') || e.key === 'Home' || e.key === 'End') select(node, { quiet: true });
-      else if (e.key === 'Enter') {
+      if (e.key.startsWith('Arrow') || e.key.startsWith('Page') || e.key === 'Home' || e.key === 'End') {
+        // With Ctrl the cursor moves and the selection stays, so Space can
+        // add the row it reaches: several rows selected by keyboard alone.
+        if (!(e.ctrlKey || e.metaKey)) select(node, { quiet: true });
+      } else if (e.key === 'Enter') {
         e.preventDefault();
         if (S.placing && node.d) transfer(S.placing.type, S.placing.nodes, node);
         else (TABS.get(S.tab)?.enter || activate)(node);
@@ -2837,12 +3390,39 @@ async function start() {
   wireViewport();
   wireControls();
   wireKeys();
-  if (!S.noGL) fatal(S.info.snapshot ? 'Reading the snapshot' : 'Surveying', S.info.root, 'busy');
-  splash?.stage(S.info.snapshot ? `Reading the snapshot of ${S.info.name}` : `Surveying ${S.info.name}`);
+  // The tree the service kept from the last complete survey, when there is
+  // one: drawn first, then checked against the disk (catchUp).
+  const warm = S.info.warm && !S.info.snapshot ? S.info.warm : null;
+  if (!S.noGL) fatal(S.info.snapshot ? 'Reading the snapshot' : warm ? 'Drawing the last session\'s tree' : 'Surveying', S.info.root, 'busy');
+  splash?.stage(S.info.snapshot ? `Reading the snapshot of ${S.info.name}` : warm ? `Drawing ${S.info.name} as it was on ${fmtDate(warm.takenAt)}` : `Surveying ${S.info.name}`);
   S.scanning = true;
+  if (warm) S.warm = warmState(warm.takenAt);
   thumbs.load(TOKEN);
   drawAll();
   const t0 = performance.now();
+  if (warm) {
+    if (await warmStart(warm)) {
+      expose(t0);
+      S.warm.notice = notice(`Showing ${S.info.name} as it was when the last session surveyed it, ${fmtDate(warm.takenAt)}. Surveying it as it is now; changes wait until then.`, { kind: 'info', ms: 12000 });
+      if (S.model.root.e) notice(`The root could not be read: ${S.model.root.e}`, { kind: 'error' });
+      // The change stream connects now, so a change on disk while the
+      // catch-up runs is noted (refreshDirs keeps it for afterwards) and
+      // not lost between the survey's pass over its folder and the end.
+      connectEvents();
+      catchUp();
+      return;
+    }
+    // Read part way, or not at all: the page surveys from nothing.
+    const W = S.warm;
+    S.warm = null;
+    W.release();
+    S.model = new Model(S.info.name);
+    S.focus = S.model.root;
+    if (!S.noGL) fatal('Surveying', S.info.root, 'busy');
+    splash?.stage(`Surveying ${S.info.name}`);
+    notice('The tree from the last session could not be read, so Terrane surveyed the directory afresh.', { kind: 'info', ms: 12000 });
+    drawAll();
+  }
   try {
     await scanInto(S.model.root);
   } catch (err) {
@@ -2858,10 +3438,24 @@ async function start() {
   runHooks(AFTER_SURVEY, S.survey, { full: true });
   relayout();
   drawAll();
-  // places: the landmarks store (S.places), when that feature is installed.
-  window.__terrane = { S, list, scanMs: Math.round(performance.now() - t0), api: API, install: installFeatures, get places() { return S.places; } };
+  expose(t0);
   if (S.model.root.e) notice(`The root could not be read: ${S.model.root.e}`, { kind: 'error' });
   connectEvents();
+}
+
+/**
+ * window.__terrane, for checks and the console: the session state, the
+ * list, the api; scanMs, from the start of the first survey (or of the
+ * last session's tree) until it was in; firstDrawMs, when the first box
+ * was laid out; warm, whether the tree from the last session was used
+ * and when its catch-up ended; places, the landmarks store.
+ */
+function expose(t0) {
+  window.__terrane = {
+    S, list, scanMs: Math.round(performance.now() - t0), api: API, install: installFeatures, warm: warmRecord,
+    get firstDrawMs() { return firstDrawMs; },
+    get places() { return S.places; },
+  };
 }
 
 start();

@@ -1,11 +1,11 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Application Shell (Terrane Edition - v1.1)
+ *     - Title: Application Shell (Terrane Edition - v1.2)
  *     - File Name: layout.css
  *     - Relative Path: web/css/layout.css
  *     - Artifact Type: stylesheet
- *     - Version: 1.1.0
+ *     - Version: 1.2.0
  *     - Date: 11/13/2026
  *     - Update: Friday, November 13, 2026
  *     - Author: Dennis 'dendogg' Smaltz
@@ -13,6 +13,10 @@
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
  *
  * ✒ Changelog:
+ *     - 1.2.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] —
+ *       The ledger's count row holds a feature's controls (.sub-tools,
+ *       such as Save search…) after its sort keys, and wraps them under
+ *       the keys in a narrow ledger.
  *     - 1.1.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] —
  *       Below 860 px the inspector opens as a drawer over the world
  *       (body.show-inspector) instead of being unreachable; the title
@@ -37,6 +41,8 @@
  *     - Ledger and inspector are size containers; their components adapt
  *       to the panel's width, not the window's
  *     - Lettered panel heads, the drawing-sheet reference motif
+ *     - The ledger's count row: the count, its sort keys and the
+ *       controls a feature adds (.sub-tools), wrapping in a narrow ledger
  *     - Breakpoints at 1320, 1100 and 860 px: narrower panels, icon-only
  *       bar buttons, then the inspector folds away into a drawer that ]
  *       opens over the world
@@ -122,6 +128,10 @@ body:not(.no-ledger) #ledger, body:not(.no-inspector) #inspector { transition-de
 .panel-sub .sub-count { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; line-height: var(--control-h-sm); }
 .panel-sub .sorts { display: flex; flex: none; margin-left: auto; }
 .panel-sub .sub-count + .sort { margin-left: auto; }
+/* Controls a feature adds to the count row (LEDGER_SUB) stand at its end,
+   after the sort keys; in a narrow ledger they wrap under them, right. */
+.panel-sub .sub-tools { display: flex; flex: none; align-items: center; gap: 0 var(--s-1); margin-left: auto; }
+.panel-sub .sorts + .sub-tools, .panel-sub .sort + .sub-tools { margin-left: var(--s-1); }
 
 .ledger-body { flex: 1; min-height: 0; overflow: auto; overscroll-behavior: contain; scrollbar-gutter: stable; }
 #inspector-body { flex: 1; min-height: 0; overflow: auto; overscroll-behavior: contain; scrollbar-gutter: stable; }

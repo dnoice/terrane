@@ -1,11 +1,11 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Terrane Design System (Terrane Edition - v2.3)
+ *     - Title: Terrane Design System (Terrane Edition - v2.4)
  *     - File Name: terrane.css
  *     - Relative Path: web/css/terrane.css
  *     - Artifact Type: stylesheet
- *     - Version: 2.3.0
+ *     - Version: 2.4.0
  *     - Date: 11/13/2026
  *     - Update: Friday, November 13, 2026
  *     - Author: Dennis 'dendogg' Smaltz
@@ -13,6 +13,16 @@
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
  *
  * ✒ Changelog:
+ *     - 2.4.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] —
+ *       Imports components/palette.css: the command palette's field,
+ *       options and foot in the shared dialog; and
+ *       components/searches.css: the Places tab's saved searches.
+ *       Then components/quicklook.css: the Quick look sheet, its head,
+ *       its numbered text, its fitted picture or player, and its foot;
+ *       and components/presets.css: the selection's total on the count
+ *       row and the Survey's Quick searches. Then components/batch.css:
+ *       the batch rename sheet and its preview, and the duplicate
+ *       cleanup under a group of copies.
  *     - 2.3.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] —
  *       Imports components/traverse.css: the Findings sub-line in two rows
  *       with its sort keys and note, the Working sessions rows and the
@@ -24,9 +34,6 @@
  *       Imports components/time.css: the As of stepper and the crossed
  *       swatch and glyph; and components/places.css: benchmark tags in
  *       the world, the Places tab and the Benchmark section.
- *     - 2.1.0 (11/12/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
- *       loading sheet joins the components layer (components/splash.css):
- *       the T mark, the TERRANE wordmark and the status line.
  *     Earlier entries: see CHANGELOG.md
  *
  * ✒ Description:
@@ -76,6 +83,11 @@
 @import url('components/traverse.css') layer(components);
 @import url('components/strata.css') layer(components);
 @import url('components/interior.css') layer(components);
+@import url('components/palette.css') layer(components);
+@import url('components/searches.css') layer(components);
+@import url('components/quicklook.css') layer(components);
+@import url('components/presets.css') layer(components);
+@import url('components/batch.css') layer(components);
 @import url('utilities.css') layer(utilities);
 @import url('motion.css') layer(motion);
 @import url('print.css') layer(print) print;

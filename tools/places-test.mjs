@@ -2,11 +2,11 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Places Store Test (Terrane Edition - v1.1)
+ *     - Title: Places Store Test (Terrane Edition - v1.2)
  *     - File Name: places-test.mjs
  *     - Relative Path: tools/places-test.mjs
  *     - Artifact Type: test
- *     - Version: 1.1.0
+ *     - Version: 1.2.0
  *     - Date: 11/13/2026
  *     - Update: Friday, November 13, 2026
  *     - Author: Dennis 'dendogg' Smaltz
@@ -14,6 +14,10 @@
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
  *
  * ✒ Changelog:
+ *     - 1.2.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] —
+ *       Export and import: exportData, and importData adding, updating
+ *       and skipping by folder, the return point, ids renumbered, the
+ *       malformed skipped, the 64 limit, one save, and undo.
  *     - 1.1.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — A
  *       whole survey empties the detail cache.
  *     - 1.0.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] —
@@ -44,6 +48,11 @@
  *       and the return point follows the same rule
  *     - A snapshot's own key, and its measurements dated when it was taken
  *     - At most 64 benchmarks; the return point's offset arithmetic
+ *     - Export and import: exportData's persisted fields; importData adds
+ *       new folders under renumbered ids, takes only newer measurements,
+ *       adds or updates the return point by the same rule, skips the
+ *       malformed and what does not fit in 64, saves once, and undo()
+ *       puts back what was there; a second import skips everything
  *
  * ✒ Usage Instructions:
  *     node tools/places-test.mjs
@@ -473,6 +482,95 @@ section('A snapshot of the directory');
   const store = new Places({ key: storageKey('C:\\data\\root', 'snapshot'), timers: manualTimers(), now: () => taken });
   const { b } = store.set(model.find('a'));
   check('a measurement is dated by the clock it is given: a snapshot\'s, when it was taken', b.m.at === taken && b.set === taken, `${b.m.at}`);
+}
+
+/* ---------- export and import ---------- */
+
+section('Export and import of places');
+{
+  const same = (x, y) => JSON.stringify(x) === JSON.stringify(y);
+  const model = build({ a: { 'x.txt': [10] }, b: { 'y.txt': [20] }, c: { 'z.txt': [30] }, d: {} });
+  const A = new Places({ key: 'export-a', timers: manualTimers(), now: () => T0 });
+  A.set(model.find('a'), T0);
+  A.set(model.find('b'), T0 + DAY);
+  A.setReturn({ rel: 'a', name: 'a', at: T0, off: [0.1, 0.2, 0.3], yaw: 1, pitch: -0.5 });
+  const out = A.exportData();
+  check('exportData gives the persisted benchmarks and the return point, nothing held in memory only',
+    out.benchmarks.length === 2 && out.benchmarks.every((b) => !('node' in b) && /^b\d+$/.test(b.id)) && out.ret?.rel === 'a' && same(out.ret.off, [0.1, 0.2, 0.3]),
+    JSON.stringify(out).slice(0, 200));
+  const file = JSON.parse(JSON.stringify(out));
+
+  // Another browser: c measured, b measured later, a measured earlier.
+  const timers = manualTimers();
+  const storage = memoryStorage();
+  const B = new Places({ key: 'export-b', storage: () => storage, timers, now: () => T0 });
+  B.set(model.find('c'), T0);
+  B.set(model.find('b'), T0 + 2 * DAY);
+  B.set(model.find('a'), T0 - DAY);
+  B.flush();
+  const ids = B.benchmarks.map((b) => b.id);
+  const bBefore = B.findRel('b').m;
+  const aBefore = B.findRel('a').m;
+  const writes = storage.writes;
+  const r = B.importData(file);
+  check('a folder kept here with an older measurement takes the imported one (updated); one with a newer one keeps its own (skipped)',
+    B.findRel('a').m.at === T0 && B.findRel('b').m === bBefore && r.updated === 1, `a ${B.findRel('a').m.at} b ${B.findRel('b').m.at}`);
+  check('the return point, none here, is added', B.ret?.rel === 'a' && same(B.ret.off, [0.1, 0.2, 0.3]) && r.added === 1 && r.skipped === 1 && r.full === 0, JSON.stringify(r));
+  check('it saves once, after the debounce', timers.size === 1 && (timers.run(), storage.writes === writes + 1) && JSON.parse(storage.getItem('export-b')).ret?.rel === 'a');
+  check('a benchmark that was updated keeps its id; none is renumbered', same(B.benchmarks.map((b) => b.id), ids));
+
+  // A third browser: a new folder is added under a new id.
+  const C = new Places({ key: 'export-c', timers: manualTimers(), now: () => T0 });
+  C.set(model.find('d'), T0);
+  C.set(model.find('c'), T0);
+  const r2 = C.importData(file);
+  const added = C.benchmarks.filter((b) => b.rel === 'a' || b.rel === 'b');
+  check('folders not kept here are added (2) with the return point (1)', r2.added === 3 && r2.updated === 0 && r2.skipped === 0 && added.length === 2, JSON.stringify(r2));
+  check('their ids are renumbered after the highest here (b3, b4), whatever the file called them', same(added.map((b) => b.id), ['b3', 'b4']), JSON.stringify(added.map((b) => b.id)));
+  check('their measurements are the file\'s, and they await resolve to find their folders', added[0].m.at === T0 && added[1].m.at === T0 + DAY && added.every((b) => b.node === null));
+  C.resolve(model);
+  check('after resolve the added benchmarks have their folders and summaries', added.every((b) => b.node && C.summary(b) && !C.summary(b).missing));
+  const again = C.importData(file);
+  check('the same file a second time skips everything and changes nothing', again.added === 0 && again.updated === 0 && again.skipped === 3 && C.benchmarks.length === 4 && again.undo() === false, JSON.stringify(again));
+
+  // Undo puts back what was here before.
+  r2.undo();
+  check('undo removes what was added and puts the return point back as it was (none)', same(C.benchmarks.map((b) => b.rel), ['d', 'c']) && C.ret === null && !C.byNode.has(model.find('a')), JSON.stringify(C.benchmarks.map((b) => b.rel)));
+  check('undo is once: a second call does nothing', r2.undo() === false);
+  r.undo();
+  check('undo of an update gives the folder its own measurement back, and the return point goes', B.findRel('a').m === aBefore && B.ret === null && B.benchmarks.length === 3);
+
+  // A newer return point replaces an older one; an older or the same one is skipped.
+  const D = new Places({ key: 'export-d', timers: manualTimers(), now: () => T0 });
+  D.setReturn({ rel: 'c', name: 'c', at: T0 - DAY, off: null });
+  const r3 = D.importData({ benchmarks: [], ret: file.ret });
+  check('a different, newer return point is updated', r3.updated === 1 && D.ret.rel === 'a');
+  r3.undo();
+  check('and undone, the older one is back', D.ret?.rel === 'c');
+  D.setReturn({ rel: 'c', name: 'c', at: T0 + DAY, off: null });
+  const r4 = D.importData({ benchmarks: [], ret: file.ret });
+  check('an older return point is skipped', r4.skipped === 1 && r4.updated === 0 && D.ret.rel === 'c');
+
+  // Malformed entries are skipped, the rest taken.
+  const E = new Places({ key: 'export-e', timers: manualTimers(), now: () => T0 });
+  const bad = [
+    null, 7, 'b1', {}, { ...file.benchmarks[0], rel: '../outside' }, { ...file.benchmarks[0], rel: '/abs' }, { ...file.benchmarks[0], m: { ...file.benchmarks[0].m, s: 'big' } },
+    { ...file.benchmarks[0], m: { ...file.benchmarks[0].m, top: 'none' } }, { ...file.benchmarks[0], id: 5 }, { ...file.benchmarks[0], name: null }, file.benchmarks[1],
+  ];
+  const r5 = E.importData({ benchmarks: bad, ret: { rel: '..', name: 'x', at: 1, off: null } });
+  check('malformed benchmarks (a climbing or absolute path, a bad measurement, a missing id or name) and a bad return point are skipped; the good one is taken',
+    r5.added === 1 && r5.skipped === bad.length && E.benchmarks.length === 1 && E.benchmarks[0].rel === 'b' && E.ret === null, JSON.stringify(r5));
+  const r6 = E.importData(null);
+  const r7 = E.importData({ benchmarks: 'many', ret: undefined });
+  check('no data, or no list, imports nothing and throws nothing', r6.added + r6.updated + r6.skipped === 0 && r7.added + r7.updated + r7.skipped === 0);
+
+  // Past MAX_BENCHMARKS the rest are skipped as full.
+  const F = new Places({ key: 'export-f', timers: manualTimers(), now: () => T0 });
+  const many = Array.from({ length: MAX_BENCHMARKS + 3 }, (_, k) => ({ ...file.benchmarks[0], id: `b${k + 1}`, rel: `folder-${k}`, name: `folder-${k}` }));
+  const r8 = F.importData({ benchmarks: many, ret: null });
+  check(`past ${MAX_BENCHMARKS} benchmarks the rest are skipped as full`, r8.added === MAX_BENCHMARKS && r8.full === 3 && r8.skipped === 3 && F.benchmarks.length === MAX_BENCHMARKS, JSON.stringify(r8));
+  r8.undo();
+  check('and undone, none is left', F.benchmarks.length === 0);
 }
 
 /* ---------- no DOM ---------- */

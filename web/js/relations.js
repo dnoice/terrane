@@ -1,11 +1,11 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Working Sessions (Terrane Edition - v1.0)
+ *     - Title: Working Sessions (Terrane Edition - v1.1)
  *     - File Name: relations.js
  *     - Relative Path: web/js/relations.js
  *     - Artifact Type: javascript
- *     - Version: 1.0.1
+ *     - Version: 1.1.0
  *     - Date: 11/13/2026
  *     - Update: Friday, November 13, 2026
  *     - Author: Dennis 'dendogg' Smaltz
@@ -13,6 +13,11 @@
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
  *
  * ✒ Changelog:
+ *     - 1.1.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] —
+ *       Changed with it: sessionOf(list, file) gives the number of the
+ *       session that holds a file, by a binary search on the windows
+ *       confirmed by the session's own files, or 0; nearest(session,
+ *       file, n) the n files nearest in time to it, in time order.
  *     - 1.0.1 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] —
  *       The performance note refers to the dated measurement in
  *       docs/ARCHITECTURE.md instead of giving a figure of its own.
@@ -44,6 +49,10 @@
  *       runs, the deepest folder holding them all, start, end, bulk
  *     - sessionPredicate(list, k): the k-th newest session's window of
  *       time as a search predicate, files under dot-folders excluded
+ *     - sessionOf(list, file): the session that holds a file, 1 for the
+ *       newest, or 0 (changed alone, under a dot-folder, or no time), by
+ *       a binary search on the windows; nearest(session, file, n): its
+ *       n files nearest in time, earlier first on a tie, in time order
  *     - route(L, session): each file resolved to the box that shows it,
  *       or to the mass or scree tile hiding it, memoised per folder;
  *       repeated boxes merged; at most 1,000 legs between box tops
@@ -54,6 +63,8 @@
  *     const list = sessions(model.root);          // newest first
  *     const f = sessionFacts(list[0]);            // { count, places, ... }
  *     const r = route(layout, list[0]);           // { legs, count, total }
+ *     const k = sessionOf(list, file);            // 1 for the newest, 0: none
+ *     const near = nearest(list[k - 1], file, 8); // its neighbours in time
  *     view.setRelation('session', { dashed: true, lift: 0.12, arrows: true, legs: r.legs });
  *
  * ✒ Examples:
@@ -258,6 +269,68 @@ export function sessionPredicate(list, k) {
   if (!s) return null;
   const { start, end } = s;
   return (n) => !n.d && n.m >= start && n.m <= end && !underHidden(n);
+}
+
+/**
+ * The number of the session in list (newest first, as sessions() gives
+ * them) that holds file, 1 for the newest, or 0. The sessions' windows do
+ * not overlap, so a binary search finds the one whose start and end hold
+ * the file's time, and its own files confirm it: a file under a dot-folder
+ * inside the window, a folder and a file with no time all give 0.
+ */
+export function sessionOf(list, file) {
+  const m = file?.m;
+  if (!list?.length || !file || file.d || !(m > 0)) return 0;
+  // Starts fall as the index rises: find the first window that starts at
+  // or before m.
+  let lo = 0;
+  let hi = list.length - 1;
+  let at = -1;
+  while (lo <= hi) {
+    const mid = (lo + hi) >> 1;
+    if (list[mid].start <= m) {
+      at = mid;
+      hi = mid - 1;
+    } else lo = mid + 1;
+  }
+  if (at < 0 || m > list[at].end) return 0;
+  return list[at].files.includes(file) ? at + 1 : 0;
+}
+
+/**
+ * The n files of a session (or an array of files in time order) nearest
+ * in time to file, file itself left out, in time order. Equally near on
+ * both sides, the earlier one is taken first. A file outside the session
+ * is placed by its time.
+ */
+export function nearest(session, file, n = 8) {
+  const files = Array.isArray(session) ? session : session?.files || [];
+  const want = Math.max(0, Math.floor(Number(n) || 0));
+  if (!files.length || !want || !file) return [];
+  const m = file.m;
+  let lo = files.indexOf(file);
+  let hi;
+  if (lo >= 0) hi = lo + 1;
+  else {
+    // The first file later than it, by a binary search on time.
+    let a = 0;
+    let b = files.length;
+    while (a < b) {
+      const mid = (a + b) >> 1;
+      if (files[mid].m <= m) a = mid + 1;
+      else b = mid;
+    }
+    lo = a;
+    hi = a;
+  }
+  // Grow the window [lo, hi) one file at a time, on the nearer side.
+  for (let got = 0; got < want && (lo > 0 || hi < files.length); got++) {
+    const left = lo > 0 ? m - files[lo - 1].m : Infinity;
+    const right = hi < files.length ? files[hi].m - m : Infinity;
+    if (left <= right) lo--;
+    else hi++;
+  }
+  return files.slice(lo, hi).filter((f) => f !== file);
 }
 
 /**

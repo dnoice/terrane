@@ -1,11 +1,11 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Archive Interiors (Terrane Edition - v1.1)
+ *     - Title: Archive Interiors (Terrane Edition - v1.2)
  *     - File Name: interior.js
  *     - Relative Path: web/js/interior.js
  *     - Artifact Type: javascript
- *     - Version: 1.1.0
+ *     - Version: 1.2.0
  *     - Date: 11/13/2026
  *     - Update: Friday, November 13, 2026
  *     - Author: Dennis 'dendogg' Smaltz
@@ -13,6 +13,9 @@
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
  *
  * ✒ Changelog:
+ *     - 1.2.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
+ *       lock also reads a batch rename's items: any item whose path is
+ *       under the archive's is refused before anything is sent.
  *     - 1.1.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] —
  *       Twins after a refresh are worked out from the folders read
  *       again and any new since (twinIndex, addTwins), not the whole
@@ -52,9 +55,9 @@
  *       (app.js's paint) and its hover tip says so: the age table holds
  *       only the tree on disk
  *     - One lock: app.js's runOp refuses any change under the archive's
- *       path (S.interior.refuse) before anything reaches the service; the
- *       menu and the inspector show each change as unavailable, inside an
- *       archive
+ *       path (S.interior.refuse), a batch rename's items included, before
+ *       anything reaches the service; the menu and the inspector show
+ *       each change as unavailable, inside an archive
  *     - The archive changed on disk (its size or time differs from what
  *       was listed) or is gone: the interior closes and says so
  *     - "Look inside" in the menu and the inspector, unavailable in
@@ -200,13 +203,14 @@ export function addTwins(start, index, maps, { cap = TWIN_CAP, known = null, onl
 
 /**
  * Whether an operation's body names a path inside the archive at hostRel:
- * path, parent, dest or any of paths under hostRel + '/'. The archive's
- * own file is not inside it.
+ * path, parent, dest, any of paths or the path of any of items (a batch
+ * rename) under hostRel + '/'. The archive's own file is not inside it.
  */
 export function lockedBody(body, hostRel) {
   if (!body || typeof body !== 'object' || !hostRel) return false;
   const under = `${hostRel}/`;
-  const paths = [body.path, body.parent, body.dest, ...(Array.isArray(body.paths) ? body.paths : [])];
+  const paths = [body.path, body.parent, body.dest, ...(Array.isArray(body.paths) ? body.paths : []),
+    ...(Array.isArray(body.items) ? body.items.map((x) => x?.path) : [])];
   return paths.some((p) => typeof p === 'string' && p.startsWith(under));
 }
 

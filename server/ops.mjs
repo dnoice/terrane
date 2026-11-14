@@ -1,11 +1,11 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Filesystem Operations (Terrane Edition - v1.3)
+ *     - Title: Filesystem Operations (Terrane Edition - v1.4)
  *     - File Name: ops.mjs
  *     - Relative Path: server/ops.mjs
  *     - Artifact Type: javascript
- *     - Version: 1.3.0
+ *     - Version: 1.4.0
  *     - Date: 11/13/2026
  *     - Update: Friday, November 13, 2026
  *     - Author: Dennis 'dendogg' Smaltz
@@ -13,6 +13,40 @@
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
  *
  * ✒ Changelog:
+ *     - 1.4.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
+ *       renames operation: up to 5,000 items, each { path, name }, all
+ *       checked before the first rename (the guard, the name, no path
+ *       twice, no item inside another, no new name taken by anything but
+ *       the item itself, so chains and swaps are refused, and no two new
+ *       names alike in one folder by foldName); unchanged items skipped;
+ *       one journal entry undone as moves, answered with renamed, the
+ *       [from, to] pairs. One that stops part way journals what it
+ *       finished as a partial rename and throws with results, item by
+ *       item, and affected. terminal(rel) opens a terminal in a folder:
+ *       refused in read-only mode, the folder reached through its
+ *       parent's real location and its own (a link must end inside the
+ *       root and outside the holding area), ENOTDIR for anything but a
+ *       folder, and outside the queue, as Open is. It tries the exported
+ *       terminalPlan(platform, env) in order with the folder as the
+ *       working directory and never as an argument, moving on when a
+ *       terminal is not installed, else ELAUNCH (501) naming what it
+ *       tried. On Windows the plan is wt.exe -d ., then cmd.exe /d /c
+ *       start cmd.exe, since a cmd.exe started directly with no console
+ *       input closes at once. launch() takes cwd, windowsHide and
+ *       detached, always with shell: false; TERRANE_LAUNCH_LOG names a
+ *       file each launch (Open and Reveal included) is written to as one
+ *       JSON line, { cmd, args, cwd }, instead of starting anything;
+ *       makeOps takes spawn, a stand-in for child_process.spawn that a
+ *       check uses to see the plan's order without launching a program.
+ *       The undo of a moves entry (a rename, a move, a batch rename)
+ *       that fails part way, as on a folder a terminal holds as its
+ *       working directory, keeps in the entry only the pairs still out
+ *       and saves the journal before it throws with moved, affected and
+ *       a sentence saying how many went back, so the next Undo resumes
+ *       where it stopped; one that fails before any pair moved says
+ *       nothing was changed. A renames or an undo failure names why in
+ *       words (reason: in use, not permitted, the disk full), never the
+ *       system's raw message.
  *     - 1.3.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
  *       holding index is untrusted data: a record is kept only when its
  *       id has the shape hold() mints and its name is one entry name
@@ -41,11 +75,12 @@
  *       Initial release.
  *
  * ✒ Description:
- *     Performs the real changes Terrane makes on disk: create folder, rename,
- *     move, copy, remove to the holding area, restore, open and reveal. Each
- *     change is validated through the path guard, never overwrites existing
- *     data, and is written to a persistent journal with the exact inverse
- *     needed to undo it, including after the service restarts.
+ *     Performs the real changes Terrane makes on disk: create folder, rename
+ *     (one item or many), move, copy, remove to the holding area, restore,
+ *     open, reveal and open a terminal. Each change is validated through
+ *     the path guard, never overwrites existing data, and is written to a
+ *     persistent journal with the exact inverse needed to undo it,
+ *     including after the service restarts.
  *
  * ✒ Key Features:
  *     - No overwrite, ever: a name collision is refused with a 409 unless
@@ -67,6 +102,13 @@
  *       items finished before the cancel stay and are journaled, so Undo
  *       returns the directory to where it started
  *     - Batches are validated in full before the first item is touched
+ *     - An undo that stops part way keeps only what is still out in its
+ *       journal entry and says how many items went back, so Undo again
+ *       resumes and every older entry stays within reach
+ *     - A batch rename (renames) of up to 5,000 items is one journal
+ *       entry; it refuses, before anything is renamed, a name taken by
+ *       another item (a chain or a swap), two new names that the
+ *       filesystem would take for one, and an item inside another
  *     - Guards against moving a folder into itself or its own descendants
  *     - Case-only renames work on case-insensitive volumes without being
  *       mistaken for a collision
@@ -79,25 +121,40 @@
  *       end is proved inside the root
  *     - A relative link is never carried to a folder from which it would
  *       point outside the root
- *     - Read-only mode refuses every mutation with an explanation
+ *     - A terminal opens in a folder only when the service may change the
+ *       disk: the folder (its real location inside the root) is the
+ *       terminal's working directory, never an argument, and the
+ *       terminals of terminalPlan are tried in order
+ *     - Every launch is an argument array with no shell; under
+ *       TERRANE_LAUNCH_LOG it is written to that file instead of started
+ *     - Read-only mode refuses every mutation, and a terminal, with an
+ *       explanation
  *
  * ✒ Usage Instructions:
  *     const ops = makeOps(guard, { readOnly: false, onJob: (view) => {} });
  *     await ops.run({ type: 'mkdir', parent: 'docs', name: 'Drafts' });
  *     await ops.run({ type: 'rename', path: 'docs/a.txt', name: 'b.txt' });
+ *     await ops.run({ type: 'renames', items: [{ path: 'docs/a.txt', name: 'A.txt' }] });
  *     await ops.run({ type: 'move', paths: ['a', 'b'], dest: 'archive' });
  *     await ops.run({ type: 'copy', paths: ['big'], dest: '', job: 'k3x9q2' });
  *     ops.cancel('k3x9q2');
  *     await ops.run({ type: 'trash', paths: ['old.log'] });
  *     await ops.undo();
+ *     await ops.terminal('docs');           // a terminal whose working directory is docs
  *     Each call resolves to { ok, label, affected: [dir rel paths], ... };
  *     a cancelled job resolves with cancelled: true and says what was done.
  *     A job that stops part way rejects with an error whose results lists
  *     the paths it finished; undo() of a rename or move also gives moved.
+ *     renames answers renamed, the [from, to] pairs it carried out.
  *
  * ✒ Other Important Information:
  *     - Dependencies: Node.js built-ins only; guard.mjs, transfer.mjs
- *     - Compatible platforms: Node.js 20+ on Windows, macOS, Linux
+ *     - Compatible platforms: Node.js 20+ on Windows, macOS, Linux; the
+ *       terminal plan's order and arguments are checked on Windows
+ *       through TERRANE_LAUNCH_LOG and a stand-in spawn; no terminal has
+ *       been launched for real on any platform
+ *     - Testing: TERRANE_LAUNCH_LOG=<file> records every launch as a JSON
+ *       line and starts nothing, as TERRANE_SLOW_COPY_MS slows a copy
  *     - Limitations: the existence check and the rename are two system
  *       calls, so another program creating the same name in the few
  *       microseconds between them is not defended against. The journal
@@ -116,11 +173,15 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { spawn } from 'node:child_process';
-import { GuardError, HOLD_DIR } from './guard.mjs';
+import { GuardError, HOLD_DIR, foldName } from './guard.mjs';
 import { measure, copyTree, removeCreated, isCancel } from './transfer.mjs';
 
 const JOURNAL_MAX = 500;
 const JOURNAL_FORMAT = 1;
+/** The most items one batch rename may carry (the page's planner keeps the same bound). */
+export const RENAMES_MAX = 5000;
+/** An absolute path as this platform's filesystem compares it, segment by segment. */
+const foldPath = (abs) => abs.split(path.sep).map(foldName).join(path.sep);
 const JOB_ID = /^[A-Za-z0-9_-]{6,64}$/;
 /** The shape of a slot id hold() mints: base-36 time, a dash, base-36 sequence. */
 const HOLD_ID = /^[0-9a-z]{1,16}-[0-9a-z]{1,16}$/;
@@ -140,6 +201,30 @@ export function validHold(r) {
   if (process.platform === 'win32' && (n.includes('\\') || n.includes(':'))) return false;
   return true;
 }
+
+/**
+ * The terminals to try, in order, for a platform: [{ cmd, args, detached,
+ * windowsHide }]. The folder is never an argument: it is the child's
+ * working directory, which each of these opens in. On Windows, Windows
+ * Terminal (wt.exe, an App Execution Alias) is told to start in '.', its
+ * working directory; failing that, cmd.exe is asked, with fixed words and
+ * nothing of the folder, to start a console of its own there. A cmd.exe
+ * started directly, with no console input, would read nothing and close
+ * at once. The child is detached and shown, so it outlives the service.
+ */
+export function terminalPlan(platform, env = {}) {
+  if (platform === 'win32') {
+    const shown = { detached: true, windowsHide: false };
+    return [
+      { cmd: 'wt.exe', args: ['-d', '.'], ...shown },
+      { cmd: env.ComSpec || 'cmd.exe', args: ['/d', '/c', 'start', 'cmd.exe'], ...shown },
+    ];
+  }
+  const own = { detached: true, windowsHide: true };
+  if (platform === 'darwin') return [{ cmd: 'open', args: ['-a', 'Terminal', '.'], ...own }];
+  return [{ cmd: 'x-terminal-emulator', args: [], ...own }, { cmd: 'gnome-terminal', args: [], ...own }];
+}
+
 const JOBBED = new Set(['move', 'copy', 'trash']);
 const PROGRESS_MS = 150;
 
@@ -221,6 +306,20 @@ async function moveEntry(from, to, job) {
 
 const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`;
 
+/** Why the operating system refused a call, as the end of a sentence (no path, no code to decode). */
+const REASONS = {
+  EBUSY: 'it is in use by another program.',
+  EPERM: 'the operating system did not permit it.',
+  EACCES: 'permission was denied.',
+  ENOSPC: 'the disk is full.',
+  ENOENT: 'it is no longer there.',
+  EEXIST: 'something else has its name now.',
+  ENOTEMPTY: 'something else has its name now.',
+};
+const reason = (err) => REASONS[err?.code] || `the operating system answered ${err?.code || 'with an error'}.`;
+/** A GuardError whose message already says why in words: the service passes it on whole, whatever its code. */
+const worded = (code, message, status) => Object.assign(new GuardError(code, message, status), { worded: true });
+
 function makeJob(id, type, onJob) {
   const ac = new AbortController();
   const job = {
@@ -253,7 +352,13 @@ function makeJob(id, type, onJob) {
   return job;
 }
 
-export function makeOps(guard, { readOnly = false, onJob } = {}) {
+/**
+ * The operations on one guarded root. readOnly refuses every change and a
+ * terminal; onJob(view) hears job progress; spawn stands in for
+ * child_process.spawn, for a check that must see what would be launched
+ * without starting it.
+ */
+export function makeOps(guard, { readOnly = false, onJob, spawn: spawnFn = spawn } = {}) {
   const SESSION = Date.now().toString(36);
   const journal = [];
   const jobs = new Map();
@@ -462,6 +567,86 @@ export function makeOps(guard, { readOnly = false, onJob } = {}) {
       return { ...res, renamed: guard.rel(to) };
     },
 
+    /**
+     * Renames many items at once: items is [{ path, name }], 1 to
+     * RENAMES_MAX of them. Everything is checked before the first rename:
+     * each path through the guard (it must exist), each name, no path
+     * twice, no item inside another, no new name already taken by
+     * anything but the item itself (so a chain or a swap is refused, which
+     * Undo could not reverse), and no two new names alike in one folder.
+     * Unchanged items are skipped. One journal entry undoes it, as moves.
+     */
+    async renames({ items }) {
+      if (!Array.isArray(items) || items.length === 0) throw new GuardError('EARGS', 'Nothing was selected.');
+      if (items.length > RENAMES_MAX) throw new GuardError('EARGS', `At most ${RENAMES_MAX.toLocaleString('en-US')} items can be renamed at once; ${items.length.toLocaleString('en-US')} were sent.`);
+      const all = [];
+      const byKey = new Map();
+      for (const item of items) {
+        if (!item || typeof item !== 'object' || typeof item.path !== 'string') throw new GuardError('EARGS', 'Each item needs a path and a name.');
+        guard.checkName(item.name);
+        const from = await target(item.path);
+        const key = foldPath(from);
+        if (byKey.has(key)) throw new GuardError('EARGS', `"${path.basename(from)}" is listed twice. Nothing was changed.`);
+        const one = { from, to: path.join(path.dirname(from), item.name), name: item.name };
+        byKey.set(key, one);
+        all.push(one);
+      }
+      // An item inside another: its path changes when the outer one is
+      // renamed. Each item's folders are looked up, not every pair compared.
+      for (const one of all) {
+        for (let up = path.dirname(one.from); up !== guard.root && guard.contains(up); up = path.dirname(up)) {
+          const outer = byKey.get(foldPath(up));
+          if (outer) {
+            throw new GuardError('ENEST', `"${path.basename(one.from)}" is inside "${path.basename(outer.from)}", which is renamed in the same batch. Rename them in two steps. Nothing was changed.`);
+          }
+        }
+      }
+      const work = all.filter((one) => one.from !== one.to);
+      const targets = new Map();
+      for (const one of work) {
+        if ((await exists(one.to)) && !(await sameEntry(one.from, one.to))) {
+          // A chain or a swap: the name is another item's of this batch.
+          const other = byKey.get(foldPath(one.to));
+          throw new GuardError('EEXIST', other
+            ? `"${one.name}" is the name of another item in this batch now, so "${path.basename(one.from)}" cannot take it. Rename them in two steps. Nothing was changed.`
+            : `"${one.name}" already exists in the folder of "${path.basename(one.from)}". Nothing was changed.`, 409);
+        }
+        const key = foldPath(one.to);
+        const twin = targets.get(key);
+        if (twin) {
+          throw new GuardError('EEXIST', `"${path.basename(twin.from)}" and "${path.basename(one.from)}" would both be named "${one.name}". Nothing was changed.`, 409);
+        }
+        targets.set(key, one);
+      }
+      if (!work.length) return { ok: true, label: 'Names unchanged', affected: [], undoable: false, renamed: [] };
+
+      const affected = [...new Set(work.map((one) => parentRel(one.from)))];
+      const done = [];
+      let failed = null;
+      for (const one of work) {
+        try {
+          await fs.rename(one.from, one.to);
+        } catch (err) {
+          failed = { one, err };
+          break;
+        }
+        done.push(one);
+      }
+      const pairs = done.map((one) => [guard.rel(one.from), guard.rel(one.to)]);
+      if (failed) {
+        if (done.length) await record('renames', `Partial rename (${done.length} of ${work.length})`, { kind: 'moves', pairs }, affected);
+        const e = worded(failed.err.code || 'EIO', `Renaming stopped at "${path.basename(failed.one.from)}" after ${done.length} of ${plural(work.length, 'item')}: ${reason(failed.err)}`, 500);
+        e.affected = affected;
+        // In item order, every item before the one that failed, each at
+        // its new path (an unchanged one at its own), so results[k] is
+        // where items[k] now is.
+        if (done.length) e.results = all.slice(0, all.indexOf(failed.one)).map((one) => guard.rel(one.to));
+        throw e;
+      }
+      const res = await record('renames', `Renamed ${plural(work.length, 'item')}`, { kind: 'moves', pairs }, affected);
+      return { ...res, renamed: pairs };
+    },
+
     async transfer({ type, paths, dest, onConflict = 'fail' }, job) {
       if (!Array.isArray(paths) || paths.length === 0) throw new GuardError('EARGS', 'Nothing was selected.');
       const dir = await destDir(dest);
@@ -650,7 +835,15 @@ export function makeOps(guard, { readOnly = false, onJob } = {}) {
       }
       return [parentRel(abs)];
     },
-    async moves({ pairs }) {
+    /**
+     * Carries each pair back, the last moved first. Every pair is checked
+     * before the first moves. One that fails part way (a folder held as
+     * a program's working directory, on Windows) leaves in the entry only
+     * the pairs still out, saved before it throws, so the next Undo
+     * resumes there instead of failing its check on a pair already back.
+     */
+    async moves(undo) {
+      const { pairs } = undo;
       const resolved = [];
       for (const [fromRel, toRel] of pairs) {
         let from;
@@ -668,8 +861,22 @@ export function makeOps(guard, { readOnly = false, onJob } = {}) {
         resolved.push([from, to]);
       }
       const affected = new Set();
-      for (const [from, to] of resolved.reverse()) {
-        await moveEntry(to, from);
+      for (let k = resolved.length - 1; k >= 0; k--) {
+        const [from, to] = resolved[k];
+        try {
+          await moveEntry(to, from);
+        } catch (err) {
+          const back = resolved.length - 1 - k;
+          if (!back) throw worded(err.code || 'EIO', `Undo could not put "${path.basename(to)}" back: ${reason(err)} Nothing was changed.`, 500);
+          // What went back stays back; the entry keeps the rest, in order.
+          undo.pairs = pairs.slice(0, k + 1);
+          await saveJournal();
+          const e = worded(err.code || 'EIO', `Undo stopped at "${path.basename(to)}" after putting back ${back} of ${plural(pairs.length, 'item')}: ${reason(err)} Undo again to put back ${k ? `the other ${k + 1}` : 'the last one'}.`, 500);
+          e.affected = [...new Set([...affected, parentRel(from), parentRel(to)])];
+          // As undo() answers moved: [where it was, where it is now], in the order they went back.
+          e.moved = pairs.slice(k + 1).map(([f, t]) => [t, f]).reverse();
+          throw e;
+        }
         affected.add(parentRel(from));
         affected.add(parentRel(to));
       }
@@ -726,14 +933,33 @@ export function makeOps(guard, { readOnly = false, onJob } = {}) {
     return next;
   };
 
-  const launch = (cmd, args) => new Promise((resolve, reject) => {
-    const child = spawn(cmd, args, { detached: true, stdio: 'ignore', windowsHide: true });
-    child.once('error', (err) => reject(new GuardError('ELAUNCH', `The system handler could not be started (${cmd}: ${err.code || err.message}).`, 501)));
-    child.once('spawn', () => {
-      child.unref();
-      resolve();
+  // The test hook: with TERRANE_LAUNCH_LOG naming a file, each launch is
+  // appended to it as one JSON line, { cmd, args, cwd }, and nothing is
+  // started, so a check can see what would have run.
+  const launchLog = process.env.TERRANE_LAUNCH_LOG || '';
+
+  /**
+   * Starts a program with an argument array and no shell, detached and
+   * with its output ignored. cwd is its working directory; windowsHide
+   * keeps a console window from showing (true for the system handlers).
+   * A failure rejects with ELAUNCH, carrying the system's code as
+   * launchCode (ENOENT when the program is not there).
+   */
+  const launch = async (cmd, args, { cwd, windowsHide = true, detached = true } = {}) => {
+    if (launchLog) {
+      await fs.appendFile(launchLog, `${JSON.stringify({ cmd, args, cwd: cwd ?? null })}\n`);
+      return;
+    }
+    await new Promise((resolve, reject) => {
+      const child = spawnFn(cmd, args, { cwd, detached, stdio: 'ignore', windowsHide, shell: false });
+      child.once('error', (err) => reject(Object.assign(
+        new GuardError('ELAUNCH', `The system handler could not be started (${cmd}: ${err.code || err.message}).`, 501), { launchCode: err.code })));
+      child.once('spawn', () => {
+        child.unref();
+        resolve();
+      });
     });
-  });
+  };
 
   const openJob = (op) => {
     const id = typeof op.job === 'string' && JOB_ID.test(op.job) && !jobs.has(op.job)
@@ -760,6 +986,44 @@ export function makeOps(guard, { readOnly = false, onJob } = {}) {
     },
 
     jobs: () => [...jobs.values()].map((j) => j.view()),
+
+    /**
+     * Opens a terminal in a folder (rel; '' is the root), outside the
+     * queue of changes, as Open is. Refused in read-only mode, since a
+     * terminal can change anything. A folder other than the root is
+     * reached through its parent's real location and then its own, so a
+     * link must end inside the root and outside the holding area. The
+     * folder becomes the terminal's working directory and is never one of
+     * its arguments; the plan's terminals are tried in order, moving on
+     * when one is not installed.
+     */
+    async terminal(rel) {
+      if (readOnly) throw new GuardError('EREADONLY', 'Terrane was started in read-only mode, so it does not open a terminal, from which anything on disk could be changed.', 403);
+      let dir = guard.resolve(rel);
+      const name = dir === guard.root ? path.basename(guard.root) || guard.root : path.basename(dir);
+      if (dir !== guard.root) {
+        await guard.assertParentInside(dir);
+        dir = await guard.realInside(dir, { gone: `${name} is no longer there.` });
+      }
+      let st;
+      try {
+        st = await fs.stat(dir);
+      } catch (err) {
+        throw new GuardError(err.code || 'ENOENT', `${name} is no longer there.`, 404);
+      }
+      if (!st.isDirectory()) throw new GuardError('ENOTDIR', `${name} is not a folder.`, 400);
+      const tried = [];
+      for (const step of terminalPlan(process.platform, process.env)) {
+        try {
+          await launch(step.cmd, step.args, { cwd: dir, windowsHide: step.windowsHide, detached: step.detached });
+          return { ok: true, label: `Opened a terminal in ${name}`, affected: [], undoable: false };
+        } catch (err) {
+          if (err.launchCode !== 'ENOENT') throw err;
+          tried.push(step.cmd);
+        }
+      }
+      throw new GuardError('ELAUNCH', `No terminal was found: tried ${tried.join(', ')}.`, 501);
+    },
 
     run(op) {
       if (op.type === 'open' || op.type === 'reveal') {

@@ -2,11 +2,11 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Interior Test (Terrane Edition - v1.1)
+ *     - Title: Interior Test (Terrane Edition - v1.2)
  *     - File Name: interior-test.mjs
  *     - Relative Path: tools/interior-test.mjs
  *     - Artifact Type: test
- *     - Version: 1.1.0
+ *     - Version: 1.2.0
  *     - Date: 11/13/2026
  *     - Update: Friday, November 13, 2026
  *     - Author: Dennis 'dendogg' Smaltz
@@ -14,6 +14,10 @@
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
  *
  * ✒ Changelog:
+ *     - 1.2.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
+ *       lock reads a batch rename's items: one item under the archive
+ *       refuses the batch, items outside it (the archive's own file
+ *       included) do not, and items with no path or no list are let be.
  *     - 1.1.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] —
  *       Twins after a refresh equal a whole walk and walk only the
  *       folders read again; time inside an open archive is counted from
@@ -42,7 +46,7 @@
  *     - Twins by name and size, both ways; empty files and links are no
  *       one's twins, and the walk never enters the archive
  *     - The lock: any body path under the archive's path is refused,
- *       the archive's own file is not
+ *       a batch rename's items included; the archive's own file is not
  *     - install(api) with a stand-in api: open reads the listing, says
  *       what it holds in the words the interface check looks for,
  *       refuses changes inside, closes on Escape, and closes with its
@@ -164,6 +168,10 @@ section('Pure exports');
   check('and lets the archive\'s own file, its neighbours and a name that only starts the same go',
     !lockedBody({ type: 'rename', path: hostRel, name: 'x.zip' }, hostRel) && !lockedBody({ type: 'move', paths: ['archives/site'], dest: 'docs' }, hostRel)
     && !lockedBody({ type: 'rename', path: 'archives/site.zip2/x', name: 'y' }, hostRel) && !lockedBody(null, hostRel) && !lockedBody({ type: 'undo' }, hostRel));
+  check('a batch rename is refused when any of its items is under the archive, and let go when none is',
+    lockedBody({ type: 'renames', items: [{ path: 'docs/x', name: 'y' }, { path: `${hostRel}/site.zip/site/a`, name: 'b' }] }, hostRel)
+    && !lockedBody({ type: 'renames', items: [{ path: 'docs/x', name: 'y' }, { path: hostRel, name: 'site2.zip' }] }, hostRel)
+    && !lockedBody({ type: 'renames', items: [null, { name: 'no path' }] }, hostRel) && !lockedBody({ type: 'renames', items: 'archives/site.zip/site.zip/a' }, hostRel));
   check('the changed sentence is the one the interface shows',
     changedSentence('x.zip') === 'x.zip changed on disk, so its interior was closed. Press I to read it again.');
   const said = openSentence({ name: 'site.zip', files: 8, folders: 6, unpacked: 384, twins: 8 });

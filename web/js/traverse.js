@@ -1,11 +1,11 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Session Traverse (Terrane Edition - v1.1)
+ *     - Title: Session Traverse (Terrane Edition - v1.2)
  *     - File Name: traverse.js
  *     - Relative Path: web/js/traverse.js
  *     - Artifact Type: javascript
- *     - Version: 1.1.0
+ *     - Version: 1.2.0
  *     - Date: 11/13/2026
  *     - Update: Friday, November 13, 2026
  *     - Author: Dennis 'dendogg' Smaltz
@@ -13,6 +13,12 @@
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
  *
  * ✒ Changelog:
+ *     - 1.2.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] —
+ *       Changed with it: the inspector says which working session a
+ *       selected file was changed in, lists the 8 files nearest to it in
+ *       time with the file in its place, and Show all puts session:N in
+ *       Find; a file in none says why (changed alone, a dot-folder, no
+ *       time). The context menu and the command palette offer the same.
  *     - 1.1.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] —
  *       Working sessions are found when something reads them (Working
  *       sessions, a session: search, the traverse), not after every
@@ -47,6 +53,13 @@
  *       layer (dashed ink, arcs lifted 0.12 of their chord, chevrons at
  *       the middle), resolved again 150 ms after every layout, at most
  *       1,000 legs; Findings says when the route was cut short
+ *     - Changed with it: an inspector section for a file once the survey
+ *       is done (the first one read finds the sessions), its session's
+ *       sentence, the 8 files nearest in time with their times and the
+ *       file itself marked in its place, and Show all as session:N; a
+ *       file in none says why. The context menu's "Show its working
+ *       session (session:N)", unavailable with the reason, and the same
+ *       command in the palette for the selection
  *     - A Reading the world row for the convention
  *     - No keys of its own: stepping through a session is ArrowDown and
  *       Enter in the Findings list
@@ -64,23 +77,23 @@
  *     session:3 ext:js    the JavaScript files of the third newest
  *
  * ✒ Other Important Information:
- *     - Dependencies: relations.js (sessions, facts, predicate, route),
- *       model.js (formatting), theme.js (ink); app.js's api: S, QUERY,
- *       SURVEY, READING, AFTER_SURVEY, AFTER_QUERY, AFTER_LAYOUT,
- *       setQuery, runQuery, drawLedger, say, el
+ *     - Dependencies: relations.js (sessions, facts, predicate, route,
+ *       sessionOf, nearest, underHidden), model.js (formatting), theme.js
+ *       (ink); app.js's api: S, QUERY, SURVEY, READING, INSPECTOR, MENU,
+ *       COMMANDS, AFTER_SURVEY, AFTER_QUERY, AFTER_LAYOUT, setQuery,
+ *       runQuery, drawLedger, hostOf, itemButton, actionButton, say, el
  *     - Compatible platforms: any browser with ES2022 modules
  *     - Semantics: a session is made of last changes, never creations or
  *       arrivals; a copy, a checkout or an extraction restamps files and
  *       shows as a session of its own
- *     - Limitations: not yet a gap selector, stop-stepping keys, a way to
- *       include folders whose names start with a dot, or "Changed with
- *       it" in the inspector and the context menu; folders are not stops
- *       of their own
+ *     - Limitations: not yet a gap selector, stop-stepping keys, or a way
+ *       to include folders whose names start with a dot; folders are not
+ *       stops of their own
  * ----------------------------------------------------------------------------
  */
 
 import { fmtBytes, fmtCount, fmtDay as day, plural, relPath } from './model.js';
-import { sessions, sessionFacts, sessionPredicate, route, GAP_MS, MAX_LEGS } from './relations.js';
+import { sessions, sessionFacts, sessionPredicate, route, sessionOf, nearest, underHidden, GAP_MS, MAX_LEGS } from './relations.js';
 import { THEME } from './theme.js';
 
 export const name = 'Session traverse';
@@ -88,6 +101,8 @@ export const name = 'Session traverse';
 const OWNER = 'traverse';
 const ROWS = 40;
 const ROUTE_MS = 150;
+/** How many of a file's sessionmates the inspector lists, the nearest in time. */
+const NEAR = 8;
 const TOKEN = /(?:^|\s)session:(\S+)/gi;
 /** How the traverse is drawn: dashed ink, arcs lifted 0.12 of their chord, chevrons onward. */
 export const TRAVERSE = Object.freeze({ color: THEME.ink, dashed: true, lift: 0.12, arrows: true });
@@ -225,6 +240,57 @@ export function install(api) {
     return details;
   }
 
+  /* ---------- changed with it ---------- */
+
+  /**
+   * The session a file was changed in: { k, s } with k from 1 (the
+   * newest), or { k: 0, why } with the reason it is in none. Reading
+   * S.sessions.list finds the sessions the first time after a survey.
+   */
+  function sessionFor(node) {
+    if (!node || node.d) return { k: 0, why: 'a folder has no working session; select a file' };
+    if (api.hostOf(node)) return { k: 0, why: 'inside an archive' };
+    if (!S.sessions) return { k: 0, why: 'counted once the survey has finished' };
+    const list = S.sessions.list;
+    const k = sessionOf(list, node);
+    if (k) return { k, s: list[k - 1] };
+    if (underHidden(node)) return { k: 0, why: 'in a folder whose name starts with a dot' };
+    if (!(node.m > 0)) return { k: 0, why: 'its last change is not recorded' };
+    return { k: 0, why: 'changed alone' };
+  }
+
+  /** The inspector's Changed with it: the file's session, its nearest sessionmates in time, and Show all. */
+  function changedWith(node, ctx) {
+    if (node.d || ctx?.inside || !S.sessions) return null;
+    const { k, s, why } = sessionFor(node);
+    const minutes = Math.round((S.sessions.gapMs ?? GAP_MS) / 60000);
+    if (!k) {
+      const text = why === 'changed alone' ? `Changed alone: no other file changed within ${minutes} minutes of it.`
+        : why === 'in a folder whose name starts with a dot' ? 'Working sessions leave out folders whose names start with a dot, and this file is in one.'
+          : 'Its last change is not recorded, so it belongs to no working session.';
+      return [el('div', { class: 'section-title', text: 'Changed with it' }), el('p', { class: 'session-note', text })];
+    }
+    const f = sessionFacts(s);
+    const near = nearest(s, node, NEAR);
+    const at = s.files.indexOf(node);
+    // In time order, the file in its own place among them.
+    const before = near.filter((x) => s.files.indexOf(x) < at);
+    const shown = [...before, node, ...near.slice(before.length)];
+    const rows = shown.map((x) => (x === node
+      ? el('div', { class: 'item is-static is-self', 'aria-current': 'true' },
+        el('span', { class: 'swatch is-traverse' }),
+        el('span', {}, el('span', { class: 'nm', text: x.n }), el('span', { class: 'path', text: 'this file' })),
+        el('span', { class: 'fig', text: hm(x.m) }))
+      : api.itemButton(x, hm(x.m))));
+    const more = f.count - 1 - near.length;
+    return [
+      el('div', { class: 'section-title', text: `Changed with it · session ${k}` }),
+      el('p', { class: 'session-note', text: `${plural(f.count, 'file')} in ${plural(f.places, 'place')} changed ${spoken(f.start, f.end)}${f.bulk ? ', written at once' : ''}.${more > 0 ? ` The ${fmtCount(near.length)} nearest in time:` : ''}` }),
+      el('div', { class: 'session-near' }, rows),
+      el('div', { class: 'actions-grid' }, api.actionButton(`Show all as session:${k}`, () => find(k), { icon: 'search', wide: true, title: 'Findings lists them in the order they changed' })),
+    ];
+  }
+
   /* ---------- registry entries ---------- */
 
   api.QUERY.prefix.session = Object.assign((value) => {
@@ -304,6 +370,31 @@ export function install(api) {
   // First in the Survey tab and closed until opened, so Tab reaches it
   // straight from the tab and Largest files keeps its place open below.
   api.SURVEY.add({ id: 'sessions', order: 5, owner: OWNER, build: workingSessions });
+
+  // After the copies (30), before the actions (50).
+  api.INSPECTOR.node.add({ id: 'session', order: 32, owner: OWNER, build: changedWith });
+
+  api.MENU.add({
+    id: 'traverse', owner: OWNER,
+    items: (node) => {
+      if (!node || node.d || api.hostOf(node)) return null;
+      const { k, why } = sessionFor(node);
+      return [k ? { label: `Show its working session (session:${k})`, icon: 'search', run: () => find(k) }
+        : { label: 'Show its working session', icon: 'search', disabled: true, reason: why, run: () => {} }];
+    },
+  });
+
+  api.COMMANDS.add({
+    id: 'traverse', owner: OWNER, section: 'Working sessions',
+    items: () => {
+      const node = S.primary;
+      const { k, why } = sessionFor(node);
+      return [{
+        label: node && !node.d ? `Show the working session of ${node.n}` : 'Show the working session of the selected file',
+        detail: k ? `session:${k}` : 'Working sessions', off: node ? (k ? null : why) : 'nothing is selected', run: () => find(k),
+      }];
+    },
+  });
 
   api.READING.add({
     id: 'traverse', order: 88, owner: OWNER, glyph: 'g-traverse', title: 'Traverse',

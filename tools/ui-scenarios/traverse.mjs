@@ -1,11 +1,11 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Session Traverse Scenario (Terrane Edition - v1.1)
+ *     - Title: Session Traverse Scenario (Terrane Edition - v1.2)
  *     - File Name: traverse.mjs
  *     - Relative Path: tools/ui-scenarios/traverse.mjs
  *     - Artifact Type: test
- *     - Version: 1.1.0
+ *     - Version: 1.2.0
  *     - Date: 11/13/2026
  *     - Update: Friday, November 13, 2026
  *     - Author: Dennis 'dendogg' Smaltz
@@ -13,6 +13,10 @@
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
  *
  * ✒ Changelog:
+ *     - 1.2.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] —
+ *       Closed sections a feature adds, such as Quick searches, may stand
+ *       between Working sessions and Largest files in the Survey tab:
+ *       Working sessions is still first and closed, Largest files open.
  *     - 1.1.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] —
  *       The traverse costs the search baseline and the one shared
  *       relation layer, which is drawn only while it holds a line.
@@ -387,8 +391,10 @@ const traverse = {
     await t.key('Enter');
     await t.waitFor((T) => T.S.tab === 'survey' && !!document.querySelector('#ledger-rich details.sessions'));
     const order = await t.eval(() => [...document.querySelectorAll('#ledger-rich > details')].map((d) => `${d.firstChild.firstChild.textContent}:${d.open}`));
+    // Closed sections a feature adds (Quick searches) may stand between.
+    const largest = order.findIndex((x) => x.startsWith('Largest files:'));
     t.check('Working sessions is the Survey tab\'s first section, closed, Largest files open after it',
-      order[0] === 'Working sessions:false' && order[1] === 'Largest files:true', JSON.stringify(order));
+      order[0] === 'Working sessions:false' && largest > 0 && order[largest] === 'Largest files:true' && order.slice(1, largest).every((x) => x.endsWith(':false')), JSON.stringify(order));
     await t.tabTo('details.sessions > summary', { max: 20 });
     await t.key('Enter');
     await t.waitFor(() => document.querySelector('details.sessions')?.open);

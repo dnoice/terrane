@@ -1,11 +1,11 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Path Guard (Terrane Edition - v1.3)
+ *     - Title: Path Guard (Terrane Edition - v1.4)
  *     - File Name: guard.mjs
  *     - Relative Path: server/guard.mjs
  *     - Artifact Type: javascript
- *     - Version: 1.3.0
+ *     - Version: 1.4.0
  *     - Date: 11/13/2026
  *     - Update: Friday, November 13, 2026
  *     - Author: Dennis 'dendogg' Smaltz
@@ -13,6 +13,10 @@
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
  *
  * ✒ Changelog:
+ *     - 1.4.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] —
+ *       foldName(seg), the comparison the guard already made against the
+ *       holding area's name, is exported, so a batch rename can refuse
+ *       two new names that the filesystem would take for one.
  *     - 1.3.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
  *       holding area is refused by where it really is, not only by its
  *       spelling. A segment is compared without case on Windows and macOS,
@@ -55,16 +59,20 @@
  *     - Name validation for create and rename: separators, control
  *       characters, dot names, and on Windows the reserved characters,
  *       device names and trailing dot or space
+ *     - foldName(seg): a name as this platform's filesystem compares it,
+ *       without case on Windows and macOS, and on Windows without
+ *       trailing dots and spaces
  *     - Typed errors (code + HTTP status) so the interface can explain a
  *       refusal instead of showing a generic failure
  *
  * ✒ Usage Instructions:
- *     import { makeGuard, GuardError } from './guard.mjs';
+ *     import { makeGuard, GuardError, foldName } from './guard.mjs';
  *     const guard = await makeGuard('/data/projects');
  *     const abs = guard.resolve('music/demos');      // lexical check
  *     await guard.assertParentInside(abs);            // symlink check
  *     const real = await guard.realInside(abs);       // before reading it
  *     guard.checkName('New folder');                  // throws GuardError
+ *     foldName('Report.TXT') === foldName('report.txt'); // true on Windows
  *
  * ✒ Other Important Information:
  *     - Dependencies: Node.js built-ins only (node:path, node:fs)
@@ -96,14 +104,16 @@ const HELD = 'The holding area is managed by Terrane.';
 
 /**
  * A segment as the filesystem resolves it, for comparing with a reserved
- * name: without case where case does not matter, and on Windows without
- * the trailing dots and spaces the system drops.
+ * name or with another name in the same folder: without case where case
+ * does not matter, and on Windows without the trailing dots and spaces
+ * the system drops. Exported for the batch rename, whose new names must
+ * not fold to one another.
  */
-const folded = (seg) => {
+export function foldName(seg) {
   let s = FOLDS ? seg.toLowerCase() : seg;
   if (WIN) s = s.replace(/[. ]+$/, '');
   return s;
-};
+}
 
 /**
  * Validates a root-relative posix-style path and returns its segments.
@@ -116,7 +126,7 @@ export function relParts(rel) {
   const parts = rel.split('/').filter((p) => p !== '');
   for (const p of parts) {
     if (p === '.' || p === '..') throw new GuardError('EPATH', 'Relative segments are not allowed.');
-    if (folded(p) === HOLD_DIR) throw new GuardError('EPATH', HELD, 403);
+    if (foldName(p) === HOLD_DIR) throw new GuardError('EPATH', HELD, 403);
     // A colon on Windows names a drive or an NTFS stream, never a file:
     // ".terrane-trash::$INDEX_ALLOCATION" is the holding area itself.
     if (WIN && (p.includes('\\') || p.includes(':'))) throw new GuardError('EPATH', 'Invalid path segment.');
@@ -231,7 +241,7 @@ export async function makeGuard(rootInput) {
       if (name === '.' || name === '..') throw new GuardError('ENAME', 'That name is reserved.');
       // In any case: on a volume that ignores case, .Terrane-Trash would
       // become the holding area.
-      if (name.toLowerCase() === HOLD_DIR || folded(name) === HOLD_DIR) throw new GuardError('ENAME', 'That name is reserved by Terrane.');
+      if (name.toLowerCase() === HOLD_DIR || foldName(name) === HOLD_DIR) throw new GuardError('ENAME', 'That name is reserved by Terrane.');
       // eslint-disable-next-line no-control-regex
       if (/[\/\\\u0000-\u001f]/.test(name)) {
         throw new GuardError('ENAME', 'Names cannot contain slashes or control characters.');

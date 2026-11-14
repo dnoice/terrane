@@ -1,11 +1,11 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Places Store (Terrane Edition - v1.1)
+ *     - Title: Places Store (Terrane Edition - v1.2)
  *     - File Name: places.js
  *     - Relative Path: web/js/places.js
  *     - Artifact Type: javascript
- *     - Version: 1.1.0
+ *     - Version: 1.2.0
  *     - Date: 11/13/2026
  *     - Update: Friday, November 13, 2026
  *     - Author: Dennis 'dendogg' Smaltz
@@ -13,6 +13,11 @@
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
  *
  * ✒ Changelog:
+ *     - 1.2.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] —
+ *       exportData() and importData(data) for a places file: benchmarks
+ *       matched by folder, added under new ids or updated when newer,
+ *       the malformed and those past 64 skipped, the return point added
+ *       or updated by the same rule, and undo() for the whole import.
  *     - 1.1.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] —
  *       resolve(model) without dirs, a whole survey, empties the detail
  *       cache, which held the old tree. plural comes from model.js.
@@ -50,6 +55,12 @@
  *       an eye into an offset in units of a box's width and back
  *     - Short and long change wording that says "changed", never
  *       "created" or "added"
+ *     - exportData() for a places file; importData(data) takes one in:
+ *       each benchmark checked as a load checks it, matched by folder,
+ *       new ones under new ids (skipped past 64), known ones updated
+ *       only by a newer measurement, the return point by the same rule;
+ *       it counts what was added, updated and skipped, saves once, and
+ *       its undo() puts back what was here before
  *
  * ✒ Usage Instructions:
  *     const store = new Places({ key: storageKey(root), storage: () => localStorage,
@@ -60,6 +71,8 @@
  *     const { b } = store.set(folder);       // B: measure now
  *     deltaText(store.summary(b));           // "+1 file, +12 B"
  *     store.rebase('a/old', 'a/new');        // after Terrane renamed a folder
+ *     const r = store.importData(file);      // { added, updated, skipped, full, undo }
+ *     r.undo();                              // what was here before, back
  *
  * ✒ Examples:
  *     store.summary(b)  ->  { missing: false, ds: 12, df: 1, dd: 0, di: 1, later: true, changed: true }
@@ -685,5 +698,100 @@ export class Places {
   forgetReturn() {
     this.ret = null;
     this.save();
+  }
+
+  /* ---- export and import ---- */
+
+  /** What an export holds: the persisted benchmarks and the return point. */
+  exportData() {
+    return { benchmarks: this.benchmarks.map(benchData), ret: pointData(this.ret) };
+  }
+
+  /**
+   * Takes in an export's { benchmarks, ret }. Each benchmark is checked as
+   * a load checks it (Places.parse), and a malformed one is skipped.
+   * Benchmarks are matched by folder (rel): a new folder is added under a
+   * new id, b<n> after the highest kept, or skipped once MAX_BENCHMARKS are
+   * kept (full); a folder already measured takes the imported measurement
+   * when it is newer (updated), and is skipped otherwise. The return point
+   * is added when there is none here, updated when it differs and is
+   * newer, and skipped otherwise. One save. Returns { added, updated,
+   * skipped, full, undo }, where undo() puts back what was here before
+   * (once; false when there is nothing to put back).
+   */
+  importData(data) {
+    const counts = { added: 0, updated: 0, skipped: 0, full: 0 };
+    const added = [];
+    const was = new Map();
+    const one = (bench, ret) => {
+      let text;
+      try {
+        text = JSON.stringify({ format: FORMAT, benchmarks: bench === undefined ? [] : [bench], ret: ret ?? null });
+      } catch {
+        return null;
+      }
+      return Places.parse(text);
+    };
+    for (const raw of Array.isArray(data?.benchmarks) ? data.benchmarks : []) {
+      const b = one(raw ?? null)?.benchmarks[0];
+      if (!b) {
+        counts.skipped++;
+        continue;
+      }
+      const have = this.findRel(b.rel);
+      if (!have) {
+        if (this.full) {
+          counts.skipped++;
+          counts.full++;
+          continue;
+        }
+        const nb = { id: `b${++this.seq}`, rel: b.rel, name: b.name, set: b.set, m: b.m, node: null };
+        this.benchmarks.push(nb);
+        added.push(nb);
+        counts.added++;
+      } else if (b.m.at > have.m.at) {
+        if (!was.has(have)) was.set(have, have.m);
+        have.m = b.m;
+        this.cache.delete(have.id);
+        counts.updated++;
+      } else counts.skipped++;
+    }
+    const prevRet = this.ret;
+    let nextRet = null;
+    if (data && data.ret != null) {
+      const r = one(undefined, data.ret)?.ret;
+      if (!r) counts.skipped++;
+      else if (!this.ret) {
+        nextRet = r;
+        counts.added++;
+      } else if (JSON.stringify(r) !== JSON.stringify(pointData(this.ret)) && r.at > this.ret.at) {
+        nextRet = r;
+        counts.updated++;
+      } else counts.skipped++;
+      if (nextRet) this.ret = nextRet;
+    }
+    const changed = counts.added + counts.updated > 0;
+    if (changed) this.save();
+    let undone = !changed;
+    const undo = () => {
+      if (undone) return false;
+      undone = true;
+      for (const b of added) {
+        const at = this.benchmarks.indexOf(b);
+        if (at < 0) continue;
+        this.benchmarks.splice(at, 1);
+        if (b.node && this.byNode.get(b.node) === b) this.byNode.delete(b.node);
+        this.cache.delete(b.id);
+      }
+      for (const [b, m] of was) {
+        if (!this.benchmarks.includes(b)) continue;
+        b.m = m;
+        this.cache.delete(b.id);
+      }
+      if (nextRet && this.ret === nextRet) this.ret = prevRet;
+      this.save();
+      return true;
+    };
+    return { ...counts, undo };
   }
 }

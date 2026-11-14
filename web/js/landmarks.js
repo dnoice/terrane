@@ -1,11 +1,11 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Landmarks (Terrane Edition - v1.2)
+ *     - Title: Landmarks (Terrane Edition - v1.3)
  *     - File Name: landmarks.js
  *     - Relative Path: web/js/landmarks.js
  *     - Artifact Type: javascript
- *     - Version: 1.2.0
+ *     - Version: 1.3.0
  *     - Date: 11/13/2026
  *     - Update: Friday, November 13, 2026
  *     - Author: Dennis 'dendogg' Smaltz
@@ -13,6 +13,17 @@
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
  *
  * ✒ Changelog:
+ *     - 1.3.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
+ *       Places tab ends with the sections other features keep there
+ *       (api.tabSections('places')), such as Saved searches. A batch
+ *       rename carries benchmarks along by its pairs (res.renamed), or,
+ *       stopped part way, from each item's path to its results entry.
+ *       Export and import follows the return point: a places file of
+ *       the benchmarks, the return point and the saved searches, and Import
+ *       places… to take one in for this directory and source, with Undo;
+ *       both are in the palette. With a warm start, benchmarks are found
+ *       in the tree from the last session and again once it is checked;
+ *       B waits for that check, and the changed ones are said only then.
  *     - 1.2.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — A
  *       Find that asks is:benchmark runs again whenever the benchmarks
  *       change, so Findings, its count, the pins and the dimming
@@ -24,8 +35,7 @@
  *       section for it. H there marks the return point in the folder
  *       that holds the archive, and J there keeps that folder as the
  *       point J again comes back to.
- *     - 1.0.0 (11/12/2026) [dendogg + Anthropic - Claude Opus 5.5] —
- *       Initial release.
+ *     Earlier entries: see CHANGELOG.md
  *
  * ✒ Description:
  *     Benchmarks and the return point. A benchmark measures a folder at a
@@ -38,18 +48,22 @@
  * ✒ Key Features:
  *     - B measures the selection's folder, or the folder you are in, after
  *       re-reading it from disk; B on a benchmark measures it again; both
- *       are said in a notice with Undo. While a survey runs (the first, or
- *       a Rescan all) B is refused in words, and the Places, inspector and
- *       menu actions wait for it
+ *       are said in a notice with Undo. While a survey runs (the first, a
+ *       Rescan all, or the one that checks a warm start's tree) B is
+ *       refused in words, and the Places, inspector and menu actions wait
+ *       for it
  *     - Verdigris survey marks standing upright on the peak of the box that
  *       shows the folder, or on the mass or scree hiding it, in the shared
  *       pin mesh; up to 12 name-and-change tags outrank every other label
  *     - A Places tab: every benchmark with its change, missing ones with a
  *       sentence and Forget, entries gone, here now, grown and shrunk, Fly
- *       there, Measure again, Forget all, and the return point
+ *       there, Measure again, Forget all, and the return point; the
+ *       sections other features add to the tab follow (TAB_SECTIONS)
  *     - An inspector Benchmark section for a folder (or Set benchmark),
  *       menu items, hover lines and an is:benchmark search word
- *     - One notice after the first scan names the benchmarks that changed
+ *     - One notice after the first scan names the benchmarks that changed;
+ *       after a warm start, once the tree from the last session has been
+ *       checked against the disk, never of that tree itself
  *     - H marks a return point relative to the box of the folder you are
  *       in (inside an open archive, the folder that holds it); J flies
  *       back to where that box is now, and swaps the two points so J
@@ -68,6 +82,15 @@
  *       notice says so. Another tab's saves are merged in, not overwritten
  *     - In snapshot mode a measurement is of the snapshot, dated when it
  *       was taken, and kept apart from the live directory's benchmarks
+ *     - Export and import, after the return point in the Places tab, and
+ *       in the palette: Export places saves
+ *       terrane-places-<directory>-YYYY-MM-DD.json
+ *       with the benchmarks, the return point and the saved searches;
+ *       Import places… reads one of at most 2 MB, refuses a file that is
+ *       not a places file, is for another directory (compared in any case
+ *       on Windows and macOS) or another source, then adds what is new,
+ *       takes a newer measurement, merges the saved searches, says what
+ *       it added, updated and skipped, and offers Undo
  *
  * ✒ Usage Instructions:
  *     Listed in features.js and installed by app.js. S.places (also
@@ -82,26 +105,31 @@
  *
  * ✒ Other Important Information:
  *     - Dependencies: places.js (the store), model.js (formatting),
- *       layout.js (BOX), theme.js (verdigris), ui.js (ask), icons.js;
+ *       layout.js (BOX), theme.js (verdigris), ui.js (ask, download),
+ *       icons.js, csv.js (the file's name); the searches store
+ *       (S.searches, mergeSaved) for an import's saved searches;
  *       app.js's api: S, the registries, refreshDirs, relayout, reveal,
  *       setFocus, visibleIndexOf, hostOf, drawPins, drawLedger,
- *       drawInspector, say, notice, el, fact, itemButton, actionButton
+ *       drawInspector, tabSections, say, notice, el, fact, itemButton,
+ *       actionButton
  *     - Compatible platforms: any browser with ES2022 modules
  *     - Wording: a measurement says what "changed"; an entry that was not
  *       there is "here now, not then", never "created" or "added"
  *     - Limitations: places live in this browser's storage for this
  *       directory, source (live or snapshot) and address; another port,
  *       browser or profile has its own. Two tabs that change the same
- *       benchmark within a second keep the one saved last. The station
- *       trail, coverage and export are not part of it
+ *       benchmark within a second keep the one saved last; a places file
+ *       carries them to another browser, profile or address. The station
+ *       trail and coverage are not part of it
  * ----------------------------------------------------------------------------
  */
 
-import { fmtBytes, fmtCount, fmtDate, isAncestor } from './model.js';
+import { fmtBytes, fmtCount, fmtDate, isAncestor, plural } from './model.js';
 import { BOX } from './layout.js';
 import { THEME } from './theme.js';
-import { ask } from './ui.js';
+import { ask, download } from './ui.js';
 import { icon } from './icons.js';
+import { fileName, slug } from './csv.js';
 import { Places, storageKey, MAX_BENCHMARKS, KEEP_ENTRIES, deltaText, anchorOf, poseRelative, vantage } from './places.js';
 
 export const name = 'Landmarks';
@@ -113,6 +141,8 @@ const MARKS_MAX = 12;
 const LOST_GRACE = 1500;
 const FLY_MS = 900;
 const DETAIL_ROWS = 8;
+/** The largest places file Import reads. */
+const IMPORT_MAX = 2 * 1024 * 1024;
 
 const files = (n) => `${fmtCount(n)} file${n === 1 ? '' : 's'}`;
 const folders = (n) => `${fmtCount(n)} folder${n === 1 ? '' : 's'}`;
@@ -154,7 +184,8 @@ export function install(api) {
   const target = () => (S.primary ? (S.primary.d ? S.primary : S.primary.p) : S.focus);
   // Benchmarks are found in the tree only once a survey has finished: the
   // first, and every Rescan all, which streams a new tree in place of the old.
-  const ready = () => store.resolved && !S.scanning;
+  // A warm start's tree from the last session counts once it is checked.
+  const ready = () => store.resolved && !S.scanning && !S.warm;
   const WAIT = 'Benchmarks can be set once the survey has finished.';
   // When a measurement is of: a snapshot's is when it was taken.
   const when = (at) => (snapshot ? `in the snapshot taken ${fmtDate(at)}` : `at ${fmtDate(at)}`);
@@ -484,7 +515,12 @@ export function install(api) {
   function follow(body, res) {
     let pairs = [];
     if (body.type === 'rename' && res.renamed && typeof body.path === 'string') pairs = [[body.path, res.renamed]];
-    else if (body.type === 'move' && Array.isArray(body.paths) && Array.isArray(res.results)) {
+    else if (body.type === 'renames' && Array.isArray(body.items)) {
+      // A batch rename answers its [from, to] pairs; one that stopped part
+      // way answers results, where each item before the failure now is.
+      if (Array.isArray(res.renamed)) pairs = res.renamed.filter(pathPair);
+      else if (Array.isArray(res.results)) pairs = res.results.map((to, k) => [body.items[k]?.path, to]).filter((x) => pathPair(x) && x[0] !== x[1]);
+    } else if (body.type === 'move' && Array.isArray(body.paths) && Array.isArray(res.results)) {
       pairs = res.results.map((to, k) => [body.paths[k], to]).filter(pathPair);
     } else if (body.type === 'trash' && Array.isArray(body.paths)) {
       // Removed by Terrane to its holding area: when the folder goes
@@ -624,7 +660,10 @@ export function install(api) {
         el('div', { class: 'actions' },
           t && !t.e ? btn(has ? `Measure "${t.n}" again` : `Set benchmark on "${t.n}"`, () => bench(t), { icon: has ? 'remeasure' : 'bench', k: 'set', title: live ? 'B' : WAIT, off: !live }) : null,
           list.length || store.ret ? btn('Forget all…', forgetAll, { icon: 'remove', k: 'forget-all', danger: true }) : null)),
-      returnSection());
+      returnSection(),
+      fileSection(),
+      // Sections other features keep here (saved searches), after the tab's own.
+      ...api.tabSections('places'));
     if (had) host.querySelector(`[data-k="${CSS.escape(had)}"]`)?.focus({ preventScroll: true });
   }
 
@@ -644,6 +683,135 @@ export function install(api) {
         el('p', { class: 'note', text: 'None. H marks where you are, kept relative to the folder you are in; J returns to it, and J again comes back.' }),
         el('div', { class: 'actions' }, btn('Mark here', markReturn, { icon: 'markReturn', k: 'ret:mark', title: 'H' })),
       ]);
+  }
+
+  /* ---------- export and import ---------- */
+
+  const SOURCE = snapshot ? 'snapshot' : 'live';
+  const whose = (source) => (source === 'snapshot' ? "the snapshot's" : "the live directory's");
+  const andList = (parts) => (parts.length < 2 ? parts.join('') : `${parts.slice(0, -1).join(', ')} and ${parts.at(-1)}`);
+
+  /** Saves the benchmarks, the return point and the saved searches as a places file. */
+  function exportPlaces() {
+    const data = store.exportData();
+    const searches = (S.searches?.saved ?? []).map(({ id, name: n, query, at }) => ({ id, name: n, query, at }));
+    if (!data.benchmarks.length && !data.ret && !searches.length) {
+      api.notice('Nothing to export: there are no benchmarks, return point or saved searches yet.', { kind: 'info' });
+      return null;
+    }
+    const file = fileName(['places', slug(S.info.name) || 'directory'], 'json');
+    const doc = {
+      terrane: 'places', format: 1, root: S.info.root, source: SOURCE, exportedAt: new Date().toISOString(),
+      benchmarks: data.benchmarks, ret: data.ret, searches,
+    };
+    download(file, `${JSON.stringify(doc, null, 2)}\n`, 'application/json');
+    const parts = [
+      data.benchmarks.length ? plural(data.benchmarks.length, 'benchmark') : null,
+      data.ret ? 'the return point' : null,
+      searches.length ? plural(searches.length, 'saved search', 'saved searches') : null,
+    ].filter(Boolean);
+    api.notice(`Exported ${andList(parts)} to ${file}.`);
+    return file;
+  }
+
+  /**
+   * Takes saved searches in through the searches store, and returns its
+   * counts with an undo that forgets those added and gives those updated
+   * their query back.
+   */
+  function mergeSearches(list) {
+    const ss = S.searches;
+    if (!ss) return { added: 0, updated: 0, skipped: list.length, undo: () => false };
+    const before = new Map(ss.saved.map((x) => [x.id, x.query]));
+    const counts = ss.mergeSaved(list);
+    const added = ss.saved.filter((x) => !before.has(x.id)).map((x) => x.id);
+    const changed = ss.saved.filter((x) => before.has(x.id) && before.get(x.id) !== x.query).map((x) => [x.name, before.get(x.id)]);
+    let undone = !added.length && !changed.length;
+    return {
+      ...counts,
+      undo: () => {
+        if (undone) return false;
+        undone = true;
+        for (const id of added) ss.forget(id);
+        for (const [n, q] of changed) ss.save(n, q);
+        return true;
+      },
+    };
+  }
+
+  /**
+   * Reads a places file a person chose: at most 2 MB of JSON, a Terrane
+   * places file of format 1, for this directory (in any case where case
+   * does not matter) and this source. Then the store takes it in, the
+   * saved searches are merged, and the benchmarks are found in the tree.
+   */
+  async function importFile(file) {
+    if (!file) return;
+    if (file.size > IMPORT_MAX) {
+      api.notice(`${file.name} is larger than 2 MB, so it is not a Terrane places file. Nothing was imported.`, { kind: 'error' });
+      return;
+    }
+    let data = null;
+    try {
+      data = JSON.parse(await file.text());
+    } catch {
+      data = null;
+    }
+    if (!data || typeof data !== 'object' || data.terrane !== 'places' || data.format !== 1 || (data.source !== 'live' && data.source !== 'snapshot')) {
+      api.notice('This is not a Terrane places file.', { kind: 'error' });
+      return;
+    }
+    const fold = S.info.platform === 'win32' || S.info.platform === 'darwin';
+    const key = (r) => (fold ? r.toLowerCase() : r);
+    if (typeof data.root !== 'string' || key(data.root) !== key(S.info.root)) {
+      api.notice(`This file holds places for ${typeof data.root === 'string' && data.root ? data.root : 'another directory'}, not ${S.info.root}. Nothing was imported.`, { kind: 'error' });
+      return;
+    }
+    if (data.source !== SOURCE) {
+      api.notice(`This file holds ${whose(data.source)} places, and these places are ${whose(SOURCE)}: a benchmark is only compared with what it was measured from. Nothing was imported.`, { kind: 'error' });
+      return;
+    }
+    const r = store.importData(data);
+    const ss = mergeSearches(Array.isArray(data.searches) ? data.searches : []);
+    if (ready()) store.resolve(S.model);
+    redraw();
+    const changed = r.added + r.updated + ss.added + ss.updated;
+    const full = r.full ? ` ${r.full === 1 ? 'One benchmark' : `${fmtCount(r.full)} benchmarks`} did not fit: ${MAX_BENCHMARKS} is the most Terrane keeps for one directory.` : '';
+    api.notice(`Imported from ${file.name}: ${fmtCount(r.added + ss.added)} added, ${fmtCount(r.updated + ss.updated)} updated, ${fmtCount(r.skipped + ss.skipped)} skipped.${full}`, changed ? {
+      action: {
+        label: 'Undo',
+        run: () => {
+          const a = r.undo();
+          const b = ss.undo();
+          if (!a && !b) return;
+          if (ready()) store.resolve(S.model);
+          redraw();
+          api.say(`The import from ${file.name} is undone.`);
+        },
+      },
+    } : { kind: 'info' });
+  }
+
+  /** The Places tab's section after the return point: Export places, and Import places… through a file input kept here. */
+  function fileSection() {
+    const input = el('input', {
+      type: 'file', accept: '.json,application/json', 'data-k': 'import-input', hidden: true,
+      onchange: () => {
+        const f = input.files?.[0];
+        input.value = '';
+        importFile(f);
+      },
+    });
+    return el('details', { open: true, class: 'places-file' },
+      el('summary', {}, 'Export and import'),
+      el('p', {
+        class: 'note',
+        text: `The benchmarks, the return point and the saved searches as a file, to keep or to take into another browser, profile or address on ${snapshot ? "this directory's snapshots" : 'this directory'}. Importing adds what is new, takes a newer measurement, and keeps the rest.`,
+      }),
+      el('div', { class: 'actions' },
+        btn('Export places', exportPlaces, { k: 'places-export', title: 'Save the benchmarks, the return point and the saved searches as a file' }),
+        btn('Import places…', () => input.click(), { k: 'places-import', title: 'Take in a places file saved from this directory' }),
+        input));
   }
 
   /* ---------- the inspector ---------- */
@@ -709,8 +877,9 @@ export function install(api) {
     items: (node) => {
       const dir = node ? (node.d ? node : null) : S.focus;
       const out = [];
-      if (dir && store.resolved && S.scanning) {
-        // A Rescan all: benchmarks are found again once it has finished.
+      if (dir && store.resolved && (S.scanning || S.warm)) {
+        // A Rescan all, or a warm start's survey: benchmarks are found
+        // again once it has finished.
         out.push({ label: node ? 'Set benchmark' : 'Set benchmark on this folder', icon: 'bench', hint: 'B', run: () => bench(dir), disabled: true, reason: 'once the survey has finished' });
       } else if (dir && store.resolved) {
         const b = store.find(dir);
@@ -737,6 +906,22 @@ export function install(api) {
 
   api.QUERY.is.benchmark = Object.assign((n) => !!n.d && store.byNode.has(n), { owner: OWNER });
 
+  // A file picker needs the key or click that asked for it: the palette
+  // runs an item in the next frame, while that still holds.
+  api.COMMANDS.add({
+    id: 'places-file', owner: OWNER, section: 'Places',
+    items: () => [
+      { label: 'Export places', detail: 'Benchmarks, the return point and saved searches, as a file', run: () => { exportPlaces(); } },
+      {
+        label: 'Import places…', detail: 'A places file saved from this directory',
+        run: () => {
+          showPlaces();
+          document.querySelector('#ledger-rich [data-k="import-input"]')?.click();
+        },
+      },
+    ],
+  });
+
   api.AFTER_LAYOUT.add({ id: 'places', owner: OWNER, run: () => drawMarks() });
 
   api.AFTER_REFRESH.add({
@@ -754,12 +939,16 @@ export function install(api) {
   });
 
   // Every full survey is a new model: every benchmark is found again by
-  // its path. The first one also says which benchmarks changed.
+  // its path. The first one also says which benchmarks changed. A warm
+  // start draws the tree from the last session first (warm) and settles
+  // once the survey that checks it is in (settled): benchmarks are found
+  // in both, and what changed is said only of the checked tree.
   api.AFTER_SURVEY.add({
     id: 'places', order: 30, owner: OWNER,
-    run: (_sv, { full }) => {
-      if (!full) return;
+    run: (_sv, { full, warm, settled } = {}) => {
+      if (!full && !settled) return;
       store.resolve(S.model);
+      if (warm) return;
       if (!announced) {
         announced = true;
         announce();

@@ -1,11 +1,11 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Hardening Scenarios (Terrane Edition - v1.1)
+ *     - Title: Hardening Scenarios (Terrane Edition - v1.2)
  *     - File Name: hardening.mjs
  *     - Relative Path: tools/ui-scenarios/hardening.mjs
  *     - Artifact Type: test
- *     - Version: 1.1.0
+ *     - Version: 1.2.0
  *     - Date: 11/13/2026
  *     - Update: Friday, November 13, 2026
  *     - Author: Dennis 'dendogg' Smaltz
@@ -13,6 +13,12 @@
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
  *
  * ✒ Changelog:
+ *     - 1.2.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
+ *       on-disk scenario checks that the address and the kept view leave
+ *       a folder deleted from outside while you were in it: both name
+ *       where the location went, and after a reload no notice names the
+ *       folder that went and the address names where the page is
+ *       (without WebGL, exactly the kept folder).
  *     - 1.1.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
  *       single-key check follows the new default: cleared to what a
  *       first visit gets, T on a toolbar button starts nothing while T
@@ -40,6 +46,7 @@
  *       start the service, and asks the service for nothing
  *     - Frames redrawn only for a hover place no labels (WebGL pass)
  *     - On disk: the refresh chain survives a folder deleted from outside,
+ *       and the address and the kept view leave it, after a reload too;
  *       the time view's Since section follows the table a change rebuilt,
  *       the cursor follows its item, Rescan all leaves no old node behind
  *       and the sessions are found only when read
@@ -433,6 +440,32 @@ const disk = {
       return r;
     });
     t.check(`the refresh chain still settles (${chain})`, chain === 'settled');
+
+    /* ---- the address and the kept view leave the folder that went ---- */
+    const viewKey = await t.app((T) => `terrane.view.v1|${T.S.info.root}`);
+    const followed = await t.until((T, k, g) => {
+      let kept = null;
+      try {
+        kept = JSON.parse(localStorage.getItem(k) || 'null');
+      } catch { /* not kept */ }
+      const here = T.api.relPath(T.S.focus);
+      const hash = here ? `#/${here.split('/').map(encodeURIComponent).join('/')}` : '#/';
+      return kept && kept.focus === here && location.hash === hash && !here.startsWith(g) && { hash: location.hash, kept: kept.focus, focus: here };
+    }, { args: [viewKey, gone], timeout: 5000 });
+    const stale = await t.app((T, k) => ({ hash: location.hash, kept: JSON.parse(localStorage.getItem(k) || 'null')?.focus, focus: T.api.relPath(T.S.focus) }), viewKey);
+    t.check(`with the folder you were in gone from disk, the address and the kept view follow the location (${followed ? followed.hash : stale.hash})`, !!followed, JSON.stringify(stale));
+    await t.reload();
+    await t.waitFor((T) => T.S.watch === 'live', { timeout: 10000, what: 'the watcher after the reload' });
+    await t.sleep(600);
+    const reopened = await t.app((T, g) => ({
+      notices: [...document.querySelectorAll('#notices .notice-text')].map((x) => x.textContent).filter((x) => x.includes(g) || x.startsWith('Nothing at')),
+      focus: T.api.relPath(T.S.focus), hash: location.hash,
+    }), gone);
+    const hashOf = (rel) => (rel ? `#/${rel.split('/').map(encodeURIComponent).join('/')}` : '#/');
+    // Without WebGL the location is set, not derived from the eye, so it is exactly the kept folder.
+    t.check('after a reload nothing names the folder that went, and the address names where the page is',
+      reopened.notices.length === 0 && reopened.hash === hashOf(reopened.focus) && !reopened.focus.startsWith(gone)
+      && (t.gl || (!!followed && reopened.focus === followed.focus)), JSON.stringify({ reopened, followed }));
 
     /* ---- the time view follows the age table a change rebuilt ---- */
     const bulk = t.manifest.bulk.dir;

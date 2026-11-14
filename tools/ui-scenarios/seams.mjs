@@ -1,11 +1,11 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Controller Seams Scenario (Terrane Edition - v1.4)
+ *     - Title: Controller Seams Scenario (Terrane Edition - v1.5)
  *     - File Name: seams.mjs
  *     - Relative Path: tools/ui-scenarios/seams.mjs
  *     - Artifact Type: test
- *     - Version: 1.4.0
+ *     - Version: 1.5.0
  *     - Date: 11/13/2026
  *     - Update: Friday, November 13, 2026
  *     - Author: Dennis 'dendogg' Smaltz
@@ -13,6 +13,25 @@
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
  *
  * ✒ Changelog:
+ *     - 1.5.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
+ *       registries the palette, the remembered view and saved searches
+ *       use (COMMANDS, LEDGER_SUB, AFTER_FOCUS, AFTER_SELECT,
+ *       TAB_SECTIONS) are frozen, hold no controller entry, and are
+ *       compared at the end with the rest; S.searches may hold the store
+ *       that feature keeps there. New checks: AFTER_FOCUS hears the
+ *       folder you are in, AFTER_SELECT hears select() and selectAll(),
+ *       a LEDGER_SUB control stands after the sort keys, cursorTo moves
+ *       the list's cursor, a TAB_SECTIONS section is drawn in the Places
+ *       tab, copyText says what happened, and the key table carries the
+ *       palette's labels, palette: false and gl fields. P is allocated to
+ *       Quick look, and quicklook may bind it. Acting on many: RENAME_MANY,
+ *       DUP_GROUP and INSPECTOR.many are frozen, hold no controller entry
+ *       and are compared at the end; F2 with two selected runs the first
+ *       RENAME_MANY entry and with one opens the single rename; a MENU
+ *       entry needs items() or many(), and many()'s items follow Copy
+ *       paths; an INSPECTOR.many section follows the Actions grid; a
+ *       DUP_GROUP entry adds to the inspector's copies and to every group
+ *       the Survey lists; each one that throws is left out; relLabel.
  *     - 1.4.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
  *       S.sessions slot may hold what the Session traverse feature fills
  *       it with after the survey (a list of working sessions), as
@@ -59,6 +78,12 @@
  *     - Pins add up in source order and stop at 3,000; hover lines,
  *       inspector sections, tabs, Survey sections, layout options and the
  *       after-layout, refresh, survey and query hooks each take effect
+ *     - The focus and selection hooks, controls on the ledger's count
+ *       row, sections in another feature's tab, selectAll, cursorTo,
+ *       copyText and the key table's palette fields
+ *     - F2's dispatch to RENAME_MANY with several selected, the menu of
+ *       several (many()), the inspector's sections for several, DUP_GROUP
+ *       in the inspector and the Survey, and relLabel
  *     - The only hook the controller registers itself is the survey hook
  *       that rebuilds the shared age table
  *     - Feature search tokens through parseQuery's is: and prefix tables
@@ -95,6 +120,7 @@ const READING = [
 const OWNERS = {
   w: 'viewport', a: 'viewport', s: 'viewport', d: 'viewport', q: 'viewport', e: 'viewport', r: 'viewport', f: 'viewport',
   i: 'interiors', t: 'time', ',': 'time', '.': 'time', '<': 'time', '>': 'time', b: 'landmarks', h: 'landmarks', j: 'landmarks',
+  p: 'quicklook',
 };
 
 const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
@@ -134,20 +160,22 @@ export default {
     await t.settle();
     const start = await t.app(async (T) => {
       const a = T.api;
-      const regs = ['KEYS', 'ESCAPE', 'PIN_SOURCES', 'TIP_LINES', 'READING', 'TABS', 'LAYOUT_OPTS', 'AFTER_LAYOUT', 'AFTER_REFRESH', 'AFTER_SURVEY', 'AFTER_OP', 'MENU', 'AFTER_QUERY', 'SURVEY'];
+      const regs = ['KEYS', 'ESCAPE', 'PIN_SOURCES', 'TIP_LINES', 'READING', 'TABS', 'LAYOUT_OPTS', 'AFTER_LAYOUT', 'AFTER_REFRESH', 'AFTER_SURVEY', 'AFTER_OP', 'MENU', 'AFTER_QUERY', 'SURVEY',
+        'COMMANDS', 'LEDGER_SUB', 'AFTER_FOCUS', 'AFTER_SELECT', 'TAB_SECTIONS', 'RENAME_MANY', 'DUP_GROUP'];
       const mod = await import(new URL('js/features.js', document.baseURI).href);
       // A feature's entries carry its owner; the controller's carry none, or 'core'.
       const own = (reg) => [...reg].filter((x) => !x.owner || x.owner === 'core').map((x) => x.id);
       const byFeature = (reg) => [...reg].filter((x) => x.owner && x.owner !== 'core');
       return {
-        frozen: Object.isFrozen(a) && regs.every((n) => Object.isFrozen(a[n])) && Object.isFrozen(a.INSPECTOR) && Object.isFrozen(a.QUERY),
+        frozen: Object.isFrozen(a) && regs.every((n) => Object.isFrozen(a[n])) && Object.isFrozen(a.INSPECTOR) && ['focus', 'node', 'many'].every((n) => Object.isFrozen(a.INSPECTOR[n])) && Object.isFrozen(a.QUERY),
         // places is null, or the store the Landmarks feature keeps there;
         // sessions is null, or the working sessions the Session traverse found.
-        slots: ['time', 'interior', 'places', 'sessions'].every((k) => k in T.S) && ['time', 'interior'].every((k) => T.S[k] === null)
+        slots: ['time', 'interior', 'places', 'sessions', 'searches'].every((k) => k in T.S) && ['time', 'interior'].every((k) => T.S[k] === null)
           && (T.S.places === null || Array.isArray(T.S.places.benchmarks)) && (T.S.sessions === null || Array.isArray(T.S.sessions.list))
+          && (T.S.searches === null || (Array.isArray(T.S.searches.history) && Array.isArray(T.S.searches.saved)))
           && 'ages' in T.S && typeof T.S.ages?.kept === 'function' && T.S.ages.folders === T.S.model.root.dc + 1,
-        ids: Object.fromEntries([...regs.map((n) => [n, own(a[n])]), ['focus', own(a.INSPECTOR.focus)], ['node', own(a.INSPECTOR.node)]]),
-        all: Object.fromEntries([...regs.map((n) => [n, a[n].ids()]), ['focus', a.INSPECTOR.focus.ids()], ['node', a.INSPECTOR.node.ids()]]),
+        ids: Object.fromEntries([...regs.map((n) => [n, own(a[n])]), ['focus', own(a.INSPECTOR.focus)], ['node', own(a.INSPECTOR.node)], ['many', own(a.INSPECTOR.many)]]),
+        all: Object.fromEntries([...regs.map((n) => [n, a[n].ids()]), ['focus', a.INSPECTOR.focus.ids()], ['node', a.INSPECTOR.node.ids()], ['many', a.INSPECTOR.many.ids()]]),
         featureSections: [...new Set(byFeature(a.KEYS).filter((x) => x.guide).map((x) => x.guide[0]))],
         featureReading: byFeature(a.READING).map((x) => x.title),
         // A feature's search words carry its owner, as its entries do.
@@ -163,7 +191,7 @@ export default {
     const featureIds = Object.entries(start.all).map(([n, list]) => [n, list.filter((id) => !ids[n].includes(id))]).filter(([, l]) => l.length);
     t.note(`feature entries left out of the comparisons: ${featureIds.map(([n, l]) => `${n} ${l.join(' ')}`).join('; ') || 'none'}`);
     t.check('the api and every registry are frozen', start.frozen);
-    t.check('S declares time, interior, places and sessions as null; ages holds the age table the survey built', start.slots);
+    t.check('S declares time, interior, places, sessions and searches as null; ages holds the age table the survey built', start.slots);
     t.check('features.js exports the FEATURES list', start.features);
     t.check('Escape, pins and hover lines hold the controller entries in order',
       same(ids.ESCAPE, ['floating', 'placing', 'kind-filter', 'search', 'selection']) && same(ids.PIN_SOURCES, ['search', 'heavy'])
@@ -176,7 +204,12 @@ export default {
       && same(ids.AFTER_SURVEY, ['ages']) && start.tokens === 0, JSON.stringify(ids.AFTER_SURVEY));
     t.check('the Survey tab\'s own sections are a registry, in the order drawSurvey drew them',
       same(ids.SURVEY, ['largest', 'duplicates', 'empty', 'sealed', 'links']), JSON.stringify(ids.SURVEY));
-    t.check('the key allocation is fixed: I Interiors, T , . < > Time, B H J Landmarks, the canvas keeps W A S D Q E R F',
+    const g1regs = ['COMMANDS', 'LEDGER_SUB', 'AFTER_FOCUS', 'AFTER_SELECT', 'TAB_SECTIONS'];
+    t.check('the palette commands, ledger sub-line controls, focus and selection hooks and tab sections hold no controller entry',
+      g1regs.every((n) => ids[n].length === 0), JSON.stringify(g1regs.map((n) => ids[n])));
+    t.check('the batch rename, the inspector\'s sections for several and the duplicate groups\' additions hold no controller entry',
+      !ids.RENAME_MANY.length && !ids.DUP_GROUP.length && !ids.many.length, JSON.stringify([ids.RENAME_MANY, ids.DUP_GROUP, ids.many]));
+    t.check('the key allocation is fixed: I Interiors, T , . < > Time, B H J Landmarks, P Quick look, the canvas keeps W A S D Q E R F',
       same(start.owners, OWNERS) && start.ownersFrozen, JSON.stringify(start.owners));
     t.check('the tab buttons are made from TABS, Contents selected', same(start.tabs, ['contents:Contents:true', 'findings:Findings:false', 'survey:Survey:false', 'journal:Journal:false']), JSON.stringify(start.tabs));
 
@@ -235,7 +268,7 @@ export default {
         ctrlB: tryAdd({ id: 'seam-ctrl-b', mod: 'ctrl', keys: ['b'], run }),
         // A reserved key is either free for its owner or already held by
         // an entry of that owner (its feature is installed).
-        owned: ['i:interiors', 't:time', ',:time', '.:time', '<:time', '>:time', 'b:landmarks', 'h:landmarks', 'j:landmarks']
+        owned: ['i:interiors', 't:time', ',:time', '.:time', '<:time', '>:time', 'b:landmarks', 'h:landmarks', 'j:landmarks', 'p:quicklook']
           .map((s) => {
             const [k, owner] = [s.slice(0, s.indexOf(':')), s.slice(s.indexOf(':') + 1)];
             const held = [...K].find((x) => !x.mod && x.keys?.some((z) => (z.length === 1 ? z.toLowerCase() : z) === k));
@@ -490,6 +523,208 @@ export default {
       for (const k of ['seam', 'never']) delete T.api.QUERY.prefix[k];
     });
 
+    // The seams the palette, the remembered view and saved searches use:
+    // the focus and selection hooks, controls on the ledger's count row,
+    // sections in another feature's tab, selectAll, cursorTo, copyText,
+    // and the palette's fields in the key table.
+    await t.eval(muteErrors, true);
+    await t.app((T) => {
+      const a = T.api;
+      const S = T.S;
+      window.__seam.focusHeard = [];
+      window.__seam.selHeard = [];
+      a.select(null);
+      a.AFTER_FOCUS.add({ id: 'seam-focus', run: (dir) => { window.__seam.focusHeard.push(dir === S.focus ? dir.n : `not the focus: ${dir.n}`); } });
+      a.AFTER_SELECT.add({ id: 'seam-select', run: (sel, p) => { window.__seam.selHeard.push([sel === S.sel, sel.size, p ? p.n : null]); } });
+      a.LEDGER_SUB.add({ id: 'seam-sub', tab: 'contents', build: (ctx) => a.el('button', { class: 'sort', type: 'button', 'data-k': 'seam-sub', text: `Seam ${ctx.items.length} ${ctx.focus === S.focus}` }) });
+      a.LEDGER_SUB.add({ id: 'seam-sub-broken', tab: 'contents', order: 60, build: () => { throw new Error('sub on purpose'); } });
+      a.TAB_SECTIONS.add({ id: 'seam-tab', tab: 'places', build: () => a.el('details', { class: 'seam-tab' }, a.el('summary', {}, 'Seam section')) });
+      a.TAB_SECTIONS.add({ id: 'seam-tab-broken', tab: 'places', order: 60, build: () => { throw new Error('tab section on purpose'); } });
+      return true;
+    });
+    const dirName = await t.app((T) => {
+      const d = T.S.model.root.c.find((c) => c.d && !c.e && c.c.length > 2);
+      T.api.setFocus(d);
+      return d.n;
+    });
+    await t.waitFor((T, n) => T.S.focus.n === n, { args: [dirName], timeout: 8000 });
+    await t.settle();
+    const g1 = await t.app((T) => {
+      const a = T.api;
+      const S = T.S;
+      S.tab = 'contents';
+      a.drawLedger();
+      const tool = document.querySelector('#ledger-sub .sub-tools [data-k="seam-sub"]');
+      const toolText = tool?.textContent ?? null;
+      const before = tool?.parentElement?.previousElementSibling?.className ?? null;
+      const items = a.listItems();
+      const two = items.slice(1, 3);
+      a.select(items[0]);
+      a.selectAll(two, two[1]);
+      const rows = [...document.querySelectorAll('#ledger-list .row[aria-selected="true"]')].length;
+      const moved = a.cursorTo(items[items.length - 1]);
+      const cursor = T.list.cursor === items.length - 1;
+      const notThere = a.cursorTo(S.model.root);
+      S.tab = 'places';
+      a.drawLedger();
+      const placed = [...document.querySelectorAll('#ledger-rich > details')].map((d) => d.className || d.querySelector('summary')?.firstChild?.textContent);
+      S.tab = 'contents';
+      a.drawLedger();
+      return {
+        tool: toolText, before, n: items.length,
+        sel: [S.sel.size, S.primary?.n === two[1].n], rows, moved, cursor, notThere,
+        built: a.tabSections('places').map((e) => e.className), placed, heard: { focus: window.__seam.focusHeard, sel: window.__seam.selHeard },
+        keys: {
+          lens: a.KEYS.get('lens').labels?.['2'], panels: Object.keys(a.KEYS.get('panels').labels || {}),
+          off: ['sibling', 'parent-child', 'activate', 'menu'].map((id) => a.KEYS.get(id).palette),
+          gl: ['descend', 'overview'].map((id) => a.KEYS.get(id).gl),
+        },
+      };
+    });
+    const g1errs = await t.eval(muteErrors, false);
+    t.check(`AFTER_FOCUS hears the folder you are in once it changes (${g1.heard.focus.join(', ')})`, g1.heard.focus.at(-1) === dirName, JSON.stringify(g1.heard.focus));
+    t.check('AFTER_SELECT hears select() and selectAll() with S.sel and the primary',
+      same(g1.heard.sel.slice(-2).map((x) => x.slice(0, 2)), [[true, 1], [true, 2]]) && g1.sel[0] === 2 && g1.sel[1] && g1.rows === 2, JSON.stringify({ heard: g1.heard.sel, sel: g1.sel, rows: g1.rows }));
+    t.check('a LEDGER_SUB control stands on the count row after the sort keys, told the rows shown and the folder; one that throws is reported and left out',
+      g1.tool === `Seam ${g1.n} true` && g1.before === 'sorts' && g1errs.some((e) => /LEDGER_SUB "seam-sub-broken" failed/.test(e)), JSON.stringify({ tool: g1.tool, before: g1.before, g1errs }));
+    t.check('cursorTo moves the list\'s cursor to a listed node, and answers false for one not listed', g1.moved && g1.cursor && g1.notThere === false);
+    t.check('a TAB_SECTIONS section is drawn in its tab, after the tab\'s own; one that throws is reported and left out',
+      g1.built.includes('seam-tab') && g1.placed.at(-1) === 'seam-tab' && g1.placed.includes('places-return') && g1errs.some((e) => /TAB_SECTIONS "seam-tab-broken" failed/.test(e)), JSON.stringify(g1.placed));
+    t.check('the key table carries the palette\'s fields: labels on the lens and panels, palette: false on the arrows, Enter and the menu, gl on V and 0',
+      g1.keys.lens === 'Lens: age' && same(g1.keys.panels, ['[', ']']) && g1.keys.off.every((x) => x === false) && g1.keys.gl.every((x) => x === true), JSON.stringify(g1.keys));
+    const copied = await t.app(async (T) => {
+      const said = [];
+      navigator.clipboard.writeText = async (text) => { said.push(text); };
+      await T.api.copyText('seam text', 'Seam copied.');
+      navigator.clipboard.writeText = async () => { throw new Error('denied'); };
+      await T.api.copyText('seam text', 'Seam copied.', 'Seam fallback.');
+      delete navigator.clipboard.writeText;
+      return { said, notices: [...document.querySelectorAll('#notices .notice-text')].map((n) => n.textContent).slice(-2) };
+    });
+    t.check('copyText writes to the clipboard and says so; refused, it says that with its fallback',
+      same(copied.said, ['seam text']) && same(copied.notices, ['Seam copied.', 'The browser did not allow clipboard access. Seam fallback.']), JSON.stringify(copied));
+    await t.app((T) => {
+      const a = T.api;
+      for (const [reg, id] of [['AFTER_FOCUS', 'seam-focus'], ['AFTER_SELECT', 'seam-select'], ['LEDGER_SUB', 'seam-sub'], ['LEDGER_SUB', 'seam-sub-broken'], ['TAB_SECTIONS', 'seam-tab'], ['TAB_SECTIONS', 'seam-tab-broken']]) a[reg].remove(id);
+      a.select(null);
+      a.setFocus(T.S.model.root);
+      a.drawLedger();
+      return true;
+    });
+    await t.settle();
+
+    // The seams acting on many uses: F2 through RENAME_MANY, MENU's
+    // many(), INSPECTOR.many, DUP_GROUP and relLabel.
+    await t.eval(muteErrors, true);
+    const g3 = await t.app((T) => {
+      const a = T.api;
+      window.__seam.renamed = [];
+      let neither = 'ok';
+      try {
+        a.MENU.add({ id: 'seam-neither' });
+        a.MENU.remove('seam-neither');
+      } catch (err) {
+        neither = err.message;
+      }
+      // First, so it wins over a feature's: the first entry runs.
+      a.RENAME_MANY.add({ id: 'seam-rename', order: 1, run: (nodes) => { window.__seam.renamed.push(nodes.map((n) => n.n).sort()); } });
+      a.MENU.add({ id: 'seam-many', order: 1, many: (nodes, ctx) => [{ label: `Seam ${nodes.length} ${ctx.off ?? 'on'}`, run: () => {} }] });
+      a.MENU.add({ id: 'seam-many-broken', order: 2, many: () => { throw new Error('many on purpose'); } });
+      a.INSPECTOR.many.add({ id: 'seam-many', build: (nodes, ctx) => a.el('p', { class: 'seam-many', text: `Seam many ${nodes.length} ${ctx.off ?? 'on'} ${ctx.ro ?? 'on'}` }) });
+      a.INSPECTOR.many.add({ id: 'seam-many-broken', order: 60, build: () => { throw new Error('many section on purpose'); } });
+      a.DUP_GROUP.add({ id: 'seam-dup', order: 1, build: (g, ctx) => a.el('p', { class: 'seam-dup', text: `${ctx.where} ${g.files.length} ${ctx.node ? ctx.node.n : 'none'} ${ctx.ro ?? 'on'}` }) });
+      a.DUP_GROUP.add({ id: 'seam-dup-broken', order: 2, build: () => { throw new Error('dup on purpose'); } });
+      const dir = T.S.model.root.c.find((c) => c.d && !c.e && c.c.filter((x) => !x.d).length >= 2) || T.S.model.root;
+      const files = dir.c.filter((x) => !x.d).slice(0, 2);
+      a.setFocus(dir);
+      const deep = (function find(d) {
+        for (const c of d.c) if (c.d && c.c.length) { const f = c.c.find((x) => !x.d); if (f) return f; }
+        return null;
+      })(T.S.model.root);
+      return {
+        neither, dir: dir.n, files: files.map((f) => f.n).sort(), ro: a.writable(),
+        rel: { root: a.relLabel(T.S.model.root), deep: deep && a.relLabel(deep), want: deep && a.relPath(deep) },
+      };
+    });
+    await t.waitFor((T, n) => T.S.focus.n === n || !T.S.focus.p, { args: [g3.dir], timeout: 8000 });
+    await t.settle();
+    t.check('a MENU entry needs items() or many()', /needs items\(\) or many\(\)/.test(g3.neither), g3.neither);
+    t.check(`relLabel: the root reads ".", and a file its path from the root joined with / (${g3.rel.deep})`, g3.rel.root === '.' && g3.rel.deep === g3.rel.want && !!g3.rel.deep, JSON.stringify(g3.rel));
+    await t.app((T, names) => {
+      const nodes = T.S.focus.c.filter((c) => names.includes(c.n));
+      T.api.selectAll(nodes);
+      document.getElementById('ledger-list').focus();
+      return true;
+    }, g3.files);
+    await t.key('F2');
+    const two = await t.waitFor(() => window.__seam.renamed.length === 1 && { names: window.__seam.renamed[0], dialog: document.getElementById('dialog').open });
+    t.check('F2 with two selected runs the first RENAME_MANY entry with them, and opens no rename of its own', same(two.names, g3.files) && !two.dialog, JSON.stringify(two));
+    await t.key('Shift+F10');
+    await t.waitFor(() => !document.getElementById('menu').hidden && document.querySelectorAll('#menu .menu-item').length > 0, { what: 'the menu of several' });
+    const manyMenu = await t.eval(() => [...document.querySelectorAll('#menu .menu-item .menu-label')].map((l) => l.textContent));
+    await t.key('Escape');
+    await t.waitFor(() => document.getElementById('menu').hidden);
+    const wantSeam = `Seam 2 ${g3.ro ?? 'on'}`;
+    t.check(`a MENU entry's many() items follow Copy paths in the menu of several ("${wantSeam}"); one that throws is left out`,
+      manyMenu[manyMenu.indexOf('Copy paths') + 1] === wantSeam, JSON.stringify(manyMenu));
+    const manyInsp = await t.eval(() => {
+      const body = document.getElementById('inspector-body');
+      const grid = body.querySelector('.actions-grid');
+      const seam = body.querySelector('.seam-many');
+      return { text: seam?.textContent ?? null, after: !!grid && !!seam && !!(grid.compareDocumentPosition(seam) & Node.DOCUMENT_POSITION_FOLLOWING) };
+    });
+    t.check(`an INSPECTOR.many section follows the Actions grid of a selection of several, told why changes are off (${manyInsp.text})`,
+      manyInsp.text === `Seam many 2 ${g3.ro ?? 'on'} ${g3.ro ?? 'on'}` && manyInsp.after, JSON.stringify(manyInsp));
+    await t.app((T, n) => {
+      T.api.select(T.S.focus.c.find((c) => c.n === n));
+      document.getElementById('ledger-list').focus();
+      return true;
+    }, g3.files[0]);
+    await t.key('F2');
+    const one = await t.waitFor(() => document.getElementById('dialog').open && { input: document.activeElement?.name, h2: document.querySelector('#dialog h2')?.textContent });
+    t.check('F2 with one selected is the single rename, and RENAME_MANY is not asked', one.input === 'name' && one.h2 === 'Rename' && (await t.app(() => window.__seam.renamed.length)) === 1, JSON.stringify(one));
+    await t.key('Escape');
+    await t.waitFor(() => !document.getElementById('dialog').open);
+    const dup = await t.app((T) => {
+      const a = T.api;
+      const g = T.S.survey?.dupGroups?.[0];
+      if (!g) return null;
+      const f = g.files[0];
+      a.select(f);
+      const inInspector = document.querySelector('#inspector-body .seam-dup')?.textContent ?? null;
+      T.S.tab = 'survey';
+      a.drawLedger();
+      const inSurvey = [...document.querySelectorAll('#ledger-rich .seam-dup')].map((p) => p.textContent);
+      const first = document.querySelector('#ledger-rich .group-head');
+      const firstDup = document.querySelector('#ledger-rich .seam-dup');
+      T.S.tab = 'contents';
+      a.drawLedger();
+      return {
+        inInspector, want: `inspector ${g.files.length} ${f.n} ${a.writable() ?? 'on'}`, n: inSurvey.length, groups: Math.min(60, T.S.survey.dupGroups.length),
+        first: inSurvey[0], wantFirst: `survey ${g.files.length} none ${a.writable() ?? 'on'}`,
+        order: !!first && !!firstDup && !!(first.compareDocumentPosition(firstDup) & Node.DOCUMENT_POSITION_FOLLOWING),
+      };
+    });
+    if (dup) {
+      t.check(`a DUP_GROUP entry adds to the inspector's copies, told the group, the file and the mode (${dup.inInspector})`, dup.inInspector === dup.want, JSON.stringify(dup));
+      t.check(`and to every group the Survey lists, after its rows (${dup.n} of ${dup.groups})`, dup.n === dup.groups && dup.first === dup.wantFirst && dup.order, JSON.stringify(dup));
+    } else t.skip('a DUP_GROUP entry adds to the inspector and the Survey', 'no duplicate candidates in this data');
+    const g3errs = await t.eval(muteErrors, false);
+    t.check('a many() item, an INSPECTOR.many section and a DUP_GROUP entry that throw are reported and left out',
+      g3errs.some((e) => /MENU "seam-many-broken" failed/.test(e)) && g3errs.some((e) => /INSPECTOR.many "seam-many-broken" failed/.test(e)) && (!dup || g3errs.some((e) => /DUP_GROUP "seam-dup-broken" failed/.test(e))),
+      JSON.stringify(g3errs));
+    await t.app((T) => {
+      const a = T.api;
+      for (const [reg, id] of [['RENAME_MANY', 'seam-rename'], ['MENU', 'seam-many'], ['MENU', 'seam-many-broken'], ['DUP_GROUP', 'seam-dup'], ['DUP_GROUP', 'seam-dup-broken']]) a[reg].remove(id);
+      a.INSPECTOR.many.remove('seam-many');
+      a.INSPECTOR.many.remove('seam-many-broken');
+      a.select(null);
+      a.setFocus(T.S.model.root);
+      a.drawLedger();
+      return true;
+    });
+    await t.settle();
+
     if (t.gl) {
       // Pins add up in source order and stop at the capacity.
       await t.settle();
@@ -561,8 +796,9 @@ export default {
 
     const end = await t.app((T) => {
       const a = T.api;
-      return Object.fromEntries([...['KEYS', 'ESCAPE', 'PIN_SOURCES', 'TIP_LINES', 'READING', 'TABS', 'LAYOUT_OPTS', 'AFTER_LAYOUT', 'AFTER_REFRESH', 'AFTER_SURVEY', 'AFTER_OP', 'MENU', 'AFTER_QUERY', 'SURVEY'].map((n) => [n, a[n].ids()]),
-        ['focus', a.INSPECTOR.focus.ids()], ['node', a.INSPECTOR.node.ids()]]);
+      return Object.fromEntries([...['KEYS', 'ESCAPE', 'PIN_SOURCES', 'TIP_LINES', 'READING', 'TABS', 'LAYOUT_OPTS', 'AFTER_LAYOUT', 'AFTER_REFRESH', 'AFTER_SURVEY', 'AFTER_OP', 'MENU', 'AFTER_QUERY', 'SURVEY',
+        'COMMANDS', 'LEDGER_SUB', 'AFTER_FOCUS', 'AFTER_SELECT', 'TAB_SECTIONS', 'RENAME_MANY', 'DUP_GROUP'].map((n) => [n, a[n].ids()]),
+        ['focus', a.INSPECTOR.focus.ids()], ['node', a.INSPECTOR.node.ids()], ['many', a.INSPECTOR.many.ids()]]);
     });
     t.check('every test entry is gone again', same(end, start.all), JSON.stringify(end).slice(0, 300));
   },
