@@ -947,11 +947,12 @@ short form is kept too.
 - 1.4.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — The sheet's grid as tokens:
   --gutter, --mark-w and --mark-gap, and the text columns they make, --row-indent (B, 32 px, was
   28) and --row-indent-2 (C); --row-pad-x is the gutter. --facts-label-w, --guide-key-w,
-  --readout-w, --cell-label-h, and the parts of the three uppercase voices. A side panel's text
+  --readout-w, --cell-label-h, and the parts of the three uppercase voices. --guide-key-w is
+  104 px, so the Guide's longest key, Numpad 2 4 6 8, keeps one line. A side panel's text
   stands on three columns measured from its inner edge: A at the gutter (12 px) for marks and
   for text with no mark, B (32 px) for the text after a mark, C (52 px) for a nested row's text;
   every place that used the old 28 px indent now reads B. --facts-label-w (116 px) gives every
-  inspector fact label one line; --guide-key-w (96 px) is the guide's shared key column;
+  inspector fact label one line; --guide-key-w (104 px) is the guide's shared key column;
   --readout-w (25ch) holds the altitude readout to one width; --cell-label-h (12 px) is the
   title block's label row. --caps-label-wdth, --caps-key-wdth, --caps-key-track and
   --caps-tight-track are the voices' widths and tracking, read by base.css.
@@ -1169,7 +1170,9 @@ short form is kept too.
   tall, its label and keycap or reason on one baseline; dialog fields stand at the buttons'
   height; the guide shares one key column, its sections as many columns as the dialog holds;
   notice words wrap pretty and the close is the action's size; the job title takes the label
-  voice. Merged with the Guide's tabs and Mouse tab, whose key lists take the same key column.
+  voice. The Guide's tabs take the TIGHT voice, and the Mouse tab's keys columns of their own
+  width. Merged with the Guide's tabs and Mouse tab: the tab buttons carry caps-tight instead of
+  type of their own, and a flavor's longest drags (Ctrl+Alt+middle-drag) are not cut off.
 - 1.3.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — The Guide's tab strip and panels:
   Keys, Mouse, Reading the world and Settings, one panel shown at a time at one height.
 - 1.2.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — The guide's Mouse section: the Flavor

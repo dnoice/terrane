@@ -18,7 +18,8 @@
  *       text columns they make, --row-indent (B, 32 px, was 28) and
  *       --row-indent-2 (C); --row-pad-x is the gutter. --facts-label-w,
  *       --guide-key-w, --readout-w, --cell-label-h, and the parts of the
- *       three uppercase voices.
+ *       three uppercase voices. --guide-key-w is 104 px, so the Guide's
+ *       longest key, Numpad 2 4 6 8, keeps one line.
  *     - 1.3.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] —
  *       --ink-3 darkened to #5a6661, so --text-3 reads at 4.5:1 or more
  *       on every surface; --signal-deep and --search-text for search
@@ -230,7 +231,7 @@
   --row-indent-2: calc(var(--row-indent) + var(--mark-w) + var(--mark-gap)); /* C: 52 */
   --row-pad-x: var(--gutter);  /* a ledger row's right edge */
   --facts-label-w: 116px;  /* the inspector's fact labels, each on one line */
-  --guide-key-w: 96px;     /* the guide's key column, shared by every section */
+  --guide-key-w: 104px;     /* the guide's key column, shared by every section */
   --readout-w: 25ch;       /* the altitude readout, wide enough that its neighbours never move */
   --cell-label-h: 12px;    /* the title block's label row */
   --tag-pad-y: 3px;    /* a label standing over the world */

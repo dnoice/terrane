@@ -4391,7 +4391,7 @@ async function showGuide(tab) {
   const buttons = {};
   const panels = {};
   for (const [id, label] of GUIDE_TABS) {
-    buttons[id] = el('button', { type: 'button', role: 'tab', id: `guide-tab-${id}`, 'aria-controls': `guide-panel-${id}`, text: label });
+    buttons[id] = el('button', { type: 'button', role: 'tab', class: 'caps-tight', id: `guide-tab-${id}`, 'aria-controls': `guide-panel-${id}`, text: label });
     buttons[id].addEventListener('click', () => choose(id));
     strip.append(buttons[id]);
     panels[id] = el('div', { class: 'guide-panel', role: 'tabpanel', id: `guide-panel-${id}`, 'aria-labelledby': `guide-tab-${id}`, tabindex: '0' }, content[id]);
