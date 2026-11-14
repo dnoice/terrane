@@ -2,18 +2,23 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Vendor Fetcher (Terrane Edition - v1.2)
+ *     - Title: Vendor Fetcher (Terrane Edition - v1.3)
  *     - File Name: vendor.mjs
  *     - Relative Path: tools/vendor.mjs
  *     - Artifact Type: CLI
- *     - Version: 1.2.0
- *     - Date: 11/13/2026
- *     - Update: Friday, November 13, 2026
+ *     - Version: 1.3.0
+ *     - Date: 11/14/2026
+ *     - Update: Saturday, November 14, 2026
  *     - Author: Dennis 'dendogg' Smaltz
  *     - A.I. Acknowledgement: Anthropic - Claude Opus 5.5
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
  *
  * ✒ Changelog:
+ *     - 1.3.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — The icon
+ *       list gains download, list-checks, swatch-book and activity, for the
+ *       ledger head's Export CSV and Select all and the title block's Legend
+ *       and Status labels; the sprite was written again from the same pinned
+ *       Lucide (59 icons).
  *     - 1.2.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
  *       icon list holds only what the interface draws: command, compass,
  *       chevron-down, chevron-up, map, grip-vertical, circle-help,
@@ -105,6 +110,8 @@ export const ICONS = [
   'calendar-clock', 'chevron-left', 'chevron-right',
   // landmarks: the Places tab, benchmarks and the return point
   'map-pinned', 'flag', 'bookmark', 'arrow-left-right',
+  // the ledger head's tools and the title block's cell labels
+  'download', 'list-checks', 'swatch-book', 'activity',
 ];
 
 const PINS = [

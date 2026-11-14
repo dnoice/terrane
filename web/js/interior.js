@@ -1,18 +1,23 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Archive Interiors (Terrane Edition - v1.2)
+ *     - Title: Archive Interiors (Terrane Edition - v1.3)
  *     - File Name: interior.js
  *     - Relative Path: web/js/interior.js
  *     - Artifact Type: javascript
- *     - Version: 1.2.0
- *     - Date: 11/13/2026
- *     - Update: Friday, November 13, 2026
+ *     - Version: 1.3.0
+ *     - Date: 11/14/2026
+ *     - Update: Saturday, November 14, 2026
  *     - Author: Dennis 'dendogg' Smaltz
  *     - A.I. Acknowledgement: Anthropic - Claude Opus 5.5
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
  *
  * ✒ Changelog:
+ *     - 1.3.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — Its
+ *       heads go through api.sectionTitle, a count as a figure; Holds and
+ *       Unpacked break only at separators; "In the archive" is "Inside", so
+ *       the label keeps one line; Close names the archive and is marked
+ *       data-named.
  *     - 1.2.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
  *       lock also reads a batch rename's items: any item whose path is
  *       under the archive's is refused before anything is sent.
@@ -22,8 +27,7 @@
  *       tree; a whole walk only when a capped list loses a file. A
  *       Rescan all also forgets the file a change closed. plural comes
  *       from model.js.
- *     - 1.0.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] —
- *       Initial release.
+ *     Earlier entries: see CHANGELOG.md
  *
  * ✒ Description:
  *     Looks inside a zip archive without unpacking it. I reads the
@@ -471,16 +475,16 @@ export function install(api) {
   /* ---------- the inspector ---------- */
 
   const note = (text) => el('p', { class: 'interior-note', text });
-  const closeButton = (I) => api.actionButton(`Close ${I.host.n}`, () => close('closed'), { icon: 'x', wide: true, title: 'I, or Escape with nothing selected' });
+  const closeButton = (I) => api.actionButton(`Close ${I.host.n}`, () => close('closed'), { icon: 'x', wide: true, title: 'I, or Escape with nothing selected', named: true });
 
   /** The open archive: what it holds, what is already here, what is locked or escapes. */
   function archiveSection(I, title) {
     const L = I.listing;
     const out = [
-      el('div', { class: 'section-title', text: title }),
+      api.sectionTitle(title),
       el('dl', { class: 'facts interior-facts' },
-        fact('Holds', `${plural(L.files, 'file', 'files')} · ${plural(L.folders, 'folder', 'folders')}`),
-        fact('Unpacked', el('b', { text: fmtBytes(L.unpacked) }), ` · ${fmtBytes(L.packed)} packed`),
+        fact('Holds', api.parts(plural(L.files, 'file', 'files'), plural(L.folders, 'folder', 'folders'))),
+        fact('Unpacked', api.parts(el('b', { text: fmtBytes(L.unpacked) }), `${fmtBytes(L.packed)} packed`)),
         fact('Already here', L.files ? `${fmtCount(L.twins)} of its files, by name and size` : 'no files to compare'),
         L.locked ? fact('Locked', `${plural(L.locked, 'entry', 'entries')}, encrypted`) : null,
         L.escapes ? fact('Escapes', `${plural(L.escapes, 'name', 'names')} would land outside the folder if unpacked`) : null),
@@ -499,15 +503,15 @@ export function install(api) {
     const inner = [];
     for (let a = node; a && a !== I.root; a = a.p) inner.unshift(a.n);
     const out = [
-      el('div', { class: 'section-title', text: `In ${I.host.n}` }),
+      api.sectionTitle(`In ${I.host.n}`),
       el('dl', { class: 'facts interior-facts' },
-        fact('In the archive', el('code', { text: inner.join('/') || '/' })),
+        fact('Inside', el('code', { text: inner.join('/') || '/' })),
         node.f & FLAG_LOCKED ? fact('Locked', 'encrypted in the archive') : null,
         node.f & FLAG_ESCAPE ? fact('Its name', 'would land outside the folder if unpacked') : null),
     ];
     const tw = I.twins.get(node);
     if (tw) {
-      out.push(el('div', { class: 'section-title', text: tw.length > LIST_MAX ? `Already in this directory · ${LIST_MAX} of ${fmtCount(tw.length)}` : 'Already in this directory' }),
+      out.push(api.sectionTitle('Already in this directory', tw.length > LIST_MAX ? `${LIST_MAX} of ${fmtCount(tw.length)}` : null),
         el('div', { class: 'interior-twins' }, tw.slice(0, LIST_MAX).map((f) => api.itemButton(f, fmtBytes(f.s)))));
     }
     out.push(note('An entry of the archive, as its directory lists it. Nothing here can be changed.'));
@@ -518,7 +522,7 @@ export function install(api) {
   function alsoInSection(I, node) {
     const entries = I.twinOf.get(node);
     return [
-      el('div', { class: 'section-title', text: entries.length > LIST_MAX ? `Also in ${I.host.n} · ${LIST_MAX} of ${fmtCount(entries.length)}` : `Also in ${I.host.n}` }),
+      api.sectionTitle(`Also in ${I.host.n}`, entries.length > LIST_MAX ? `${LIST_MAX} of ${fmtCount(entries.length)}` : null),
       el('div', { class: 'interior-twins' }, entries.slice(0, LIST_MAX).map((e) => api.itemButton(e, fmtBytes(e.s)))),
     ];
   }
@@ -526,7 +530,7 @@ export function install(api) {
   /** A zip that is not open: what Look inside does. */
   function closedSection(node) {
     return [
-      el('div', { class: 'section-title', text: 'Archive' }),
+      api.sectionTitle('Archive'),
       note('Look inside lists what its directory holds, as folders and files, without unpacking it.'),
       el('div', { class: 'actions-grid' }, api.actionButton('Look inside', () => open(node), { off: unavailable(node), icon: 'folder-open', wide: true, title: 'I' })),
     ];

@@ -1,18 +1,24 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Terrane Application (Terrane Edition - v1.11)
+ *     - Title: Terrane Application (Terrane Edition - v1.12)
  *     - File Name: app.js
  *     - Relative Path: web/js/app.js
  *     - Artifact Type: javascript
- *     - Version: 1.11.0
- *     - Date: 11/13/2026
- *     - Update: Friday, November 13, 2026
+ *     - Version: 1.12.0
+ *     - Date: 11/14/2026
+ *     - Update: Saturday, November 14, 2026
  *     - Author: Dennis 'dendogg' Smaltz
  *     - A.I. Acknowledgement: Anthropic - Claude Opus 5.5
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
  *
  * ✒ Changelog:
+ *     - 1.12.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
+ *       sheet's polish: the ledger head in two rows (the count and its tools,
+ *       then the keys over the columns; Select all an icon) with one-line
+ *       captions; facts from parts, sectionTitle and the path broken after
+ *       each slash; the legend's whole chips behind +N; the status reads
+ *       files, bytes, folders; the veil's error on its own line.
  *     - 1.11.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] —
  *       Paint gives each file its kind's colour in a tone of its own
  *       extension, a closed mass a richer tint and, on its sides, strata
@@ -23,13 +29,6 @@
  *       Pages), runs the demo world (demo.js): /api/ is answered in the
  *       page, the status says Demo world, pictures, sounds and film come
  *       from the world, and a notice says what the visitor is looking at.
- *     - 1.9.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] —
- *       Wave 3's seams and features: COMMANDS, LEDGER_SUB, AFTER_FOCUS,
- *       AFTER_SELECT and TAB_SECTIONS for the palette, the kept view and
- *       saved searches; rawUrl and the Untouched order for Quick look and
- *       presets; RENAME_MANY, MENU many(), INSPECTOR.many and DUP_GROUP
- *       for acting on many; the warm start (GET /api/warm, catch-up and
- *       Model.adopt). In full in CHANGELOG.md.
  *     Earlier entries: see CHANGELOG.md
  *
  * ✒ Description:
@@ -95,6 +94,10 @@
  *       file instead of editing these functions
  *     - One key table drives the keyboard, the guide and the fixed key
  *       allocation; a reserved key can only be bound by its owner
+ *     - The sheet's text on its grid: the ledger head's two rows, facts
+ *       built from parts that break only at separators (api.parts),
+ *       section heads with a figure (api.sectionTitle), and a legend that
+ *       shows whole chips and puts the rest behind "+N"
  *     - One age table per survey (timeline.js) answers how much of any
  *       folder changed since a date, for every feature that asks
  *     - Instruments over the world: a north arrow that turns with the
@@ -2231,6 +2234,7 @@ function drawLedgerNow(keepScroll) {
   slideIndicators();
   const sub = $('ledger-sub');
   sub.className = 'panel-sub';
+  sub.dataset.tab = S.tab;
   const rich = $('ledger-rich');
   const listHost = $('ledger-list');
   const useList = !!tab.list;
@@ -2254,6 +2258,15 @@ function sortToggle(label, on, dir, onclick, titles = null) {
     : on ? `Sorted by ${label.toLowerCase()}, ${dir < 0 ? 'descending' : 'ascending'}; click to reverse` : `Sort by ${label.toLowerCase()}`;
   return el('button', { class: 'sort', type: 'button', 'aria-pressed': String(on), title, onclick }, label, on ? icon(dir < 0 ? 'sortDown' : 'sortUp') : null);
 }
+
+/**
+ * A ledger head's caption: one line of 36 characters or fewer, ending in
+ * an ellipsis where the ledger is narrower, its words also its title.
+ */
+const caption = (text) => el('span', { class: 'grow', text, title: text });
+
+/** The count of a head's count row: "14 items" and " · 199 GB", which a selection's total can stand in for. */
+const subCount = (n, bytes) => el('span', { class: 'sub-count', title: `${n}${bytes}` }, el('span', { class: 'n', text: n }), el('span', { class: 'b', text: bytes }));
 
 /** The Untouched key's titles: its order is by typical age, not by a value up or down. */
 const UNTOUCHED = Object.freeze({
@@ -2308,11 +2321,13 @@ function drawContents(sub, _host, keepScroll) {
   const n = S.focus.c.length;
   const items = sortedContents();
   const tools = subTools('contents', { items, search: S.search, focus: S.focus });
-  // The sort keys stay together: in a narrow ledger they move under the
-  // count as one. An empty folder has nothing to sort, so it shows none.
-  sub.replaceChildren(el('span', { class: 'sub-count', text: `${fmtCount(n)} item${n === 1 ? '' : 's'} · ${fmtBytes(S.focus.s)}` }),
-    ...(n ? [el('span', { class: 'sorts' }, sortBtn('name', 'Name'), sortBtn('size', 'Size'), sortBtn('date', 'Changed'), sortBtn('untouched', 'Untouched', UNTOUCHED))] : []),
-    ...(tools ? [tools] : []));
+  // Two rows: the count and its tools, then the sort keys over the list's
+  // columns (Name over the names, Size on the size column). An empty
+  // folder has nothing to sort, so it shows no keys.
+  sub.replaceChildren(
+    el('div', { class: 'sub-row is-count' }, subCount(`${fmtCount(n)} item${n === 1 ? '' : 's'}`, ` · ${fmtBytes(S.focus.s)}`), tools),
+    ...(n ? [el('div', { class: 'sub-row is-columns' },
+      el('span', { class: 'sorts' }, sortBtn('name', 'Name'), sortBtn('date', 'Changed'), sortBtn('untouched', 'Untouched', UNTOUCHED), sortBtn('size', 'Size')))] : []));
   list.render = (node) => rowFor(node, { total: S.focus.s });
   list.setEmpty(S.focus.e ? `This folder could not be read (${S.focus.e}).` : S.focus.stub ? 'This folder has not been read yet.' : 'This folder is empty.');
   list.setItems(items, keepScroll, { follow: S.primary });
@@ -2341,7 +2356,7 @@ function findingsItems() {
 
 function drawFindings(sub, _host, keepScroll) {
   if (!S.search) {
-    sub.replaceChildren(el('span', { class: 'grow', text: S.query && S.scanning ? 'The search runs again once the survey has finished.' : 'Type in the Find field to search every level.' }));
+    sub.replaceChildren(caption(S.query && S.scanning ? 'Runs again once the survey is done' : 'Type in Find to search every level.'));
     list.setEmpty('');
     list.setItems([]);
     return;
@@ -2354,15 +2369,18 @@ function drawFindings(sub, _host, keepScroll) {
   });
   const note = S.search.note || '';
   const n = S.search.list.length;
-  sub.classList.add('is-rows');
-  // With no match there is nothing to select or sort: the list says so.
-  // (replaceChildren would print a null argument as the text "null".)
+  // The count row and its tools, the note on a row of its own, then the
+  // column heads: Select all in the mark slot, Changed, and Size on the
+  // size column. With no match there is nothing to select or sort: the
+  // list says so. (replaceChildren would print a null argument as "null".)
   sub.replaceChildren(...[
-    el('div', { class: 'sub-row' }, el('span', { class: 'sub-count', text: `${fmtCount(n)} match${n === 1 ? '' : 'es'} · ${fmtBytes(S.search.bytes)}` }),
-      n ? el('button', { class: 'sort', type: 'button', title: 'Select every match (up to 5,000)', onclick: () => selectAll(items.slice(0, 5000), items[0]) }, icon('selectAll'), 'Select all') : null,
+    el('div', { class: 'sub-row is-count' }, subCount(`${fmtCount(n)} match${n === 1 ? '' : 'es'}`, ` · ${fmtBytes(S.search.bytes)}`),
       subTools('findings', { items, search: S.search, focus: S.focus })),
-    n || note ? el('div', { class: 'sub-row' }, el('span', { class: 'sub-note', text: note, title: note || null }),
-      n ? el('span', { class: 'sorts' }, sortBtn('size', 'Size'), sortBtn('date', 'Changed')) : null) : null,
+    note ? el('div', { class: 'sub-row sub-note', text: note }) : null,
+    n ? el('div', { class: 'sub-row is-columns' },
+      el('button', { class: 'btn btn-icon sub-tool sub-select', type: 'button', title: 'Select every match (up to 5,000)', onclick: () => selectAll(items.slice(0, 5000), items[0]) },
+        icon('selectAll'), el('span', { class: 'sr', text: 'Select all' })),
+      el('span', { class: 'sorts' }, sortBtn('date', 'Changed'), sortBtn('size', 'Size'))) : null,
   ].filter(Boolean));
   list.render = (node) => rowFor(node, { showPath: true });
   list.setEmpty('Nothing on any level matches this search.');
@@ -2374,7 +2392,7 @@ const sectionOpen = new Map();
 
 /** A collapsible section of the rich ledger panel; open is its state until someone toggles it. */
 const section = (title, count, open, ...body) => {
-  const d = el('details', { open: sectionOpen.get(title) ?? open }, el('summary', {}, title, el('span', { class: 'n', text: count })), ...body);
+  const d = el('details', { open: sectionOpen.get(title) ?? open }, el('summary', {}, el('span', { class: 't', text: title }), el('span', { class: 'n', text: count })), ...body);
   d.addEventListener('toggle', () => sectionOpen.set(title, d.open));
   return d;
 };
@@ -2389,11 +2407,11 @@ function itemButton(node, figure) {
 function drawSurvey(sub, host) {
   const sv = S.survey;
   if (!sv) {
-    sub.replaceChildren(el('span', { class: 'grow', text: 'The survey is compiled when the scan completes.' }));
+    sub.replaceChildren(caption('Compiled once the survey is done'));
     host.replaceChildren();
     return;
   }
-  sub.replaceChildren(el('span', { class: 'grow', text: 'Noteworthy conditions across every level' }));
+  sub.replaceChildren(caption('Noteworthy conditions, every level'));
   host.replaceChildren(...buildSections(SURVEY, sv, {}));
 }
 
@@ -2421,7 +2439,7 @@ function surveyDuplicates(sv) {
 }
 
 async function drawJournal(sub, host) {
-  sub.replaceChildren(el('span', { class: 'grow', text: 'Changes made to this directory, and the holding area' }));
+  sub.replaceChildren(caption('Changes and the holding area'));
   if (S.info.snapshot) {
     host.replaceChildren(el('p', { class: 'note', text: 'Snapshot mode: this is a recorded copy of the directory structure, so nothing can be changed and there is no journal.' }));
     return;
@@ -2437,7 +2455,7 @@ async function drawJournal(sub, host) {
   const ro = S.info.readOnly;
   const entries = [...data.journal].reverse();
   host.replaceChildren(
-    el('details', { open: true }, el('summary', {}, 'Changes', el('span', { class: 'n', text: fmtCount(entries.length) })),
+    el('details', { open: true }, el('summary', {}, el('span', { class: 't', text: 'Changes' }), el('span', { class: 'n', text: fmtCount(entries.length) })),
       !ro && S.warm ? el('p', { class: 'note', text: WARM_SENTENCE }) : null,
       entries.length ? null : el('p', { class: 'note', text: ro ? 'Read-only mode: nothing can be changed.' : 'Nothing has been changed yet.' }),
       entries.length ? el('p', { class: 'note', text: 'Kept in .terrane-trash with the holding area, so Undo still works after Terrane restarts.' }) : null,
@@ -2445,7 +2463,7 @@ async function drawJournal(sub, host) {
       entries.map((e) => el('div', { class: 'item is-static' }, el('span', { class: e.undone ? 'swatch is-empty' : 'swatch', style: e.undone ? null : { background: 'var(--verdigris)' } }),
         el('span', {}, el('span', { class: 'nm', text: e.label }),
           el('span', { class: 'path', text: `${fmtDate(e.at)}${e.earlier ? ' · earlier session' : ''}${e.purged ? ' · purged' : e.undone ? ' · undone' : ''}` })), el('span')))),
-    el('details', { open: true }, el('summary', {}, 'Holding area', el('span', { class: 'n', text: fmtCount(data.holding.length) })),
+    el('details', { open: true }, el('summary', {}, el('span', { class: 't', text: 'Holding area' }), el('span', { class: 'n', text: fmtCount(data.holding.length) })),
       el('p', { class: 'note', text: data.holding.length ? 'Removed items wait here, inside .terrane-trash in this directory, until restored or purged.' : 'Empty. Removed items wait here until restored or purged.' }),
       data.holding.map((h) => el('div', { class: 'item is-static' }, el('span', { class: 'swatch' }),
         el('span', {}, el('span', { class: 'nm', text: h.name }), el('span', { class: 'path', text: `from ${h.origin} · ${fmtDate(h.at)}` })),
@@ -2477,8 +2495,34 @@ async function drawJournal(sub, host) {
 
 /* ---------- inspector ---------- */
 
+/** A fact: its label (one line, its words also its title) and its value. */
 function fact(label, ...value) {
-  return el('div', {}, el('dt', { text: label }), el('dd', {}, ...value));
+  return el('div', {}, el('dt', { text: label, title: label }), el('dd', {}, ...value));
+}
+
+/**
+ * A value built from parts: each figure with its unit in a span.part that
+ * never breaks, joined by " · ", so a value breaks only after a separator.
+ * A part may be a node (a <b>) or text; null and false are left out.
+ */
+function parts(...items) {
+  const out = [];
+  for (const x of items.flat()) {
+    if (x == null || x === false || x === '') continue;
+    if (out.length) out.push(' · ');
+    out.push(el('span', { class: 'part' }, x));
+  }
+  return out;
+}
+
+/**
+ * A section's head: its title, the rule, and a figure at the right in
+ * mono. The text reads "Title · figure" (an .sr " · " before the figure),
+ * as the head read before the figure had a place of its own.
+ */
+function sectionTitle(text, figure = null) {
+  return el('div', { class: 'section-title' }, el('span', { class: 't', text, title: text }),
+    figure != null && figure !== '' ? [el('span', { class: 'sr', text: ' · ' }), el('span', { class: 'n', text: figure })] : null);
 }
 const shareBar = (part, whole) => el('span', { class: 'share' }, el('i', { style: { width: `${whole ? Math.min(100, (part / whole) * 100) : 0}%` } }));
 const pct = (part, whole) => (whole ? `${((part / whole) * 100).toFixed(part / whole < 0.1 ? 1 : 0)}%` : '0%');
@@ -2487,7 +2531,7 @@ function composition(dir) {
   const parts = KINDS.map((k, i) => ({ k, bytes: dir.ks[i] })).filter((p) => p.bytes > 0).sort((a, b) => b.bytes - a.bytes);
   if (!parts.length) return [];
   return [
-    el('div', { class: 'section-title', text: 'Composition' }),
+    sectionTitle('Composition'),
     el('div', { class: 'comp', role: 'img', 'aria-label': parts.map((p) => `${p.k.label} ${pct(p.bytes, dir.s)}`).join(', ') },
       parts.map((p) => el('i', { style: { width: `${(p.bytes / dir.s) * 100}%`, background: cssHex(p.k.color) }, title: `${p.k.label} ${fmtBytes(p.bytes)}` }))),
     el('ul', { class: 'comp-key' }, parts.slice(0, 6).map((p) => el('li', {}, el('span', { class: 'swatch', style: { background: cssHex(p.k.color) } }), el('span', { text: p.k.label }), el('span', { text: pct(p.bytes, dir.s) })))),
@@ -2500,9 +2544,9 @@ function composition(dir) {
  * screen-reader user learns that it exists and what stops it; the
  * section's note says the same where it can be seen.
  */
-function actionButton(label, run, { off, danger, wide, title, icon: name } = {}) {
+function actionButton(label, run, { off, danger, wide, title, icon: name, named } = {}) {
   return el('button', {
-    class: `btn${danger ? ' btn-danger' : ''}${wide ? ' wide' : ''}`, type: 'button', 'aria-disabled': off ? 'true' : null,
+    class: `btn${danger ? ' btn-danger' : ''}${wide ? ' wide' : ''}`, type: 'button', 'aria-disabled': off ? 'true' : null, 'data-named': named ? '' : null,
     title: off ? `Unavailable: ${off}` : title, onclick: (e) => { if (!off) run(e); },
   }, name ? icon(name) : null, label, off ? el('span', { class: 'sr', text: `, unavailable: ${off}` }) : null);
 }
@@ -2542,9 +2586,9 @@ function drawInspectorNow() {
     const off = nodes.some((n) => hostOf(n)) ? 'inside an archive' : ro;
     host.replaceChildren(
       el('div', { class: 'insp-title' }, el('div', { class: 'insp-kind', text: 'Selection' }), el('h3', { class: 'insp-name', text: `${fmtCount(nodes.length)} items` })),
-      el('dl', { class: 'facts' }, fact('Size', el('b', { text: fmtBytes(size) }), ` · ${pct(size, S.model.root.s)} of root`, shareBar(size, S.model.root.s)),
+      el('dl', { class: 'facts' }, fact('Size', parts(el('b', { text: fmtBytes(size) }), `${pct(size, S.model.root.s)} of root`), shareBar(size, S.model.root.s)),
         fact('Folders', fmtCount(nodes.filter((n) => n.d).length)), fact('Files', fmtCount(nodes.filter((n) => !n.d).length))),
-      el('div', { class: 'section-title', text: 'Actions' }),
+      sectionTitle('Actions'),
       el('div', { class: 'actions-grid' }, actionButton('Move to…', () => startPlacing('move'), { off, icon: 'move' }), actionButton('Copy to…', () => startPlacing('copy'), { off, icon: 'copy' }),
         actionButton('Duplicate', () => duplicate(), { off, icon: 'duplicate' }), actionButton('Copy paths', () => copyPaths(), { icon: 'copyPath' }),
         actionButton('Remove…', () => remove(), { off, danger: true, icon: 'remove' }), actionButton('Clear selection', () => select(null), { icon: 'clear' })),
@@ -2593,6 +2637,9 @@ function buildSections(reg, node, ctx) {
   return parts.filter(Boolean);
 }
 
+/** A path as text with a <wbr> after every "/" (and so after "!/"): it breaks only there, never inside a name. */
+const pathBreaks = (p) => p.split('/').flatMap((seg, i, all) => (i < all.length - 1 ? [`${seg}/`, el('wbr')] : [seg])).filter((x) => x !== '');
+
 const readingRow = (r) => el('li', {}, el('span', { class: `glyph ${r.glyph}` }), el('span', {}, el('b', { text: r.title }), r.text));
 
 /* The inspector's own sections, in INSPECTOR order. */
@@ -2614,11 +2661,11 @@ function nodeFacts(node, ctx) {
   ctx.linkRow = el('div', { hidden: true }, el('dt', { text: 'Points to' }), el('dd'));
   const top = ctx.inside ? S.interior.root : S.model.root;
   return el('dl', { class: 'facts' },
-    fact('Size', el('b', { text: fmtBytes(node.s) }), node.s >= 1024 ? ` · ${fmtCount(node.s)} B` : ''),
+    fact('Size', parts(el('b', { text: fmtBytes(node.s) }), node.s >= 1024 ? `${fmtCount(node.s)} B` : null)),
     parent?.d ? fact('Of parent', pct(node.s, parent.s), shareBar(node.s, parent.s)) : null,
-    fact(ctx.inside ? 'Of the archive' : 'Of root', pct(node.s, top.s), shareBar(node.s, top.s)),
-    node.d ? fact('Contains', `${fmtCount(node.fc)} files · ${fmtCount(node.dc)} folders`) : null,
-    node.d ? fact('Levels', `${depthOf(node)} above · ${node.h} below`) : fact('Level', String(depthOf(node))),
+    fact(ctx.inside ? 'Of archive' : 'Of root', pct(node.s, top.s), shareBar(node.s, top.s)),
+    node.d ? fact('Contains', parts(`${fmtCount(node.fc)} files`, `${fmtCount(node.dc)} folders`)) : null,
+    node.d ? fact('Levels', parts(`${depthOf(node)} above`, `${node.h} below`)) : fact('Level', String(depthOf(node))),
     fact(node.d ? 'Newest' : 'Changed', `${fmtDate(node.d ? node.mm : node.m)}`, el('br'), fmtAge(node.d ? node.mm : node.m)),
     el('div', {}, el('dt', { text: 'Created' }), ctx.created),
     ctx.linkRow,
@@ -2630,7 +2677,7 @@ function nodeCopies(node, ctx) {
   const g = S.survey.dupGroups[node.dup - 1];
   if (!g) return null;
   return [
-    el('div', { class: 'section-title', text: g.verified ? (g.mode === 'sampled' ? 'Probable copies' : 'Identical copies') : 'Same-size candidates' }),
+    sectionTitle(g.verified ? (g.mode === 'sampled' ? 'Probable copies' : 'Identical copies') : 'Same-size candidates'),
     el('div', {}, g.files.filter((f) => f !== node).slice(0, 8).map((f) => itemButton(f, ''))),
     ...dupExtras(g, { node, where: 'inspector', ro: ctx?.ro ?? writable() }),
   ];
@@ -2655,7 +2702,7 @@ function nodeActions(node, { ro, lockRoot, visible, inside }) {
   // Inside an open archive nothing is opened, revealed or changed.
   const shut = inside ? 'inside an archive' : null;
   return [
-    el('div', { class: 'section-title', text: 'Actions' }),
+    sectionTitle('Actions'),
     el('div', { class: 'actions-grid' },
       node.d ? actionButton('Go there', () => setFocus(node), { off: node.e ? 'cannot be read' : null, icon: 'goThere' })
         : actionButton('Open', () => activate(node), { title: 'Open with the system default application', off: S.info.snapshot ? 'snapshot mode' : shut, icon: 'open' }),
@@ -2688,17 +2735,17 @@ function nodePreview(node, ctx) {
     else if (t?.status === 'heavy-svg') body = el('div', { class: 'none', text: 'Heavy vector art. npm run thumbs -- --heavy-svg renders it.' });
     else if (t?.status === 'error') body = el('div', { class: 'none', text: 'This file could not be read as an image.' });
     else body = el('div', { class: 'none', text: 'No thumbnail yet. npm run thumbs makes one.' });
-    return [el('div', { class: 'section-title', text: t?.w ? `Preview · ${fmtCount(t.w)} × ${fmtCount(t.h)} px` : 'Preview' }), el('div', { class: 'preview' }, body)];
+    return [sectionTitle('Preview', t?.w ? `${fmtCount(t.w)} × ${fmtCount(t.h)} px` : null), el('div', { class: 'preview' }, body)];
   }
   if (S.info.snapshot) {
-    return [el('div', { class: 'section-title', text: 'Preview' }), el('div', { class: 'preview' }, el('div', { class: 'none', text: 'Snapshot mode holds names, sizes and dates, not contents.' }))];
+    return [sectionTitle('Preview'), el('div', { class: 'preview' }, el('div', { class: 'none', text: 'Snapshot mode holds names, sizes and dates, not contents.' }))];
   }
   if (node.k === 0 || node.k === 6 || TEXT_EXT.has(ext)) {
     const pre = el('pre', { text: '…' });
     fetch(rawUrl(node, 16384)).then((r) => (r.ok ? r.text() : Promise.reject())).then((t) => {
       pre.textContent = t.includes('\u0000') ? 'Binary content: no text preview.' : t;
     }).catch(() => { pre.textContent = 'This file could not be read.'; });
-    return [el('div', { class: 'section-title', text: node.s > 16384 ? 'Preview · first 16 KB' : 'Preview' }), el('div', { class: 'preview' }, pre)];
+    return [sectionTitle('Preview', node.s > 16384 ? 'first 16 KB' : null), el('div', { class: 'preview' }, pre)];
   }
   return null;
 }
@@ -2718,12 +2765,65 @@ function drawLegend() {
   keepFocus($('block'), drawLegendNow, document.querySelector('#lens [aria-checked=true]'));
 }
 
+/**
+ * A title block label's words: the label's .text span, after its icon.
+ * more is a tail that drops out when the window is narrow (block.css).
+ */
+function setLabel(id, text, more = '') {
+  const t = $(id).querySelector('.text');
+  if (t.textContent === text + more) return;
+  t.replaceChildren(...[text, more ? el('span', { class: 'more', text: more }) : null].filter(Boolean));
+}
+
+/**
+ * Shows only whole chips: those that do not fit stand behind a "+N" chip
+ * whose menu lists them, each isolating its kind as its chip does; the
+ * Verify button steps out when it does not fit (the Survey and the
+ * palette keep it). Run after each draw and whenever the legend's width
+ * changes.
+ */
+function fitLegend() {
+  const host = $('legend');
+  host.querySelector('.chip-more')?.remove();
+  const chips = [...host.querySelectorAll('.chip[data-kind]')];
+  for (const c of chips) c.hidden = false;
+  const verify = host.querySelector('.legend-verify');
+  if (verify) verify.hidden = false;
+  const room = host.clientWidth;
+  if (host.scrollWidth <= room + 0.5) return;
+  if (verify) {
+    verify.hidden = true;
+    return;
+  }
+  if (!chips.length) return;
+  const more = el('button', { class: 'chip chip-more', type: 'button', 'aria-haspopup': 'menu', text: `+${chips.length}` });
+  host.append(more);
+  const gap = parseFloat(getComputedStyle(host).columnGap) || 0;
+  const left = host.getBoundingClientRect().left;
+  const need = more.getBoundingClientRect().width + gap;
+  let kept = 0;
+  for (const c of chips) {
+    if (c.getBoundingClientRect().right - left + need > room + 0.5) break;
+    kept++;
+  }
+  const rest = chips.slice(kept);
+  for (const c of rest) c.hidden = true;
+  more.textContent = `+${rest.length}`;
+  more.title = `${rest.length} more: ${rest.map((c) => c.dataset.label).join(', ')}`;
+  more.setAttribute('aria-label', `${rest.length} more kinds: ${rest.map((c) => c.dataset.label).join(', ')}`);
+  more.onclick = () => {
+    const r = more.getBoundingClientRect();
+    openMenu(r.left, r.top - 2, rest.map((c) => ({ label: `${c.dataset.label} · ${c.dataset.bytes}`, run: () => c.click() })), { title: 'More kinds' });
+  };
+}
+let legendFit = 0;
+
 function drawLegendNow() {
   const host = $('legend');
   if (!S.focus) return;
   const gradient = (stops) => `linear-gradient(to right, ${stops.map(cssHex).join(', ')})`;
   if (S.lens === 'kind') {
-    $('legend-label').textContent = 'Kind · click to isolate';
+    setLabel('legend-label', 'Kind', ' · click to isolate');
     const kinds = KINDS.map((k, i) => ({ k, i, bytes: S.focus.ks[i] })).filter((x) => x.bytes > 0).sort((a, b) => b.bytes - a.bytes);
     if (!kinds.length) {
       host.replaceChildren(el('span', { class: 'legend-none', text: S.focus.fc ? 'Only empty files here.' : 'No files here.' }));
@@ -2731,31 +2831,38 @@ function drawLegendNow() {
     }
     host.replaceChildren(...kinds.map((x) => el('button', {
       class: 'chip', type: 'button', 'aria-pressed': String(S.kindFilter === x.i), title: `${x.k.label}: ${fmtBytes(x.bytes)} here`,
+      'data-kind': String(x.i), 'data-label': x.k.label, 'data-bytes': fmtBytes(x.bytes),
       onclick: () => {
         S.kindFilter = S.kindFilter === x.i ? -1 : x.i;
         repaint();
         drawLegend();
       },
     }, el('span', { class: 'swatch', style: { background: cssHex(x.k.color) } }), x.k.label)));
+    fitLegend();
   } else if (S.lens === 'age') {
     // Files by their last change; a closed mass by its typical age
     // (strata.js), except inside an open archive, which the age table
     // does not hold: there a closed mass shows its newest change.
-    $('legend-label').textContent = 'Last change · closed masses: typical age';
+    setLabel('legend-label', 'Last change · closed masses: typical age');
     const archive = S.interior ? ` Inside ${S.interior.host.n} a closed mass shows its newest change: typical ages are for folders on disk.` : '';
     host.replaceChildren(el('div', { class: 'rampbar', title: `A file shows its last change. A closed mass shows its typical age: half its bytes have not changed since then.${archive}` },
       '10 years +', el('i', { style: { background: gradient(THEME.ageRamp) } }), 'today'));
   } else if (S.lens === 'size') {
-    $('legend-label').textContent = 'File size · log scale';
+    setLabel('legend-label', 'File size · log scale');
     host.replaceChildren(el('div', { class: 'rampbar' }, '0', el('i', { style: { background: gradient(THEME.sizeRamp) } }), fmtBytes(S.survey?.largest[0]?.s || 0)));
   } else {
-    $('legend-label').textContent = 'Duplicates';
+    setLabel('legend-label', 'Duplicates');
     const groups = S.survey?.dupGroups || [];
     const v = groups.filter((g) => g.verified).length;
-    host.replaceChildren(el('div', { class: 'rampbar' },
-      el('span', { class: 'swatch', style: { background: 'repeating-linear-gradient(135deg, var(--garnet) 0 3px, var(--paper) 3px 6px)' } }), `same size · ${fmtCount(groups.length - v)}`,
-      el('span', { class: 'swatch', style: { background: 'var(--garnet)' } }), `confirmed · ${fmtCount(v)}`,
-      groups.length ? el('button', { class: 'btn btn-small', type: 'button', onclick: verifyDuplicates }, icon('verify'), 'Verify by content') : ''));
+    // Each group a swatch and its words, held together; Verify steps out
+    // when it does not fit (fitLegend).
+    host.replaceChildren(el('div', { class: 'rampbar is-units' },
+      el('span', { class: 'unit', title: `Same size: ${fmtCount(groups.length - v)} groups` }, el('span', { class: 'swatch', style: { background: 'repeating-linear-gradient(135deg, var(--garnet) 0 3px, var(--paper) 3px 6px)' } }),
+        el('span', { class: 'w', text: 'same size · ' }), fmtCount(groups.length - v)),
+      el('span', { class: 'unit', title: `Confirmed: ${fmtCount(v)} groups` }, el('span', { class: 'swatch', style: { background: 'var(--garnet)' } }),
+        el('span', { class: 'w', text: 'confirmed · ' }), fmtCount(v))),
+    groups.length ? el('button', { class: 'btn btn-small legend-verify', type: 'button', onclick: verifyDuplicates }, icon('verify'), 'Verify by content') : '');
+    fitLegend();
   }
 }
 
@@ -2765,7 +2872,8 @@ function statusLine() {
   if (statusParts) return statusParts;
   const fig = () => el('span', { class: 'num' });
   statusParts = { lamp: el('span', { class: 'pulse' }), dirs: fig(), files: fig(), bytes: fig() };
-  $('status').replaceChildren(statusParts.lamp, el('span', {}, statusParts.dirs, ' folders · ', statusParts.files, ' files · ', statusParts.bytes));
+  // Files, bytes, folders: in a narrow cell the ellipsis takes the least needed figure first.
+  $('status').replaceChildren(statusParts.lamp, el('span', {}, statusParts.files, ' files · ', statusParts.bytes, ' · ', statusParts.dirs, ' folders'));
   return statusParts;
 }
 
@@ -2784,7 +2892,7 @@ function drawStatus() {
   else if (S.watch === 'lost') { cls += ' is-off'; label = 'Service stopped'; }
   else { cls += ' is-off'; label = 'Manual refresh'; }
   const fit = S.layout?.over ? ' · grain raised, some blocks left out' : S.layout?.coarsened ? ' · grain raised to fit' : '';
-  setText($('status-label'), `${label}${S.info.readOnly && !S.info.snapshot ? ' · read-only' : ''}${fit}`);
+  setText($('status-label').querySelector('.text'), `${label}${S.info.readOnly && !S.info.snapshot ? ' · read-only' : ''}${fit}`);
   const parts = statusLine();
   parts.lamp.className = cls;
   countTo(parts.dirs, r.dc, fmtCount);
@@ -2884,12 +2992,15 @@ const veilMark = () => {
  * the survey or the connection failed, 'quiet' when the world is simply
  * unavailable and the rest of the page must stay usable.
  */
-function fatal(title, text, kind = 'error') {
+function fatal(title, text, kind = 'error', detail = '') {
   const veil = $('veil');
   clearTimeout(veilTimer);
   veil.className = kind === 'busy' ? '' : `is-${kind}`;
+  // A quiet message is a sentence, set in sans; a path or an error in
+  // mono. The detail behind a quiet message stands on a line of its own.
   veil.replaceChildren(el('div', { class: 'stack', style: { alignItems: 'center', gap: '10px' } },
-    veilMark(), el('strong', { text: title }), el('div', { class: 'veil-path', text }),
+    veilMark(), el('strong', { text: title }), el('div', { class: kind === 'quiet' ? 'veil-say' : 'veil-path', text }),
+    detail ? el('div', { class: 'veil-detail', text: detail }) : null,
     kind === 'busy' ? el('div', { class: 'veil-rule', 'aria-hidden': 'true' }) : null));
   veil.hidden = false;
 }
@@ -3069,6 +3180,11 @@ function wireControls() {
   const ro = new ResizeObserver(() => slideIndicators());
   ro.observe(document.querySelector('.tabs'));
   ro.observe($('lens'));
+  // The legend shows whole chips at any width: fitted again when it resizes.
+  new ResizeObserver(() => {
+    cancelAnimationFrame(legendFit);
+    legendFit = requestAnimationFrame(fitLegend);
+  }).observe($('legend'));
   $('placing-cancel').onclick = stopPlacing;
   $('placing-here').onclick = () => S.placing && transfer(S.placing.type, S.placing.nodes, S.focus);
 }
@@ -3268,13 +3384,13 @@ function wireKeys() {
   INSPECTOR.focus.add({ id: 'title', order: 0, build: (f) => el('div', { class: 'insp-title' }, el('div', { class: 'insp-kind', text: 'You are in' }), el('h3', { class: 'insp-name', text: f.n })) });
   INSPECTOR.focus.add({
     id: 'facts', order: 10,
-    build: (f) => el('dl', { class: 'facts' }, fact('Size', el('b', { text: fmtBytes(f.s) })), fact('Contains', `${fmtCount(f.fc)} files · ${fmtCount(f.dc)} folders`), fact('Depth below', `${f.h} level${f.h === 1 ? '' : 's'}`)),
+    build: (f) => el('dl', { class: 'facts' }, fact('Size', el('b', { text: fmtBytes(f.s) })), fact('Contains', parts(`${fmtCount(f.fc)} files`, `${fmtCount(f.dc)} folders`)), fact('Depth below', `${f.h} level${f.h === 1 ? '' : 's'}`)),
   });
   INSPECTOR.focus.add({ id: 'composition', order: 20, build: (f) => composition(f) });
-  INSPECTOR.focus.add({ id: 'reading', order: 90, build: () => [el('div', { class: 'section-title', text: 'Reading the world' }), el('ul', { class: 'reading' }, [...READING].map(readingRow))] });
+  INSPECTOR.focus.add({ id: 'reading', order: 90, build: () => [sectionTitle('Reading the world'), el('ul', { class: 'reading' }, [...READING].map(readingRow))] });
 
   INSPECTOR.node.add({ id: 'title', order: 0, build: nodeTitle });
-  INSPECTOR.node.add({ id: 'path', order: 5, build: (node) => el('div', { class: 'insp-path' }, el('code', { text: absPath(node) }), el('button', { class: 'btn btn-small', type: 'button', title: 'Copy path (Ctrl+C)', onclick: () => copyPaths([node]) }, icon('copyPath'), 'Copy')) });
+  INSPECTOR.node.add({ id: 'path', order: 5, build: (node) => el('div', { class: 'insp-path' }, el('code', {}, pathBreaks(absPath(node))), el('button', { class: 'btn btn-small', type: 'button', title: 'Copy path (Ctrl+C)', onclick: () => copyPaths([node]) }, icon('copyPath'), 'Copy')) });
   INSPECTOR.node.add({ id: 'facts', order: 10, build: nodeFacts });
   INSPECTOR.node.add({ id: 'composition', order: 20, build: (node) => (node.d ? composition(node) : null) });
   INSPECTOR.node.add({ id: 'copies', order: 30, build: nodeCopies });
@@ -3352,6 +3468,9 @@ const API = Object.freeze({
   rescan: fullScan,
   drawAll, drawTabs, drawLedger, drawInspector, drawLegend, drawStatus, runQuery, setQuery, tabSections,
   el, notice, section, itemButton, actionButton, fact, shareBar, pct,
+  // A value from parts that break only at their " · " separators, and a
+  // section's head with its figure at the right.
+  parts, sectionTitle,
 });
 
 /** Installs feature modules; one that fails to start is reported and the rest still start. */
@@ -3421,7 +3540,7 @@ async function start() {
     // The canvas keeps its keys (the arrows, Enter, Backspace and the
     // letters) but no longer promises travel it cannot do.
     $('view').setAttribute('aria-label', 'The 3D world is unavailable in this browser. Arrow keys still move between items, Enter goes to a folder or opens a file, Backspace goes up. The ledger lists the same items.');
-    fatal('3D view unavailable', `This browser could not start WebGL (${err.message}). The ledger, inspector, search and every operation still work.`, 'quiet');
+    fatal('3D view unavailable', 'This browser could not start WebGL. The ledger, inspector, search and every operation still work.', 'quiet', err.message);
     $('veil').style.pointerEvents = 'none';
   }
   if (!S.noGL) {

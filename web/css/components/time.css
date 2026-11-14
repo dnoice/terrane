@@ -1,16 +1,23 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Time View (Terrane Edition - v1.0)
+ *     - Title: Time View (Terrane Edition - v1.1)
  *     - File Name: time.css
  *     - Relative Path: web/css/components/time.css
  *     - Artifact Type: stylesheet
- *     - Version: 1.0.0
- *     - Date: 11/12/2026
- *     - Update: Thursday, November 12, 2026
+ *     - Version: 1.1.0
+ *     - Date: 11/14/2026
+ *     - Update: Saturday, November 14, 2026
  *     - Author: Dennis 'dendogg' Smaltz
  *     - A.I. Acknowledgement: Anthropic - Claude Opus 5.5
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
+ *
+ * ✒ Changelog:
+ *     - 1.1.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
+ *       Since section's rows and its sentence stand on the inspector's
+ *       columns, as every inspector list does.
+ *     - 1.0.0 (11/12/2026) [dendogg + Anthropic - Claude Opus 5.5] — Initial
+ *       release.
  *
  * ✒ Description:
  *     The date scrub's part of the sheet: the As of stepper in the title
@@ -58,5 +65,4 @@
 /* ---------- the inspector's Since section ---------- */
 
 .since-where { padding-bottom: var(--s-2); border-bottom: var(--border-2); }
-.since-where .item { padding-left: var(--s-3); }
-.since-none { margin: 0; padding: 0 var(--s-3) var(--s-3); border-bottom: var(--border-2); color: var(--text-2); font-size: var(--fs-md); }
+.since-none { margin: 0; padding: 0 var(--gutter) var(--s-3); border-bottom: var(--border-2); color: var(--text-2); font-size: var(--fs-md); }

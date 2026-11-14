@@ -1,16 +1,25 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Base Styles (Terrane Edition - v1.0)
+ *     - Title: Base Styles (Terrane Edition - v1.1)
  *     - File Name: base.css
  *     - Relative Path: web/css/base.css
  *     - Artifact Type: stylesheet
- *     - Version: 1.0.0
- *     - Date: 11/12/2026
- *     - Update: Thursday, November 12, 2026
+ *     - Version: 1.1.0
+ *     - Date: 11/14/2026
+ *     - Update: Saturday, November 14, 2026
  *     - Author: Dennis 'dendogg' Smaltz
  *     - A.I. Acknowledgement: Anthropic - Claude Opus 5.5
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
+ *
+ * ✒ Changelog:
+ *     - 1.1.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — Three
+ *       uppercase voices, defined here once: LABEL names a thing, KEY is
+ *       pressed (with one variant for four keys in a narrow ledger) and TIGHT
+ *       stands where room is short (tabs, column heads, badges); an icon
+ *       beside capitals sits a pixel up, on their cap height.
+ *     - 1.0.0 (11/12/2026) [dendogg + Anthropic - Claude Opus 5.5] — Initial
+ *       release.
  *
  * ✒ Description:
  *     The reset and the element defaults every component starts from:
@@ -26,8 +35,9 @@
  *       item in the world
  *     - Thin scrollbars in the rule colour, standard and WebKit forms
  *     - Tabular figures wherever DM Mono sets a number
- *     - The reference-label voice (expanded capitals) as one rule shared
- *       by every label in the interface
+ *     - Three uppercase voices and no others: LABEL (expanded capitals
+ *       for every label), KEY (sort keys) and TIGHT (tabs, column heads,
+ *       badges), with icons beside capitals set on their cap height
  *
  * ✒ Other Important Information:
  *     - Dependencies: tokens.css (layer "tokens")
@@ -101,13 +111,40 @@ kbd {
   white-space: nowrap;
 }
 
-/* The reference-label voice: expanded capitals, used for every label. */
-.caps, .cell-label, .panel-head h2, .tabs button, .facts dt, .section-title, .menu-title, .ref, .guide h3, .field span {
+/*
+ * Three uppercase voices, defined here and nowhere else. A component may
+ * set a label's colour, line height and spacing, never its type.
+ * LABEL names a thing: panel heads, section titles, fact and cell labels,
+ * field labels, menu titles, guide heads, fieldset legends, palette groups.
+ */
+.caps, .cell-label, .panel-head h2, .facts dt, .section-title, .menu-title, .ref, .guide h3, .field span,
+.rich summary, .palette-group, .rename-set legend, .job-title {
   font: 700 var(--fs-2xs) / 1 var(--sans);
-  font-stretch: var(--wdth-expanded);
+  font-stretch: var(--caps-label-wdth);
   letter-spacing: var(--track-caps);
   text-transform: uppercase;
 }
+/* KEY is pressed: sort keys and a count row's text tools. */
+.sort, .caps-key {
+  font: 600 var(--fs-2xs) / 1 var(--sans);
+  font-stretch: var(--caps-key-wdth);
+  letter-spacing: var(--caps-key-track);
+  text-transform: uppercase;
+}
+/* Its one variant: four keys on one line in a ledger 300 px or narrower. */
+@container ledger (max-width: 300px) {
+  .sort, .caps-key { font-stretch: var(--wdth-normal); letter-spacing: 0.02em; }
+}
+/* TIGHT stands where room is short: tabs, table column heads, badges, the scale's unit. */
+.tabs button, .caps-tight, .strata-rows thead th, .rename-preview th, .session-row .bulk {
+  font: 700 var(--fs-3xs) / 1 var(--sans);
+  font-stretch: var(--wdth-normal);
+  letter-spacing: var(--caps-tight-track);
+  text-transform: uppercase;
+}
+/* An icon beside capitals sits on their cap height, a pixel above the
+   centre of the line; beside mixed case it keeps the line's centre. */
+.sort .icon, .tabs button .icon, .cell-label .icon, .caps-key .icon { translate: 0 -1px; }
 
 /* Icons: Lucide symbols drawn in the current text colour. */
 .icon {

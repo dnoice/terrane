@@ -1,10 +1,10 @@
 <!--
 ✒ Metadata
-    - Title: Shipped File Changelogs (Terrane Edition - v1.8)
+    - Title: Shipped File Changelogs (Terrane Edition - v1.9)
     - File Name: CHANGELOG.md
     - Relative Path: CHANGELOG.md
     - Artifact Type: docs
-    - Version: 1.8.0
+    - Version: 1.9.0
     - Date: 11/14/2026
     - Update: Saturday, November 14, 2026
     - Author: Dennis 'dendogg' Smaltz
@@ -12,6 +12,12 @@
     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
 
 ✒ Changelog:
+    - 1.9.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — Records the polish of the panels:
+      app.js 1.12.0, index.html 1.7.0, tokens.css 1.4.0 and landmarks.js 1.4.0. Adds the sections
+      for web/css/layout.css, web/css/components/ledger.css, web/css/components/traverse.css,
+      web/js/traverse.js, web/js/time.js, web/js/interior.js and web/js/icons.js, whose 1.0.0
+      entries left their headers with these releases. app.js's header rolls its 1.9.0 entry out,
+      and its header words now open the long form kept here.
     - 1.8.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — Records the names on the blocks:
       viewport.js 1.7.0. viewport.js's header rolls its 1.4.0 entry out; this file already
       holds it.
@@ -88,6 +94,37 @@ short form is kept too.
 
 ## web/js/app.js
 
+- 1.12.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — The sheet's polish: the ledger
+  head in two rows (the count and its tools, then the keys over the columns; Select all an icon)
+  with one-line captions; facts from parts, sectionTitle and the path broken after each slash;
+  the legend's whole chips behind +N; the status reads files, bytes, folders; the veil's error
+  on its own line. drawContents builds div.sub-row.is-count (span.sub-count with span.n "14
+  items" and span.b " · 199 GB", then the LEDGER_SUB tools) and div.sub-row.is-columns with the
+  sort keys in the order seen, Name, Changed, Untouched, Size; drawFindings the count row, the
+  note as a row of its own (div.sub-row.sub-note), then Select all as an icon button named by
+  its words (span.sr) in the mark slot and the keys Changed and Size. #ledger-sub carries
+  data-tab, so the stylesheet can let the selection's total stand in for the bytes in Contents
+  and for the count in Findings. Captions are one line of 36 characters or fewer, their words
+  also their title: "Noteworthy conditions, every level", "Changes and the holding area", "Type
+  in Find to search every level.", "Compiled once the survey is done", "Runs again once the
+  survey is done". A disclosure's title is a span.t, so it can end in an ellipsis. In the
+  inspector fact() titles its label, and api.parts(...) builds a value from span.part nodes
+  joined by " · ", so a value breaks only after a separator: Size, Contains, Levels and the
+  selection's Size use it. api.sectionTitle(text, figure) draws a section's head with its figure
+  in a mono span.n at the right, an .sr " · " before it so its text reads as before ("Preview ·
+  first 16 KB"); every head the controller draws uses it. The fact "Of the archive" is "Of
+  archive". A path is text with a <wbr> after every "/". actionButton takes named, which marks a
+  button whose label carries a name (data-named) as one that may wrap. The legend's label words
+  go through setLabel into span.text, "Kind" with " · click to isolate" as a tail a narrow
+  window drops; fitLegend keeps the chips that fit whole and puts the rest behind a "+N" chip
+  whose menu (openMenu) isolates each kind as its chip does, steps Verify by content out when it
+  does not fit, and runs after each draw and on a ResizeObserver of #legend. The Duplicates
+  legend draws each group as a swatch and its words. The status line reads files, bytes,
+  folders, so a narrow cell's ellipsis takes folders first, and its label's words go into
+  span.text beside the lamp's icon. fatal() takes a detail: a quiet message is a sentence, and
+  "3D view unavailable" puts WebGL's error on a line of its own instead of in the middle of the
+  sentence.
+
 - 1.11.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — Paint gives each file its
   kind's colour in a tone of its own extension (extTone): five steps from 22 % darker to 24 %
   lighter, with common neighbours set apart (.ts and .tsx, .tsx and .css, .jpg and .png, .mov
@@ -109,106 +146,104 @@ short form is kept too.
   to the repository. A page opened from disk still says how to start the service, and so does
   one whose demo could not start. The header's 1.9.0 entry takes a short form.
 
-- 1.9.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — Seams for Wave 3's first
-  group, finding your way (the command palette, the remembered view and links, search
-  history and saved searches). Five registries, frozen with the rest and handed out in the
-  api: COMMANDS, the palette's actions that have no key ({ id, owner, order, section,
-  items() }, asked each time the palette opens, an item unavailable with its reason as off);
-  LEDGER_SUB, controls a feature adds to the ledger's count row for Contents or Findings
-  ({ tab, build(ctx) } with ctx { items, search, focus }, drawn in a span.sub-tools after
-  the sort keys, Findings' on its first sub-row, each control with a data-k so a redraw
-  keeps focus on it); AFTER_FOCUS, run(dir) in moveFocus once the folder you are in has
-  changed; AFTER_SELECT, run(sel, primary) at the end of select(), quiet ones included, and
-  of the new selectAll(); and TAB_SECTIONS, sections a feature adds to a tab another one
-  draws, built by api.tabSections(tab). The key table takes three fields only the palette
-  reads: labels (one palette item per key, on the lens 1 to 4 and the panels [ ]),
-  palette: false (the arrows, Enter and the menu key) and gl: true (V and 0, unavailable
-  without WebGL). The api gains setLens; selectAll(nodes, primary), which Findings' Select
-  all now uses; copyText(text, said, fail), the clipboard write and its refusal, which
-  copyPaths now uses with the same sentences; listItems; cursorTo(node), which moves the
-  list's cursor to a node and scrolls to it; rescan, the whole survey again; and
-  tabSections. S declares the searches slot. Find's own keydown handler returns first when
-  a listener installed before it has claimed the key with preventDefault, so the search
-  history's arrows can step without the list taking focus. Looking before you act: P is
-  allocated to Quick look in KEY_OWNERS; the api gains rawUrl(node, max), the address of a
-  file's bytes for a preview; and the inspector's preview reads its picture and text
-  extensions from model.js (IMAGE_EXT, TEXT_EXT), the list Quick look reads too. Contents
-  gains a fourth sort key, Untouched (titled "Longest untouched first (typical age)"):
-  the median step of the age table, descending (a file by its own step), then the older
-  last change, then the name; before the first age table, and inside an open archive,
-  whose folders the table does not hold, the last change alone, oldest first. It starts
-  in its natural order (dir 1) and reverses like the others; sortToggle takes titles for
-  an order that ascending and descending do not describe. In the ledger list, Ctrl with an
-  arrow, Page Up or Down, Home or End moves the cursor and leaves the selection alone, so
-  Space can gather several rows by keyboard. Acting on many: RENAME_MANY ({ id, owner,
-  run(nodes) }, the first entry wins), which the core F2 now dispatches to when more than
-  one item is selected, while F2 with one item opens the single rename as before and its
-  guide row is unchanged; MENU entries may define many(nodes, ctx), whose items follow
-  Copy paths in the menu of several (ctx { ro, off }, off naming an archive's lock), and
-  an entry needs items() or many(); INSPECTOR.many, sections after the Actions grid of a
-  selection of several, built with ctx { ro, off }; DUP_GROUP ({ id, owner, build(group,
-  ctx) }), what a feature adds under a group of duplicate candidates, in the inspector's
-  copies (ctx { node, where: 'inspector', ro }) and after each group's rows in the Survey
-  (ctx { node: null, where: 'survey', ro }), whose note now also gives the reclaimable size
-  of the confirmed groups; and api.relLabel(node), absPath without the root and its
-  separator, joined with '/', the root as '.' and an archive entry as dir/x.zip!/inner/file.
-  A verified group keeps the hash it was verified by. A survey after a refresh no longer
-  matches the old groups by their exact file lists, which dropped the verification of any
-  group whose size bucket held a file that matched none: what Verify by content proved is
-  kept per file (its hash, mode, size and last change), and a size group whose every file
-  is unchanged since is split by content again, as Verify split it. Verify by content runs
-  a survey still queued after a refresh first (surveyNow): pressed within the survey's
-  500 ms debounce it used to hash the nodes the refresh had just replaced, and the survey
-  that followed forgot the result. The inspector of a
-  selection of several no longer prints the word "null" under its Actions grid when no
-  action is unavailable (a writable service): the missing note was handed to
-  replaceChildren. Starting fast, a warm start: when GET /api/info names a kept tree
-  (warm) and this is not snapshot mode, start() sets S.warm ({ takenAt, pending,
-  failed }), says "Drawing <name> as it was on MM/DD/YYYY HH:MM" on the loading sheet,
-  reads GET /api/warm into the model and checks it against the meta's counts (root.dc + 1
-  folders, root.fc files). A tree that reads whole is surveyed (AFTER_SURVEY with { full:
-  true, warm: true }), laid out, drawn and handed over from the sheet at once, with a
-  12-second notice ("Showing <name> as it was when the last session surveyed it, <date>.
-  Surveying it as it is now; changes wait until then."), and the change stream connects
-  then, so a change on disk during the catch-up is noted; one that does not is set aside
-  with the notice "The tree from the last session could not be read, so Terrane surveyed
-  the directory afresh." and the page surveys from nothing. catchUp() then streams GET
-  /api/scan into a model of its own, touching nothing in S; notes the eye relative to the
-  box of the folder you are in (places.js anchorOf and poseRelative); takes the new tree
-  on with Model.adopt, so every node still there is kept; prunes the selection, focus and
-  trail; runs AFTER_REFRESH (null), the survey and AFTER_SURVEY with { full: false,
-  settled: true }; clears S.warm and withdraws its notice; runs the search again; lays the
-  world out with its boxes travelling and the location held through it, and, when the
-  folder's box moved, puts the eye back where it stood relative to it (flyTo, then hold);
-  reads again the folders the change stream or a refresh asked for meanwhile; and says
-  "Surveyed again: N files changed, M here now, K gone since the last session." or
-  "Nothing changed since the last session." A catch-up that fails keeps
-  the tree from the last session, with an error notice whose action is Survey again, and
-  the status reads "Last session · not surveyed". While S.warm is set, writable() returns
-  "the tree from the last session is still being checked", so every change control shows
-  unavailable with that reason (the menu, the inspector, the toolbar's New folder and
-  Undo, a row's drag); runOp (Open and Reveal aside), Undo, Restore and Purge, and N, F2,
-  M, Ctrl+D, Delete and placing refuse with "Changes wait while the tree from the last
-  session is still being checked. They are available again once the directory has been
-  surveyed." before a dialog asks or anything is sent; refreshDirs notes its folders and
-  returns a promise that settles once they have been read; the status reads "Last session
-  · surveying" with the busy lamp; and the Journal tab says that changes wait.
-  readOnlyMode(), new in the api, gives the service's own mode without that wait, for
-  what Terrane does not change itself (a terminal). A Rescan all begun meanwhile stops
-  the catch-up and lets go of what waited for it. scanStream(rel, depth, onBatch,
-  { route, signal }) reads any route that answers the scan's NDJSON. window.__terrane
-  gains firstDrawMs (performance.now() at the first layout that drew a box, rounded) and
-  warm: { used, settledMs }, and is set once the first tree is drawn, warm or not. The
-  header's 1.7.0 entry rolled out to keep it within 40 lines. The review of Wave 3:
-  refreshDirs and catchUp note the folder you were in before they prune the tree, and
-  fullScan before it starts a new one; once the selection, focus and trail are pruned
-  and AFTER_REFRESH has run (fullScan: once everything is reset and drawn), the new
-  focusMoved(was) runs AFTER_FOCUS when the location moved, so the address and the kept
-  view no longer name a folder that left the tree, and a reload no longer says "Nothing
-  at" it. asError carries moved; an Undo that fails with moved (one that stopped part
-  way) runs AFTER_OP with { type: 'undo' } and { ok: false, partial: true, moved, label,
-  affected }, reads the affected folders again and redraws the Journal tab before its
-  error notice, which now carries the service's own sentence.
+- 1.9.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — Wave 3's seams and features:
+  COMMANDS, LEDGER_SUB, AFTER_FOCUS, AFTER_SELECT and TAB_SECTIONS for the palette, the kept
+  view and saved searches; rawUrl and the Untouched order for Quick look and presets;
+  RENAME_MANY, MENU many(), INSPECTOR.many and DUP_GROUP for acting on many; the warm start (GET
+  /api/warm, catch-up and Model.adopt). In full in CHANGELOG.md. Seams for Wave 3's first group,
+  finding your way (the command palette, the remembered view and links, search history and saved
+  searches). Five registries, frozen with the rest and handed out in the api: COMMANDS, the
+  palette's actions that have no key ({ id, owner, order, section, items() }, asked each time
+  the palette opens, an item unavailable with its reason as off); LEDGER_SUB, controls a feature
+  adds to the ledger's count row for Contents or Findings ({ tab, build(ctx) } with ctx { items,
+  search, focus }, drawn in a span.sub-tools after the sort keys, Findings' on its first
+  sub-row, each control with a data-k so a redraw keeps focus on it); AFTER_FOCUS, run(dir) in
+  moveFocus once the folder you are in has changed; AFTER_SELECT, run(sel, primary) at the end
+  of select(), quiet ones included, and of the new selectAll(); and TAB_SECTIONS, sections a
+  feature adds to a tab another one draws, built by api.tabSections(tab). The key table takes
+  three fields only the palette reads: labels (one palette item per key, on the lens 1 to 4 and
+  the panels [ ]), palette: false (the arrows, Enter and the menu key) and gl: true (V and 0,
+  unavailable without WebGL). The api gains setLens; selectAll(nodes, primary), which Findings'
+  Select all now uses; copyText(text, said, fail), the clipboard write and its refusal, which
+  copyPaths now uses with the same sentences; listItems; cursorTo(node), which moves the list's
+  cursor to a node and scrolls to it; rescan, the whole survey again; and tabSections. S
+  declares the searches slot. Find's own keydown handler returns first when a listener installed
+  before it has claimed the key with preventDefault, so the search history's arrows can step
+  without the list taking focus. Looking before you act: P is allocated to Quick look in
+  KEY_OWNERS; the api gains rawUrl(node, max), the address of a file's bytes for a preview; and
+  the inspector's preview reads its picture and text extensions from model.js (IMAGE_EXT,
+  TEXT_EXT), the list Quick look reads too. Contents gains a fourth sort key, Untouched (titled
+  "Longest untouched first (typical age)"): the median step of the age table, descending (a file
+  by its own step), then the older last change, then the name; before the first age table, and
+  inside an open archive, whose folders the table does not hold, the last change alone, oldest
+  first. It starts in its natural order (dir 1) and reverses like the others; sortToggle takes
+  titles for an order that ascending and descending do not describe. In the ledger list, Ctrl
+  with an arrow, Page Up or Down, Home or End moves the cursor and leaves the selection alone,
+  so Space can gather several rows by keyboard. Acting on many: RENAME_MANY ({ id, owner,
+  run(nodes) }, the first entry wins), which the core F2 now dispatches to when more than one
+  item is selected, while F2 with one item opens the single rename as before and its guide row
+  is unchanged; MENU entries may define many(nodes, ctx), whose items follow Copy paths in the
+  menu of several (ctx { ro, off }, off naming an archive's lock), and an entry needs items() or
+  many(); INSPECTOR.many, sections after the Actions grid of a selection of several, built with
+  ctx { ro, off }; DUP_GROUP ({ id, owner, build(group, ctx) }), what a feature adds under a
+  group of duplicate candidates, in the inspector's copies (ctx { node, where: 'inspector', ro
+  }) and after each group's rows in the Survey (ctx { node: null, where: 'survey', ro }), whose
+  note now also gives the reclaimable size of the confirmed groups; and api.relLabel(node),
+  absPath without the root and its separator, joined with '/', the root as '.' and an archive
+  entry as dir/x.zip!/inner/file. A verified group keeps the hash it was verified by. A survey
+  after a refresh no longer matches the old groups by their exact file lists, which dropped the
+  verification of any group whose size bucket held a file that matched none: what Verify by
+  content proved is kept per file (its hash, mode, size and last change), and a size group whose
+  every file is unchanged since is split by content again, as Verify split it. Verify by content
+  runs a survey still queued after a refresh first (surveyNow): pressed within the survey's 500
+  ms debounce it used to hash the nodes the refresh had just replaced, and the survey that
+  followed forgot the result. The inspector of a selection of several no longer prints the word
+  "null" under its Actions grid when no action is unavailable (a writable service): the missing
+  note was handed to replaceChildren. Starting fast, a warm start: when GET /api/info names a
+  kept tree (warm) and this is not snapshot mode, start() sets S.warm ({ takenAt, pending,
+  failed }), says "Drawing <name> as it was on MM/DD/YYYY HH:MM" on the loading sheet, reads GET
+  /api/warm into the model and checks it against the meta's counts (root.dc + 1 folders, root.fc
+  files). A tree that reads whole is surveyed (AFTER_SURVEY with { full: true, warm: true }),
+  laid out, drawn and handed over from the sheet at once, with a 12-second notice ("Showing
+  <name> as it was when the last session surveyed it, <date>. Surveying it as it is now; changes
+  wait until then."), and the change stream connects then, so a change on disk during the
+  catch-up is noted; one that does not is set aside with the notice "The tree from the last
+  session could not be read, so Terrane surveyed the directory afresh." and the page surveys
+  from nothing. catchUp() then streams GET /api/scan into a model of its own, touching nothing
+  in S; notes the eye relative to the box of the folder you are in (places.js anchorOf and
+  poseRelative); takes the new tree on with Model.adopt, so every node still there is kept;
+  prunes the selection, focus and trail; runs AFTER_REFRESH (null), the survey and AFTER_SURVEY
+  with { full: false, settled: true }; clears S.warm and withdraws its notice; runs the search
+  again; lays the world out with its boxes travelling and the location held through it, and,
+  when the folder's box moved, puts the eye back where it stood relative to it (flyTo, then
+  hold); reads again the folders the change stream or a refresh asked for meanwhile; and says
+  "Surveyed again: N files changed, M here now, K gone since the last session." or "Nothing
+  changed since the last session." A catch-up that fails keeps the tree from the last session,
+  with an error notice whose action is Survey again, and the status reads "Last session · not
+  surveyed". While S.warm is set, writable() returns "the tree from the last session is still
+  being checked", so every change control shows unavailable with that reason (the menu, the
+  inspector, the toolbar's New folder and Undo, a row's drag); runOp (Open and Reveal aside),
+  Undo, Restore and Purge, and N, F2, M, Ctrl+D, Delete and placing refuse with "Changes wait
+  while the tree from the last session is still being checked. They are available again once the
+  directory has been surveyed." before a dialog asks or anything is sent; refreshDirs notes its
+  folders and returns a promise that settles once they have been read; the status reads "Last
+  session · surveying" with the busy lamp; and the Journal tab says that changes wait.
+  readOnlyMode(), new in the api, gives the service's own mode without that wait, for what
+  Terrane does not change itself (a terminal). A Rescan all begun meanwhile stops the catch-up
+  and lets go of what waited for it. scanStream(rel, depth, onBatch, { route, signal }) reads
+  any route that answers the scan's NDJSON. window.__terrane gains firstDrawMs
+  (performance.now() at the first layout that drew a box, rounded) and warm: { used, settledMs
+  }, and is set once the first tree is drawn, warm or not. The header's 1.7.0 entry rolled out
+  to keep it within 40 lines. The review of Wave 3: refreshDirs and catchUp note the folder you
+  were in before they prune the tree, and fullScan before it starts a new one; once the
+  selection, focus and trail are pruned and AFTER_REFRESH has run (fullScan: once everything is
+  reset and drawn), the new focusMoved(was) runs AFTER_FOCUS when the location moved, so the
+  address and the kept view no longer name a folder that left the tree, and a reload no longer
+  says "Nothing at" it. asError carries moved; an Undo that fails with moved (one that stopped
+  part way) runs AFTER_OP with { type: 'undo' } and { ok: false, partial: true, moved, label,
+  affected }, reads the affected folders again and redraws the Journal tab before its error
+  notice, which now carries the service's own sentence.
+
 - 1.8.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — Single-key shortcuts are
   off unless turned on in the guide: letters, digits and signs act while the world or the
   ledger list has focus, and Ctrl and Alt chords act everywhere. This was Dennis's call after
@@ -247,6 +282,7 @@ short form is kept too.
   Contents and Findings sort keys sit in one group that moves under the count in a narrow
   ledger; the inspector's Copy, and New folder's Create and Rename's confirm buttons carry icons
   as their neighbours do. The header's 1.5.0 entry rolled out to keep it within 40 lines.
+
 - 1.6.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — Findings sorts by Size or
   Changed; a search opens in the order it asks for and keeps the one chosen until the query
   changes, and Select all follows the order shown. The Survey tab's sections are a registry
@@ -261,6 +297,7 @@ short form is kept too.
   anything is sent; the keys, menu and inspector say why. Paint walls it in the file's colour,
   hatches locked entries and half-bands twins, tied as the relation set 'twins'. The api gains
   hostOf and listCursor.
+
 - 1.5.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — Paint draws a box the layout marks
   AUX.CROSSED (the time view) in the crossed convention, its colour washed 60% toward paper unless
   it is selected; a Contents row whose entry is crossed carries a crossed swatch and says so to
@@ -268,14 +305,17 @@ short form is kept too.
   carried out (Undo included, with the paths it moved back) before the folders are re-read, and a
   change that stopped part way with what it finished; MENU entries add a group of context menu
   items; window.__terrane.places is the landmarks store.
+
 - 1.4.0 (11/12/2026) [dendogg + Anthropic - Claude Opus 5.5] — The loading sheet (splash.js)
   covers the page from start until the service answers and the first survey batch is drawn,
   naming each stage; it leaves early on either failure so the veil can explain.
+
 - 1.3.0 (11/12/2026) [dendogg + Anthropic - Claude Opus 5.5] — Icons on menus, tabs, sort keys,
   actions and operations; the north arrow and storage scale over the world (hud.js); tab and lens
   indicators that slide; status figures that count to their new values; the inspector settles in
   when its subject changes; the veil lifts away instead of vanishing; panel toggles and a Find
   clear button.
+
 - 1.2.0 (11/11/2026) [dendogg + Anthropic - Claude Opus 5.5] — Paint uses the STYLE table; the
   viewport's notices are shown; the title block says when a layout left blocks out to stay in
   budget. Keys, Escape, pins, hover lines, inspector sections, Reading rows, tabs, layout options
@@ -285,13 +325,24 @@ short form is kept too.
   Contents can go down levels. Every survey rebuilds a shared table of each folder's bytes and
   files by last change (S.ages), and Rescan all drops the old one. The Menu key opens the menu
   without WebGL instead of throwing.
+
 - 1.1.0 (11/11/2026) [dendogg + Anthropic - Claude Opus 5.5] — A progress panel with Cancel for
   copy, move and remove; snapshot mode (status, refusals, newer-snapshot notice); thumbnails in
   the inspector and the hover tip in place of original files; the journal tab marks
   earlier-session and purged entries.
+
 - 1.0.0 (11/09/2026) [dendogg + Anthropic - Claude Fable 5.2] — Initial release.
 
 ## web/index.html
+
+- 1.7.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — Every title block label holds its
+  words in span.text after an icon (Legend and Status gain theirs), so a narrow cell ends them
+  in an ellipsis. PER SQUARE takes the tight voice; the placing banner lists Cancel before Place
+  where I am, as they are seen. The Legend label draws swatch-book and the Status label
+  activity, so every cell label has an icon; app.js writes a label's words into its span.text,
+  so the icon stays. The storage scale's unit is span.caps-tight. In the placing banner Cancel
+  now comes first in the DOM, so Tab reaches the buttons in the order the eye does: the sentence
+  on its own row, then Cancel and Place where I am at the right.
 
 - 1.6.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — js/elsewhere.js, a classic script
   before the app, tells a page the service did not serve how to start Terrane. The altitude
@@ -300,19 +351,25 @@ short form is kept too.
   names; the ledger's rich panel and the inspector body take focus when a redraw removes the
   control that had it. The placing banner's buttons carry icons, and Cancel names its key;
   Find's example tokens are single-spaced, so the whole line fits the field at full width.
+
 - 1.5.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — An As of cell in the title block: a
   stepper for the date the world looks back to (earlier, the date or Now, later), reachable by Tab.
+
 - 1.4.0 (11/12/2026) [dendogg + Anthropic - Claude Opus 5.5] — The loading sheet's host, first in
   the body: the T is surveyed and laid down stratum by stratum while the service connects and the
   first survey arrives, then the sheet is excavated away.
+
 - 1.3.0 (11/12/2026) [dendogg + Anthropic - Claude Opus 5.5] — Icons on every tool, the survey
   frame and instruments over the world (north arrow, storage scale), panel toggles in the view
   tools, a clear button and key hint in Find, a strata favicon, and the vendored Motion and
   Floating UI scripts.
+
 - 1.2.0 (11/12/2026) [dendogg + Anthropic - Claude Opus 5.5] — The ledger's tab buttons are made
   by app.js from its tab registry, so a feature can add a tab without editing this page.
+
 - 1.1.0 (11/11/2026) [dendogg + Anthropic - Claude Opus 5.5] — Adds the panel that holds
   operations in progress, at the lower left of the world.
+
 - 1.0.0 (11/09/2026) [dendogg + Anthropic - Claude Fable 5.2] — Initial release.
 
 ## web/css/terrane.css
@@ -550,6 +607,17 @@ short form is kept too.
 
 ## web/js/landmarks.js
 
+- 1.4.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — The Places caption carries its
+  words as a title and its heads a span.t; Set benchmark on a named folder is data-named. The
+  inspector's Benchmark head carries its date as a figure, its text unchanged; Then and Now
+  break only at separators; Set benchmark stands in an actions grid. The head is
+  api.sectionTitle('Benchmark', date), whose text still reads "Benchmark · MM/DD/YYYY HH:MM".
+  measureText gave way to measureParts, the size, files and folders as api.parts. In the Places
+  tab the button that names a folder (Set benchmark on "x", Measure "x" again) is marked
+  data-named, the one kind of button that may wrap. With no benchmark the inspector says None in
+  p.bench-none and puts Set benchmark, full width, in an .actions-grid of its own, as Terminal
+  here is.
+
 - 1.3.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — The Places tab ends with the
   sections other features keep there (api.tabSections('places')), such as Saved searches,
   after the return point. A batch rename (body type 'renames') carries benchmarks along by
@@ -575,17 +643,32 @@ short form is kept too.
   finds the benchmarks on a full survey and on the catch-up's settled one; the notice of
   benchmarks that changed is given on a full survey that is not warm, or on the settled
   one, never of the tree from the last session itself.
+
 - 1.2.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — A Find that asks
   is:benchmark runs again whenever the benchmarks change, so Findings, its count, the pins
   and the dimming follow; J opens a folded return point through api.forceOpen, so the
   overview ends that unfold.
+
 - 1.1.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — A folder inside an open
   archive takes no benchmark: B says why, the menu item is unavailable and the inspector
   has no Benchmark section for it. H there marks the return point in the folder that holds
   the archive, and J there keeps that folder as the point J again comes back to.
+
 - 1.0.0 (11/12/2026) [dendogg + Anthropic - Claude Opus 5.5] — Initial release.
 
 ## web/css/tokens.css
+
+- 1.4.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — The sheet's grid as tokens:
+  --gutter, --mark-w and --mark-gap, and the text columns they make, --row-indent (B, 32 px, was
+  28) and --row-indent-2 (C); --row-pad-x is the gutter. --facts-label-w, --guide-key-w,
+  --readout-w, --cell-label-h, and the parts of the three uppercase voices. A side panel's text
+  stands on three columns measured from its inner edge: A at the gutter (12 px) for marks and
+  for text with no mark, B (32 px) for the text after a mark, C (52 px) for a nested row's text;
+  every place that used the old 28 px indent now reads B. --facts-label-w (116 px) gives every
+  inspector fact label one line; --guide-key-w (96 px) is the guide's shared key column;
+  --readout-w (25ch) holds the altitude readout to one width; --cell-label-h (12 px) is the
+  title block's label row. --caps-label-wdth, --caps-key-wdth, --caps-key-track and
+  --caps-tight-track are the voices' widths and tracking, read by base.css.
 
 - 1.3.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — --ink-3 darkened to #5a6661, so
   --text-3 reads at 4.5:1 or more on every surface; --signal-deep and --search-text for search
@@ -593,6 +676,7 @@ short form is kept too.
   THEME.plaster and THEME.clay); --z-drawer for the narrow inspector. --tool-h, --north,
   --hud-inset and --hud-lift set the instruments over the world on two rows, so the scale, the
   view tools, operations in progress and notices never stand on one another.
+
 - 1.2.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — The traverse in miniature:
   --tex-traverse (a dashed ink arc with its chevron, for the Reading glyph) and --tex-dash (a
   dashed ink stroke, for a working session's swatch). The Age lens ramp as primitives,
@@ -600,11 +684,141 @@ short form is kept too.
   three layers of it with a tick at half its height, for the typical-age glyph. --tex-chamber: a
   walled floor, the archive kind's colour around chalk, for the glyph of an archive looked
   inside.
+
 - 1.1.0 (11/12/2026) [dendogg + Anthropic - Claude Opus 5.5] — The crossed convention as tokens:
   --crossed-wash (the 60% paper wash the world gives a crossed block) and --tex-crossed (the two
   diagonals of a footprint). A role for benchmarks, --bench (verdigris, the colour of their
   survey marks), and its wash. Sizes the ledger and the world's labels use that the scales
   lacked: --fs-row and --fs-fig, the row padding and indent, and a tag's padding (11/13/2026).
+
+- 1.0.0 (11/12/2026) [dendogg + Anthropic - Claude Opus 5.5] — Initial release.
+
+## web/css/layout.css
+
+- 1.3.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — The ledger's head is at most two
+  30 px rows of one line: the count row (the count at A, a feature's tools as 24 px icons at its
+  end) and the column heads (Name at B, Size on the size column), keeping the list's scroll
+  gutter; a caption is one line ending in an ellipsis. Each scroller is its content's containing
+  block.
+
+- 1.2.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — The ledger's count row holds a
+  feature's controls (.sub-tools, such as Save search…) after its sort keys, and wraps them
+  under the keys in a narrow ledger.
+
+- 1.1.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — Below 860 px the inspector opens
+  as a drawer over the world (body.show-inspector) instead of being unreachable; the title
+  block's breakpoints moved to block.css, where they apply; the unused .panel-tool is gone. The
+  drawer slides in from the right edge and back out; a ledger caption wraps instead of losing
+  its last words, and a count and its sort keys share the sub-line while both fit, the keys
+  moving under the count when not.
+
+- 1.0.0 (11/12/2026) [dendogg + Anthropic - Claude Opus 5.5] — Initial release.
+
+## web/css/components/ledger.css
+
+- 1.3.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — Rows on the grid: the mark slot
+  at A, the name at B, name and size on one baseline, the share bar along the figure's foot. A
+  disclosure's triangle at A and title at B on one line, its figure at the right; nested items'
+  marks at B and text at C (A and B in the inspector), each mark centred on the name's line. The
+  head's icon tools.
+
+- 1.2.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — Four sort keys (Untouched joins
+  Name, Size and Changed) stand on one line in a narrow ledger, set a little tighter there; a
+  count row's feature controls that are all hidden take no room.
+
+- 1.1.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — A selected row is edged in ink as
+  well as highlighted, and its small text uses --text-2, which reads on yellow; the unused
+  .row-meta is gone. An empty list says so where its rows would be (.vl-empty); rows that run
+  edge to edge draw their focus ring inside; sizes come from the type scale.
+
+- 1.0.0 (11/12/2026) [dendogg + Anthropic - Claude Opus 5.5] — Initial release.
+
+## web/css/components/traverse.css
+
+- 1.3.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — The Findings sub-line moved to
+  the head rows in layout.css. A session's time breaks between its two dates, the dash kept with
+  the first, and is never clipped; WRITTEN AT ONCE takes the tight voice and goes under the time
+  before its words wrap.
+
+- 1.2.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — The inspector's Changed with it:
+  its sentence, and the file's nearest sessionmates with the file itself in their midst, marked
+  with the session's dashed swatch on a highlighter wash.
+
+- 1.1.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — The Findings sub-line wraps in a
+  narrow ledger: a note longer than the room beside the sort keys takes the whole width and the
+  keys stand under it, at the right. A session row's time that crosses midnight breaks between
+  its two dates instead of being cut off.
+
+- 1.0.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — Initial release.
+
+## web/js/traverse.js
+
+- 1.3.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — A session's time breaks between
+  its two dates outside their nowrap spans, its dash kept with the first; Changed with it
+  carries the session as its head's figure, the head's text unchanged; Working sessions' title
+  is a span.t.
+
+- 1.2.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — Changed with it: the inspector
+  says which working session a selected file was changed in, lists the 8 files nearest to it in
+  time with the file in its place, and Show all puts session:N in Find; a file in none says why
+  (changed alone, a dot-folder, no time). The context menu and the command palette offer the
+  same.
+
+- 1.1.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — Working sessions are found when
+  something reads them (Working sessions, a session: search, the traverse), not after every
+  survey. The date and plural helpers come from model.js. A row for a session that crossed
+  midnight puts its second date under the first in a narrow ledger instead of cutting it off.
+
+- 1.0.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — Initial release.
+
+## web/js/time.js
+
+- 1.3.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — The Since head carries its date
+  as a figure and Where the change is its count (api.sectionTitle), their text unchanged;
+  Changed and Not changed break only at their separators (api.parts).
+
+- 1.2.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — , . < > carry one label each for
+  the command palette: one date earlier or later, the earliest date, the present.
+
+- 1.1.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — Inside an open archive a folder
+  is counted from its own entries, in a table built from its listing on the same ladder
+  (tableOf), for the Since section, the hover line, the sentence, T and the layout's lowering; a
+  rebuilt table redraws the inspector and Contents. fmtDay comes from model.js.
+
+- 1.0.0 (11/12/2026) [dendogg + Anthropic - Claude Opus 5.5] — Initial release.
+
+## web/js/interior.js
+
+- 1.3.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — Its heads go through
+  api.sectionTitle, a count as a figure; Holds and Unpacked break only at separators; "In the
+  archive" is "Inside", so the label keeps one line; Close names the archive and is marked
+  data-named.
+
+- 1.2.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — The lock also reads a batch
+  rename's items: any item whose path is under the archive's is refused before anything is sent.
+
+- 1.1.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — Twins after a refresh are worked
+  out from the folders read again and any new since (twinIndex, addTwins), not the whole tree; a
+  whole walk only when a capped list loses a file. A Rescan all also forgets the file a change
+  closed. plural comes from model.js.
+
+- 1.0.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — Initial release.
+
+## web/js/icons.js
+
+- 1.3.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — exportCsv (download), legend
+  (swatch-book) and status (activity); Select all draws list-checks.
+
+- 1.2.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — withIcon, which nothing called,
+  is gone, and so are the names keys, root, status, north, folder and file, which named icons
+  nothing draws (the north arrow is drawn inline). ICON also names the icons web/index.html
+  draws by their Lucide names, so the same action has one icon wherever it appears.
+
+- 1.1.0 (11/12/2026) [dendogg + Anthropic - Claude Opus 5.5] — Names for the As of stepper: time
+  (calendar-clock), earlier and later (the left and right chevrons). Names for landmarks: places
+  (the tab, map-pinned), bench (set a benchmark, flag), remeasure (ruler), markReturn (bookmark)
+  and returnTo (arrow-left-right).
+
 - 1.0.0 (11/12/2026) [dendogg + Anthropic - Claude Opus 5.5] — Initial release.
 
 <!-- ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once! -->

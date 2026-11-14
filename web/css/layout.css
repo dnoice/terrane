@@ -1,18 +1,24 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Application Shell (Terrane Edition - v1.2)
+ *     - Title: Application Shell (Terrane Edition - v1.3)
  *     - File Name: layout.css
  *     - Relative Path: web/css/layout.css
  *     - Artifact Type: stylesheet
- *     - Version: 1.2.0
- *     - Date: 11/13/2026
- *     - Update: Friday, November 13, 2026
+ *     - Version: 1.3.0
+ *     - Date: 11/14/2026
+ *     - Update: Saturday, November 14, 2026
  *     - Author: Dennis 'dendogg' Smaltz
  *     - A.I. Acknowledgement: Anthropic - Claude Opus 5.5
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
  *
  * ✒ Changelog:
+ *     - 1.3.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
+ *       ledger's head is at most two 30 px rows of one line: the count row
+ *       (the count at A, a feature's tools as 24 px icons at its end) and the
+ *       column heads (Name at B, Size on the size column), keeping the list's
+ *       scroll gutter; a caption is one line ending in an ellipsis. Each
+ *       scroller is its content's containing block.
  *     - 1.2.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] —
  *       The ledger's count row holds a feature's controls (.sub-tools,
  *       such as Save search…) after its sort keys, and wraps them under
@@ -25,8 +31,7 @@
  *       edge and back out; a ledger caption wraps instead of losing its
  *       last words, and a count and its sort keys share the sub-line
  *       while both fit, the keys moving under the count when not.
- *     - 1.0.0 (11/12/2026) [dendogg + Anthropic - Claude Opus 5.5] —
- *       Initial release.
+ *     Earlier entries: see CHANGELOG.md
  *
  * ✒ Description:
  *     The drawing sheet the world sits in: location bar on top, ledger
@@ -41,8 +46,9 @@
  *     - Ledger and inspector are size containers; their components adapt
  *       to the panel's width, not the window's
  *     - Lettered panel heads, the drawing-sheet reference motif
- *     - The ledger's count row: the count, its sort keys and the
- *       controls a feature adds (.sub-tools), wrapping in a narrow ledger
+ *     - The ledger's head: at most two 30 px rows of one line, the
+ *       count with a feature's tools (.sub-tools) and the sort keys over
+ *       the list's columns, keeping the list's scroll gutter
  *     - Breakpoints at 1320, 1100 and 860 px: narrower panels, icon-only
  *       bar buttons, then the inspector folds away into a drawer that ]
  *       opens over the world
@@ -97,7 +103,7 @@ body:not(.no-ledger) #ledger, body:not(.no-inspector) #inspector { transition-de
   height: var(--panel-head-h);
   border-bottom: var(--border);
 }
-.panel-head h2 { align-self: center; padding-left: 10px; flex: 1; }
+.panel-head h2 { align-self: center; padding-left: var(--gutter); flex: 1; }
 .ref {
   display: grid;
   place-items: center;
@@ -108,33 +114,86 @@ body:not(.no-ledger) #ledger, body:not(.no-inspector) #inspector { transition-de
   font-size: var(--fs-fig);
   letter-spacing: 0;
 }
+
+/*
+ * The ledger's head: at most two rows of one line each, 30 px apiece. The
+ * count row holds the count at A and a feature's tools at its end; the
+ * column-head row holds the sort keys over the list's columns. The head
+ * keeps the list's scroll gutter, so its right-hand keys and tools end
+ * where the list's figures end.
+ */
 .panel-sub {
   display: flex;
-  flex-wrap: wrap;
-  align-items: center;
+  flex-direction: column;
   flex: none;
-  gap: 0 var(--s-1);
-  min-height: var(--control-h);
-  padding: 0 var(--s-2) 0 10px;
+  overflow: hidden;
+  scrollbar-gutter: stable;
   border-bottom: var(--border-2);
   font: 500 var(--fs-xs) / 1 var(--mono);
   color: var(--text-2);
 }
-/* A caption wraps in a narrow ledger rather than losing its last words. */
-.panel-sub .grow { flex: 1; min-width: 0; padding-block: var(--s-1); line-height: var(--lh-snug); text-wrap: pretty; }
-/* A count and the sort keys share the line while both fit; in a narrow
-   ledger the keys move under the count together, to the right, so the
-   count is never cut short. */
-.panel-sub .sub-count { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; line-height: var(--control-h-sm); }
-.panel-sub .sorts { display: flex; flex: none; margin-left: auto; }
-.panel-sub .sub-count + .sort { margin-left: auto; }
-/* Controls a feature adds to the count row (LEDGER_SUB) stand at its end,
-   after the sort keys; in a narrow ledger they wrap under them, right. */
-.panel-sub .sub-tools { display: flex; flex: none; align-items: center; gap: 0 var(--s-1); margin-left: auto; }
-.panel-sub .sorts + .sub-tools, .panel-sub .sort + .sub-tools { margin-left: var(--s-1); }
+/* The head cuts what leaves it, so a ring sits inside its control. */
+.panel-sub :focus-visible { outline-offset: calc(var(--focus-offset) * -1); }
+/* A caption: one line, ending in an ellipsis, its words in its title. */
+.panel-sub > .grow {
+  flex: none;
+  min-width: 0;
+  height: var(--control-h);
+  padding: 0 var(--gutter);
+  overflow: hidden;
+  line-height: var(--control-h);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.sub-row {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 0 var(--s-1);
+  height: var(--control-h);
+  padding: 0 var(--gutter);
+}
+.sub-row + .sub-row { box-shadow: inset 0 var(--hair) 0 var(--line-3); }
+/* The count: "14 items" and " · 199 GB", cut short with an ellipsis. */
+.sub-count { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* A feature's controls (LEDGER_SUB): the selection's total follows the
+   count; tools stand at the row's end as 24 px icon buttons. */
+.sub-row .sub-tools { display: contents; }
+.sub-row .sub-tool { flex: none; margin-left: auto; }
+.sub-row .sub-tool ~ .sub-tool { margin-left: 0; }
+/* A feature's text tool reads in the key voice and stands at the end too. */
+.sub-row .sub-tools > .sort { margin-left: auto; }
+.sub-row .sub-tools > .sort ~ .sort, .sub-row .sub-tools > .sub-tool ~ .sort, .sub-row .sub-tools > .sort ~ .sub-tool { margin-left: 0; }
+/* The column heads: the first key over the names at B (Name, or in
+   Findings Changed after Select all), the rest at the right, the last
+   ending on the size column's right edge. Each key's padding hangs
+   outside the row's edges, so its words fall on the columns. */
+.sub-row.is-columns { padding-left: var(--row-indent); }
+.sub-row.is-columns:has(> .sub-select) { padding-left: var(--gutter); }
+/* A ledger of 260 px or less (200% zoom) gives the four keys the room from A. */
+@container ledger (max-width: 260px) {
+  .sub-row.is-columns { padding-left: var(--gutter); }
+}
+.sub-row .sorts { display: flex; flex: 1; min-width: 0; align-items: center; margin-inline: calc(-1 * var(--sort-pad, 4px)); }
+.sub-row .sorts > .sort:first-child { margin-right: auto; }
+/* Findings' Select all: an icon button centred on the mark slot at A. */
+.sub-row .sub-select { margin-left: calc((var(--mark-w) - var(--hit-min)) / 2); margin-right: var(--s-1); }
+/* Findings' note has its own row between the two, and may wrap. */
+.sub-row.sub-note {
+  height: auto;
+  min-height: var(--control-h);
+  padding-block: var(--s-1);
+  line-height: var(--lh-snug);
+  white-space: normal;
+  text-wrap: pretty;
+  color: var(--text-2);
+}
 
-.ledger-body { flex: 1; min-height: 0; overflow: auto; overscroll-behavior: contain; scrollbar-gutter: stable; }
-#inspector-body { flex: 1; min-height: 0; overflow: auto; overscroll-behavior: contain; scrollbar-gutter: stable; }
+/* Each scroller is its content's containing block, so a visually hidden
+   word (.sr, positioned absolutely) stays inside it instead of making the
+   page taller than the window. */
+.ledger-body { position: relative; flex: 1; min-height: 0; overflow: auto; overscroll-behavior: contain; scrollbar-gutter: stable; }
+#inspector-body { position: relative; flex: 1; min-height: 0; overflow: auto; overscroll-behavior: contain; scrollbar-gutter: stable; }
 
 /* ---------- breakpoints ---------- */
 

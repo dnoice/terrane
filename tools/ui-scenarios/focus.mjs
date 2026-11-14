@@ -1,18 +1,21 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Location Scenario (Terrane Edition - v1.1)
+ *     - Title: Location Scenario (Terrane Edition - v1.2)
  *     - File Name: focus.mjs
  *     - Relative Path: tools/ui-scenarios/focus.mjs
  *     - Artifact Type: test
- *     - Version: 1.1.0
- *     - Date: 11/13/2026
- *     - Update: Friday, November 13, 2026
+ *     - Version: 1.2.0
+ *     - Date: 11/14/2026
+ *     - Update: Saturday, November 14, 2026
  *     - Author: Dennis 'dendogg' Smaltz
  *     - A.I. Acknowledgement: Anthropic - Claude Opus 5.5
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
  *
  * ✒ Changelog:
+ *     - 1.2.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
+ *       legend's chips are counted by their kind (data-kind), shown or behind
+ *       the "+N" chip, against the kinds the folder holds.
  *     - 1.1.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
  *       ledger's count is read as the page now writes it: "1 item" for
  *       a folder holding one entry, "N items" otherwise.
@@ -74,7 +77,7 @@ const WHERE = (T) => {
     sub: document.getElementById('ledger-sub').textContent,
     listed: T.S.tab === 'contents' && T.list.items.length === f.c.length && T.list.items.every((n) => n.p === f),
     youAreIn: insp.querySelector('.insp-kind')?.textContent === 'You are in' ? insp.querySelector('.insp-name')?.textContent : null,
-    chips: document.querySelectorAll('#legend .chip').length,
+    chips: document.querySelectorAll('#legend .chip[data-kind]').length,
     kinds: T.S.lens === 'kind' ? f.ks.filter((b) => b > 0).length : -1,
     up: !document.getElementById('b-up').disabled,
     primary: T.S.primary?.n ?? null,

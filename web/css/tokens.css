@@ -1,18 +1,24 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Design Tokens (Terrane Edition - v1.3)
+ *     - Title: Design Tokens (Terrane Edition - v1.4)
  *     - File Name: tokens.css
  *     - Relative Path: web/css/tokens.css
  *     - Artifact Type: stylesheet
- *     - Version: 1.3.0
- *     - Date: 11/13/2026
- *     - Update: Friday, November 13, 2026
+ *     - Version: 1.4.0
+ *     - Date: 11/14/2026
+ *     - Update: Saturday, November 14, 2026
  *     - Author: Dennis 'dendogg' Smaltz
  *     - A.I. Acknowledgement: Anthropic - Claude Opus 5.5
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
  *
  * ✒ Changelog:
+ *     - 1.4.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
+ *       sheet's grid as tokens: --gutter, --mark-w and --mark-gap, and the
+ *       text columns they make, --row-indent (B, 32 px, was 28) and
+ *       --row-indent-2 (C); --row-pad-x is the gutter. --facts-label-w,
+ *       --guide-key-w, --readout-w, --cell-label-h, and the parts of the
+ *       three uppercase voices.
  *     - 1.3.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] —
  *       --ink-3 darkened to #5a6661, so --text-3 reads at 4.5:1 or more
  *       on every surface; --signal-deep and --search-text for search
@@ -31,14 +37,6 @@
  *       of it with a tick at half its height, for the typical-age glyph.
  *       --tex-chamber: a walled floor, the archive kind's colour around
  *       chalk, for the glyph of an archive looked inside.
- *     - 1.1.0 (11/12/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
- *       crossed convention as tokens: --crossed-wash (the 60% paper wash
- *       the world gives a crossed block) and --tex-crossed (the two
- *       diagonals of a footprint). A role for benchmarks, --bench
- *       (verdigris, the colour of their survey marks), and its wash.
- *       Sizes the ledger and the world's labels use that the scales
- *       lacked: --fs-row and --fs-fig, the row padding and indent, and
- *       a tag's padding (11/13/2026).
  *     Earlier entries: see CHANGELOG.md
  *
  * ✒ Description:
@@ -62,6 +60,8 @@
  *     - A type scale on Archivo's width axis plus DM Mono for figures
  *     - A 4 px space scale and named control sizes, the instruments'
  *       inset and their second row over the world among them
+ *     - The side panels' three text columns (A, B, C) and the sizes that
+ *       keep labels on one line and values in place
  *     - Hard offset elevation, the drafting-sheet shadow
  *     - Motion tokens, including a spring curve written with linear()
  *     - Registered custom properties (@property) so progress, heading
@@ -193,6 +193,12 @@
   --wdth-max: 125%;
   --track-caps: 0.13em;
   --track-wide: 0.08em;
+  /* The three uppercase voices (base.css): LABEL names a thing, KEY is
+     pressed, TIGHT stands where room is short. */
+  --caps-label-wdth: var(--wdth-expanded);
+  --caps-key-wdth: var(--wdth-wide);
+  --caps-key-track: 0.06em;
+  --caps-tight-track: 0.04em;
 
   /* ---------- space (4 px unit) ---------- */
   --u: 4px;
@@ -213,8 +219,20 @@
   --control-h-sm: 26px;
   --row-h: 30px;
   --row-pad-y: 5px;    /* a ledger row, above and below */
-  --row-pad-x: 10px;   /* a ledger row's right edge */
-  --row-indent: 28px;  /* where a rich ledger row's text starts, past its mark */
+  /* A side panel's three text columns, from its inner edge: A takes marks
+     and text with no mark, B the text after a mark (and a nested row's
+     mark), C a nested row's text. Figures end one gutter inside the
+     scroll gutter. */
+  --gutter: var(--s-3);                                                      /* A: 12 */
+  --mark-w: var(--icon-sm);                                                  /* the mark slot */
+  --mark-gap: 6px;
+  --row-indent: calc(var(--gutter) + var(--mark-w) + var(--mark-gap));       /* B: 32 */
+  --row-indent-2: calc(var(--row-indent) + var(--mark-w) + var(--mark-gap)); /* C: 52 */
+  --row-pad-x: var(--gutter);  /* a ledger row's right edge */
+  --facts-label-w: 116px;  /* the inspector's fact labels, each on one line */
+  --guide-key-w: 96px;     /* the guide's key column, shared by every section */
+  --readout-w: 25ch;       /* the altitude readout, wide enough that its neighbours never move */
+  --cell-label-h: 12px;    /* the title block's label row */
   --tag-pad-y: 3px;    /* a label standing over the world */
   --tag-pad-x: 5px;
   --tool-h: 32px;      /* a button of the view tools strip over the world */

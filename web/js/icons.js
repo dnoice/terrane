@@ -1,18 +1,21 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Icons (Terrane Edition - v1.2)
+ *     - Title: Icons (Terrane Edition - v1.3)
  *     - File Name: icons.js
  *     - Relative Path: web/js/icons.js
  *     - Artifact Type: javascript
- *     - Version: 1.2.0
- *     - Date: 11/13/2026
- *     - Update: Friday, November 13, 2026
+ *     - Version: 1.3.0
+ *     - Date: 11/14/2026
+ *     - Update: Saturday, November 14, 2026
  *     - Author: Dennis 'dendogg' Smaltz
  *     - A.I. Acknowledgement: Anthropic - Claude Opus 5.5
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
  *
  * ✒ Changelog:
+ *     - 1.3.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] —
+ *       exportCsv (download), legend (swatch-book) and status (activity);
+ *       Select all draws list-checks.
  *     - 1.2.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] —
  *       withIcon, which nothing called, is gone, and so are the names keys,
  *       root, status, north, folder and file, which named icons nothing
@@ -24,8 +27,7 @@
  *       (the left and right chevrons). Names for landmarks: places (the
  *       tab, map-pinned), bench (set a benchmark, flag), remeasure
  *       (ruler), markReturn (bookmark) and returnTo (arrow-left-right).
- *     - 1.0.0 (11/12/2026) [dendogg + Anthropic - Claude Opus 5.5] —
- *       Initial release.
+ *     Earlier entries: see CHANGELOG.md
  *
  * ✒ Description:
  *     The one way the page draws an icon: an <svg> that uses a symbol from
@@ -106,7 +108,10 @@ export const ICON = Object.freeze({
   grain: 'scale',
   verify: 'sparkles',
   restore: 'history',
-  selectAll: 'list-filter',
+  selectAll: 'list-checks',
+  exportCsv: 'download',
+  legend: 'swatch-book',
+  status: 'activity',
   clear: 'x',
   time: 'calendar-clock',
   earlier: 'chevron-left',

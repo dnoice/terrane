@@ -1,16 +1,25 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Strata (Terrane Edition - v1.0)
+ *     - Title: Strata (Terrane Edition - v1.1)
  *     - File Name: strata.css
  *     - Relative Path: web/css/components/strata.css
  *     - Artifact Type: stylesheet
- *     - Version: 1.0.0
- *     - Date: 11/13/2026
- *     - Update: Friday, November 13, 2026
+ *     - Version: 1.1.0
+ *     - Date: 11/14/2026
+ *     - Update: Saturday, November 14, 2026
  *     - Author: Dennis 'dendogg' Smaltz
  *     - A.I. Acknowledgement: Anthropic - Claude Opus 5.5
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
+ *
+ * ✒ Changelog:
+ *     - 1.1.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — Labels
+ *       and figures share a baseline and each label keeps one line beside its
+ *       swatch, in the mark slot: the Share column gives way at 300 px or
+ *       narrower, and the columns stand closer in the drawer. Column heads
+ *       take the tight voice.
+ *     - 1.0.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — Initial
+ *       release.
  *
  * ✒ Description:
  *     Bytes by last change on the sheet: the inspector section that lays
@@ -41,15 +50,15 @@
 /* ---------- the inspector's Bytes by last change ---------- */
 
 .strata-say {
-  margin: var(--s-2) var(--s-3) 0;
+  margin: var(--s-2) var(--gutter) 0;
   font-size: var(--fs-md);
   line-height: var(--lh-snug);
   text-wrap: pretty;
 }
 
 .strata-rows {
-  width: calc(100% - 2 * var(--s-3));
-  margin: var(--s-2) var(--s-3) 0;
+  width: calc(100% - 2 * var(--gutter));
+  margin: var(--s-2) var(--gutter) 0;
   border-collapse: collapse;
   font: 400 var(--fs-fig) / var(--lh-snug) var(--mono);
   font-variant-numeric: tabular-nums;
@@ -59,43 +68,45 @@
   padding: var(--s-1) 0;
   border-bottom: var(--border-3);
   text-align: right;
+  vertical-align: baseline;
   white-space: nowrap;
 }
 .strata-rows th + th,
 .strata-rows th + td,
 .strata-rows td + td { padding-left: var(--s-2); }
-/* Column heads in the sheet's capitals, held to the width of their figures. */
-.strata-rows thead th {
-  font: 700 var(--fs-3xs) / 1 var(--sans);
-  font-stretch: var(--wdth-normal);
-  letter-spacing: var(--track-wide);
-  text-transform: uppercase;
-  color: var(--text-3);
-}
+/* Column heads in the tight voice (base.css), held to the width of their figures. */
+.strata-rows thead th { color: var(--text-3); }
 .strata-rows thead th:first-child,
 .strata-rows tbody th { text-align: left; }
-/* A label wraps before a figure is pushed out of the panel, and wraps
-   beside its swatch, not under it. */
-.strata-rows tbody th { font-weight: 400; white-space: normal; }
-.strata-label { display: flex; align-items: baseline; gap: var(--s-2); }
+/* A label stays on one line beside its swatch, its swatch in the mark slot. */
+.strata-rows tbody th { font-weight: 400; }
+.strata-label { display: inline-flex; align-items: baseline; gap: var(--mark-gap); }
+.strata-label > .swatch { align-self: center; margin-inline: calc((var(--mark-w) - 10px) / 2); }
 .strata-rows tr.is-none { color: var(--text-3); }
 
 .strata-typical {
-  margin: var(--s-2) var(--s-3) var(--s-3);
+  margin: var(--s-2) var(--gutter) var(--s-3);
   color: var(--text-2);
   font-size: var(--fs-row);
   line-height: var(--lh-snug);
 }
 .strata-note {
   margin: 0;
-  padding: 0 var(--s-3) var(--s-3);
+  padding: 0 var(--gutter) var(--s-3);
   color: var(--text-2);
   font-size: var(--fs-md);
 }
 
-@container inspector (max-width: 270px) {
+/* An inspector 300 px or narrower drops the Share column, so the labels keep one line. */
+@container inspector (max-width: 300px) {
   .strata-rows th:nth-child(3),
   .strata-rows td:nth-child(3) { display: none; }
+}
+/* The drawer: the columns stand closer, so the longest label keeps its line. */
+@container inspector (max-width: 270px) {
+  .strata-rows th + th,
+  .strata-rows th + td,
+  .strata-rows td + td { padding-left: var(--s-1); }
 }
 
 /* ---------- Reading the world ---------- */

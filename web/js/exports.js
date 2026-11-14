@@ -1,18 +1,21 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Export Lists (Terrane Edition - v1.0)
+ *     - Title: Export Lists (Terrane Edition - v1.1)
  *     - File Name: exports.js
  *     - Relative Path: web/js/exports.js
  *     - Artifact Type: javascript
- *     - Version: 1.0.0
- *     - Date: 11/13/2026
- *     - Update: Friday, November 13, 2026
+ *     - Version: 1.1.0
+ *     - Date: 11/14/2026
+ *     - Update: Saturday, November 14, 2026
  *     - Author: Dennis 'dendogg' Smaltz
  *     - A.I. Acknowledgement: Anthropic - Claude Opus 5.5
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
  *
  * ✒ Changelog:
+ *     - 1.1.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — Export
+ *       CSV on the Contents and Findings count rows is a 24 px icon tool
+ *       (download), named Export CSV, its title saying what it saves.
  *     - 1.0.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] —
  *       Initial release.
  *
@@ -61,6 +64,7 @@
 
 import { toCSV, nodeRows, dupRows, sealedRows, fileName, slug } from './csv.js';
 import { download } from './ui.js';
+import { icon } from './icons.js';
 import { fmtCount } from './model.js';
 
 export const name = 'Export lists';
@@ -128,7 +132,10 @@ export function install(api) {
     return run();
   }
 
-  const button = (run, title) => el('button', { class: 'sort', type: 'button', 'data-k': 'export-csv', title, onclick: () => { run(); } }, 'Export CSV');
+  // A 24 px icon tool at the count row's end; its name is Export CSV.
+  const button = (run, title) => el('button', {
+    class: 'btn btn-icon sub-tool', type: 'button', 'data-k': 'export-csv', 'aria-label': 'Export CSV', title: `Export CSV: ${title.charAt(0).toLowerCase()}${title.slice(1)}`, onclick: () => { run(); },
+  }, icon('exportCsv'));
 
   // After the selection's total and Save search.
   api.LEDGER_SUB.add({

@@ -1,18 +1,23 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Session Traverse (Terrane Edition - v1.2)
+ *     - Title: Session Traverse (Terrane Edition - v1.3)
  *     - File Name: traverse.css
  *     - Relative Path: web/css/components/traverse.css
  *     - Artifact Type: stylesheet
- *     - Version: 1.2.0
- *     - Date: 11/13/2026
- *     - Update: Friday, November 13, 2026
+ *     - Version: 1.3.0
+ *     - Date: 11/14/2026
+ *     - Update: Saturday, November 14, 2026
  *     - Author: Dennis 'dendogg' Smaltz
  *     - A.I. Acknowledgement: Anthropic - Claude Opus 5.5
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
  *
  * ✒ Changelog:
+ *     - 1.3.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
+ *       Findings sub-line moved to the head rows in layout.css. A session's
+ *       time breaks between its two dates, the dash kept with the first, and
+ *       is never clipped; WRITTEN AT ONCE takes the tight voice and goes
+ *       under the time before its words wrap.
  *     - 1.2.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
  *       inspector's Changed with it: its sentence, and the file's nearest
  *       sessionmates with the file itself in their midst, marked with the
@@ -23,24 +28,20 @@
  *       the keys stand under it, at the right. A session row's time
  *       that crosses midnight breaks between its two dates instead of
  *       being cut off.
- *     - 1.0.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] —
- *       Initial release.
+ *     Earlier entries: see CHANGELOG.md
  *
  * ✒ Description:
- *     Working sessions on the sheet: the Survey tab's rows, the dashed
- *     ink of the traverse in miniature wherever the ledger and the
- *     inspector name it, and the Findings sub-line that came with it,
- *     which now carries sort keys and a note under the count.
+ *     Working sessions on the sheet: the Survey tab's rows and the
+ *     dashed ink of the traverse in miniature wherever the ledger and
+ *     the inspector name it. The Findings head that came with it now
+ *     stands with the other ledger heads in layout.css.
  *
  * ✒ Key Features:
- *     - Findings sub-line in two rows: the count and Select all as
- *       before, then a note (a session's window, a route cut short) and
- *       the Size and Changed keys; a long note wraps instead of hiding,
- *       and the keys move under it when they no longer fit beside it
  *     - Session rows: a dashed ink swatch, the date and times in
- *       figures, places and the folder holding them, the file count
- *     - "Written at once" as a small ink-outlined label on bulk rows,
- *       under the time when the column is too narrow for both
+ *       figures, places and the folder holding them, the file count; a
+ *       time across midnight breaks between its dates, never clipped
+ *     - "Written at once" as a small ink-outlined badge in the tight
+ *       voice, under the time when the column is too narrow for both
  *     - Changed with it in the inspector: a sentence, then the nearest
  *       files in time, the selected one in its place on a highlighter wash
  *     - Reading glyph: a dashed arc with its chevron
@@ -54,64 +55,35 @@
  * ----------------------------------------------------------------------------
  */
 
-/* ---------- Findings: the sub-line in two rows ---------- */
-
-.panel-sub.is-rows {
-  flex-direction: column;
-  align-items: stretch;
-  gap: 0;
-  padding: 0;
-}
-.sub-row {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0 var(--s-1);
-  min-height: var(--control-h);
-  padding: 0 var(--s-2) 0 var(--row-pad-x);
-}
-.sub-row + .sub-row { border-top: var(--border-3); }
-/* A note takes the whole width when it is longer than the room beside the
-   sort keys, which then stand under it, at the right. */
-.sub-row .sub-note {
-  flex: 1 1 auto;
-  min-width: 0;
-  padding: var(--s-1) 0;
-  white-space: normal;
-  line-height: var(--lh-snug);
-  color: var(--text-2);
-  text-wrap: pretty;
-}
-.sub-row .sub-note:empty { padding: 0; }
-
 /* ---------- Survey: Working sessions ---------- */
 
 .swatch.is-traverse { background: var(--tex-dash), var(--paper); }
-/* The label goes under the time when the column is too narrow for both;
-   a time that crosses midnight breaks only between its two dates. */
+/* The label goes under the time when the column is too narrow for both.
+   A time that crosses midnight breaks between its two dates, the dash
+   kept with the first, and is never cut off. */
 .session-row .nm {
   display: flex;
   flex-wrap: wrap;
   align-items: baseline;
   gap: var(--s-1) var(--s-2);
+  overflow: visible;
+  white-space: normal;
   font-variant-numeric: tabular-nums;
 }
 .session-row .when { min-width: 0; white-space: normal; }
 .session-row .when > span { white-space: nowrap; }
+/* WRITTEN AT ONCE, in the tight voice (base.css). */
 .session-row .bulk {
-  flex: none;
-  white-space: nowrap;
+  flex: 0 1 auto;
+  min-width: 0;
   padding: 0 var(--s-1);
   border: var(--border);
-  font: 600 var(--fs-3xs) / var(--lh-snug) var(--sans);
-  font-stretch: var(--wdth-wide);
-  letter-spacing: var(--track-wide);
-  text-transform: uppercase;
+  line-height: var(--lh-snug);
 }
 
 /* ---------- Inspector: Changed with it ---------- */
 
-.session-note { margin: 0; padding: var(--s-1) var(--s-3) var(--s-2); color: var(--text-2); font-size: var(--fs-row); text-wrap: pretty; }
+.session-note { margin: 0; padding: 0 var(--gutter) var(--s-2); color: var(--text-2); font-size: var(--fs-row); text-wrap: pretty; }
 .session-near { margin-bottom: var(--s-2); }
 .session-near .item.is-self { background: var(--mark-wash); }
 .session-near .item.is-self .path { color: var(--text-2); }

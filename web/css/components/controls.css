@@ -1,18 +1,23 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Controls (Terrane Edition - v1.1)
+ *     - Title: Controls (Terrane Edition - v1.2)
  *     - File Name: controls.css
  *     - Relative Path: web/css/components/controls.css
  *     - Artifact Type: stylesheet
- *     - Version: 1.1.0
- *     - Date: 11/13/2026
- *     - Update: Friday, November 13, 2026
+ *     - Version: 1.2.0
+ *     - Date: 11/14/2026
+ *     - Update: Saturday, November 14, 2026
  *     - Author: Dennis 'dendogg' Smaltz
  *     - A.I. Acknowledgement: Anthropic - Claude Opus 5.5
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
  *
  * ✒ Changelog:
+ *     - 1.2.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — Sort
+ *       keys take the key voice and a padding a head hangs outside its edges;
+ *       tabs take the tight voice. Only a button marked data-named wraps; a
+ *       fixed label keeps one line. The lens switch and the chips stand at
+ *       the compact height, fields at the control height.
  *     - 1.1.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] —
  *       The tab strip can shrink: labels shorten with an ellipsis
  *       instead of pushing the last tab out of the ledger. Tab counts
@@ -39,6 +44,9 @@
  *     - Segmented control and tab strip with an ink indicator that slides
  *       to the chosen item (positions set by ui.js slideIndicator)
  *     - Disabled controls drop to rule colour and lose every hover
+ *     - A fixed button label keeps one line; only a button marked
+ *       data-named (its label carries a name) wraps
+ *     - Sort keys and tabs read in the key and tight voices of base.css
  *     - Hit areas never smaller than --hit-min, larger on coarse pointers
  *
  * ✒ Other Important Information:
@@ -102,10 +110,11 @@
 .btn-raised { box-shadow: var(--shadow-1); }
 .btn-raised:active:not(:disabled) { translate: 2px 2px; box-shadow: none; }
 
-/* Buttons in a panel's flow can carry a name (Set benchmark on "a folder",
-   Close an archive): a long one wraps inside the border instead of
-   spilling past the panel's edge. One line keeps the usual height. */
-.rich .actions .btn, .bench-none .btn, .actions-grid .btn {
+/* A button that carries a name (data-named: Set benchmark on "a folder",
+   Close an archive) wraps inside its border instead of spilling past the
+   panel's edge; one line keeps the usual height. Every other label is
+   fixed and stays on one line. */
+.btn[data-named] {
   max-width: 100%;
   height: auto;
   padding-block: var(--s-1);
@@ -113,8 +122,8 @@
   white-space: normal;
   text-align: left;
 }
-.rich .actions .btn, .bench-none .btn { min-height: var(--control-h-sm); }
-.actions-grid .btn { min-height: var(--control-h); }
+.btn-small[data-named] { min-height: var(--control-h-sm); }
+.btn[data-named]:not(.btn-small) { min-height: var(--control-h); }
 
 .btn:disabled, .btn[aria-disabled='true'] {
   --sweep: 0%;
@@ -138,7 +147,8 @@
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  height: var(--control-h-sm);
+  /* Inside the switch's border, so the switch stands at the compact height. */
+  height: calc(var(--control-h-sm) - 2 * var(--hair));
   padding: 0 10px;
   border: 0;
   border-right: var(--border);
@@ -184,7 +194,7 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  height: 24px;
+  height: var(--control-h-sm);
   padding: 0 7px;
   border: var(--hair) solid transparent;
   background-color: transparent;
@@ -216,9 +226,6 @@
   border-right: var(--border-3);
   background-color: transparent;
   color: var(--text-3);
-  font-size: var(--fs-3xs);
-  font-stretch: var(--wdth-wide);
-  letter-spacing: 0.07em;
   white-space: nowrap;
 }
 .tabs button:last-child { border-right: 0; }
@@ -265,19 +272,20 @@
 
 /* ---------- sort toggles ---------- */
 
+/* The key voice (base.css); --sort-pad (4 px unless a head sets it) is
+   the room either side of its label, which a column head hangs outside
+   its edges so the words fall on the columns. */
 .sort {
   appearance: none;
   display: inline-flex;
   align-items: center;
   gap: 3px;
-  padding: 6px 5px;
+  height: var(--hit-min);
+  padding: 0 var(--sort-pad, 4px);
   border: 0;
   background-color: transparent;
   color: var(--text-3);
-  font: 600 var(--fs-xs) / 1 var(--sans);
-  font-stretch: 110%;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+  white-space: nowrap;
 }
 .sort .icon { width: 12px; height: 12px; }
 .sort[aria-pressed='true'] { color: var(--text); }
@@ -288,7 +296,7 @@
 .field span { display: block; color: var(--text-3); margin-bottom: 6px; }
 .field input {
   width: 100%;
-  height: 34px;
+  height: var(--control-h);
   padding: 0 9px;
   border: var(--border);
   border-radius: var(--radius);

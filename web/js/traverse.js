@@ -1,18 +1,23 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Session Traverse (Terrane Edition - v1.2)
+ *     - Title: Session Traverse (Terrane Edition - v1.3)
  *     - File Name: traverse.js
  *     - Relative Path: web/js/traverse.js
  *     - Artifact Type: javascript
- *     - Version: 1.2.0
- *     - Date: 11/13/2026
- *     - Update: Friday, November 13, 2026
+ *     - Version: 1.3.0
+ *     - Date: 11/14/2026
+ *     - Update: Saturday, November 14, 2026
  *     - Author: Dennis 'dendogg' Smaltz
  *     - A.I. Acknowledgement: Anthropic - Claude Opus 5.5
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
  *
  * ✒ Changelog:
+ *     - 1.3.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — A
+ *       session's time breaks between its two dates outside their nowrap
+ *       spans, its dash kept with the first; Changed with it carries the
+ *       session as its head's figure, the head's text unchanged; Working
+ *       sessions' title is a span.t.
  *     - 1.2.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] —
  *       Changed with it: the inspector says which working session a
  *       selected file was changed in, lists the 8 files nearest to it in
@@ -25,8 +30,7 @@
  *       survey. The date and plural helpers come from model.js. A row
  *       for a session that crossed midnight puts its second date under
  *       the first in a narrow ledger instead of cutting it off.
- *     - 1.0.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] —
- *       Initial release.
+ *     Earlier entries: see CHANGELOG.md
  *
  * ✒ Description:
  *     Working sessions, found and walked. Files whose last changes follow
@@ -213,9 +217,11 @@ export function install(api) {
   function row(s, k) {
     const f = sessionFacts(s);
     // A session that crossed midnight carries two dates: in a narrow ledger
-    // the second goes under the first, rather than being cut off.
+    // the second goes under the first, rather than being cut off. The
+    // dash stays with the first (a no-break space before it) and the line
+    // may break after it, outside the dates' own nowrap spans.
     const [from, to] = when(f.start, f.end).split(' – ');
-    const time = to ? el('span', { class: 'when' }, el('span', { text: `${from} – ` }), el('span', { text: to })) : from;
+    const time = to ? el('span', { class: 'when' }, el('span', { text: from }), '\u00a0– ', el('span', { text: to })) : from;
     const place = `${plural(f.places, 'place')} · ${relPath(f.common) || '/'}`;
     const label = `Session ${k}: ${plural(f.count, 'file')} in ${plural(f.places, 'place')} changed ${spoken(f.start, f.end)}${f.bulk ? ', written at once' : ''}, ${where(f)}. Find them.`;
     return el('button', { class: 'item session-row', type: 'button', 'data-session': String(k), 'aria-label': label, title: `session:${k}`, onclick: () => find(k) },
@@ -235,7 +241,7 @@ export function install(api) {
       list.slice(0, ROWS).forEach((s, i) => body.push(row(s, i + 1)));
       if (list.length > ROWS) body.push(el('p', { class: 'note', text: `The ${ROWS} newest of ${fmtCount(list.length)}. Type session:N in Find for an older one.` }));
     }
-    const details = el('details', { class: 'sessions', open }, el('summary', {}, 'Working sessions', el('span', { class: 'n', text: list ? fmtCount(list.length) : '…' })), ...body);
+    const details = el('details', { class: 'sessions', open }, el('summary', {}, el('span', { class: 't', text: 'Working sessions' }), el('span', { class: 'n', text: list ? fmtCount(list.length) : '…' })), ...body);
     details.addEventListener('toggle', () => { open = details.open; });
     return details;
   }
@@ -268,7 +274,7 @@ export function install(api) {
       const text = why === 'changed alone' ? `Changed alone: no other file changed within ${minutes} minutes of it.`
         : why === 'in a folder whose name starts with a dot' ? 'Working sessions leave out folders whose names start with a dot, and this file is in one.'
           : 'Its last change is not recorded, so it belongs to no working session.';
-      return [el('div', { class: 'section-title', text: 'Changed with it' }), el('p', { class: 'session-note', text })];
+      return [api.sectionTitle('Changed with it'), el('p', { class: 'session-note', text })];
     }
     const f = sessionFacts(s);
     const near = nearest(s, node, NEAR);
@@ -284,7 +290,7 @@ export function install(api) {
       : api.itemButton(x, hm(x.m))));
     const more = f.count - 1 - near.length;
     return [
-      el('div', { class: 'section-title', text: `Changed with it · session ${k}` }),
+      api.sectionTitle('Changed with it', `session ${k}`),
       el('p', { class: 'session-note', text: `${plural(f.count, 'file')} in ${plural(f.places, 'place')} changed ${spoken(f.start, f.end)}${f.bulk ? ', written at once' : ''}.${more > 0 ? ` The ${fmtCount(near.length)} nearest in time:` : ''}` }),
       el('div', { class: 'session-near' }, rows),
       el('div', { class: 'actions-grid' }, api.actionButton(`Show all as session:${k}`, () => find(k), { icon: 'search', wide: true, title: 'Findings lists them in the order they changed' })),

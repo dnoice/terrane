@@ -1,18 +1,22 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Time as a Dimension (Terrane Edition - v1.2)
+ *     - Title: Time as a Dimension (Terrane Edition - v1.3)
  *     - File Name: time.js
  *     - Relative Path: web/js/time.js
  *     - Artifact Type: javascript
- *     - Version: 1.2.0
- *     - Date: 11/13/2026
- *     - Update: Friday, November 13, 2026
+ *     - Version: 1.3.0
+ *     - Date: 11/14/2026
+ *     - Update: Saturday, November 14, 2026
  *     - Author: Dennis 'dendogg' Smaltz
  *     - A.I. Acknowledgement: Anthropic - Claude Opus 5.5
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
  *
  * ✒ Changelog:
+ *     - 1.3.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
+ *       Since head carries its date as a figure and Where the change is its
+ *       count (api.sectionTitle), their text unchanged; Changed and Not
+ *       changed break only at their separators (api.parts).
  *     - 1.2.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] —
  *       , . < > carry one label each for the command palette: one date
  *       earlier or later, the earliest date, the present.
@@ -22,8 +26,7 @@
  *       (tableOf), for the Since section, the hover line, the sentence,
  *       T and the layout's lowering; a rebuilt table redraws the
  *       inspector and Contents. fmtDay comes from model.js.
- *     - 1.0.0 (11/12/2026) [dendogg + Anthropic - Claude Opus 5.5] —
- *       Initial release.
+ *     Earlier entries: see CHANGELOG.md
  *
  * ✒ Description:
  *     The date scrub. It looks the world back to a date on the age table's
@@ -266,7 +269,7 @@ export function install(api) {
     if (!st || !S.ages) return null;
     const A = tableFor(node);
     const k = st.k;
-    const title = el('div', { class: 'section-title', text: `Since ${st.date}` });
+    const title = api.sectionTitle('Since', st.date);
     if (!node.d) {
       const changed = node.m > st.t;
       return [title, el('dl', { class: 'facts since' },
@@ -275,8 +278,8 @@ export function install(api) {
     }
     const { tb, tf, cb, cf, share } = figures(A, k, node);
     const facts = el('dl', { class: 'facts since' },
-      fact('Changed', el('b', { text: fmtBytes(cb) }), ` · ${fmtCount(cf)} file${cf === 1 ? '' : 's'} · ${pctOf(share)}`, shareBar(share, 1)),
-      fact('Not changed', `${fmtBytes(tb - cb)} · ${fmtCount(tf - cf)} file${tf - cf === 1 ? '' : 's'} · ${pctOf(tf ? 1 - share : 0)}`, shareBar(tf ? 1 - share : 0, 1)));
+      fact('Changed', api.parts(el('b', { text: fmtBytes(cb) }), `${fmtCount(cf)} file${cf === 1 ? '' : 's'}`, pctOf(share)), shareBar(share, 1)),
+      fact('Not changed', api.parts(fmtBytes(tb - cb), `${fmtCount(tf - cf)} file${tf - cf === 1 ? '' : 's'}`, pctOf(tf ? 1 - share : 0)), shareBar(tf ? 1 - share : 0, 1)));
     // Where the change is: the entries here holding the most changed bytes.
     const where = [];
     for (const ch of node.c) {
@@ -294,7 +297,7 @@ export function install(api) {
     });
     return [
       title, facts,
-      el('div', { class: 'section-title', text: where.length > WHERE_MAX ? `Where the change is · ${WHERE_MAX} of ${fmtCount(where.length)}` : 'Where the change is' }),
+      api.sectionTitle('Where the change is', where.length > WHERE_MAX ? `${WHERE_MAX} of ${fmtCount(where.length)}` : null),
       rows.length ? el('div', { class: 'since-where' }, rows)
         : el('p', { class: 'since-none', text: tf ? 'Nothing here changed since then.' : 'No files here.' }),
     ];

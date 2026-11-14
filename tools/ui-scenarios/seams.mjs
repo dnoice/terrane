@@ -1,18 +1,21 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Controller Seams Scenario (Terrane Edition - v1.6)
+ *     - Title: Controller Seams Scenario (Terrane Edition - v1.7)
  *     - File Name: seams.mjs
  *     - Relative Path: tools/ui-scenarios/seams.mjs
  *     - Artifact Type: test
- *     - Version: 1.6.0
- *     - Date: 11/13/2026
- *     - Update: Friday, November 13, 2026
+ *     - Version: 1.7.0
+ *     - Date: 11/14/2026
+ *     - Update: Saturday, November 14, 2026
  *     - Author: Dennis 'dendogg' Smaltz
  *     - A.I. Acknowledgement: Anthropic - Claude Opus 5.5
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
  *
  * ✒ Changelog:
+ *     - 1.7.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — A
+ *       LEDGER_SUB control stands on the count row after the count, where the
+ *       polished head puts a feature's tools.
  *     - 1.6.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — The core's
  *       Closed mass row says that a mass's sides show its strata.
  *     - 1.5.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
@@ -587,8 +590,8 @@ export default {
     t.check(`AFTER_FOCUS hears the folder you are in once it changes (${g1.heard.focus.join(', ')})`, g1.heard.focus.at(-1) === dirName, JSON.stringify(g1.heard.focus));
     t.check('AFTER_SELECT hears select() and selectAll() with S.sel and the primary',
       same(g1.heard.sel.slice(-2).map((x) => x.slice(0, 2)), [[true, 1], [true, 2]]) && g1.sel[0] === 2 && g1.sel[1] && g1.rows === 2, JSON.stringify({ heard: g1.heard.sel, sel: g1.sel, rows: g1.rows }));
-    t.check('a LEDGER_SUB control stands on the count row after the sort keys, told the rows shown and the folder; one that throws is reported and left out',
-      g1.tool === `Seam ${g1.n} true` && g1.before === 'sorts' && g1errs.some((e) => /LEDGER_SUB "seam-sub-broken" failed/.test(e)), JSON.stringify({ tool: g1.tool, before: g1.before, g1errs }));
+    t.check('a LEDGER_SUB control stands on the count row after the count, told the rows shown and the folder; one that throws is reported and left out',
+      g1.tool === `Seam ${g1.n} true` && g1.before === 'sub-count' && g1errs.some((e) => /LEDGER_SUB "seam-sub-broken" failed/.test(e)), JSON.stringify({ tool: g1.tool, before: g1.before, g1errs }));
     t.check('cursorTo moves the list\'s cursor to a listed node, and answers false for one not listed', g1.moved && g1.cursor && g1.notThere === false);
     t.check('a TAB_SECTIONS section is drawn in its tab, after the tab\'s own; one that throws is reported and left out',
       g1.built.includes('seam-tab') && g1.placed.at(-1) === 'seam-tab' && g1.placed.includes('places-return') && g1errs.some((e) => /TAB_SECTIONS "seam-tab-broken" failed/.test(e)), JSON.stringify(g1.placed));
