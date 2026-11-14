@@ -29,7 +29,13 @@
       extend the entries of app.js (1.12.0), model.js (1.6.0) and traverse.js (1.3.0), and the
       warm cache checked by folder modification times that of app.js again. The Stage 4 exit
       test extends app.js's again and records ui.js 1.5.0, whose 1.2.0 entry leaves its
-      header; this file already holds it.
+      header; this file already holds it. The review's fixes extend the entries of app.js
+      (1.12.0), model.js (1.6.0), traverse.js (1.3.0) and landmarks.js (1.4.0): changes from
+      outside read into the service's tree and asked for as kept, entries held past a
+      folder's 5,000 kept through refills, the search and survey asked again at a pace the
+      service can bear, Findings turned page by page, the status line's entries from the root,
+      a whole tree's sessions found in a quiet moment, and a benchmark that cannot be read
+      said so.
     - 1.8.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — Records the names on the blocks:
       viewport.js 1.7.0. viewport.js's header rolls its 1.4.0 entry out; this file already
       holds it.
@@ -120,7 +126,10 @@ short form is kept too.
   times (GET /api/check), and in region mode in place by the service while changes wait. What
   follows a region landing, a layout's location and a reveal's panels run in tasks of their own
   there; the Survey is not drawn again on select, and its closed sections of many rows build
-  them when first opened; a reveal paints its selection once. drawContents builds
+  them when first opened; a reveal paints its selection once. After the review: changes the
+  service read itself are asked for as kept, pinned children past a folder's 5,000 kept through
+  refills, the search and survey asked again at a pace the service bears, and Findings turned
+  page by page. drawContents builds
   div.sub-row.is-count
   (span.sub-count with span.n "14 items" and span.b " · 199 GB", then the LEDGER_SUB tools) and
   div.sub-row.is-columns with the sort keys in the order seen, Name, Changed, Untouched, Size;
@@ -229,6 +238,27 @@ short form is kept too.
   terrane:inspector. The Contents sentence of a folder held in part ends "Find them with
   in:<path>." (in:/ for the root, the path in quotes when it holds a space), now that the
   service answers that search.
+  After the review of Wave 4. The service reads changes from outside into its own tree, so in
+  region mode a change event that says kept is asked for with kept=1 (refreshDirs' kept
+  option), which reads nothing; the regions refreshed are batched (refreshRegions): what
+  arrives while one refresh runs joins the next, fresh reads first, then kept ones. regionsChecked
+  asks for what the warm check read as kept. The region client is given pinned() (regionPins,
+  the selection, the primary, the folder you are in and an open archive's file), so a refill
+  names those children with with= and keeps them wherever they rank, and onGone, which reads
+  again the parent of a folder the service no longer has. The transport writes a list value as
+  its key repeated (regionQuery). After a refresh the search is asked again no sooner than six
+  times the service's last search took (queueQueryAgain, lastFindMs from the answer's ms), and
+  in region mode one survey waits at a time without being pushed back by later changes; a
+  survey answered stale keeps what is shown, asks no marks and is asked again after its retry.
+  Findings in region mode turns 5,000 at a time: the note reads "Matches A to B of N, in this
+  order, 5,000 to a page.", and findingsPager puts two 24 px icon buttons on the count row ahead
+  of the features' tools, Previous and Next 5,000 matches (chevrons, data-k page-prev and
+  page-next, aria-disabled with the reason at either end), which ask GET /api/find with from
+  (turnPage) and say "Matches A to B of N."; a new order starts at the first page. The Contents
+  sentence of a folder held in part ends "Find them with in:<path>: Findings turns through
+  every match, 5,000 at a time." The status line's entries follow the root's figures, as the
+  client now gives them. __terrane.evictSoon() lets regions go once the view settles, for a
+  check that lowered the budget.
 
 - 1.11.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — Paint gives each file its
   kind's colour in a tone of its own extension (extTone): five steps from 22 % darker to 24 %
@@ -702,7 +732,9 @@ short form is kept too.
   (children kept by name and kind), dropRegion and setFigures, every figure the service's.
   dirFrom makes a folder from a record D, whose layout (D_ID to D_LEN) is defined here; kids(n)
   is a folder's count, the service's when it has one; relPath gives a ref its own path, and
-  refFrom makes a ref from the service's tuple for the lists. A record D is 62 values, [id,
+  refFrom makes a ref from the service's tuple for the lists. After the review, refillRegion
+  keeps a child a region with a tail does not list when keep(child) says so, and names the held
+  folders whose name now stands for another id (renewed). A record D is 62 values, [id,
   name, mtime, err, s, fc, dc, h, mm, cn, k0..k8, b0..b20, f0..f20, md]; columns.js writes it
   and re-exports the indices, and timeline.js reads its age row. A region folder is a Model
   folder plus x (its service id), cn (its direct children), u (true while its children are not
@@ -715,6 +747,11 @@ short form is kept too.
   refFrom(t) reads the tuple [rel, d, s, m (mm for a folder), k, f, fc, cn, e, x or -1, pid]
   into { ref: true, n, d, s, m, mm, k, f, fc, cn, e, rel, pid, x, p }, p a ref of the parent's
   path, so rowFor, itemButton, describe and the CSV rows draw it as they draw a node.
+  refillRegion(dir, R, keep) keeps a child the region does not list when the region has a tail
+  and keep(child) says so: it follows the region's own children, so the marks a region
+  carries by place still find theirs, and the tail no longer counts it. It returns { added,
+  removed, kept, renewed }, renewed the held folders whose name now stands for another id, whose
+  regions the client lets go.
 
 - 1.5.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — Camera RAW files are images:
   cr3, nrw, srf, sr2, raf, rw2, orf, pef, srw, 3fr, erf, kdc, mrw, x3f and iiq join cr2, nef,
@@ -755,7 +792,8 @@ short form is kept too.
   inspector's Benchmark head carries its date as a figure, its text unchanged; Then and Now
   break only at separators; Set benchmark stands in an actions grid. In region mode B reads the
   folder's region before measuring, J finds the return point by its path, and the first survey
-  reads every benchmark's folder by its path before comparing. The head is
+  reads every benchmark's folder by its path before comparing; a region the service cannot
+  answer then says no benchmark was set. The head is
   api.sectionTitle('Benchmark', date), whose text still reads "Benchmark · MM/DD/YYYY HH:MM".
   measureText gave way to measureParts, the size, files and folders as api.parts. In the Places
   tab the button that names a folder (Set benchmark on "x", Measure "x" again) is marked
@@ -764,7 +802,8 @@ short form is kept too.
   here is. In region mode the places hook asks api.resolveAll for the benchmarks' and the
   return point's paths, then store.resolve finds them held and the page pins their folders; B
   awaits api.ensure(dir) after reading the folder again; J calls api.resolve, and in a whole
-  tree goes on at once as before.
+  tree goes on at once as before. When that region fails, B says "No benchmark was set: x could
+  not be read (why)." instead of leaving the failure unheard.
 
 - 1.3.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — The Places tab ends with the
   sections other features keep there (api.tabSections('places')), such as Saved searches,
@@ -906,7 +945,8 @@ short form is kept too.
   carries the session as its head's figure, the head's text unchanged; Working sessions' title
   is a span.t. In region mode the service finds the sessions of the whole tree: S.sessions
   reads its list, a session's facts and a file's session and neighbours, and the traverse joins
-  the held boxes nearest the session's files. S.sessions there is the service's: load() asks
+  the held boxes nearest the session's files. A whole tree's sessions are found in a quiet
+  moment after its survey. S.sessions there is the service's: load() asks
   GET /api/sessions the first time Working sessions is drawn, byK keeps each session's facts
   (its common folder a ref) as they arrive, from the list or from a session: search's answer,
   and ofFile each file's { k, why, facts, near, before } from ?path&near=8, which Changed with
@@ -914,7 +954,9 @@ short form is kept too.
   not known yet. The service evaluates session:N; the page keeps its note and its date order.
   The traverse asks ?k&files=1000&q=<qid> once per search, the session's files narrowed by the
   query, and routes each through the held node nearest it (api.nearest), a folder standing for
-  the files it hides.
+  the files it hides. warmSessions finds them a second after the survey, in an idle callback,
+  unless something read them first or a newer survey replaced them, so the Survey tab or the
+  first file selected does not find them in its own task.
 
 - 1.2.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — Changed with it: the inspector
   says which working session a selected file was changed in, lists the 8 files nearest to it in

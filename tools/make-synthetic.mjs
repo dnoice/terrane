@@ -15,7 +15,8 @@
  *
  * ✒ Changelog:
  *     - 1.0.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] —
- *       Initial release.
+ *       Initial release. The summary gives its moment as MM/DD/YYYY HH:MM
+ *       (dateTime), never ISO.
  *
  * ✒ Description:
  *     Writes a structure snapshot of a directory tree that does not exist:
@@ -151,6 +152,12 @@ export function noonToday() {
 }
 
 const pad = (n, w) => String(n).padStart(w, '0');
+
+/** A moment as a person reads it here: MM/DD/YYYY HH:MM, local time. */
+export function dateTime(ms) {
+  const d = new Date(ms);
+  return `${pad(d.getMonth() + 1, 2)}/${pad(d.getDate(), 2)}/${d.getFullYear()} ${pad(d.getHours(), 2)}:${pad(d.getMinutes(), 2)}`;
+}
 
 /* ---------- names ---------- */
 
@@ -688,7 +695,7 @@ async function main(argv) {
       `  Bytes              : ${f(r.bytes)} (${(r.bytes / 1024 ** 4).toFixed(2)} TB)`,
       `  Deepest level      : ${r.deepest}`,
       `  Largest folder     : ${f(r.largest)} files`,
-      `  Seed, now          : ${r.seed}, ${new Date(r.now).toISOString()}`,
+      `  Seed, now          : ${r.seed}, ${dateTime(r.now)}`,
       `  Written in         : ${(r.ms / 1000).toFixed(1)} s, ${(r.dbBytes / 1024 ** 2).toFixed(1)} MB`,
       '',
     ].join('\n'));

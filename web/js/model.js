@@ -20,7 +20,10 @@
  *       figure the service's. dirFrom makes a folder from a record D, whose
  *       layout (D_ID to D_LEN) is defined here; kids(n) is a folder's count,
  *       the service's when it has one; relPath gives a ref its own path, and
- *       refFrom makes a ref from the service's tuple for the lists.
+ *       refFrom makes a ref from the service's tuple for the lists. After
+ *       the review, refillRegion keeps a child a region with a tail does not
+ *       list when keep(child) says so, and names the held folders whose
+ *       name now stands for another id (renewed).
  *     - 1.5.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] —
  *       Camera RAW files are images: cr3, nrw, srf, sr2, raf, rw2, orf,
  *       pef, srw, 3fr, erf, kdc, mrw, x3f and iiq join cr2, nef, arw and
@@ -364,16 +367,22 @@ export class Model {
    * does: children are matched by name and kind and keep their nodes, so
    * whatever holds one holds it still. A kept file takes its size, date
    * and flags; a kept folder its figures, and keeps its own held region.
-   * New children are made and gone ones dropped. Returns { added,
-   * removed }: the nodes made and the nodes dropped.
+   * New children are made and gone ones dropped. When the region holds
+   * only part of the folder (R.tail), a child it does not list may lie in
+   * the tail rather than be gone: keep(child) true keeps it, after the
+   * region's own children, and the tail no longer counts it. Returns {
+   * added, removed, kept, renewed }: the nodes made, dropped and kept so,
+   * and the held folders whose name now stands for another folder (a new
+   * id), whose regions the caller lets go.
    */
-  refillRegion(dir, R) {
+  refillRegion(dir, R, keep = null) {
     const { dirs, files } = R;
     const oldDirs = new Map();
     const oldFiles = new Map();
     for (const ch of dir.c) (ch.d ? oldDirs : oldFiles).set(ch.n, ch);
     const next = [];
     const added = [];
+    const renewed = [];
     for (let j = 0; j < files.names.length; j++) {
       const name = files.names[j];
       let file = oldFiles.get(name);
@@ -393,7 +402,11 @@ export class Model {
       if (child) {
         oldDirs.delete(name);
         this.setFigures(child, dirs.figs, j * D_LEN, dirs.errs[j]);
-        child.x = dirs.figs[j * D_LEN + D_ID];
+        // A folder of the same name under a new id is another folder: what
+        // it held belongs to the one that went.
+        const x = dirs.figs[j * D_LEN + D_ID];
+        if (child.x !== undefined && child.x !== x && !child.u) renewed.push(child);
+        child.x = x;
       } else {
         child = dirFrom(dirs.figs.subarray(j * D_LEN, (j + 1) * D_LEN), dir, name, dirs.errs[j]);
         added.push(child);
@@ -401,12 +414,24 @@ export class Model {
       next.push(child);
     }
     this.setFigures(dir, dirs.figs, 0, dirs.errs[0]);
+    const removed = [];
+    const kept = [];
+    let tn = R.tail ? R.tail[0] : 0;
+    let ts = R.tail ? R.tail[1] : 0;
+    for (const ch of [...oldFiles.values(), ...oldDirs.values()]) {
+      if (tn > 0 && keep && keep(ch)) {
+        kept.push(ch);
+        next.push(ch);
+        tn--;
+        ts -= ch.s || 0;
+      } else removed.push(ch);
+    }
     dir.c = next;
     dir.cn = R.n;
     dir.u = false;
-    dir.tail = R.tail ? { n: R.tail[0], s: R.tail[1] } : null;
+    dir.tail = tn > 0 ? { n: tn, s: Math.max(0, ts) } : null;
     dir.dirty = true;
-    return { added, removed: [...oldDirs.values(), ...oldFiles.values()] };
+    return { added, removed, kept, renewed };
   }
 
   /**

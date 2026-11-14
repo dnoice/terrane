@@ -20,7 +20,10 @@
  *       are in it or below it, its region held; the region requests'
  *       timings, the entries held and whether a worker decodes are
  *       recorded; async trace events (b/e, as measures are traced) pair,
- *       so a long task is named by its terrane:* measure.
+ *       so a long task is named by its terrane:* measure. After the
+ *       review: the exit criteria are checked at 400,000 entries or more,
+ *       either way the page holds the tree, and in regions the tour lowers
+ *       the budget, lets regions go and walks down again over it.
  *
  * ✒ Description:
  *     Measures the page over a synthetic snapshot: how soon the first box
@@ -28,8 +31,8 @@
  *     through a tour a person drives by keyboard, how long its longest
  *     script task runs, and what the service holds. It prints one line,
  *     SCALE {...}, which tools/scale.mjs collects point by point; it
- *     checks the Stage 4 exit criteria only when the page draws in
- *     regions and the tree holds a million entries or more.
+ *     checks the Stage 4 exit criteria at 400,000 entries or more,
+ *     whichever way the page holds the tree.
  *
  * ✒ Key Features:
  *     - Runs only on a synthetic snapshot (data 'synthetic'), in both
@@ -63,7 +66,13 @@
  *       answer's time in the page and in the service (T.asked), and the
  *       second search waited for until its own answer has landed
  *     - The five tasks with the most script, each with the time every
- *       terrane:* measure took inside it (frames.longestTasks)
+ *       terrane:* measure took inside it (frames.longestTasks), and for
+ *       evict, relayout and paint the longest and its task's script time
+ *       (frames.byMeasure)
+ *     - In regions the budget: lowered to half of what the tour holds,
+ *       regions let go once the view settles, the heap read after it, then
+ *       three levels walked down again over the lower budget
+ *       (tour.budget); checked like the exit criteria
  *
  * ✒ Usage Instructions:
  *     node tools/make-synthetic.mjs --entries 100k --out <dir>
@@ -187,6 +196,31 @@ function analyse(events) {
     }
   }
   const measuresIn = ({ a, b }) => marks.filter(([s, e]) => s < b && e > a).map(([s, e, ev]) => `${ev.name.slice(8)} ${r1((Math.min(e, b) - Math.max(s, a)) / 1000)}`);
+  // For evict, relayout and paint: the longest of each, how many there were,
+  // and the script time of the task the longest ran in.
+  const byMeasure = {};
+  for (const name of ['evict', 'relayout', 'paint']) {
+    const list = marks.filter(([, , ev]) => ev.name === `terrane:${name}`);
+    if (!list.length) continue;
+    const top2 = list.reduce((m, iv) => (iv[1] - iv[0] > m[1] - m[0] ? iv : m));
+    const task = tasks.find(([a, b]) => top2[0] >= a && top2[1] <= b);
+    let scriptMs = null;
+    if (task) {
+      let sum = 0;
+      let cur = -Infinity;
+      for (const [s0, e0] of scripts) {
+        if (e0 <= task[0] || s0 >= task[1]) continue;
+        const s = Math.max(s0, task[0], cur);
+        const e = Math.min(e0, task[1]);
+        if (e > s) {
+          sum += e - s;
+          cur = e;
+        }
+      }
+      scriptMs = r1(sum / 1000);
+    }
+    byMeasure[name] = { count: list.length, longestMs: r1((top2[1] - top2[0]) / 1000), taskScriptMs: scriptMs };
+  }
   const longestTasks = top.map((x) => ({ scriptMs: r1(x.ms), taskMs: r1((x.b - x.a) / 1000), measures: measuresIn(x) }));
   let attribution = null;
   if (longest) {
@@ -215,7 +249,7 @@ function analyse(events) {
   }
   return {
     thread: main, tasks: tasks.length, longestScriptMs: r1(longest?.ms ?? 0), attribution, longestTaskMs: r1(longestTask),
-    over16, over50, longestGcMs: r1(gcs.reduce((m, [s, e]) => Math.max(m, (e - s) / 1000), 0)), longestTasks,
+    over16, over50, longestGcMs: r1(gcs.reduce((m, [s, e]) => Math.max(m, (e - s) / 1000), 0)), longestTasks, byMeasure,
   };
 }
 
@@ -357,6 +391,75 @@ export default {
         await t.key('0');
         await t.settle({ timeout: 60000 });
       }
+
+      // i. In regions, the budget: lowered to half of what the tour holds,
+      // regions are let go once the view is settled, then three levels
+      // down again load regions over the lower budget and let more go.
+      // The evict, relayout and paint tasks are in the trace; the heap
+      // after the regions are let go is read after a collection.
+      if (await t.app((T) => !!T.S.regions)) {
+        const before = await t.app((T) => ({ held: T.S.regions.held, regions: T.S.regions.stats.regions, dropped: T.S.regions.stats.dropped }));
+        const budget = Math.floor(before.held / 2);
+        await t.app((T, b) => {
+          T.S.regions.budget = b;
+          T.S.regions.floor = Math.floor(b * 0.75);
+          T.evictSoon();
+          return true;
+        }, budget);
+        await t.waitFor((T, d) => T.S.regions.stats.dropped > d, { args: [before.dropped], timeout: 60000, what: 'regions let go under the lowered budget' });
+        await t.settle({ timeout: 60000 });
+        // What may not be let go: folders standing open in the layout, and the
+        // folder you are in, the trail and the forced chain with every ancestor.
+        const evicted = await t.app((T) => {
+          const keep = new Set();
+          const L = T.S.layout;
+          for (let i = 0; i < (L?.n || 0); i++) if (L.type[i] === 0) keep.add(L.node[i]);
+          for (const n of [T.S.focus, ...T.S.trail, ...(T.S.force || [])]) for (let a = n; a; a = a.p) keep.add(a);
+          let loose = 0;
+          const walk = [T.S.model.root];
+          while (walk.length) {
+            const d = walk.pop();
+            if (d.u) continue;
+            if (!keep.has(d)) loose++;
+            for (const c of d.c) if (c.d) walk.push(c);
+          }
+          return { held: T.S.regions.held, regions: T.S.regions.stats.regions, dropped: T.S.regions.stats.dropped, loose };
+        });
+        const heapAfter = await heap(t);
+        // Back to Contents, which the Survey tab replaced, to walk by the ledger.
+        await t.app((T) => {
+          T.S.tab = 'contents';
+          T.api.drawLedger();
+          return true;
+        });
+        await t.eval(() => document.getElementById('ledger-list').focus());
+        let down = 0;
+        for (; down < 3; down++) {
+          const rel = await t.app((T) => {
+            const kids = T.S.focus.c.filter((c) => c.d && !c.e);
+            if (!kids.length) return null;
+            kids.sort((a, b) => b.dc - a.dc || b.s - a.s);
+            return T.api.cursorTo(kids[0]) ? T.api.relPath(kids[0]) : null;
+          });
+          if (!rel) break;
+          await t.key('Enter');
+          await t.waitFor((T, r) => {
+            const f = T.api.relPath(T.S.focus);
+            return (f === r || f.startsWith(`${r}/`)) && !T.S.focus.u && T.S.regions.stats.idle;
+          }, { args: [rel], timeout: 120000, what: `the folder ${rel}` });
+          await t.settle({ timeout: 60000 });
+          await t.eval(() => document.getElementById('ledger-list').focus());
+        }
+        await t.sleep(600);
+        await t.settle({ timeout: 60000 });
+        const walked = await t.app((T) => ({ held: T.S.regions.held, regions: T.S.regions.stats.regions, dropped: T.S.regions.stats.dropped, focusHeld: T.S.focus.u === false }));
+        await t.app((T) => {
+          T.S.regions.budget = 200000;
+          T.S.regions.floor = 150000;
+          return true;
+        });
+        tour.budget = { before, budget, evicted, heapAfterMB: heapAfter.jsHeapUsedMB, down, walked };
+      }
     } finally {
       tour.ms = Date.now() - t0;
       sampling = false;
@@ -409,14 +512,23 @@ export default {
     // n. One line for the driver.
     t.note(`SCALE ${JSON.stringify(result)}`);
 
-    // o. The exit criteria, at a million entries or more in regions.
+    // o. The exit criteria, at 400,000 entries or more, whichever way the
+    // page holds the tree: a threshold that leaves such a tree whole fails.
     t.check('the tour went down at least one level', tour.depth >= 1, JSON.stringify(tour));
-    if (result.mode === 'regions' && entries >= 1_000_000) {
+    if (entries >= 400_000) {
       t.check(`the peak heap during the tour is under 300 MB (${result.peak.jsHeapUsedMB} MB)`, result.peak.jsHeapUsedMB < 300);
       t.check(`the heap after the tour is under 300 MB (${result.afterTour.jsHeapUsedMB} MB)`, result.afterTour.jsHeapUsedMB < 300);
       if (t.gl) t.check(`no task in the tour ran more than 16.0 ms of script (${result.frames.longestScriptMs} ms)`, result.frames.longestScriptMs <= 16.0, JSON.stringify(result.frames.attribution));
+      const B = tour.budget;
+      if (B) {
+        t.check(`under a budget of half what the tour held (${B.budget.toLocaleString('en-US')} of ${B.before.held.toLocaleString('en-US')}), regions are let go (${B.evicted.dropped - B.before.dropped}) until the entries held are within it, or all still held stand open or are pinned (${B.evicted.held.toLocaleString('en-US')})`,
+          B.evicted.dropped > B.before.dropped && (B.evicted.held <= B.budget || B.evicted.loose === 0), JSON.stringify(B));
+        t.check(`walking ${B.down} levels down again over the lower budget keeps the folder you are in held and the entries near the budget (${B.walked.held.toLocaleString('en-US')})`,
+          B.down > 0 && B.walked.focusHeld && B.walked.held <= B.budget + 40000, JSON.stringify(B.walked));
+        if (t.gl) t.check(`letting regions go stays within a frame: the longest evict task ran ${result.frames.byMeasure?.evict?.taskScriptMs} ms of script`, (result.frames.byMeasure?.evict?.taskScriptMs ?? 0) <= 16.0, JSON.stringify(result.frames.byMeasure));
+      }
     } else {
-      t.note(`the exit criteria are checked in regions at 1,000,000 entries or more; here the page is ${result.mode} at ${entries.toLocaleString('en-US')} entries, so they are noted`);
+      t.note(`the exit criteria are checked at 400,000 entries or more; here the page is ${result.mode} at ${entries.toLocaleString('en-US')} entries, so they are noted`);
     }
   },
 };

@@ -14,7 +14,11 @@
  *
  * ✒ Changelog:
  *     - 1.0.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] —
- *       Initial release.
+ *       Initial release. After the review: markRegion never works a query
+ *       or survey out again, so a region is never held up by a whole-tree
+ *       pass; find takes from (a page further in, up to 200,000); the
+ *       survey finds shared sizes by bucket, not one sort of them all;
+ *       marks lists removed folders in gone; whole() says at least.
  *
  * ✒ Description:
  *     The questions that walk the whole tree, answered over the column tree
@@ -28,16 +32,20 @@
  *     - find: model.js parseQuery over one flyweight per entry with its
  *       lower-cased name, plus is:benchmark (the folders named), session:N
  *       (the service's sessions) and in: (resolved as searches.js resolves
- *       it); every match counted, the first 5,000 in the order asked, ties
- *       as the page's runSearch and Findings sort leave them
+ *       it); every match counted, 5,000 at a time in the order asked from
+ *       any place up to 200,000 (from), ties as the page's runSearch and
+ *       Findings sort leave them
  *     - The last four queries kept by qid: a hit bit per entry and a
  *       count of matches beneath every folder, for marks and regions
  *     - marks: by name, per folder held, what matches, what holds matches
  *       and how many of its children do; with dup, the survey's groups and
  *       heavyweights
  *     - survey: largest, heavyweights, empty, sealed, links and duplicate
- *       candidates exactly as Model.survey finds them, from one sort of
- *       sizes; the first 1,000 of each list sent, with its count
+ *       candidates exactly as Model.survey finds them, the sizes shared
+ *       found in 65,536 buckets each sorted; the first 1,000 of each list
+ *       sent, with its count
+ *     - A region carries a query's or the survey's marks only while they
+ *       are current: neither is worked out again on a region's account
  *     - sessions: relations.js sessions over the columns, with their
  *       facts, a session's files, and a file's session and neighbours
  *     - places: fuzzy.js rank over every name, folders first, or over
@@ -77,6 +85,8 @@ import { rank } from './fuzzy.js';
 
 /** The most matches a find lists, and the caps of the other answers. */
 export const FIND_LIMIT = 5000;
+/** How far into a search's matches a page of them may start (from). */
+export const FIND_FROM_MAX = 200000;
 export const MARK_IDS_MAX = 1500;
 export const BENCH_MAX = 200;
 export const LIST_MAX = 1000;
@@ -94,6 +104,10 @@ const DUP_MIN = 4096;
 const STUB = 'STUB';
 const REMOVED = -2;
 const DOT = 46;
+/** The buckets the duplicate candidates' sizes are spread over, to find the sizes they share without one sort of them all. */
+const SIZE_BUCKETS = 1 << 16;
+/** A size's bucket: a hash of its low and high 32 bits. Equal sizes always meet in one bucket. */
+const bucketOf = (s) => (Math.imul(s | 0, 0x9e3779b1) ^ Math.imul((s / 4294967296) | 0, 0x85ebca77)) >>> 16;
 
 /** A ref tuple's fields. */
 export const R_REL = 0;
@@ -282,8 +296,9 @@ function surveyOf(tree) {
   const st = state(tree);
   if (st.survey?.at === tree.edits) return st.survey;
   const t0 = clock();
-  const { pop } = orderOf(tree);
-  const { fsize, fflags, file0, fileN, cn, N } = tree;
+  // A file's place in the walk (frank) breaks the ties of the largest.
+  const { pop, frank: seq } = orderOf(tree);
+  const { fsize, fflags, file0, fileN, cn } = tree;
   const sealed = [];
   const empty = [];
   const links = [];
@@ -291,9 +306,8 @@ function surveyOf(tree) {
   let nEmpty = 0;
   let nLinks = 0;
   let nDup = 0;
-  // Visit order of each file, for the ties of the largest.
-  const seq = new Uint32Array(N);
-  let at = 0;
+  // How many candidates' sizes fall in each bucket (starts, shifted by one).
+  const starts = new Uint32Array(SIZE_BUCKETS + 1);
   for (let i = 0; i < pop.length; i++) {
     const x = pop[i];
     if (errOf(tree, x)) {
@@ -303,34 +317,44 @@ function surveyOf(tree) {
     }
     const f0 = file0[x];
     for (let j = f0; j < f0 + fileN[x]; j++) {
-      seq[j] = ++at;
       if (fflags[j] & FLAG_LINK) {
         if (nLinks++ < LIST_MAX) links.push(j);
-      } else if (fsize[j] >= DUP_MIN) nDup++;
+      } else if (fsize[j] >= DUP_MIN) {
+        nDup++;
+        starts[bucketOf(fsize[j]) + 1]++;
+      }
     }
   }
+  for (let b = 0; b < SIZE_BUCKETS; b++) starts[b + 1] += starts[b];
   const before = (a, b) => fsize[a] > fsize[b] || (fsize[a] === fsize[b] && seq[a] < seq[b]);
   const top = topOf(LARGEST, before);
-  // Sizes of the duplicate candidates, sorted, to count the runs of each.
+  // The candidates' sizes, each in its bucket; a bucket sorted puts equal
+  // sizes side by side, so the runs are counted without one sort of all.
   const sizes = new Float64Array(nDup);
-  let k = 0;
+  const fill = starts.slice(0, SIZE_BUCKETS);
   for (let i = 0; i < pop.length; i++) {
     const x = pop[i];
     const f0 = file0[x];
     for (let j = f0; j < f0 + fileN[x]; j++) {
       if (fflags[j] & FLAG_LINK) continue;
       top.push(j);
-      if (fsize[j] >= DUP_MIN) sizes[k++] = fsize[j];
+      const s = fsize[j];
+      if (s >= DUP_MIN) sizes[fill[bucketOf(s)]++] = s;
     }
   }
-  sizes.sort();
-  // Each run's waste; the 400th largest is the line a group must reach.
+  // Each run's size and count; the order of runs is of no account, since
+  // the groups are ranked by waste and their first file below.
   const runs = [];
-  for (let i = 0; i < sizes.length;) {
-    let e = i + 1;
-    while (e < sizes.length && sizes[e] === sizes[i]) e++;
-    if (e - i > 1) runs.push(sizes[i], e - i);
-    i = e;
+  for (let b = 0; b < SIZE_BUCKETS; b++) {
+    const lo = starts[b];
+    const hi = starts[b + 1];
+    if (hi - lo > 1) sizes.subarray(lo, hi).sort();
+    for (let i = lo; i < hi;) {
+      let e = i + 1;
+      while (e < hi && sizes[e] === sizes[i]) e++;
+      if (e - i > 1) runs.push(sizes[i], e - i);
+      i = e;
+    }
   }
   const wastes = new Float64Array(runs.length / 2);
   for (let i = 0; i < wastes.length; i++) wastes[i] = runs[2 * i] * (runs[2 * i + 1] - 1);
@@ -354,7 +378,7 @@ function surveyOf(tree) {
     }
   }
   const groups = [...cand.values()].sort((a, b) => b.waste - a.waste || a.first - b.first).slice(0, GROUPS);
-  const fdup = new Uint16Array(N);
+  const fdup = new Uint16Array(tree.N);
   groups.forEach((g, i) => {
     for (const j of g.files) fdup[j] = i + 1;
   });
@@ -705,6 +729,12 @@ function evaluate(tree, text, { focus = 0, bench = null } = {}) {
   return { hit, within, total, bytes, inInfo, sess };
 }
 
+/** A query kept by qid as it stands, worked out for the tree as it is now, or null; never worked out again. */
+function currentQuery(tree, qid) {
+  const Q = state(tree).queries.get(qid);
+  return Q && Q.at === tree.edits ? Q : null;
+}
+
 /** A query kept by qid, worked out again when the tree changed since. */
 function queryOf(tree, qid) {
   const st = state(tree);
@@ -750,9 +780,12 @@ function orderer(tree, key, dir) {
  * held child folders that match or hold matches, by place, the held files
  * that match, and how many of all its children do), and, once the survey
  * is ready, dup (each held candidate's group) and hv (held heavyweights).
+ * Neither is worked out here: a query or survey the tree has changed
+ * since is left out, so a region is never held up by a whole-tree pass;
+ * the page asks the search again after a change, and its marks with it.
  */
 export function markRegion(tree, qid) {
-  const Q = qid ? queryOf(tree, qid) : null;
+  const Q = qid ? currentQuery(tree, qid) : null;
   const sv = surveyReady(tree);
   if (!Q && !sv) return null;
   return (R, files, kids) => {
@@ -809,7 +842,8 @@ function whole(q, key, def, lo, hi) {
   if (t === null || t === '') return def;
   if (!/^-?\d{1,10}$/.test(t)) throw failure('EBADREQ', 400, `${key} is a whole number.`);
   const n = Number(t);
-  if (n < lo || n > hi) throw failure(n > hi ? 'ETOOMANY' : 'EBADREQ', n > hi ? 413 : 400, `${key} is at most ${hi.toLocaleString('en-US')}.`);
+  if (n > hi) throw failure('ETOOMANY', 413, `${key} is at most ${hi.toLocaleString('en-US')}.`);
+  if (n < lo) throw failure('EBADREQ', 400, `${key} is at least ${lo.toLocaleString('en-US')}.`);
   return n;
 }
 
@@ -828,15 +862,20 @@ function pathList(q, key, max, parts) {
   return list.map((r) => parts(r).join('/'));
 }
 
+/** Folder ids from a comma list, at most max; a folder removed since is listed in gone, never refused. */
 function idsOf(tree, text, max) {
   const raw = String(text ?? '').split(',').filter((x) => x !== '');
   if (raw.length > max) throw failure('ETOOMANY', 413, `At most ${max.toLocaleString('en-US')} folders can be marked at once; ${raw.length.toLocaleString('en-US')} were.`);
-  return raw.map((x) => {
+  const ids = [];
+  const gone = [];
+  for (const x of raw) {
     if (!/^\d{1,10}$/.test(x)) throw failure('EBADREQ', 400, 'A folder id is a whole number.');
     const id = Number(x);
-    if (!tree.has(id)) throw failure('EBADREQ', 400, `There is no folder ${id} in this tree.`);
-    return id;
-  });
+    if (tree.removed(id)) gone.push(id);
+    else if (!tree.has(id)) throw failure('EBADREQ', 400, `There is no folder ${id} in this tree.`);
+    else ids.push(id);
+  }
+  return { ids, gone };
 }
 
 function find(tree, q, ctx) {
@@ -847,6 +886,8 @@ function find(tree, q, ctx) {
   const key = q.get('sort') === 'date' ? 'date' : 'size';
   const dir = q.get('dir') === '1' ? 1 : -1;
   const limit = whole(q, 'limit', FIND_LIMIT, 0, FIND_LIMIT);
+  // A page further in: the matches from this place in the order asked.
+  const from = whole(q, 'from', 0, 0, FIND_FROM_MAX);
   const focusText = q.get('focus');
   const focusRel = focusText === null ? null : parts(focusText).join('/');
   const benchRels = q.get('bench') === null ? null : pathList(q, 'bench', BENCH_MAX, parts);
@@ -856,7 +897,7 @@ function find(tree, q, ctx) {
   const again = q.get('qid');
   const kept = again ? queryOf(tree, again) : null;
   const r = kept && kept.text === text ? kept : evaluate(tree, text, { focus, bench });
-  if (!r) return { v: ctx.v, qid: null, total: 0, bytes: 0, hits: [], in: null, sess: null, ms: Math.round(clock() - t0) };
+  if (!r) return { v: ctx.v, qid: null, total: 0, bytes: 0, hits: [], from: 0, in: null, sess: null, ms: Math.round(clock() - t0) };
   let qid = r === kept ? again : null;
   if (limit > 0 && !qid) {
     const st = state(tree);
@@ -865,12 +906,12 @@ function find(tree, q, ctx) {
     while (st.queries.size > QUERIES) st.queries.delete(st.queries.keys().next().value);
   }
   const hits = [];
-  if (limit > 0 && r.total) {
-    const top = topOf(Math.min(limit, r.total), orderer(tree, key, dir));
+  if (limit > 0 && r.total > from) {
+    const top = topOf(Math.min(from + limit, r.total), orderer(tree, key, dir));
     const { hit } = r;
     for (let e = 0; e < hit.length; e++) if (hit[e]) top.push(e);
     const ref = refMaker(tree);
-    for (const e of top.sorted()) hits.push(e < tree.F ? ref.folder(e) : ref.file(e - tree.F));
+    for (const e of top.sorted().slice(from)) hits.push(e < tree.F ? ref.folder(e) : ref.file(e - tree.F));
   }
   const inn = r.inInfo ? { raw: r.inInfo.raw, rel: r.inInfo.id < 0 ? null : tree.relOf(r.inInfo.id) } : null;
   let sess = null;
@@ -878,7 +919,7 @@ function find(tree, q, ctx) {
     const s = r.sess.s;
     sess = { k: r.sess.k, count: r.sess.count, facts: s ? factsJSON(tree, s, refMaker(tree)) : null };
   }
-  return { v: ctx.v, qid, total: r.total, bytes: r.bytes, hits, in: inn, sess, sort: { key, dir }, ms: Math.round(clock() - t0) };
+  return { v: ctx.v, qid, total: r.total, bytes: r.bytes, hits, from, in: inn, sess, sort: { key, dir }, ms: Math.round(clock() - t0) };
 }
 
 function marks(tree, q, ctx) {
@@ -887,7 +928,7 @@ function marks(tree, q, ctx) {
   if (qid && !Q) throw failure('EQUERY', 404, 'That search is no longer kept here; it is run again.');
   const withDup = q.get('dup') === '1';
   const sv = withDup ? surveyOf(tree) : null;
-  const ids = idsOf(tree, q.get('ids'), MARK_IDS_MAX);
+  const { ids, gone } = idsOf(tree, q.get('ids'), MARK_IDS_MAX);
   const F = tree.F;
   const out = [];
   for (const id of ids) {
@@ -920,7 +961,7 @@ function marks(tree, q, ctx) {
     }
     out.push(m);
   }
-  return { v: ctx.v, q: qid, marks: out };
+  return { v: ctx.v, q: qid, marks: out, gone };
 }
 
 function survey(tree, q, ctx) {

@@ -19,7 +19,8 @@
  *       region mode Findings and the Survey's lists export what the page
  *       holds and say "Exported the first N of M" when the service counted
  *       more, and a folder held in part exports its largest items and says
- *       so.
+ *       so. Findings, turned page by page, exports the page shown and says
+ *       "Exported matches A to B of M".
  *     - 1.0.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] —
  *       Initial release.
  *
@@ -121,8 +122,8 @@ export function install(api) {
 
   /**
    * The Findings of the search in Find, in the order shown. In region mode
-   * the list holds the first 5,000 the service sent; when there are more,
-   * the notice says how many of how many were saved.
+   * the list holds the page of 5,000 the service sent; when there are
+   * more, the notice says which of how many were saved.
    */
   function exportFindings() {
     if (!S.search) {
@@ -130,8 +131,9 @@ export function install(api) {
       return null;
     }
     const total = S.search.total ?? S.search.list.length;
+    const from = S.search.from || 0;
     const said = S.search.regions ? (n, file) => (total > n
-      ? `Exported the first ${fmtCount(n)} of ${fmtCount(total)} matches to ${file}; the page does not hold the rest at this size.`
+      ? `Exported matches ${fmtCount(from + 1)} to ${fmtCount(from + n)} of ${fmtCount(total)} to ${file}, the page of them Findings shows.`
       : `Exported ${fmtCount(n)} row${n === 1 ? '' : 's'} to ${file}.`) : null;
     return save(['findings', slug(S.query, 32)], nodeRows(api.listItems(), opts), 'nothing matches this search', said);
   }

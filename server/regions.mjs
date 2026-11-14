@@ -14,7 +14,13 @@
  *
  * ✒ Changelog:
  *     - 1.0.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] —
- *       Initial release.
+ *       Initial release. After the review: the watcher's changes are read
+ *       into the tree whether or not a page listens (applyChanges), one
+ *       folder at a time, and announced as kept; a page arriving while the
+ *       disk is not watched has the tree checked by folder times
+ *       (recheck); the survey of a changed tree is answered stale between
+ *       workings, at most an eighth of the time; questions wait for the
+ *       region answers already asked.
  *
  * ✒ Description:
  *     Keeps the whole directory tree in the service, in the typed columns
@@ -53,13 +59,25 @@
  *       is written again, and the sweep's changes follow, then { type:
  *       'swept' }. A walk (build=1) ends any check under way
  *     - handleAsk answers the whole-tree questions (find, marks, survey,
- *       sessions, places: questions.js) after any change under way; the
- *       survey is worked out before a new tree is served (prepMs), so
- *       every region carries its candidates and heavyweights from the first
+ *       sessions, places: questions.js) after any change under way and the
+ *       region answers already asked; the survey is worked out before a
+ *       new tree is served (prepMs), so every region carries its
+ *       candidates and heavyweights from the first; once the tree changes
+ *       it is worked out again at most once in SURVEY_DUTY times its last
+ *       length, the last one answered meanwhile with stale and retry
+ *     - applyChanges(dirs): the watcher's changes read into the tree
+ *       served, listening page or not, one folder per step of the
+ *       mutation chain (refreshFrom), those seen during a walk read into
+ *       the new tree too, and announced through onApplied in batches of
+ *       300; checkInPlace's change events say kept as well
+ *     - recheck(): a page arriving while the disk is not watched has the
+ *       tree checked by folder modification times, as a whole survey would
+ *       read it again, at most once in ten seconds
  *
  * ✒ Usage Instructions:
  *     import { makeRegions } from './regions.mjs';
- *     const regions = makeRegions({ guard, snap, threshold, warmOn, version, warmWriter });
+ *     const regions = makeRegions({ guard, snap, threshold, warmOn, version, warmWriter, onApplied });
+ *     if (!regions.applyChanges(dirs)) broadcast({ type: 'change', dirs });
  *     regions.info({ warm })                   // { threshold, entries, v, state }
  *     if (route === 'tree') return regions.handleTree(req, res, q);
  *     if (route === 'region') return regions.handleRegion(req, res, q);
@@ -73,6 +91,7 @@
  *     GET /api/region?v=1&ids=0,4,9&with=4:IMG_0001.jpg
  *     GET /api/region?v=1&path=Photos/2019/IMG_0001.jpg&skip=2
  *     GET /api/region?v=1&fresh=1&paths=["docs","Photos/2019"]
+ *     GET /api/region?v=1&fresh=1&kept=1&paths=["docs"]&with=14:a.txt
  *
  * ✒ Other Important Information:
  *     - Dependencies: Node.js built-ins only (node:sqlite); scan.mjs,
@@ -91,13 +110,25 @@ import path from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { scan } from './scan.mjs';
 import { relParts, GuardError } from './guard.mjs';
-import { ColumnTree, answer, REGION_THRESHOLD } from '../web/js/columns.js';
-import { prepare, QUESTION_ROUTES } from '../web/js/questions.js';
+import { ColumnTree, answer, refreshFrom, REGION_THRESHOLD } from '../web/js/columns.js';
+import { prepare, surveyReady, QUESTION_ROUTES } from '../web/js/questions.js';
 import { readWarmTree, checkWarm, sweepWarm, writeWarmTree } from './warm.mjs';
 
 const BATCH = 200;
 const PROGRESS_ROWS = 50000;
 const MB = 1024 * 1024;
+/** Folders a change event names at most; a larger set goes out in several. */
+const EVENT_DIRS = 300;
+/**
+ * The survey is worked out again at most once in this many times the
+ * time it last took (an eighth of the service's time at most), and never
+ * sooner than SURVEY_MIN_MS after the last; meanwhile the last one is
+ * answered, marked stale, with when to ask again.
+ */
+const SURVEY_DUTY = 8;
+const SURVEY_MIN_MS = 1000;
+/** A check of the tree by folder times, run again on a page's arrival while the disk is not watched, at most this often. */
+const RECHECK_MIN_MS = 10000;
 
 const tick = () => new Promise((resolve) => setImmediate(resolve));
 
@@ -113,7 +144,7 @@ export function memMB() {
  * (null in live mode); warmWriter(root, { version }) the warm cache's
  * writer, used when warmOn.
  */
-export function makeRegions({ guard = null, snap = null, meta = null, threshold = REGION_THRESHOLD, warmOn = false, version = '', warmWriter = null } = {}) {
+export function makeRegions({ guard = null, snap = null, meta = null, threshold = REGION_THRESHOLD, warmOn = false, version = '', warmWriter = null, onApplied = () => {} } = {}) {
   let tree = null;
   let state = 'none';
   let error = null;
@@ -129,6 +160,20 @@ export function makeRegions({ guard = null, snap = null, meta = null, threshold 
   // checked: { read, changed, added, removed, dirs } | null, failed }.
   let warm = null;
   let checker = null;
+  // Changes the watcher saw, read into the tree one folder at a time
+  // (applyChanges): the folders waiting, the run that reads them, what it
+  // read and has yet to announce, and those seen while a new tree was
+  // being read, which are read into that tree too once it is in.
+  const pendingApply = new Set();
+  let applying = null;
+  let appliedOut = [];
+  let seenWhileBuilding = null;
+  // The last survey answered, for the stale answer between two workings.
+  let lastSurvey = null;
+  // Region requests being answered: a whole-tree question waits for them.
+  let regionBusy = 0;
+  // The last check of the tree run when a page arrived unwatched.
+  let lastRecheck = { at: 0, ms: 0 };
 
   /** Runs fn after every mutation before it, and before every one after it. */
   const serial = (fn) => {
@@ -235,6 +280,7 @@ export function makeRegions({ guard = null, snap = null, meta = null, threshold 
     const t0 = Date.now();
     ac = new AbortController();
     const signal = ac.signal;
+    seenWhileBuilding = guard ? new Set() : null;
     building = (async () => {
       try {
         const next = snap ? await fromSnapshot(snap.file(), signal) : await fromScan(signal);
@@ -252,6 +298,7 @@ export function makeRegions({ guard = null, snap = null, meta = null, threshold 
         // A walk is checked by being one: whatever warm check ran is done with.
         checker?.abort();
         warm = null;
+        lastSurvey = null;
         state = 'ready';
       } catch (err) {
         if (signal.aborted) state = tree ? 'ready' : 'none';
@@ -262,6 +309,11 @@ export function makeRegions({ guard = null, snap = null, meta = null, threshold 
       } finally {
         building = null;
         ac = null;
+        // What changed while the walk ran may have been walked before it
+        // changed: it is read again into whichever tree is served now.
+        const seen = seenWhileBuilding;
+        seenWhileBuilding = null;
+        if (seen?.size) applyChanges([...seen]);
       }
     })();
     return building;
@@ -281,6 +333,68 @@ export function makeRegions({ guard = null, snap = null, meta = null, threshold 
   const ctx = (kept) => ({
     threshold, state, v, progress, loadMs, prepMs, error, mem: memMB(), warm, entries: entriesOf(kept), relParts,
   });
+
+  /** Announces the folders read into the tree, EVENT_DIRS at a time. */
+  const announce = (dirs) => {
+    for (let i = 0; i < dirs.length; i += EVENT_DIRS) onApplied(dirs.slice(i, i + EVENT_DIRS));
+  };
+
+  /**
+   * Reads every folder waiting into the tree served, one at a time through
+   * the mutation chain, so region answers wait for at most one folder; a
+   * folder gone is read through its parent (refreshFrom), one that cannot
+   * be read now is left as it is. What was read is announced in batches.
+   */
+  async function drain() {
+    while (pendingApply.size) {
+      if (building) {
+        await building;
+        continue;
+      }
+      const t = tree;
+      if (!t) {
+        pendingApply.clear();
+        break;
+      }
+      const rel = pendingApply.values().next().value;
+      pendingApply.delete(rel);
+      try {
+        const clean = relParts(rel).join('/');
+        await serial(async () => {
+          if (tree === t) await refreshFrom(t, clean, readers.depth1, readers.deep);
+        });
+        appliedOut.push(rel);
+      } catch { /* refused by the guard, or unreadable now: left as it is */ }
+      if (appliedOut.length >= EVENT_DIRS || !pendingApply.size) {
+        const out = appliedOut;
+        appliedOut = [];
+        announce(out);
+      }
+      await tick();
+    }
+    if (appliedOut.length) {
+      const out = appliedOut;
+      appliedOut = [];
+      announce(out);
+    }
+  }
+
+  /**
+   * The watcher's changes, while a tree is kept here (live mode): each
+   * folder is read into the tree whether or not a page is listening, and
+   * announced through onApplied once it is in, so a page only asks for
+   * what the tree now says (kept=1). False when there is no tree to keep
+   * up (the page reads changes itself).
+   */
+  function applyChanges(dirs) {
+    if (!guard || (!tree && !building)) return false;
+    for (const d of dirs) {
+      pendingApply.add(String(d));
+      seenWhileBuilding?.add(String(d));
+    }
+    if (!applying) applying = drain().finally(() => { applying = null; });
+    return true;
+  }
 
   /**
    * Checks the tree read from the warm cache against the disk, in place,
@@ -302,13 +416,14 @@ export function makeRegions({ guard = null, snap = null, meta = null, threshold 
       while (gate && fs.existsSync(gate) && !signal.aborted) await new Promise((r) => setTimeout(r, 100));
       const r = await checkWarm(guard, t, () => {}, { signal, mutate });
       if (tree !== t) return;
+      // Already read into the tree: a page asks for them with kept=1.
       const dirs = [...r.listed].filter((id) => t.has(id)).map((id) => t.relOf(id));
-      for (let i = 0; i < dirs.length; i += 100) broadcast({ type: 'change', dirs: dirs.slice(i, i + 100) });
+      for (let i = 0; i < dirs.length; i += 100) broadcast({ type: 'change', dirs: dirs.slice(i, i + 100), kept: true });
       const counts = { read: r.read, changed: r.changed, added: r.added, removed: r.removed };
       warm = { ...warm, checking: false, checked: { ...counts, dirs: dirs.slice(0, 5000), more: dirs.length > 5000 } };
       broadcast({ type: 'checked', ...counts });
       await writeWarmTree(guard.root, t, { version });
-      const sw = await sweepWarm(guard, t, { skip: r.listed, onChange: (d) => broadcast({ type: 'change', dirs: d }), busy, signal, mutate });
+      const sw = await sweepWarm(guard, t, { skip: r.listed, onChange: (d) => broadcast({ type: 'change', dirs: d, kept: true }), busy, signal, mutate });
       if (signal.aborted || tree !== t) return;
       if (sw.read) await writeWarmTree(guard.root, t, { version });
       warm = { ...warm, swept: sw };
@@ -317,6 +432,36 @@ export function makeRegions({ guard = null, snap = null, meta = null, threshold 
       if (signal.aborted || tree !== t) return;
       warm = { ...warm, checking: false, failed: `The tree from the last session could not be checked: ${err.message}` };
       broadcast({ type: 'checked', failed: warm.failed });
+    } finally {
+      if (checker === own) checker = null;
+    }
+  }
+
+  /**
+   * A page arrived while the disk is not watched (--no-watch, a watcher
+   * that failed, or one skipped for a large tree): the tree kept is
+   * checked again by folder modification times, as a page that surveys
+   * the whole tree would read it again, its changes read in place and
+   * announced as kept. Not while a walk or another check runs, and at most
+   * once in RECHECK_MIN_MS or four times its last length. Resolves to the
+   * check's counts, or null when none ran.
+   */
+  async function recheck() {
+    if (!guard || !tree || state !== 'ready' || building || checker) return null;
+    const now = Date.now();
+    if (now - lastRecheck.at < Math.max(RECHECK_MIN_MS, lastRecheck.ms * 4)) return null;
+    const t = tree;
+    const own = new AbortController();
+    checker = own;
+    lastRecheck = { at: now, ms: lastRecheck.ms };
+    try {
+      const r = await checkWarm(guard, t, () => {}, { signal: own.signal, mutate: (fn) => serial(fn) });
+      lastRecheck = { at: Date.now(), ms: Date.now() - now };
+      if (tree !== t) return null;
+      announce([...r.listed].filter((id) => t.has(id)).map((id) => t.relOf(id)));
+      return { read: r.read, changed: r.changed, added: r.added, removed: r.removed };
+    } catch {
+      return null;
     } finally {
       if (checker === own) checker = null;
     }
@@ -335,6 +480,7 @@ export function makeRegions({ guard = null, snap = null, meta = null, threshold 
     const t0 = Date.now();
     ac = new AbortController();
     const signal = ac.signal;
+    seenWhileBuilding = new Set();
     building = (async () => {
       let next = null;
       try {
@@ -352,6 +498,7 @@ export function makeRegions({ guard = null, snap = null, meta = null, threshold 
           if (loaded++ > 0) v++;
         });
         warm = { takenAt: next.warmMeta.takenAt, checking: true, checked: null, failed: null };
+        lastSurvey = null;
         state = 'ready';
       } catch (err) {
         state = tree ? 'ready' : 'none';
@@ -360,6 +507,9 @@ export function makeRegions({ guard = null, snap = null, meta = null, threshold 
       } finally {
         building = null;
         ac = null;
+        const seen = seenWhileBuilding;
+        seenWhileBuilding = null;
+        if (seen?.size) applyChanges([...seen]);
       }
       if (next) checkInPlace(next, hooks);
     })();
@@ -401,6 +551,13 @@ export function makeRegions({ guard = null, snap = null, meta = null, threshold 
 
     build,
     loadWarm,
+    applyChanges,
+    recheck,
+
+    /** Settles once every change waiting has been read into the tree, for checks. */
+    async settled() {
+      while (applying) await applying;
+    },
 
     /** The warm state of the tree, for GET /api/info and checks. */
     get warm() {
@@ -418,13 +575,17 @@ export function makeRegions({ guard = null, snap = null, meta = null, threshold 
       return send(res, r.status, r.json);
     },
 
-    /** GET /api/region: ids, a path's chain, or a fresh read. */
+    /**
+     * GET /api/region: ids, a path's chain, or a fresh read; a fresh read
+     * with kept=1 reads nothing, the tree being kept up already.
+     */
     async handleRegion(req, res, q) {
-      const fresh = q.get('fresh') === '1';
-      const run = () => answer(tree, 'region', q, { ...ctx(), readers: fresh && readers ? readers : null });
+      const reads = q.get('fresh') === '1' && q.get('kept') !== '1' && !!readers;
+      const run = () => answer(tree, 'region', q, { ...ctx(), readers: reads ? readers : null });
+      regionBusy++;
       try {
         let r;
-        if (fresh && readers) r = await serial(run);
+        if (reads) r = await serial(run);
         else {
           await chain;
           r = await run();
@@ -433,14 +594,35 @@ export function makeRegions({ guard = null, snap = null, meta = null, threshold 
       } catch (err) {
         if (err instanceof GuardError) throw err;
         return refuse(res, err);
+      } finally {
+        regionBusy--;
       }
     },
 
-    /** The whole-tree questions (find, marks, survey, sessions, places), after any change under way. */
+    /**
+     * The whole-tree questions (find, marks, survey, sessions, places),
+     * after any change under way and after the region answers already
+     * asked for. The survey of a tree that changed since it was worked out
+     * is worked out again at most once in SURVEY_DUTY times its length:
+     * between, the last one is answered with stale: true and retry, the
+     * milliseconds until it may be worked out again.
+     */
     async handleAsk(req, res, q, route) {
       try {
+        await tick();
+        for (let i = 0; regionBusy > 0 && i < 200; i++) await tick();
         await chain;
+        const plain = route === 'survey' && q.get('dupfiles') === null;
+        if (plain && tree && lastSurvey?.tree === tree && !surveyReady(tree)) {
+          const wait = lastSurvey.at + Math.max(SURVEY_MIN_MS, lastSurvey.ms * SURVEY_DUTY) - Date.now();
+          if (wait > 0 && q.get('v') === String(v)) return send(res, 200, { ...lastSurvey.json, stale: true, retry: wait });
+        }
+        const was = plain && tree ? surveyReady(tree) : null;
         const r = await answer(tree, route, q, ctx());
+        if (plain && r.status === 200) {
+          const fresh = !was;
+          lastSurvey = { tree, json: r.json, at: fresh ? Date.now() : lastSurvey?.at ?? Date.now(), ms: fresh ? r.json.ms ?? 0 : lastSurvey?.ms ?? r.json.ms ?? 0 };
+        }
         return send(res, r.status, r.json);
       } catch (err) {
         if (err instanceof GuardError) throw err;
@@ -455,6 +637,7 @@ export function makeRegions({ guard = null, snap = null, meta = null, threshold 
     shutdown() {
       ac?.abort();
       checker?.abort();
+      pendingApply.clear();
     },
   };
 }

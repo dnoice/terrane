@@ -24,7 +24,10 @@
  *       regions: true the threshold is 0; find equals runSearch for 14
  *       queries on one clock, the survey model.survey(), the sessions
  *       relations.sessions; places and marks answer; check is refused with
- *       its sentence; a wrong generation is ESTALE.
+ *       its sentence; a wrong generation is ESTALE. An arrival read into
+ *       the tree and said kept; a kept fresh read; with= on a fresh read;
+ *       a with= name that climbs refused; find's second page continues the
+ *       first.
  *     - 1.0.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] —
  *       Initial release.
  *
@@ -378,7 +381,8 @@ check('only once', svc.arrive() === false);
 
 section('Regions');
 {
-  const rs = createDemoService({ now: NOW, clock: () => NOW });
+  const told = [];
+  const rs = createDemoService({ now: NOW, clock: () => NOW, emit: (m) => told.push(m) });
   const rh = (r, q) => rs.handle('GET', r, q);
   const q = (o) => new URLSearchParams(o);
   const info = (await rh('info')).json;
@@ -429,9 +433,17 @@ section('Regions');
   r = await rh('region', q({ v: 1, fresh: 1, paths: JSON.stringify(['Documents']) }));
   check('a fresh read after a new folder shows it', r.status === 200 && r.json.regions[0].d.some((d) => d[C.D_NAME] === 'Plans') && r.json.regions[0].self[C.D_DC] === dcBefore + 1);
   check('and up carries the parent\'s new count', r.json.up.length === 1 && r.json.up[0][C.D_DC] === tree.root[C.D_DC] + 1);
-  rs.arrive();
+  await rs.arrive();
+  check('once the tree in columns is built, an arrival is read into it and the change says so (kept)', told.at(-1)?.type === 'change' && told.at(-1).kept === true && told.at(-1).dirs[0] === 'Downloads');
+  r = await rh('region', q({ v: 1, fresh: 1, kept: 1, paths: JSON.stringify(['Downloads']) }));
+  check('a kept fresh read answers it from the tree', r.status === 200 && r.json.regions[0].f.includes('tide-tables-2027.pdf'));
   r = await rh('region', q({ v: 1, fresh: 1, paths: JSON.stringify(['Downloads', 'Gone/away']) }));
   check('an arrival is read in, and a path not in the tree is reported gone', r.json.regions[0].f.includes('tide-tables-2027.pdf') && JSON.stringify(r.json.gone) === '["Gone/away"]');
+  const dl = local.idOf('Downloads');
+  r = await rh('region', q([['v', '1'], ['fresh', '1'], ['kept', '1'], ['paths', '["Downloads"]'], ['with', `${dl}:tide-tables-2027.pdf`]]));
+  check('a fresh read takes with= names, as the service does', r.status === 200 && r.json.regions[0].f.includes('tide-tables-2027.pdf'));
+  r = await rh('region', q([['v', '1'], ['ids', `0,${dl}`], ['with', `${dl}:..`]]));
+  check('a with= name that climbs is EBADREQ 400', r.status === 400 && r.json.code === 'EBADREQ');
   r = await rh('region', q({ v: 2, ids: '0' }));
   check('a stale generation is ESTALE 409 in the service\'s words', r.status === 409 && r.json.code === 'ESTALE' && r.json.message === 'The directory was surveyed again; its regions are read afresh.');
   r = await rh('region', q({ v: 1, ids: Array.from({ length: 65 }, (_, i) => i).join(',') }));
@@ -473,6 +485,12 @@ section('The whole-tree questions');
       if (a.total !== s.set.size || a.bytes !== s.bytes || JSON.stringify(a.hits.map((h) => h[0])) !== JSON.stringify(bySize) || JSON.stringify(b.hits.map((h) => h[0])) !== JSON.stringify(byDate)) bad.push(`${text}: ${a.total}/${s.set.size}`);
     }
     check(`find over the demo world equals the page's runSearch for ${queries.length} queries: totals, bytes and the order by size and by date`, bad.length === 0, bad.join(' | '));
+    // Pages of a search: from, as the service answers it.
+    const every = runSearch(model, parseQuery('*', ext)).list.map(relPath);
+    const p1 = (await ask('find', { q: '*', limit: '3000' })).json;
+    const p2 = (await ask('find', { q: '*', limit: '3000', from: '3000', qid: p1.qid })).json;
+    check(`find turns page by page (from): the second page of ${p2.total} continues the first, in the page's own order`,
+      p2.from === 3000 && p2.total === every.length && JSON.stringify(p1.hits.concat(p2.hits).map((h) => h[0])) === JSON.stringify(every.slice(0, 6000)));
     const a = (await ask('survey', {})).json;
     check(`survey equals model.survey(): largest, empty, sealed, links and ${a.dupGroups.length} candidate groups`,
       JSON.stringify(a.largest.map((r) => r[0])) === JSON.stringify(sv.largest.map(relPath))

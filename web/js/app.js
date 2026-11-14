@@ -33,7 +33,11 @@
  *       follows a region landing, a layout's location and a reveal's
  *       panels run in tasks of their own there; the Survey is not drawn
  *       again on select, and its closed sections of many rows build them
- *       when first opened; a reveal paints its selection once.
+ *       when first opened; a reveal paints its selection once. After the
+ *       review: changes the service read itself are asked for as kept,
+ *       pinned children past a folder's 5,000 kept through refills, the
+ *       search and survey asked again at a pace the service bears, and
+ *       Findings turned page by page.
  *     - 1.11.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] —
  *       Paint gives each file its kind's colour in a tone of its own
  *       extension, a closed mass a richer tint and, on its sides, strata
@@ -728,36 +732,16 @@ let refreshChain = Promise.resolve();
 /**
  * Re-reads the given folders (root-relative paths) and merges the result.
  * While the tree from the last session is being checked (S.warm) they
- * are noted and read once it has been; the promise settles then.
+ * are noted and read once it has been; the promise settles then. kept:
+ * the service read them into its tree itself (a change event it marked
+ * so), which in region mode is asked for without a read of the disk.
  */
-function refreshDirs(rels) {
+function refreshDirs(rels, { kept = false } = {}) {
   if (S.warm) {
     for (const rel of rels) S.warm.pending.add(rel);
     return S.warm.done;
   }
-  if (S.regions) {
-    // The service reads the folders again and answers their regions: what
-    // the page holds is filled again with its nodes kept. No page survey.
-    refreshChain = refreshChain.then(async () => {
-      const R = S.regions;
-      if (!R) return;
-      const { dirs, stale } = await R.refresh(rels);
-      if (stale || S.regions !== R) return;
-      const was = S.focus;
-      for (const n of [...S.sel]) if (!isAttached(n)) S.sel.delete(n);
-      if (S.primary && !isAttached(S.primary)) S.primary = [...S.sel].at(-1) || null;
-      if (!isAttached(S.focus)) S.focus = S.model.root;
-      S.trail = S.trail.filter(isAttached);
-      runHooks(AFTER_REFRESH, dirs);
-      focusMoved(was);
-      // The service answers the search and the survey of the changed tree.
-      if (S.search) runQuery();
-      queueLayout(40);
-      queueSurvey();
-      drawAll();
-    }).catch((err) => notice(`Refresh failed: ${err.message}`, { kind: 'error' }));
-    return refreshChain;
-  }
+  if (S.regions) return refreshRegions(rels, kept);
   refreshChain = refreshChain.then(async () => {
     const dirs = new Set();
     for (const rel of rels) {
@@ -809,7 +793,70 @@ function refreshDirs(rels) {
   return refreshChain;
 }
 
+/**
+ * Region mode: folders read again by the service (fresh=1), or already
+ * read into its tree (kept), and what the page holds filled again with
+ * its nodes kept, its pinned children named so a refill keeps them. What
+ * arrives while one refresh runs waits for the next, which takes it all
+ * at once. The search and the survey of the changed tree are asked again
+ * no more often than their cost allows (queueQueryAgain, queueSurvey).
+ */
+let regionBatch = null;
+function refreshRegions(rels, kept) {
+  if (!regionBatch) {
+    const batch = { fresh: new Set(), kept: new Set(), done: null };
+    regionBatch = batch;
+    batch.done = refreshChain = refreshChain.then(async () => {
+      if (regionBatch === batch) regionBatch = null;
+      const R = S.regions;
+      if (!R) return;
+      const dirs = new Set();
+      for (const [list, k] of [[batch.fresh, false], [batch.kept, true]]) {
+        if (!list.size) continue;
+        const got = await R.refresh([...list], { kept: k });
+        if (got.stale || S.regions !== R) return;
+        for (const d of got.dirs) dirs.add(d);
+      }
+      const was = S.focus;
+      for (const n of [...S.sel]) if (!isAttached(n)) S.sel.delete(n);
+      if (S.primary && !isAttached(S.primary)) S.primary = [...S.sel].at(-1) || null;
+      if (!isAttached(S.focus)) S.focus = S.model.root;
+      S.trail = S.trail.filter(isAttached);
+      runHooks(AFTER_REFRESH, dirs);
+      focusMoved(was);
+      if (S.search) queueQueryAgain();
+      queueLayout(40);
+      queueSurvey();
+      drawAll();
+    }).catch((err) => notice(`Refresh failed: ${err.message}`, { kind: 'error' }));
+  }
+  for (const rel of rels) regionBatch[kept ? 'kept' : 'fresh'].add(rel);
+  return regionBatch.done;
+}
+
+/** The service's own time for the last search (GET /api/find's ms), which sets how soon a change asks it again. */
+let lastFindMs = 0;
+let queryAgainTimer = 0;
+/**
+ * Region mode: the search in Find asked again after a change, at most
+ * once in six times the service's last search took, so a stream of
+ * changes leaves most of the service's time to the regions.
+ */
+function queueQueryAgain() {
+  if (queryAgainTimer) return;
+  queryAgainTimer = setTimeout(() => {
+    queryAgainTimer = 0;
+    if (S.search?.regions) runQuery();
+  }, Math.max(250, lastFindMs * 6));
+}
+
 function queueSurvey() {
+  // Region mode: one survey waits at a time, and a change does not push
+  // it back, so a stream of changes still sees the survey kept current.
+  if (S.regions) {
+    if (!S.surveyTimer) S.surveyTimer = setTimeout(surveyNow, 500);
+    return;
+  }
   clearTimeout(S.surveyTimer);
   S.surveyTimer = setTimeout(surveyNow, 500);
 }
@@ -838,7 +885,7 @@ function connectEvents() {
     const msg = JSON.parse(e.data);
     if (msg.type === 'job') return onJob(msg);
     if (msg.type === 'watch') S.watch = msg.state;
-    else if (msg.type === 'change' && !S.scanning) refreshDirs(msg.dirs);
+    else if (msg.type === 'change' && !S.scanning) refreshDirs(msg.dirs, { kept: !!msg.kept });
     else if (msg.type === 'bulk') {
       notice(`${fmtCount(msg.count)} folders changed on disk.`, { kind: 'info', action: { label: 'Rescan all', run: fullScan } });
     } else if (msg.type === 'checked') regionsChecked();
@@ -1206,9 +1253,19 @@ function switchAt() {
 
 let regionWorker = null;
 
+/** A query string from params, a list value as its key repeated (with=a&with=b). */
+function regionQuery(params) {
+  const out = new URLSearchParams();
+  for (const [k, v] of Object.entries(params)) {
+    if (Array.isArray(v)) for (const x of v) out.append(k, x);
+    else if (v !== undefined && v !== null) out.append(k, v);
+  }
+  return out;
+}
+
 /** A region answer read and decoded on the main thread: the demo world, and a page with no worker. */
 async function mainThreadRegion(params) {
-  const res = await fetch(`/api/region?${new URLSearchParams(params)}`, { headers: { 'X-Terrane-Token': TOKEN } });
+  const res = await fetch(`/api/region?${regionQuery(params)}`, { headers: { 'X-Terrane-Token': TOKEN } });
   if (!res.ok) {
     const err = await asError(res);
     err.status = res.status;
@@ -1271,7 +1328,7 @@ function regionFetch(route, params) {
   return new Promise((resolve, reject) => {
     const id = ++rw.seq;
     rw.pending.set(id, { resolve, reject, retry: () => mainThreadRegion(params) });
-    rw.w.postMessage({ id, url: `/api/region?${new URLSearchParams(params)}` });
+    rw.w.postMessage({ id, url: `/api/region?${regionQuery(params)}` });
   });
 }
 
@@ -1311,6 +1368,13 @@ const regionClient = (model) => createRegions({
   // A search's marks ride on every region asked for while it shows.
   extra: () => (S.search?.regions && S.search.qid ? { q: S.search.qid } : null),
   onFilled: regionMarks,
+  // What a refill must keep wherever it ranks: the pins, and what is selected.
+  pinned: () => {
+    const pins = regionPins();
+    return (n) => pins.has(n) || S.sel.has(n) || n === S.primary || n === S.focus || n === S.interior?.host;
+  },
+  // A folder the service no longer has: its parent, as the service's tree now says.
+  onGone: (node) => { if (node.p) refreshDirs([relPath(node.p)], { kept: true }); },
 });
 
 /**
@@ -1468,9 +1532,10 @@ async function regionsChecked(w = null) {
   W.notice?.();
   warmRecord.settledMs = Math.round(performance.now());
   drawAll();
+  // The service read every one of them into its tree: they are asked for as kept.
   const dirs = new Set([...W.pending, ...(info?.checked?.dirs || [])]);
   if (info?.checked?.more) reopenRegions({ build: false });
-  else if (dirs.size) refreshDirs([...dirs]);
+  else if (dirs.size) refreshDirs([...dirs], { kept: true });
   W.release();
   if (info?.failed) notice(info.failed, { kind: 'error' });
   else notice(checkedSentence(info?.checked || {}), { kind: 'info' });
@@ -1688,7 +1753,7 @@ async function markDups() {
 /** The benchmarks' paths, which is:benchmark names to the service. */
 const benchRels = () => (S.places?.benchmarks || []).map((b) => b.rel).filter((r) => typeof r === 'string').slice(0, 200);
 
-/** What GET /api/find is asked for a query in an order. */
+/** What GET /api/find is asked for a query in an order (extra: its qid, or from, a page further in). */
 function findParams(text, order, extra = {}) {
   const p = { q: text, sort: order.key, dir: String(order.dir), limit: String(FIND_LIMIT), focus: S.focus && !hostOf(S.focus) ? relPath(S.focus) : '', ...extra };
   if (/is:benchmark/i.test(text)) p.bench = JSON.stringify(benchRels());
@@ -1722,9 +1787,10 @@ async function runQueryRegions() {
     return undefined;
   }
   if (seq !== querySeq || S.regions !== R || S.query !== text) return undefined;
+  lastFindMs = Number(ans.ms) || 0;
   if (ans.qid === null) return none();
   const search = {
-    regions: true, qid: ans.qid, text, list: ans.hits.map(refFrom), order: ans.sort || order, total: ans.total, bytes: ans.bytes,
+    regions: true, qid: ans.qid, text, list: ans.hits.map(refFrom), order: ans.sort || order, total: ans.total, bytes: ans.bytes, from: 0,
     set: new WeakSet(), within: new WeakMap(), tail: new WeakMap(), in: ans.in, sess: ans.sess, note: '',
   };
   S.search = search;
@@ -1752,6 +1818,7 @@ async function reorderHits(s, o) {
   if (S.search !== s) return;
   s.reordering = null;
   s.list = ans.hits.map(refFrom);
+  s.from = 0;
   s.order = ans.sort || o;
   s.total = ans.total;
   s.bytes = ans.bytes;
@@ -1764,6 +1831,38 @@ async function reorderHits(s, o) {
   }
   findCache = { search: null, key: '', items: [] };
   if (S.tab === 'findings') drawLedger(true);
+}
+
+/**
+ * Region mode: Findings turned to the page of matches that starts at
+ * from (5,000 to a page), in the order shown, and said.
+ */
+async function turnPage(s, from) {
+  if (S.search !== s || !s.regions) return;
+  const total = s.total ?? 0;
+  const at = Math.max(0, Math.min(from, Math.max(0, total - 1)));
+  let ans;
+  try {
+    ans = await askTree('find', findParams(s.text, s.order, { qid: s.qid, from: String(at) }));
+  } catch (err) {
+    if (S.search === s && err.code !== 'ESTALE') notice(`The next matches could not be listed: ${err.message}`, { kind: 'error' });
+    return;
+  }
+  if (S.search !== s) return;
+  s.list = ans.hits.map(refFrom);
+  s.from = ans.from ?? at;
+  s.total = ans.total;
+  s.bytes = ans.bytes;
+  if (ans.qid !== s.qid) {
+    s.qid = ans.qid;
+    s.set = new WeakSet();
+    s.within = new WeakMap();
+    s.tail = new WeakMap();
+    markSearch(s);
+  }
+  findCache = { search: null, key: '', items: [] };
+  if (S.tab === 'findings') drawLedger(true);
+  say(`Matches ${fmtCount(s.from + 1)} to ${fmtCount(s.from + s.list.length)} of ${fmtCount(s.total)}.`);
 }
 
 /** The service's survey as the page's: refs in every list, the counts beside them, groups numbered as sent. */
@@ -1795,13 +1894,22 @@ async function surveyRegions() {
     return;
   }
   if (seq !== surveySeq || S.regions !== R) return;
+  // The service answered the last survey it worked out, the tree having
+  // changed since (stale): asked again once it may work one out. Until
+  // then what is shown stays, and the survey's marks are not asked for,
+  // since that would work it out now.
+  if (ans.stale) {
+    clearTimeout(S.surveyTimer);
+    S.surveyTimer = setTimeout(surveyNow, Math.max(200, (Number(ans.retry) || 0) + 50));
+    if (S.survey && !S.survey.pending) return;
+  }
   const sv = surveyFrom(ans);
-  if (provedRel.size) await keepVerifiedRegions(sv);
+  if (provedRel.size && !ans.stale) await keepVerifiedRegions(sv);
   if (seq !== surveySeq || S.regions !== R) return;
   S.survey = sv;
   S.model.dupGroups = sv.dupGroups;
   runHooks(AFTER_SURVEY, sv, { full: false, regions: true });
-  markDups();
+  if (!ans.stale) markDups();
   repaint();
   if (S.tab === 'survey') drawLedger();
   drawLegend();
@@ -1968,17 +2076,25 @@ async function selectAllMatches(items) {
     if (!byDir.has(it.p.rel)) byDir.set(it.p.rel, []);
     byDir.get(it.p.rel).push(it);
   }
-  for (const [rel, refs] of byDir) {
-    const dir = await S.regions.ensure(await S.regions.resolve(rel));
-    if (S.search !== search) return;
-    const kids = new Map();
-    for (const c of dir?.d ? dir.c : []) kids.set(`${c.d ? 'd' : 'f'}:${c.n}`, c);
-    for (const ref of refs) {
-      const n = kids.get(`${ref.d ? 'd' : 'f'}:${ref.n}`) ?? await resolveRow(ref);
+  // A region the service could not answer stops the gathering with a
+  // sentence; what was found until then is selected.
+  let stopped = null;
+  try {
+    for (const [rel, refs] of byDir) {
+      const dir = await S.regions.ensure(await S.regions.resolve(rel));
       if (S.search !== search) return;
-      if (n) found.set(ref, n);
+      const kids = new Map();
+      for (const c of dir?.d ? dir.c : []) kids.set(`${c.d ? 'd' : 'f'}:${c.n}`, c);
+      for (const ref of refs) {
+        const n = kids.get(`${ref.d ? 'd' : 'f'}:${ref.n}`) ?? await resolveRow(ref);
+        if (S.search !== search) return;
+        if (n) found.set(ref, n);
+      }
     }
+  } catch (err) {
+    stopped = err;
   }
+  if (S.search !== search) return;
   const nodes = [];
   for (const it of first) {
     const n = it.ref ? found.get(it) : it;
@@ -1988,7 +2104,8 @@ async function selectAllMatches(items) {
   }
   list?.draw();
   selectAll(nodes, nodes[0] ?? null);
-  say(`Select all takes the first ${fmtCount(SELECT_ALL_REGIONS)} matches at this size.`);
+  if (stopped) notice(`Select all stopped after ${fmtCount(nodes.length)} matches: ${stopped.message}`, { kind: 'error' });
+  else say(`Select all takes the first ${fmtCount(SELECT_ALL_REGIONS)} matches at this size.`);
 }
 
 /* ====================================================================== */
@@ -3482,9 +3599,11 @@ function drawContents(sub, _host, keepScroll) {
   // Region mode: a folder of more than 5,000 lists its largest; the rest
   // lie in its scree, and the sentence says how many and how much, and
   // how to list them all: a search the service answers, in: the folder.
+  // in: lists everything beneath the folder, so the rest are among its
+  // matches; Findings turns through them 5,000 at a time, in any order.
   const where = relPath(f) || '/';
   const inToken = `in:${/\s/.test(where) ? `"${where}"` : where}`;
-  const tail = f.tail ? `The largest ${fmtCount(f.c.length)} of ${fmtCount(n)} items are listed; the other ${fmtCount(f.tail.n)}, ${fmtBytes(f.tail.s)}, lie in the scree. Find them with ${inToken}.` : null;
+  const tail = f.tail ? `The largest ${fmtCount(f.c.length)} of ${fmtCount(n)} items are listed; the other ${fmtCount(f.tail.n)}, ${fmtBytes(f.tail.s)}, lie in the scree. Find them with ${inToken}: Findings turns through every match, ${fmtCount(FIND_LIMIT)} at a time.` : null;
   // Two rows: the count and its tools, then the sort keys over the list's
   // columns (Name over the names, Size on the size column). An empty
   // folder has nothing to sort, so it shows no keys.
@@ -3540,18 +3659,27 @@ function drawFindings(sub, _host, keepScroll) {
     drawLedger();
   });
   const total = S.search.total ?? S.search.list.length;
-  // Region mode: the service lists the first 5,000 in the order asked.
+  // Region mode: the service lists 5,000 at a time in the order asked;
+  // the arrows on the count row turn the page (findingsPager).
+  const from = S.search.from || 0;
   const cut = S.search.regions && total > S.search.list.length
-    ? `The first ${fmtCount(S.search.list.length)} of ${fmtCount(total)} matches, in this order.` : '';
+    ? `Matches ${fmtCount(from + (S.search.list.length ? 1 : 0))} to ${fmtCount(from + S.search.list.length)} of ${fmtCount(total)}, in this order, ${fmtCount(FIND_LIMIT)} to a page.` : '';
   const note = [S.search.note || '', cut].filter(Boolean).join(' ');
   const n = total;
+  // The count row's tools: in region mode the arrows that turn the page
+  // first, then what features add (LEDGER_SUB).
+  let tools = subTools('findings', { items, search: S.search, focus: S.focus });
+  const pager = findingsPager(S.search);
+  if (pager.length) {
+    if (tools) tools.prepend(...pager);
+    else tools = el('span', { class: 'sub-tools' }, ...pager);
+  }
   // The count row and its tools, the note on a row of its own, then the
   // column heads: Select all in the mark slot, Changed, and Size on the
   // size column. With no match there is nothing to select or sort: the
   // list says so. (replaceChildren would print a null argument as "null".)
   sub.replaceChildren(...[
-    el('div', { class: 'sub-row is-count' }, subCount(`${fmtCount(n)} match${n === 1 ? '' : 'es'}`, ` · ${fmtBytes(S.search.bytes)}`),
-      subTools('findings', { items, search: S.search, focus: S.focus })),
+    el('div', { class: 'sub-row is-count' }, subCount(`${fmtCount(n)} match${n === 1 ? '' : 'es'}`, ` · ${fmtBytes(S.search.bytes)}`), tools),
     note ? el('div', { class: 'sub-row sub-note', text: note }) : null,
     n ? el('div', { class: 'sub-row is-columns' },
       el('button', { class: 'btn btn-icon sub-tool sub-select', type: 'button', title: S.regions ? `Select the first ${fmtCount(SELECT_ALL_REGIONS)} matches` : 'Select every match (up to 5,000)', onclick: () => { selectAllMatches(items); } },
@@ -3561,6 +3689,24 @@ function drawFindings(sub, _host, keepScroll) {
   list.render = (node) => rowFor(node, { showPath: true });
   list.setEmpty('Nothing on any level matches this search.');
   list.setItems(items, keepScroll, { follow: S.primary });
+}
+
+/**
+ * Region mode, more matches than one page: Findings' previous and next
+ * 5,000, two 24 px icon tools on its count row, each with data-k so a
+ * redraw keeps focus on it; at either end the arrow says why it cannot.
+ */
+function findingsPager(search) {
+  if (!search?.regions || (search.total ?? 0) <= FIND_LIMIT) return [];
+  const from = search.from || 0;
+  const page = (k, label, name, to, off) => el('button', {
+    class: 'btn btn-icon sub-tool', type: 'button', 'data-k': k, 'aria-label': label, 'aria-disabled': off ? 'true' : null,
+    title: off ? `${label}: ${off}` : label, onclick: () => { if (!off) turnPage(search, to); },
+  }, icon(name));
+  return [
+    page('page-prev', `Previous ${fmtCount(FIND_LIMIT)} matches`, 'earlier', from - FIND_LIMIT, from > 0 ? null : 'these are the first'),
+    page('page-next', `Next ${fmtCount(FIND_LIMIT)} matches`, 'later', from + FIND_LIMIT, from + search.list.length < search.total ? null : 'these are the last'),
+  ];
 }
 
 /** Which rich-panel sections a person opened or closed, by title: a redraw keeps them so. */
@@ -4906,6 +5052,9 @@ function expose(t0) {
     get firstDrawMs() { return firstDrawMs; },
     get places() { return S.places; },
     get regions() { return S.regions; },
+    // Region mode: lets regions go now if the entries held pass the budget,
+    // once the view is settled (a check that lowered the budget calls it).
+    evictSoon: () => scheduleEvict(),
     // Region mode: how many of each whole-tree question were asked, and
     // the last 200 answers' [route, ms in the page, ms in the service].
     asked,

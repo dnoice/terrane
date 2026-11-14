@@ -15,7 +15,9 @@
  *
  * ✒ Changelog:
  *     - 1.0.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] —
- *       Initial release.
+ *       Initial release. After the review: entries held past a folder's
+ *       5,000 kept through refills (10), and a region that fails or a
+ *       folder removed while its region is asked for (11).
  *
  * ✒ Description:
  *     Checks the page's region mode without a service or a browser: the
@@ -42,6 +44,14 @@
  *       children, and gives its ancestors their new figures
  *     - A new generation calls onStale once and settles what waits
  *     - The batching caps: two requests in flight, 64 ids each
+ *     - The tail: tail entries made nodes one after another stay attached;
+ *       a refresh names the pinned ones and keeps them, the rest go; 120
+ *       pinned, 20 past what one request names, kept while asked for by
+ *       name and one gone from disk dropped; a kept refresh reads nothing
+ *       and asks the deepest folder held; entries follow the root; a
+ *       folder removed resolves to null and is not asked again
+ *     - Failure: a region that fails rejects its waiters and rests before
+ *       it is wanted again, then lands
  *     - decode() against the JSON it read; kids() and relPath() of a ref
  *
  * ✒ Usage Instructions:
@@ -527,6 +537,188 @@ section('9. kids() and relPath()');
   check('kids() is the service\'s count when it has one, else the children held', kids(dir) === 2 && kids({ ...dir, cn: 9000, c: [] }) === 9000 && kids({ ...dir, cn: 0 }) === 0);
   check('relPath() of a ref is its own path; of a node, its chain', relPath({ ref: true, rel: 'x/y.txt', n: 'y.txt', p: null }) === 'x/y.txt' && relPath(whole.find(bigRel)) === bigRel);
   check('isAncestor still walks parents', isAncestor(whole.root, whole.find(bigRel)));
+}
+
+/* ---------- 10. held children in a folder's tail ---------- */
+
+section('10. Held children past a folder\'s 5,000 largest (its tail), kept through refills');
+{
+  // big: 5,010 files, largest first by name, and smallsub, the smallest
+  // child of all: its tail is smallsub and the ten last files. huge: 5,130
+  // files, a tail of 130. other and spare: small folders.
+  const files = (prefix, n) => {
+    const out = [];
+    for (let i = 0; i < n; i++) out.push(`${prefix}-${String(i).padStart(4, '0')}.dat`, 1e6 - i, NOW - i * 1000, 0);
+    return out;
+  };
+  const recs = [
+    [0, -1, 'root', NOW, 0, []],
+    [1, 0, 'big', NOW, 0, files('f', 5010)],
+    [2, 0, 'huge', NOW, 0, files('h', 5130)],
+    [3, 0, 'other', NOW, 0, ['o.txt', 9, NOW, 0]],
+    [4, 0, 'spare', NOW, 0, ['s.txt', 9, NOW, 0]],
+    [5, 1, 'smallsub', NOW, 0, ['a.txt', 3, NOW, 0, 'b.txt', 4, NOW, 0]],
+  ];
+  const t = treeFrom([recs], { name: 'root', anchor: NOW });
+  const local = { readers: null, calls: [] };
+  const fetch2 = async (route, params) => {
+    local.calls.push({ route, params });
+    await tick();
+    const r = await answer(t, route, params, { v: 1, state: 'ready', threshold: 0, readers: params.fresh ? local.readers : null });
+    const json = JSON.parse(JSON.stringify(r.json));
+    return route === 'region' ? decode(json) : json;
+  };
+  const sel = new Set();
+  const goneSeen = [];
+  const model = new Model('root', { regions: true });
+  const T = createRegions({ fetchJSON: fetch2, model, pinned: () => (n) => sel.has(n), onGone: (n) => goneSeen.push(relPath(n)) });
+  await T.open();
+  const attached = (n) => {
+    if (!n) return false;
+    for (let a = n; a.p; a = a.p) if (!a.p.c.includes(a)) return false;
+    return true;
+  };
+  const tailFile = (i) => `big/f-${String(5009 - i).padStart(4, '0')}.dat`;
+  /** big's depth-1 records as the tree has them, with edits applied by name. */
+  const listing = (rel, { drop = [], rename = null, add = [] } = {}) => {
+    const id = t.idOf(rel);
+    const packed = [];
+    for (let j = t.file0[id]; j < t.file0[id] + t.fileN[id]; j++) {
+      if (drop.includes(t.fname[j])) continue;
+      packed.push(rename && t.fname[j] === rename[0] ? rename[1] : t.fname[j], t.fsize[j], t.fmtime[j], t.fflags[j]);
+    }
+    packed.push(...add);
+    const out = [[0, -1, t.name[id], NOW, 0, packed]];
+    for (let i = 0; i < t.kidN[id]; i++) out.push([i + 1, 0, t.name[t.kids[t.kid0[id] + i]], NOW, 'STUB', []]);
+    return out;
+  };
+
+  const tiny = await T.resolve(tailFile(3));
+  const sub = await T.resolve('big/smallsub');
+  check('a tail file made a node stays attached when a tail folder of the same folder is made one after it', attached(tiny) && attached(sub) && sub.d, JSON.stringify([attached(tiny), attached(sub)]));
+  const three = await T.resolveAll([tailFile(0), tailFile(1), tailFile(2)]);
+  check('resolveAll of three tail files leaves every one attached, and the earlier two too', three.every(attached) && attached(tiny) && attached(sub), JSON.stringify(three.map(attached)));
+  const bigNode = T.nearest('big');
+  check(`the folder holds its 5,000 and the five made nodes, and its tail counts the rest (${bigNode.c.length}, tail ${bigNode.tail?.n})`, bigNode.c.length === 5005 && bigNode.tail?.n === 6);
+
+  // A change in big from outside (a file renamed): read again, the pinned
+  // tail entries are named and kept, with their nodes; the others go.
+  sel.add(tiny);
+  sel.add(sub);
+  await T.ensure(sub);
+  local.readers = { depth1: async (rel) => listing(rel, { rename: ['f-0100.dat', 'renamed.dat'] }), deep: async () => [] };
+  const asked0 = local.calls.length;
+  await T.refresh(['big']);
+  const fresh = local.calls.slice(asked0).find((c) => c.params.fresh === '1');
+  check('a refresh names the pinned children of the folder it reads again (with=)', [fresh?.params.with].flat().includes(`${t.idOf('big')}:${tiny.n}`) && [fresh?.params.with].flat().includes(`${t.idOf('big')}:smallsub`), JSON.stringify(fresh?.params));
+  check('after a refresh of big the selected tail file and tail folder are the same nodes, attached', attached(tiny) && attached(sub) && bigNode.c.includes(tiny) && bigNode.c.includes(sub));
+  check('and the tail folder keeps its own held region', !sub.u && sub.c.length === 2 && T.live(sub));
+  check('the tail files nobody pins are let go, and the rename is in', !attached(three[0]) && bigNode.c.some((c) => c.n === 'renamed.dat') && !bigNode.c.some((c) => c.n === 'f-0100.dat') && bigNode.c.length === 5002 && bigNode.tail?.n === 9);
+
+  // More pinned than one request names (100): the rest kept while asked for by name, one gone from disk dropped.
+  const hugeTail = [];
+  for (let i = 0; i < 120; i++) hugeTail.push(`huge/h-${String(5129 - i).padStart(4, '0')}.dat`);
+  const pinnedNodes = await T.resolveAll(hugeTail);
+  for (const n of pinnedNodes) sel.add(n);
+  const hugeNode = T.nearest('huge');
+  check(`120 tail files of huge made nodes and selected, all attached (${pinnedNodes.filter(attached).length})`, pinnedNodes.every(attached) && hugeNode.c.length === 5120);
+  const goneName = pinnedNodes[119].n;
+  local.readers = { depth1: async (rel) => listing(rel, { drop: [goneName] }), deep: async () => [] };
+  const v0 = T.stats.verified;
+  await T.refresh(['huge']);
+  check(`a refresh of huge keeps the 119 pinned still on disk, the 20 it could not name asked for by name (${T.stats.verified - v0} asked)`,
+    pinnedNodes.slice(0, 119).every(attached) && T.stats.verified - v0 === 20, `${pinnedNodes.filter(attached).length} attached`);
+  check('and drops the pinned file gone from disk', !attached(pinnedNodes[119]) && !hugeNode.c.some((c) => c.n === goneName));
+  check(`huge's children and tail still add up to the tree's (${hugeNode.c.length} + ${hugeNode.tail?.n})`, hugeNode.c.length + (hugeNode.tail?.n || 0) === t.encodeD(t.idOf('huge'))[C.D_CN]);
+  sel.clear();
+
+  // kept: the service read the change into its tree itself; nothing is read again.
+  const other = await T.ensure(await T.resolve('other'));
+  t.replace(t.idOf('other'), [[0, -1, 'other', NOW, 0, ['o.txt', 9, NOW, 0, 'p.txt', 5, NOW, 0]]]);
+  local.readers = { depth1: async () => { throw new Error('read'); }, deep: async () => { throw new Error('read'); } };
+  const asked1 = local.calls.length;
+  const entries0 = T.entries;
+  const { dirs } = await T.refresh(['other'], { kept: true });
+  const keptCall = local.calls.slice(asked1).find((c) => c.params.fresh === '1');
+  check('a kept refresh asks with kept=1 and reads nothing, and the folder takes the change', keptCall?.params.kept === '1' && dirs.has(other) && other.c.some((c) => c.n === 'p.txt'));
+  check(`the entries the client says follow the root's figures (${entries0} then ${T.entries}, the tree ${t.entries})`, T.entries === entries0 + 1 && T.entries === t.entries);
+  // A change under a folder not held asks for the deepest folder held on its path.
+  t.replace(t.idOf('big/smallsub'), [[0, -1, 'smallsub', NOW, 0, ['a.txt', 3, NOW, 0, 'b.txt', 4, NOW, 0, 'c.txt', 5, NOW, 0]]]);
+  const floor = T.floor;
+  T.floor = 0;
+  T.evict(new Set([model.root, bigNode]), new Set());
+  T.floor = floor;
+  const asked2 = local.calls.length;
+  await T.refresh(['big/smallsub'], { kept: true });
+  const deepCall = local.calls.slice(asked2).find((c) => c.params.fresh === '1');
+  check('a kept change under a folder not held asks for the deepest folder held on its path, which takes its new figures', deepCall && JSON.parse(deepCall.params.paths)[0] === 'big'
+    && bigNode.s === t.encodeD(t.idOf('big'))[C.D_S] && bigNode.fc === t.encodeD(t.idOf('big'))[C.D_FC], deepCall?.params.paths);
+
+  // A folder the service no longer has: listed as gone, never asked again, its parent read.
+  const spare = T.nearest('spare');
+  t.remove(t.idOf('spare'));
+  const asked3 = local.calls.length;
+  const got = await T.ensure(spare);
+  const again = await T.ensure(spare);
+  check(`a folder removed from the tree resolves to null, is said gone once (${goneSeen.join(', ')}) and is not asked for again`,
+    got === null && again === null && goneSeen.length === 1 && goneSeen[0] === 'spare' && T.stats.gone === 1 && local.calls.length - asked3 === 1);
+  const r404 = await answer(t, 'region', { v: '1', ids: `0,${spare.x}` }, { v: 1 });
+  check('the service answers the live ids and lists the removed one in gone', r404.json.regions.length === 1 && JSON.stringify(r404.json.gone) === JSON.stringify([spare.x]));
+}
+
+/* ---------- 11. a service that fails, or changes under a request ---------- */
+
+section('11. A region that fails, and a folder removed while its region is asked for');
+{
+  const recs = [[0, -1, 'root', NOW, 0, []], [1, 0, 'one', NOW, 0, ['a.txt', 1, NOW, 0]], [2, 0, 'two', NOW, 0, ['b.txt', 2, NOW, 0]], [3, 0, 'three', NOW, 0, ['c.txt', 3, NOW, 0]]];
+  const t = treeFrom([recs], { name: 'root', anchor: NOW });
+  const ctl = { failIds: new Set(), removeFirst: null, calls: 0 };
+  const fetch3 = async (route, params) => {
+    await tick();
+    if (route === 'region' && params.ids) {
+      ctl.calls++;
+      if (String(params.ids).split(',').some((x) => ctl.failIds.has(Number(x)))) throw Object.assign(new Error('The service failed.'), { code: 'EIO', status: 500 });
+      // The folder is removed between the request and its answer.
+      if (ctl.removeFirst !== null) {
+        t.remove(ctl.removeFirst);
+        ctl.removeFirst = null;
+      }
+    }
+    const r = await answer(t, route, params, { v: 1, state: 'ready', threshold: 0 });
+    const json = JSON.parse(JSON.stringify(r.json));
+    return route === 'region' ? decode(json) : json;
+  };
+  const gone = [];
+  const model = new Model('root', { regions: true });
+  const H = createRegions({ fetchJSON: fetch3, model, onGone: (n) => gone.push(n.n) });
+  H.backoffMs = 60;
+  const errors = [];
+  const was = console.error;
+  console.error = (...a) => errors.push(a.join(' '));
+  try {
+    await H.open();
+    const one = model.root.c.find((c) => c.n === 'one');
+    ctl.failIds.add(one.x);
+    const rejected = await H.ensure(one).then(() => false, (err) => err.code === 'EIO');
+    const n0 = ctl.calls;
+    H.want([{ node: one, pri: 5 }]);
+    await idle(H);
+    check('a region that fails rejects what waits on it, and is not asked for again at once', rejected && ctl.calls === n0 && one.u && errors.length === 1, `${ctl.calls - n0} asked`);
+    await new Promise((r) => setTimeout(r, 80));
+    ctl.failIds.clear();
+    H.want([{ node: one, pri: 5 }]);
+    await idle(H);
+    check('after its wait it is asked for again, and lands', ctl.calls === n0 + 1 && !one.u && one.c.length === 1);
+    const two = model.root.c.find((c) => c.n === 'two');
+    ctl.removeFirst = two.x;
+    const got = await H.ensure(two);
+    const calls = ctl.calls;
+    H.want([{ node: two, pri: 5 }]);
+    await idle(H);
+    check('a folder removed while its region was asked for resolves to null, is said gone, and is not asked for again', got === null && JSON.stringify(gone) === '["two"]' && ctl.calls === calls && H.stats.gone === 1);
+  } finally {
+    console.error = was;
+  }
 }
 
 console.log(`\n${passed} passed, ${failed} failed\n`);

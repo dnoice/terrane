@@ -20,7 +20,8 @@
  *       sessions' title is a span.t. In region mode the service finds the
  *       sessions of the whole tree: S.sessions reads its list, a session's
  *       facts and a file's session and neighbours, and the traverse joins
- *       the held boxes nearest the session's files.
+ *       the held boxes nearest the session's files. A whole tree's
+ *       sessions are found in a quiet moment after its survey.
  *     - 1.2.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] —
  *       Changed with it: the inspector says which working session a
  *       selected file was changed in, lists the 8 files nearest to it in
@@ -421,9 +422,25 @@ export function install(api) {
   }
 
   /**
+   * Finds a survey's sessions in a quiet moment a second after it, unless
+   * something read them first or a newer survey replaced them, so the
+   * Survey tab or a file selected later does not find them in its own task.
+   */
+  function warmSessions(sess) {
+    const run = () => {
+      if (S.sessions === sess && !sess.found) void sess.list;
+    };
+    setTimeout(() => {
+      if (S.sessions !== sess) return;
+      if (typeof requestIdleCallback === 'function') requestIdleCallback(run, { timeout: 4000 });
+      else run();
+    }, 1000);
+  }
+
+  /**
    * The sessions of the tree as it is at this survey, found the first time
-   * something reads them: the Survey tab's Working sessions, a session:
-   * search or the traverse. A survey nobody asks about costs nothing here.
+   * something reads them (the Survey tab's Working sessions, a session:
+   * search, the traverse), or in a quiet moment after the survey.
    */
   function lazySessions(root) {
     let list = null;
@@ -456,6 +473,7 @@ export function install(api) {
     id: 'traverse', order: 30, owner: OWNER,
     run: () => {
       S.sessions = api.regionMode() ? serviceSessions() : lazySessions(S.model.root);
+      if (!api.regionMode()) warmSessions(S.sessions);
       if (tokensOf(S.query).length) {
         api.runQuery();
         // The survey redraws its own tab; any other shows the new matches here.

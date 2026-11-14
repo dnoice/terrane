@@ -209,7 +209,7 @@
  *                         launch surveys the directory before it draws.
  *         --region-threshold <n>
  *                         Above n entries (folders and files) the tree is
- *                         kept here and served in regions (default 400000;
+ *                         kept here and served in regions (default 100000;
  *                         0 for every tree; or TERRANE_REGION_THRESHOLD).
  *     Output:
  *         --port <n>      Preferred port (default 4173; next free is used).
@@ -455,8 +455,11 @@ const broadcast = (obj) => {
 const ops = snap ? null : makeOps(guard, { readOnly, onJob: (job) => broadcast({ type: 'job', ...job }) });
 
 // The tree kept here for a page that draws in regions (server/regions.mjs).
+// It takes the watcher's changes itself, listening page or not, and says
+// which folders it read as kept change events.
 const regions = makeRegions({
   guard, snap, meta: () => snapMeta, threshold: regionThreshold, warmOn, version: VERSION, warmWriter,
+  onApplied: (dirs) => broadcast({ type: 'change', dirs, kept: true }),
 });
 
 /* ---------- snapshot mode ---------- */
@@ -673,6 +676,9 @@ function startWatch(dirCount) {
           const dirs = [...pendingDirs];
           pendingDirs = new Set();
           pendingTimer = null;
+          // A tree kept here reads them in itself and announces them;
+          // otherwise the page reads them.
+          if (regions.applyChanges(dirs)) return;
           broadcast(dirs.length > 300 ? { type: 'bulk', count: dirs.length } : { type: 'change', dirs });
         }, 450);
       }
@@ -873,6 +879,9 @@ async function api(req, res, url) {
     }
     if (route === 'events') {
       startWatch(Number(q.get('dirs')) || 0);
+      // Unwatched, a tree kept here is checked by folder times when a page
+      // arrives, as a page that surveys the whole tree reads it again.
+      if (watchState !== 'live') regions.recheck();
       res.writeHead(200, { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-store', Connection: 'keep-alive' });
       res.write(`data: ${JSON.stringify({ type: 'watch', state: watchState })}\n\n`);
       for (const job of ops.jobs()) res.write(`data: ${JSON.stringify({ type: 'job', ...job })}\n\n`);

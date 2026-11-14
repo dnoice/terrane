@@ -17,6 +17,12 @@
  *       Initial release: the tree in typed columns, regions, the region
  *       protocol's answers and the shared refresh. The record D's indices
  *       are model.js's, re-exported here, so the page reads D by them.
+ *       After the review: a folder that grows keeps room to grow (fcap)
+ *       and grows in place when its slots are the last; dead slots free
+ *       their names and are packed away once they outnumber the live
+ *       ones; with= reaches a fresh read and a path's chain, kept=1 reads
+ *       nothing, a removed id is ENOENT and listed in gone; the default
+ *       threshold is 100,000.
  *
  * ✒ Description:
  *     The directory tree held in typed columns instead of one object per
@@ -41,11 +47,17 @@
  *     - Batches of regions under an entry and byte cap, and the chain of
  *       regions from the root to any path, a file in a tail included
  *     - Mutations: a folder listed again (replace), a new folder filled
- *       (graft) and a folder removed, with figures and age rows kept exact
+ *       (graft) and a folder removed, with figures and age rows kept exact;
+ *       a folder written again at the end gets a quarter more room, and
+ *       the file and child columns are packed (#compact) once their dead
+ *       slots outnumber the live ones and pass COMPACT_MIN
  *     - records(): the tree as scanner batches, breadth first, fresh ids
  *     - answer(): the pure logic of GET /api/tree and GET /api/region,
  *       errors carrying code, status and a sentence; refreshFrom() reads
- *       folders again through injected readers
+ *       folders again through injected readers. with=<id>:<name> joins a
+ *       named child to its folder's region in every kind of request; a
+ *       fresh read with kept=1 answers from the tree as it stands; ids of
+ *       folders removed since are listed in gone, not refused
  *     - answer() hands the questions that walk the whole tree (find,
  *       marks, survey, sessions, places) to questions.js; a region asked
  *       with a search's qid (q), or once the survey is worked out, carries
@@ -85,9 +97,9 @@
  *     - Performance: about 103 bytes an entry with names, plus 253 bytes
  *       a folder of age rows and 72 of kinds; a 20,000-file folder's
  *       region in a few milliseconds
- *     - Limitations: space a change frees is not reused within a tree's
- *       life; a tree built again compacts it. Ids are internal and change
- *       with every build
+ *     - Limitations: a removed folder's slot is never reused within a
+ *       tree's life, so its id never names another folder; a tree built
+ *       again starts afresh. Ids are internal and change with every build
  * ----------------------------------------------------------------------------
  */
 
@@ -100,8 +112,13 @@ import { ask, markRegion, QUESTION_ROUTES } from './questions.js';
 // The record D's layout is model.js's, which the page's model reads it by.
 export { D_ID, D_NAME, D_MTIME, D_ERR, D_S, D_FC, D_DC, D_H, D_MM, D_CN, D_KS, D_AB, D_AF, D_MD, D_LEN };
 
-/** Above this many entries (folders and files, the root counted) the page draws in regions. */
-export const REGION_THRESHOLD = 400000;
+/**
+ * Above this many entries (folders and files, the root counted) the page
+ * draws in regions. Measured: a page holding a whole tree of 100,000 runs
+ * no task over 16 ms of script, one of 200,000 runs 36 ms, of 400,000 60 ms;
+ * in regions every size up to 5,000,000 stays under 16 ms.
+ */
+export const REGION_THRESHOLD = 100000;
 /** The most children a region holds of one folder: the layout's own per-folder limit. */
 export const REGION_MAX = 5000;
 /** Caps of one region request, and of what one answer carries. */
@@ -119,6 +136,13 @@ const STUB = 'STUB';
 /** A folder with more children than this finds one by name through a Map. */
 const NAME_MAP_AT = 64;
 const HELD_CACHE = 256;
+/**
+ * Dead slots (left by a folder that moved, or by one removed) are packed
+ * away once there are more of them than live ones and more than this.
+ */
+export const COMPACT_MIN = 65536;
+/** The room a folder's files are given when they are written again at the end: a quarter more, eight at least. */
+const slackOf = (n) => n + Math.max(8, n >> 2);
 
 /** An error the routes answer with: code, HTTP status and a sentence. */
 function failure(code, status, message, extra = {}) {
@@ -186,6 +210,8 @@ export class ColumnTree {
     this.kidN = new Uint32Array(nf);
     this.file0 = new Uint32Array(nf);
     this.fileN = new Uint32Array(nf);
+    // The slots a folder's files may fill where they are: fileN or more.
+    this.fcap = new Uint32Array(nf);
     this.kids = new Int32Array(nf);
     // Figures.
     this.s = new Float64Array(nf);
@@ -221,6 +247,8 @@ export class ColumnTree {
     // Lower-cased names, made the first time a question needs them and
     // kept up as names are written: { d: folders', f: files' }.
     this.lower = null;
+    // How many times the file or child columns were packed (#compact).
+    this.compactions = 0;
   }
 
   /* ---------- counts ---------- */
@@ -259,7 +287,7 @@ export class ColumnTree {
     if (need <= this.parent.length) return;
     let cap = this.parent.length * 2;
     while (cap < need) cap *= 2;
-    for (const k of ['parent', 'mtime', 'err', 'kid0', 'kidN', 'file0', 'fileN', 's', 'fc', 'mm', 'dc', 'cn', 'h', 'md']) this[k] = grown(this[k], cap);
+    for (const k of ['parent', 'mtime', 'err', 'kid0', 'kidN', 'file0', 'fileN', 'fcap', 's', 'fc', 'mm', 'dc', 'cn', 'h', 'md']) this[k] = grown(this[k], cap);
     this.ks = grown(this.ks, cap * KINDS);
     this.ab = grown(this.ab, cap * W);
     this.af = grown(this.af, cap * W);
@@ -306,6 +334,7 @@ export class ColumnTree {
     this.kidN[id] = 0;
     this.file0[id] = this.N;
     this.fileN[id] = 0;
+    this.fcap[id] = 0;
     this.s[id] = 0;
     this.fc[id] = 0;
     this.mm[id] = 0;
@@ -335,7 +364,74 @@ export class ColumnTree {
     }
     this.file0[id] = at;
     this.fileN[id] = n;
+    this.fcap[id] = n;
     if (at + n > this.N) this.N = at + n;
+  }
+
+  /** Forgets the names held in slots [a, b), which no folder holds any more, so their strings can go. */
+  #release(a, b) {
+    for (let j = a; j < b; j++) {
+      this.fdir[j] = -1;
+      this.fname[j] = undefined;
+      if (this.lower) this.lower.f[j] = undefined;
+    }
+  }
+
+  /**
+   * Packs the file and child columns when dead slots outnumber live ones
+   * (and pass COMPACT_MIN): every live folder's files and child list
+   * written again in id order, as a build writes them. Slots move, so
+   * everything worked out by slot is worked out again (the caller raises
+   * edits); folder ids never change.
+   */
+  #compact() {
+    const liveFiles = this.F ? this.fc[0] : 0;
+    if (this.N - liveFiles > Math.max(COMPACT_MIN, liveFiles)) {
+      const cap = Math.max(1024, liveFiles + (liveFiles >> 3));
+      const fname = new Array(liveFiles);
+      const fsize = new Float64Array(cap);
+      const fmtime = new Float64Array(cap);
+      const fflags = new Uint8Array(cap);
+      const fkind = new Uint8Array(cap);
+      const fdir = new Int32Array(cap);
+      const lowf = this.lower ? new Array(liveFiles) : null;
+      let at = 0;
+      for (let id = 0; id < this.F; id++) {
+        if (this.parent[id] === REMOVED) continue;
+        const f0 = this.file0[id];
+        const n = this.fileN[id];
+        this.file0[id] = at;
+        this.fcap[id] = n;
+        for (let j = f0; j < f0 + n; j++, at++) {
+          fname[at] = this.fname[j];
+          fsize[at] = this.fsize[j];
+          fmtime[at] = this.fmtime[j];
+          fflags[at] = this.fflags[j];
+          fkind[at] = this.fkind[j];
+          fdir[at] = id;
+          if (lowf) lowf[at] = this.lower.f[j];
+        }
+      }
+      Object.assign(this, { fname, fsize, fmtime, fflags, fkind, fdir, N: at });
+      if (lowf) this.lower.f = lowf;
+      this.compactions++;
+    }
+    const liveKids = this.F ? this.dc[0] : 0;
+    if (this.K - liveKids > Math.max(COMPACT_MIN, liveKids)) {
+      const kids = new Int32Array(Math.max(1024, liveKids + (liveKids >> 3)));
+      let at = 0;
+      for (let id = 0; id < this.F; id++) {
+        if (this.parent[id] === REMOVED) continue;
+        const k0 = this.kid0[id];
+        const n = this.kidN[id];
+        kids.set(this.kids.subarray(k0, k0 + n), at);
+        this.kid0[id] = at;
+        at += n;
+      }
+      this.kids = kids;
+      this.K = at;
+      this.compactions++;
+    }
   }
 
   /** Appends child folder c to p's list; a list that is not at the end of kids moves there first. */
@@ -550,8 +646,7 @@ export class ColumnTree {
       const x = stack.pop();
       const k0 = this.kid0[x];
       for (let i = 0; i < this.kidN[x]; i++) stack.push(this.kids[k0 + i]);
-      const f0 = this.file0[x];
-      for (let j = f0; j < f0 + this.fileN[x]; j++) this.fdir[j] = -1;
+      this.#release(this.file0[x], this.file0[x] + this.fileN[x]);
       gone += 1 + this.fileN[x];
       this.parent[x] = REMOVED;
       this.names.delete(x);
@@ -561,10 +656,14 @@ export class ColumnTree {
   }
 
   #live(id) {
-    if (!Number.isInteger(id) || id < 0 || id >= this.F || this.parent[id] === REMOVED) {
-      throw failure('EBADREQ', 400, `There is no folder ${id} in this tree.`);
-    }
+    if (!Number.isInteger(id) || id < 0 || id >= this.F) throw failure('EBADREQ', 400, `There is no folder ${id} in this tree.`);
+    if (this.parent[id] === REMOVED) throw failure('ENOENT', 404, `Folder ${id} is no longer in the tree: it was removed, or read again under another id.`);
     return id;
+  }
+
+  /** True when id is a folder this tree had and has since removed. */
+  removed(id) {
+    return Number.isInteger(id) && id >= 0 && id < this.F && this.parent[id] === REMOVED;
   }
 
   /* ---------- mutations ---------- */
@@ -586,11 +685,13 @@ export class ColumnTree {
     const [topSid, , , mtime, err, packed] = top;
     this.mtime[id] = mtime || 0;
     this.err[id] = this.#code(err === STUB ? 0 : err);
-    // Files: compared by name for what changed, then written in place
-    // when they fit, else at the end; the slots they leave are dead.
+    // Files: compared by name for what changed, then written where they
+    // are when they fit the folder's room, or when its slots are the last
+    // ones; else at the end, with room to grow. The slots left are dead.
     const before = new Map();
     const f0 = this.file0[id];
     const n0 = this.fileN[id];
+    const cap0 = Math.max(this.fcap[id], n0);
     for (let j = f0; j < f0 + n0; j++) before.set(this.fname[j], j);
     let changed = 0;
     let addedFiles = 0;
@@ -605,9 +706,25 @@ export class ColumnTree {
     }
     let removed = before.size;
     const n = files.length / 4;
-    const at = n <= n0 ? f0 : this.N;
     for (let j = f0; j < f0 + n0; j++) this.fdir[j] = -1;
+    let at = f0;
+    let cap = cap0;
+    if (n > cap0) {
+      cap = slackOf(n);
+      // Slots from N on are free: a folder whose room ends there grows in place.
+      if (f0 + cap0 < this.N) {
+        this.#release(f0, f0 + n0);
+        at = this.N;
+      }
+    }
     this.#writeFiles(id, files, at);
+    if (at === f0 && n < n0) this.#release(f0 + n, f0 + n0);
+    this.fcap[id] = cap;
+    if (at + cap > this.N) {
+      this.#fitFiles(at + cap);
+      this.#release(at + n, at + cap);
+      this.N = at + cap;
+    }
     // Child folders, in the order listed.
     const had = new Map();
     const k0 = this.kid0[id];
@@ -629,6 +746,7 @@ export class ColumnTree {
     for (const gone of had.values()) removed += this.#drop(gone);
     this.#setKids(id, list);
     this.#recomputeChain(id);
+    this.#compact();
     this.edits++;
     return { added, removed, changed, addedFiles };
   }
@@ -691,6 +809,7 @@ export class ColumnTree {
       this.held.delete(a);
     }
     this.held.delete(id);
+    this.#compact();
     this.edits++;
     return { folders: made.length + 1, files: this.fc[id] };
   }
@@ -706,6 +825,7 @@ export class ColumnTree {
     this.#setKids(p, list);
     const removed = this.#drop(id);
     this.#recomputeChain(p);
+    this.#compact();
     this.edits++;
     return { removed };
   }
@@ -989,11 +1109,11 @@ export class ColumnTree {
   /**
    * The chain of regions from the root to the folder at rel, or to the
    * folder holding the file at rel; each holds the next link, and the
-   * last the named file, wherever they rank. The first skip folders are
-   * left out. A path not in the tree is ENOENT, naming the deepest folder
-   * found.
+   * last the named file, wherever they rank, and any names withMap gives
+   * its folder. The first skip folders are left out. A path not in the
+   * tree is ENOENT, naming the deepest folder found.
    */
-  pathRegions(rel, skip = 0, { mark = null } = {}) {
+  pathRegions(rel, skip = 0, { mark = null, with: withMap = null } = {}) {
     const parts = String(rel).split('/').filter(Boolean);
     const chain = [0];
     let cur = 0;
@@ -1012,7 +1132,8 @@ export class ColumnTree {
     const regions = [];
     for (let j = Math.max(0, skip | 0); j < chain.length; j++) {
       const next = j + 1 < chain.length ? this.name[chain[j + 1]] : file;
-      regions.push(this.region(chain[j], { with: next === null ? null : [next], mark }));
+      const names = [...(next === null ? [] : [next]), ...(withMap?.get(chain[j]) || [])];
+      regions.push(this.region(chain[j], { with: names.length ? names : null, mark }));
     }
     const target = file === null ? { id: cur, name: this.name[cur], dir: true } : { id: cur, name: file, dir: false };
     return { regions, target, chain };
@@ -1136,16 +1257,40 @@ function treeInfo(tree, ctx) {
   };
 }
 
-/** Folder ids from a comma list: decimal, at most REGION_IDS_MAX, each in the tree. */
+/**
+ * Folder ids from a comma list: decimal, at most REGION_IDS_MAX, each one
+ * this tree has or had. { ids, gone }: the folders it has, in the order
+ * asked and each once, and those removed since the page was told of them.
+ */
 function idList(text, tree) {
   const raw = String(text).split(',');
   if (raw.length > REGION_IDS_MAX) throw failure('ETOOMANY', 413, `At most ${REGION_IDS_MAX} regions can be asked for at once; ${raw.length} were.`);
-  return raw.map((x) => {
+  const ids = [];
+  const gone = [];
+  for (const x of raw) {
     if (!/^\d{1,10}$/.test(x)) throw failure('EBADREQ', 400, 'A region id is a whole number.');
     const id = Number(x);
-    if (!tree.has(id)) throw failure('EBADREQ', 400, `There is no folder ${id} in this tree.`);
-    return id;
-  });
+    if (tree.removed(id)) {
+      if (!gone.includes(id)) gone.push(id);
+    } else if (!tree.has(id)) throw failure('EBADREQ', 400, `There is no folder ${id} in this tree.`);
+    else if (!ids.includes(id)) ids.push(id);
+  }
+  return { ids, gone };
+}
+
+/** with=<folder id>:<name>, repeated: the names asked for, by folder, at most REGION_WITH_MAX. */
+function withList(q) {
+  const withs = q.getAll('with');
+  if (withs.length > REGION_WITH_MAX) throw failure('ETOOMANY', 413, `At most ${REGION_WITH_MAX} names can be asked for at once; ${withs.length} were.`);
+  const withMap = new Map();
+  for (const w of withs) {
+    const m = /^(\d{1,10}):([^]+)$/.exec(w);
+    if (!m || m[2].includes('/') || m[2].includes('\0') || m[2] === '.' || m[2] === '..') throw failure('EBADREQ', 400, 'A name asked for is written <folder id>:<name>.');
+    const id = Number(m[1]);
+    if (!withMap.has(id)) withMap.set(id, []);
+    withMap.get(id).push(m[2]);
+  }
+  return withMap;
 }
 
 /** The routes answer() takes: the tree, its regions, and the questions that walk the whole of it. */
@@ -1161,6 +1306,10 @@ export const ROUTES = Object.freeze(['tree', 'region', ...QUESTION_ROUTES]);
  * Every route but tree names the generation it reads, v. A region request
  * that names a search (q, its qid) carries its marks, and once the survey
  * is worked out every region carries its candidates and heavyweights.
+ * with=<id>:<name> joins a named child to its folder's region in every
+ * kind of request. A fresh read with kept=1 reads nothing: the tree, which
+ * the service keeps up with the disk itself, answers as it stands. ids
+ * that name folders removed since are listed in gone, never refused.
  * Resolves to { status, json }; an error carries code, status and a
  * sentence.
  */
@@ -1179,7 +1328,10 @@ export async function answer(tree, route, params = {}, ctx = {}) {
   const qid = q.get('q');
   if (qid !== null && !/^q\d{1,10}$/.test(qid)) throw failure('EBADREQ', 400, 'A search is named by its qid.');
 
+  const withMap = withList(q);
   if (q.get('fresh') === '1') {
+    // kept=1: the service already read what changed into the tree.
+    const readers = q.get('kept') === '1' ? null : ctx.readers;
     let rels;
     try {
       rels = JSON.parse(q.get('paths') ?? '');
@@ -1195,7 +1347,7 @@ export async function answer(tree, route, params = {}, ctx = {}) {
     const ids = [];
     for (const rel of clean) {
       let res;
-      if (ctx.readers) res = await refreshFrom(tree, rel, ctx.readers.depth1, ctx.readers.deep);
+      if (readers) res = await refreshFrom(tree, rel, readers.depth1, readers.deep);
       else {
         // Nothing is read: the tree answers for itself.
         const at = tree.idOf(rel);
@@ -1210,31 +1362,21 @@ export async function answer(tree, route, params = {}, ctx = {}) {
     const mark = markRegion(tree, qid);
     return {
       status: 200,
-      json: { v, anchor: tree.anchor, regions: live.map((id) => tree.region(id, { mark })), up: [...up.keys()].map((a) => tree.encodeD(a)), gone },
+      json: { v, anchor: tree.anchor, regions: live.map((id) => tree.region(id, { mark, with: withMap.get(id) || null })), up: [...up.keys()].map((a) => tree.encodeD(a)), gone },
     };
   }
 
   if (q.get('ids') !== null) {
-    const ids = idList(q.get('ids'), tree);
-    const withs = q.getAll('with');
-    if (withs.length > REGION_WITH_MAX) throw failure('ETOOMANY', 413, `At most ${REGION_WITH_MAX} names can be asked for at once; ${withs.length} were.`);
-    const withMap = new Map();
-    for (const w of withs) {
-      const m = /^(\d{1,10}):([^]+)$/.exec(w);
-      if (!m || m[2].includes('/') || m[2].includes('\0')) throw failure('EBADREQ', 400, 'A name asked for is written <folder id>:<name>.');
-      const id = Number(m[1]);
-      if (!withMap.has(id)) withMap.set(id, []);
-      withMap.get(id).push(m[2]);
-    }
-    const { regions, more } = tree.regionsFor(ids, { with: withMap, mark: markRegion(tree, qid) });
-    return { status: 200, json: { v, anchor, regions, more } };
+    const { ids, gone } = idList(q.get('ids'), tree);
+    const { regions, more } = ids.length ? tree.regionsFor(ids, { with: withMap, mark: markRegion(tree, qid) }) : { regions: [], more: [] };
+    return { status: 200, json: { v, anchor, regions, more, gone } };
   }
 
   if (q.get('path') !== null) {
     const rel = parts(q.get('path')).join('/');
     const st = q.get('skip') ?? '0';
     if (!/^\d{1,4}$/.test(st)) throw failure('EBADREQ', 400, 'skip is a whole number of folders.');
-    const { regions, target } = tree.pathRegions(rel, Number(st), { mark: markRegion(tree, qid) });
+    const { regions, target } = tree.pathRegions(rel, Number(st), { mark: markRegion(tree, qid), with: withMap });
     return { status: 200, json: { v, anchor, regions, target } };
   }
 

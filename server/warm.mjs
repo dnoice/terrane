@@ -21,7 +21,9 @@
  *       answering parents first; sweepWarm then lstats the files of every
  *       other folder, 8 at a time, waiting while a change runs, and lists
  *       again a folder with a file rewritten in place, 100 at a time;
- *       writeWarmTree writes the checked tree back through warmWriter.
+ *       writeWarmTree writes the checked tree back through warmWriter. The
+ *       sweep takes each file's name, size and time before it waits, since
+ *       the folder's slots may be written again meanwhile.
  *     - 1.0.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] —
  *       Initial release.
  *
@@ -553,14 +555,16 @@ export async function sweepWarm(guard, tree, { skip = new Set(), onChange = () =
     while (busy() && !signal?.aborted) await new Promise((r) => setTimeout(r, 200));
     const dir = absOf(guard, tree.relOf(id));
     const f0 = tree.file0[id];
-    const slots = Array.from({ length: tree.fileN[id] }, (_, k) => f0 + k);
+    // Each file's name, size and time taken now: the folder's slots may be
+    // written again (a change read in, the columns packed) while it waits.
+    const known = Array.from({ length: tree.fileN[id] }, (_, k) => [tree.fname[f0 + k], tree.fsize[f0 + k], tree.fmtime[f0 + k]]);
     folders++;
-    files += slots.length;
-    const differs = await mapLimit(slots, SWEEP_CONCURRENCY, async (j) => {
+    files += known.length;
+    const differs = await mapLimit(known, SWEEP_CONCURRENCY, async ([name, size0, mtime0]) => {
       try {
-        const st = await fsp.lstat(path.join(dir, tree.fname[j]));
+        const st = await fsp.lstat(path.join(dir, name));
         const size = st.isSymbolicLink() ? 0 : st.size;
-        return size !== tree.fsize[j] || Math.round(st.mtimeMs) !== tree.fmtime[j];
+        return size !== size0 || Math.round(st.mtimeMs) !== mtime0;
       } catch {
         return true;
       }

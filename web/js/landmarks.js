@@ -20,7 +20,8 @@
  *       and Now break only at separators; Set benchmark stands in an actions
  *       grid. In region mode B reads the folder's region before measuring,
  *       J finds the return point by its path, and the first survey reads
- *       every benchmark's folder by its path before comparing.
+ *       every benchmark's folder by its path before comparing; a region the
+ *       service cannot answer then says no benchmark was set.
  *     - 1.3.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
  *       Places tab ends with the sections other features keep there
  *       (api.tabSections('places')), such as Saved searches. A batch
@@ -253,8 +254,16 @@ export function install(api) {
       return;
     }
     let node = S.model.find(path);
-    // In region mode the folder's children are held before it is measured.
-    if (node?.d && api.regionMode()) node = await api.ensure(node);
+    // In region mode the folder's children are held before it is measured;
+    // a region the service could not answer is said, and nothing is set.
+    if (node?.d && api.regionMode()) {
+      try {
+        node = await api.ensure(node);
+      } catch (err) {
+        api.notice(`No benchmark was set: ${named(dir)} could not be read (${err.message}).`, { kind: 'error' });
+        return;
+      }
+    }
     if (!node || !node.d) {
       api.notice(`${named(dir)} is no longer there, so no benchmark was set.`, { kind: 'error' });
       return;

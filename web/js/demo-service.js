@@ -24,6 +24,9 @@
  *       sessions and places are answered by questions.js over the same
  *       tree, after the changes queued before them, and check is refused
  *       with ENOWARM: no tree is kept from an earlier session to check.
+ *       An arrival is read into the tree in columns once it is built, as
+ *       the service's watcher reads a change into its own, and its change
+ *       event says kept; kept=1, with=, from and gone as the service.
  *     - 1.0.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] —
  *       Initial release.
  *
@@ -58,7 +61,8 @@
  *     - Open, Reveal and a terminal refuse with a plain explanation: there
  *       is no file on disk to hand to another program; nor is there a
  *       tree kept from an earlier session for a warm start
- *     - arrive() adds a file as a download would, and emits the change
+ *     - arrive() adds a file as a download would, reads it into the tree
+ *       in columns when there is one, and emits the change (kept then)
  *       the service's watcher would send
  *     - No DOM: the same module answers in the page and in Node tests
  *
@@ -90,7 +94,7 @@
  */
 
 import { buildWorld, find, walk, textOf, insideOf, isBinary, extOf, hash32, rng, FLAG_LINK, FLAG_HIDDEN } from './demo-world.js';
-import { REGION_THRESHOLD, treeFrom, answer } from './columns.js';
+import { REGION_THRESHOLD, treeFrom, answer, refreshFrom } from './columns.js';
 import { QUESTION_ROUTES } from './questions.js';
 
 export const DEMO_VERSION = '1.4.0';
@@ -788,7 +792,8 @@ export function createDemoService({ now = Date.now(), seed, emit = () => {}, clo
         if (route === 'check') throw new DemoError('ENOWARM', 'The demo world is built afresh on every visit, so there is no tree kept from an earlier session to check.', 404);
         if (route === 'tree') return answer(tree(), 'tree', params, regionCtx());
         if (route === 'region') {
-          // A fresh read changes the tree, so it waits its turn as a change does.
+          // A fresh read changes the tree, so it waits its turn as a change
+          // does; one with kept=1 reads nothing, but waits for what is queued.
           const fresh = (params instanceof URLSearchParams ? params.get('fresh') : q.fresh) === '1';
           const ask = () => answer(tree(), 'region', params, regionCtx());
           return fresh ? await serial(ask) : await ask();
@@ -870,7 +875,9 @@ export function createDemoService({ now = Date.now(), seed, emit = () => {}, clo
 
   /**
    * A file arrives in a folder as a download would, and the change the
-   * service's watcher would report is emitted.
+   * service's watcher would report is emitted. Once the tree in columns is
+   * built it reads the change in first, as the service's own tree does,
+   * and the change says so (kept), so a page in regions reads nothing.
    */
   function arrive(dirRel = 'Downloads', name = 'tide-tables-2027.pdf', size = 1_284_311) {
     const dir = find(root, dirRel);
@@ -878,8 +885,16 @@ export function createDemoService({ now = Date.now(), seed, emit = () => {}, clo
     const t = clock();
     dir.kids.set(name, { name, dir: false, size, mtime: t, birth: t, flags: 0, s: hash32(name) });
     touch(dir);
-    emit({ type: 'change', dirs: [dirRel] });
-    return true;
+    if (!columns) {
+      emit({ type: 'change', dirs: [dirRel] });
+      return true;
+    }
+    const kept = columns;
+    return serial(async () => {
+      if (columns === kept) await refreshFrom(kept, dirRel, (rel) => reread(rel, 1), (rel) => reread(rel, Infinity));
+      emit({ type: 'change', dirs: [dirRel], kept: true });
+      return true;
+    });
   }
 
   return { handle, arrive, world, info, lookup: (rel) => find(root, rel), follow, thumbRows };

@@ -14,7 +14,13 @@
  *
  * ✒ Changelog:
  *     - 1.0.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] —
- *       Initial release.
+ *       Initial release. After the review: a refill keeps the children a
+ *       region does not list while they may lie in its tail (a path's
+ *       chain or a late answer keeps them all; a refresh keeps the pinned
+ *       ones, named by with= or asked for by name after); refresh takes
+ *       kept, asking the deepest held folder with kept=1; entries follow
+ *       the root's figures; a folder gone is never asked again (onGone),
+ *       and a failed one rests before it is wanted again.
  *
  * ✒ Description:
  *     The page's side of region mode: it keeps a partial Model filled with
@@ -38,8 +44,18 @@
  *       path made a node, a file in a folder's tail included
  *     - One region ingested per task, each inside a terrane:region
  *       measure, so no task builds more than one region's nodes
- *     - refresh(rels): folders read again with fresh=1, held ones filled
- *       again with their nodes kept, ancestors given their new figures
+ *     - refresh(rels, { kept }): folders read again with fresh=1, or as
+ *       the service already read them (kept=1, the deepest held folder on
+ *       each path), held ones filled again with their nodes kept,
+ *       ancestors given their new figures; the pinned children (pinned())
+ *       of a folder past its 5,000 are named with with=, and those it had
+ *       no room to name are kept while they are asked for by name
+ *     - A folder held another way meanwhile (a path's chain, a late
+ *       answer) is filled again keeping every child it holds that the
+ *       region does not list, so a tail entry made a node stays one
+ *     - ids the service no longer has come back in gone: such a folder is
+ *       never asked for again and onGone(node) has its parent read; a
+ *       request that fails rests its folders from backoffMs, doubling
  *     - evict(pins, open): the least recently opened held folders that
  *       are neither pinned nor open in the layout are let go, deepest
  *       first, until the entries held are at the floor
@@ -52,7 +68,7 @@
  *       name the folders held for the marks a page asks for
  *
  * ✒ Usage Instructions:
- *     const R = createRegions({ fetchJSON, model, onStale, onLanded });
+ *     const R = createRegions({ fetchJSON, model, onStale, onLanded, pinned, onGone });
  *     await R.open({ build: false, onProgress: (tree) => {} });
  *     R.want(layout.want);                 // after every layout
  *     const dir = await R.ensure(folder);  // its children are held
@@ -76,7 +92,8 @@
  *       held; 200,000 entries held by default (REGION_BUDGET)
  *     - Limitations: nodes of a dropped region are not reused; a feature
  *       that keeps a node pins its folder (app.js regionPins) or keeps a
- *       path and resolves it again
+ *       path and resolves it again; a child of a folder past its 5,000
+ *       that nobody pins goes back to the tail when the folder changes
  * ----------------------------------------------------------------------------
  */
 
@@ -90,8 +107,12 @@ const IN_FLIGHT = 2;
 const BATCH_IDS = 64;
 const BATCH_ENTRIES = 40000;
 const FRESH_MAX = 50;
+/** The names one request asks for by with= (columns.js REGION_WITH_MAX). */
+const WITH_MAX = 100;
 const POLL_MS = 250;
 const MS_KEPT = 200;
+/** A refill that keeps every child held which the region does not list: it may lie in the tail. */
+const KEEP_ALL = () => true;
 
 /* ---------- decoding ---------- */
 
@@ -190,7 +211,9 @@ export function measure(name, t0) {
  * { regions: true }). onStale() runs once when the tree's generation
  * changed under it; onLanded() after each batch of regions is in.
  */
-export function createRegions({ fetchJSON, model, onStale = () => {}, onLanded = () => {}, extra = () => null, onFilled = null } = {}) {
+export function createRegions({
+  fetchJSON, model, onStale = () => {}, onLanded = () => {}, extra = () => null, onFilled = null, pinned = () => () => false, onGone = () => {},
+} = {}) {
   const M = model;
   let v = null;
   let entries = null;
@@ -208,7 +231,14 @@ export function createRegions({ fetchJSON, model, onStale = () => {}, onLanded =
   const flying = new Map();
   const waiters = new Map();
   let flights = 0;
-  const stats = { requests: 0, ms: [], bytes: 0, dropped: 0 };
+  const stats = { requests: 0, ms: [], bytes: 0, dropped: 0, verified: 0, gone: 0, fresh: 0, kept: 0 };
+  // Folders the service no longer has (removed since the page was told of
+  // them), by id: never asked for again; their parent is read again.
+  const goneIds = new Set();
+  // A folder whose request failed is not wanted again before its time:
+  // { at, ms } by id, the wait doubling from client.backoffMs to 16 s.
+  const backoff = new Map();
+  const resting = (id) => (backoff.get(id)?.at ?? 0) > Date.now();
 
   const tasks = [];
   let posted = false;
@@ -257,8 +287,30 @@ export function createRegions({ fetchJSON, model, onStale = () => {}, onLanded =
     }
   }
 
-  /** Fills node from R, or fills it again when it is held; null when it is no longer in the model. */
-  function apply(node, R) {
+  /**
+   * Lets a held folder's children go: it is a closed folder again, and
+   * every folder held beneath it is forgotten. Returns the regions let go.
+   */
+  function release(d) {
+    const old = d.c;
+    const beneath = M.dropRegion(d);
+    held -= old.length;
+    heldSet.delete(d);
+    for (const ch of old) if (ch.d && byId.get(ch.x) === ch) byId.delete(ch.x);
+    for (const h of beneath) {
+      if (heldSet.delete(h)) held -= h.c.length;
+      for (const ch of h.c) if (ch.d && byId.get(ch.x) === ch) byId.delete(ch.x);
+    }
+    return 1 + beneath.length;
+  }
+
+  /**
+   * Fills node from R, or fills it again when it is held; null when it is
+   * no longer in the model. A refill keeps a child the region does not
+   * list when keep(child) says so (model.js refillRegion), and res.kept
+   * hears which it kept.
+   */
+  function apply(node, R, keep = null, res = null) {
     if (stale || closed || !live(node) || node.x !== R.id) return null;
     const t0 = clock();
     if (node.u) {
@@ -266,9 +318,11 @@ export function createRegions({ fetchJSON, model, onStale = () => {}, onLanded =
       held += node.c.length;
     } else {
       const before = node.c.length;
-      const { removed } = M.refillRegion(node, R);
+      const { removed, kept, renewed } = M.refillRegion(node, R, keep);
       for (const r of removed) if (r.d) forget(r);
       held += node.c.length - before;
+      for (const r of renewed) release(r);
+      if (res) res.kept = kept;
     }
     for (const ch of node.c) if (ch.d) byId.set(ch.x, ch);
     heldSet.add(node);
@@ -297,6 +351,10 @@ export function createRegions({ fetchJSON, model, onStale = () => {}, onLanded =
     if (err?.code === 'ESTALE') {
       goStale();
       return;
+    }
+    for (const id of ids) {
+      const ms = Math.min(16000, (backoff.get(id)?.ms ?? client.backoffMs / 2) * 2);
+      backoff.set(id, { at: Date.now() + ms, ms });
     }
     for (const id of ids) {
       const list = waiters.get(id);
@@ -332,13 +390,22 @@ export function createRegions({ fetchJSON, model, onStale = () => {}, onLanded =
       goStale();
       return;
     }
+    // A folder held by another way meanwhile (a path's chain) is filled
+    // again without losing what it holds beyond the region's own.
     const landed = ans.regions.map((R) => schedule(() => {
       const it = flying.get(R.id);
       flying.delete(R.id);
-      const node = it ? apply(it.node, R) : null;
+      backoff.delete(R.id);
+      const node = it ? apply(it.node, R, KEEP_ALL) : null;
       settle(R.id, node);
       return node;
     }));
+    for (const id of ans.gone || []) {
+      const it = flying.get(id);
+      flying.delete(id);
+      settle(id, null);
+      if (it) gone(it.node);
+    }
     for (const id of ans.more) {
       const it = flying.get(id);
       flying.delete(id);
@@ -351,6 +418,20 @@ export function createRegions({ fetchJSON, model, onStale = () => {}, onLanded =
     pump();
   }
 
+  /** A folder the service no longer has: never asked for again, and the page told, so its parent is read again. */
+  function gone(node) {
+    if (goneIds.has(node.x)) return;
+    goneIds.add(node.x);
+    stats.gone++;
+    if (live(node)) {
+      try {
+        onGone(node);
+      } catch (err) {
+        console.error('A folder gone from the tree could not be followed:', err);
+      }
+    }
+  }
+
   function pump() {
     if (stale || closed || v === null) return;
     while (flights < IN_FLIGHT && queue.size) {
@@ -358,9 +439,9 @@ export function createRegions({ fetchJSON, model, onStale = () => {}, onLanded =
       const batch = [];
       let expect = 0;
       for (const it of items) {
-        if (!live(it.node) || !it.node.u || flying.has(it.node.x)) {
+        if (!live(it.node) || !it.node.u || flying.has(it.node.x) || goneIds.has(it.node.x)) {
           queue.delete(it.node.x);
-          if (!live(it.node) || !it.node.u) settle(it.node.x, live(it.node) ? it.node : null);
+          if (!live(it.node) || !it.node.u || goneIds.has(it.node.x)) settle(it.node.x, live(it.node) && !goneIds.has(it.node.x) ? it.node : null);
           continue;
         }
         const e = 1 + kids(it.node);
@@ -412,7 +493,8 @@ export function createRegions({ fetchJSON, model, onStale = () => {}, onLanded =
     for (let j = 0; j < ans.regions.length; j++) {
       const R = ans.regions[j];
       const target = cur;
-      const got = await schedule(() => apply(target, R));
+      // A folder on the way that is held already keeps every child it holds.
+      const got = await schedule(() => apply(target, R, KEEP_ALL));
       if (!got) return undefined;
       if (j + 1 < ans.regions.length) {
         cur = childNamed(cur, parts[i + j], false);
@@ -425,9 +507,30 @@ export function createRegions({ fetchJSON, model, onStale = () => {}, onLanded =
     return file ?? null;
   }
 
+  /** The deepest folder on a path whose children are held: the root at least. */
+  function heldOn(rel) {
+    let node = M.root;
+    for (const part of String(rel ?? '').split('/')) {
+      if (!part) continue;
+      if (node.u) break;
+      const next = childNamed(node, part, false);
+      if (!next || next.u) break;
+      node = next;
+    }
+    return node;
+  }
+
+  /** The folder at a path, when it and every folder above it are held; null otherwise. */
+  function heldAt(rel) {
+    const node = heldOn(rel);
+    return !node.u && relPath(node) === String(rel ?? '').split('/').filter(Boolean).join('/') ? node : null;
+  }
+
   const client = {
     budget: REGION_BUDGET,
     floor: REGION_FLOOR,
+    /** The first wait before a folder whose request failed is wanted again; it doubles to 16 s. */
+    backoffMs: 1000,
     /** RegionAges over the tree's rows, once open. */
     ages: null,
     get model() {
@@ -436,15 +539,17 @@ export function createRegions({ fetchJSON, model, onStale = () => {}, onLanded =
     get v() {
       return v;
     },
+    /** The tree's entries, the root counted: from the root's figures, which every refresh brings up to date. */
     get entries() {
-      return entries;
+      return v === null ? entries : M.root.dc + M.root.fc + 1;
     },
     get held() {
       return held;
     },
     get stats() {
       return {
-        requests: stats.requests, ms: stats.ms.slice(), bytes: stats.bytes, held, regions: heldSet.size, dropped: stats.dropped,
+        requests: stats.requests, ms: stats.ms.slice(), bytes: stats.bytes, held, regions: heldSet.size, dropped: stats.dropped, verified: stats.verified, gone: stats.gone,
+        fresh: stats.fresh, kept: stats.kept,
         idle: flights === 0 && queue.size === 0 && flying.size === 0 && tasks.length === 0,
       };
     },
@@ -498,7 +603,7 @@ export function createRegions({ fetchJSON, model, onStale = () => {}, onLanded =
       for (const [id, it] of queue) if (!it.ensure) queue.delete(id);
       const prefetch = held < client.floor;
       for (const { node, pri } of list || []) {
-        if (!node.u || !live(node) || flying.has(node.x)) continue;
+        if (!node.u || !live(node) || flying.has(node.x) || goneIds.has(node.x) || resting(node.x)) continue;
         if (pri <= 1 && !prefetch) continue;
         const had = queue.get(node.x);
         if (!had || had.pri < pri) queue.set(node.x, { node, pri, ensure: had?.ensure || false });
@@ -520,6 +625,7 @@ export function createRegions({ fetchJSON, model, onStale = () => {}, onLanded =
         dir._t = ++tick;
         return Promise.resolve(dir);
       }
+      if (goneIds.has(dir.x)) return Promise.resolve(null);
       return new Promise((resolve, reject) => {
         const list = waiters.get(dir.x) || [];
         list.push({ resolve, reject });
@@ -575,16 +681,52 @@ export function createRegions({ fetchJSON, model, onStale = () => {}, onLanded =
      * again with its nodes kept, one not held takes its new figures, and
      * every ancestor whose figures changed takes them. A folder gone was
      * read through its parent by the service, whose region drops it.
+     * kept: the service read them itself (its watcher, or its check), so
+     * nothing is read again (kept=1), and each path asks only for the
+     * deepest folder held on it. A pinned child (pinned(), the page's
+     * selection and the like) is named with with=, so the refill holds it
+     * wherever it ranks; one the request had no room to name, and the
+     * region does not list, is kept while it is asked for by name (ids
+     * with with=), and dropped only when the service has it no more.
      * Resolves to { dirs: the held folders filled again }.
      */
-    async refresh(rels) {
+    async refresh(rels, { kept = false } = {}) {
       const dirs = new Set();
       if (stale || closed || !rels?.length) return { dirs };
-      for (let i = 0; i < rels.length; i += FRESH_MAX) {
-        const chunk = rels.slice(i, i + FRESH_MAX);
+      let list = rels;
+      if (kept) {
+        const seen = new Set();
+        list = [];
+        for (const rel of rels) {
+          const r = relPath(heldOn(rel));
+          if (!seen.has(r)) {
+            seen.add(r);
+            list.push(r);
+          }
+        }
+      }
+      const isPinned = pinned();
+      const ask = (params) => fetchJSON('region', { v: String(v), ...params, ...(extra() || {}) });
+      const verify = [];
+      for (let i = 0; i < list.length; i += FRESH_MAX) {
+        const chunk = list.slice(i, i + FRESH_MAX);
+        const withs = [];
+        const sent = new Set();
+        for (const rel of chunk) {
+          const n = heldAt(rel);
+          if (!n) continue;
+          for (const ch of n.c) {
+            if (withs.length >= WITH_MAX) break;
+            if (isPinned(ch)) {
+              withs.push(`${n.x}:${ch.n}`);
+              sent.add(ch);
+            }
+          }
+        }
         let ans;
+        stats[kept ? 'kept' : 'fresh']++;
         try {
-          ans = await fetchJSON('region', { v: String(v), fresh: '1', paths: JSON.stringify(chunk), ...(extra() || {}) });
+          ans = await ask({ fresh: '1', paths: JSON.stringify(chunk), ...(kept ? { kept: '1' } : {}), ...(withs.length ? { with: withs } : {}) });
         } catch (err) {
           if (err?.code === 'ESTALE') {
             goStale();
@@ -596,6 +738,7 @@ export function createRegions({ fetchJSON, model, onStale = () => {}, onLanded =
           goStale();
           return { dirs, stale: true };
         }
+        const keep = (ch) => !sent.has(ch) && isPinned(ch);
         for (const R of ans.regions) {
           const node = byId.get(R.id);
           if (!node) continue;
@@ -603,8 +746,10 @@ export function createRegions({ fetchJSON, model, onStale = () => {}, onLanded =
             M.setFigures(node, R.dirs.figs, 0, R.dirs.errs[0]);
             continue;
           }
-          const got = await schedule(() => apply(node, R));
+          const res = {};
+          const got = await schedule(() => apply(node, R, keep, res));
           if (got) dirs.add(got);
+          if (got && res.kept?.length) verify.push({ node: got, kept: res.kept });
         }
         const up = ans.up;
         if (up) {
@@ -612,6 +757,33 @@ export function createRegions({ fetchJSON, model, onStale = () => {}, onLanded =
             const node = byId.get(up.ids[j]);
             if (node) M.setFigures(node, up.figs, j * D_LEN, up.errs[j]);
           }
+        }
+      }
+      // Pinned children the refill kept without having named them: asked
+      // for by name, a hundred at a time; one the service has no more goes.
+      for (const { node, kept: held2 } of verify) {
+        for (let k = 0; k < held2.length; k += WITH_MAX) {
+          const part = held2.slice(k, k + WITH_MAX).filter((ch) => node.c.includes(ch));
+          if (!part.length || !live(node) || node.u) continue;
+          let ans;
+          try {
+            ans = await ask({ ids: String(node.x), with: part.map((ch) => `${node.x}:${ch.n}`) });
+          } catch (err) {
+            if (err?.code === 'ESTALE') {
+              goStale();
+              return { dirs, stale: true };
+            }
+            throw err;
+          }
+          if (ans.v !== v) {
+            goStale();
+            return { dirs, stale: true };
+          }
+          stats.verified += part.length;
+          const R = ans.regions.find((x) => x.id === node.x);
+          if (!R) continue;
+          const named = new Set(part);
+          await schedule(() => apply(node, R, (ch) => !named.has(ch)));
         }
       }
       return { dirs };
@@ -633,16 +805,7 @@ export function createRegions({ fetchJSON, model, onStale = () => {}, onLanded =
       for (const d of cand) {
         if (held <= client.floor) break;
         if (d.u || !live(d)) continue;
-        const old = d.c;
-        const beneath = M.dropRegion(d);
-        held -= old.length;
-        heldSet.delete(d);
-        for (const ch of old) if (ch.d && byId.get(ch.x) === ch) byId.delete(ch.x);
-        for (const h of beneath) {
-          if (heldSet.delete(h)) held -= h.c.length;
-          for (const ch of h.c) if (ch.d && byId.get(ch.x) === ch) byId.delete(ch.x);
-        }
-        dropped += 1 + beneath.length;
+        dropped += release(d);
       }
       stats.dropped += dropped;
       return dropped;

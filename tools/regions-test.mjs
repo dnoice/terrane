@@ -15,7 +15,11 @@
  *
  * ✒ Changelog:
  *     - 1.0.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] —
- *       Initial release.
+ *       Initial release. After the review: a folder that keeps growing and
+ *       dead slots packed away (4b), a search turned page by page (4c),
+ *       the generator's moment as MM/DD/YYYY, and outside changes read
+ *       into the kept tree with a page listening or not, the unwatched
+ *       recheck, the stale survey and marks never worked out (11).
  *
  * ✒ Description:
  *     Checks the tree the service keeps in columns (web/js/columns.js)
@@ -49,6 +53,12 @@
  *     - The routes in live mode: a build, a fresh read after a file is
  *       written and a folder removed, a new folder filled, read-only
  *       mode, a link that leads outside refused, the warm cache written
+ *     - Growth: 600 additions to a 20,000-file folder, and two folders
+ *       growing in turn, keep the slots bounded and dead slots nameless;
+ *       a 100,000-file folder written again at the end is packed away,
+ *       and every answer then equals a tree built afresh
+ *     - Pages: in:big over a folder of 12,010 in three pages reaches every
+ *       entry in each of four orders; from past 200,000 or below 0 refused
  *     - Ceilings: a 300,000-entry tree built, and a 20,000-file folder's
  *       region answered, each timed and printed
  *     - The whole-tree questions against the page's own, on one clock and
@@ -63,6 +73,12 @@
  *       gate file; released, a file added on disk is in after the change
  *       event and { type: 'checked' }, and a rewrite in place with its
  *       folder's time put back is caught by the sweep, never as bulk
+ *     - Live mode with the watcher (ports 5227 and 5228): a change while a
+ *       page listens and changes with none listening are read into the
+ *       tree and announced as kept; find agrees; a survey right after a
+ *       change is answered stale with retry; unwatched, a page's arrival
+ *       has the tree checked; a region asked with a search the tree
+ *       changed since carries no marks
  *
  * ✒ Usage Instructions:
  *     node tools/regions-test.mjs
@@ -339,7 +355,7 @@ section('3. Changes, against the model');
   } catch (e) {
     err = e;
   }
-  check('a removed id is EBADREQ', err?.code === 'EBADREQ');
+  check('a removed id is ENOENT 404, never served from the slots it left', err?.code === 'ENOENT' && err.status === 404 && tree.removed(yid));
   err = null;
   try {
     tree.graft(xid, deep);
@@ -370,6 +386,90 @@ section('3. Changes, against the model');
   const m2 = modelFrom([...tree.records()], 'synthetic');
   const cmp2 = compareAll(m2, changed, NOW);
   check('and so is a changed tree, as a fresh survey would read it', cmp2.bad.length === 0 && changed.entries === tree.entries, cmp2.bad.slice(0, 2).join(' | '));
+}
+
+section('4b. A folder that keeps growing, and dead slots packed away');
+{
+  const listOf = (prefix, n, size = (i) => 1000 + i) => {
+    const out = [];
+    for (let i = 0; i < n; i++) out.push(`${prefix}-${String(i).padStart(6, '0')}.dat`, size(i), NOW - i * 1000, 0);
+    return out;
+  };
+  // The review's probe: one 20,000-file folder taking 600 one-file additions.
+  {
+    const files = listOf('g', 20000);
+    const g = treeFrom([[[0, -1, 'root', NOW, 0, []], [1, 0, 'grow', NOW, 0, files]]], { name: 'root', anchor: NOW });
+    for (let k = 0; k < 600; k++) {
+      files.push(`new-${k}.dat`, 500, NOW, 0);
+      g.replace(1, [[0, -1, 'grow', NOW, 0, files]]);
+    }
+    check(`600 one-file additions to a 20,000-file folder keep its slots where they are (${g.N.toLocaleString('en-US')} slots for ${g.files.toLocaleString('en-US')} files)`, g.files === 20600 && g.N <= 26000, `${g.N} slots`);
+  }
+  // Two folders growing in turn, each in the other's way.
+  {
+    const a = listOf('a', 20000);
+    const b = listOf('b', 10);
+    const g = treeFrom([[[0, -1, 'root', NOW, 0, []], [1, 0, 'a', NOW, 0, a], [2, 0, 'b', NOW, 0, b], [3, 0, 'c', NOW, 0, ['c.txt', 1, NOW, 0]]]], { name: 'root', anchor: NOW });
+    for (let k = 0; k < 600; k++) {
+      a.push(`more-a-${k}.dat`, 600, NOW, 0);
+      g.replace(1, [[0, -1, 'a', NOW, 0, a]]);
+      b.push(`more-b-${k}.dat`, 700, NOW, 0);
+      g.replace(2, [[0, -1, 'b', NOW, 0, b]]);
+    }
+    let names = 0;
+    for (let j = 0; j < g.N; j++) if (g.fname[j] !== undefined) names++;
+    check(`two folders growing in turn keep the slots bounded (${g.N.toLocaleString('en-US')} slots for ${g.files.toLocaleString('en-US')} files)`, g.files === 21211 && g.N <= 3 * g.files, `${g.N} slots`);
+    check('and a dead slot holds no name: only live files keep their strings', names === g.files, `${names} names`);
+  }
+  // A large folder written again at the end: more dead slots than live ones, so they are packed away.
+  {
+    const big = listOf('p', 100000);
+    const recs = [[0, -1, 'root', NOW, 0, []], [1, 0, 'big', NOW, 0, big], [2, 0, 'after', NOW, 0, ['z.txt', 3, NOW, 0]], [3, 1, 'inner', NOW, 0, ['i.txt', 4, NOW, 0]]];
+    const g = treeFrom([recs], { name: 'root', anchor: NOW });
+    const q0 = (await answer(g, 'find', { v: '1', q: 'p-00' }, { v: 1 })).json;
+    big.push('p-extra.dat', 5e9, NOW, 0);
+    g.replace(1, [[0, -1, 'big', NOW, 0, big], [1, 0, 'inner', NOW, 'STUB', []]]);
+    check(`a folder of 100,000 written again at the end leaves more dead slots than live ones, and they are packed away (${g.compactions} packing, ${g.N.toLocaleString('en-US')} slots)`, g.compactions >= 1 && g.N === g.files, `${g.N} slots for ${g.files}`);
+    const again = treeFrom([...g.records()], { name: 'root', anchor: NOW });
+    const ask = async (t, route, params) => JSON.stringify((await answer(t, route, { v: '1', ...params }, { v: 1 })).json, (k, v) => (k === 'ms' || k === 'qid' ? undefined : v));
+    let same2 = true;
+    for (const [route, params] of [['region', { ids: '0,1,2,3' }], ['find', { q: 'p-00' }], ['find', { q: 'p-0001', sort: 'date', dir: '1' }], ['survey', {}], ['places', { q: 'p-0004' }]]) {
+      if (await ask(g, route, params) !== await ask(again, route, params)) same2 = false;
+    }
+    check('after packing, regions, searches, the survey and places answer as a tree built afresh from the same records', same2);
+    check('the search kept from before the packing is worked out again, with the new file', q0.total === 10000 + 0 && (await answer(g, 'find', { v: '1', q: 'p-' }, { v: 1 })).json.total === 100001);
+  }
+}
+
+section('4c. A search turned page by page (from)');
+{
+  // The review's folder: 12,010 files, its region the 5,000 largest.
+  const files = [];
+  for (let i = 0; i < 12010; i++) files.push(`t-${String(i).padStart(5, '0')}.dat`, 1e6 - i, NOW - i * 1000, 0);
+  const tp = treeFrom([[[0, -1, 'root', NOW, 0, []], [1, 0, 'big', NOW, 0, files]]], { name: 'root', anchor: NOW });
+  const region = new Set();
+  const R0 = tp.region(1);
+  for (let i = 0; i < R0.f.length; i += 4) region.add(R0.f[i]);
+  for (const [sort, dir] of [['size', '-1'], ['size', '1'], ['date', '-1'], ['date', '1']]) {
+    const seen = [];
+    let first = null;
+    for (const from of [0, 5000, 10000]) {
+      const a = (await answer(tp, 'find', { v: '1', q: 'in:big', sort, dir, from: String(from) }, { v: 1 })).json;
+      first ??= a.qid;
+      seen.push(...a.hits.map((h) => h[0]));
+    }
+    const tailSeen = seen.filter((r) => !region.has(r.slice(4))).length;
+    check(`in:big ${sort} ${dir === '1' ? 'ascending' : 'descending'}, three pages: every one of 12,010 once, the 7,010 not in its region among them (${tailSeen})`,
+      seen.length === 12010 && new Set(seen).size === 12010 && tailSeen === 7010);
+  }
+  const p2 = (await answer(tp, 'find', { v: '1', q: 'in:big', from: '5000' }, { v: 1 })).json;
+  const all = (await answer(tp, 'find', { v: '1', q: 'in:big', limit: '0' }, { v: 1 })).json;
+  check('a page says where it starts, and continues the order of the one before', p2.from === 5000 && p2.hits.length === 5000 && p2.hits[0][2] === 1e6 - 5000 && all.total === 12010);
+  const past = (await answer(tp, 'find', { v: '1', q: 'in:big', from: '20000' }, { v: 1 })).json;
+  check('a page past the last match is empty, with the total', past.hits.length === 0 && past.total === 12010);
+  const big = await answer(tp, 'find', { v: '1', q: 'x', from: '200001' }, { v: 1 }).catch((e) => e);
+  const neg = await answer(tp, 'find', { v: '1', q: 'x', from: '-1' }, { v: 1 }).catch((e) => e);
+  check('from past 200,000 is 413, and below 0 is 400 saying so', big.status === 413 && neg.status === 400 && /at least 0/.test(neg.message), `${big.message} | ${neg.message}`);
 }
 
 /* ---------- 5. the generator ---------- */
@@ -465,15 +565,26 @@ section('5. The generator');
     child.on('exit', (code) => resolve({ code, text }));
   });
   check('the command line refuses it with exit code 2 and a sentence', cli.code === 2 && /real directory/.test(cli.text), cli.text);
+  // The summary a person reads gives the moment as MM/DD/YYYY, never ISO.
+  const said = await new Promise((resolve) => {
+    const child = spawn(process.execPath, [path.join(HERE, 'make-synthetic.mjs'), '--entries', '1000', '--seed', '3', '--now', String(NOW), '--out', path.join(work, 'synthetic-cli')], { stdio: ['ignore', 'pipe', 'pipe'] });
+    let text = '';
+    child.stdout.on('data', (x) => { text += x; });
+    child.stderr.on('data', (x) => { text += x; });
+    child.on('exit', (code) => resolve({ code, text }));
+  });
+  const nowLine = said.text.split('\n').find((l) => /Seed, now/.test(l)) || '';
+  check(`the summary prints its moment as MM/DD/YYYY HH:MM, never ISO (${nowLine.trim()})`, said.code === 0 && nowLine.includes(`3, ${G.dateTime(NOW)}`)
+    && /\d\d\/\d\d\/\d{4} \d\d:\d\d$/.test(nowLine.trim()) && !/\d{4}-\d\d-\d\d/.test(nowLine), said.text);
   check('parseEntries and labelOf', G.parseEntries('100k') === 100000 && G.parseEntries('5m') === 5e6 && G.labelOf(2e6) === '2m' && G.labelOf(400000) === '400k');
 }
 
 /* ---------- services ---------- */
 
-/** Boots the service; resolves to a client with the token. */
-async function boot(args, port, { home = path.join(work, 'data'), node = [], env = {} } = {}) {
+/** Boots the service; resolves to a client with the token. watch: the service watches the disk (else --no-watch). */
+async function boot(args, port, { home = path.join(work, 'data'), node = [], env = {}, watch = false } = {}) {
   fs.mkdirSync(home, { recursive: true });
-  const child = spawn(process.execPath, [...node, SERVER, ...args, '--no-open', '--no-watch', '--port', String(port)], {
+  const child = spawn(process.execPath, [...node, SERVER, ...args, '--no-open', ...(watch ? [] : ['--no-watch']), '--port', String(port)], {
     stdio: ['ignore', 'pipe', 'pipe'], env: { ...process.env, TERRANE_DATA: home, TERRANE_REGION_THRESHOLD: undefined, ...env },
   });
   let printed = '';
@@ -536,7 +647,7 @@ section('6. The routes in snapshot mode (30,000 synthetic entries)');
   let s = await boot(['--snapshot', dir], 5225);
   try {
     const info = (await s.get('/api/info')).body;
-    check('info.regions: the default threshold, the snapshot\'s entries, generation 1, nothing loaded', same(info.regions, { threshold: 400000, entries: 30000, v: 1, state: 'none' }), JSON.stringify(info.regions));
+    check(`info.regions: the default threshold (${C.REGION_THRESHOLD.toLocaleString('en-US')}), the snapshot's entries, generation 1, nothing loaded`, C.REGION_THRESHOLD === 100000 && same(info.regions, { threshold: C.REGION_THRESHOLD, entries: 30000, v: 1, state: 'none' }), JSON.stringify(info.regions));
   } finally {
     await s.stop();
   }
@@ -628,7 +739,17 @@ section('6. The routes in snapshot mode (30,000 synthetic entries)');
     check('POST /api/find is 403 ESNAPSHOT', e.status === 403 && e.body.code === 'ESNAPSHOT');
     e = await s.get(`/api/region${q({ v: 1, ids: '0', q: qid })}`);
     check('a region asked with a search\'s qid carries its marks', e.status === 200 && e.body.regions[0].mk?.q === qid);
-    e = await s.get('/api/tree?build=1');
+    // The snapshot read again while regions and questions are in flight:
+    // each is answered by the old tree or refused as stale, never failed.
+    const flying = [];
+    for (let i = 0; i < 30; i++) flying.push(s.get(`/api/region${q({ v: 1, ids: String(i % 10) })}`));
+    flying.push(s.get('/api/tree?build=1'));
+    for (let i = 0; i < 30; i++) flying.push(s.get(`/api/region${q({ v: 1, ids: String(i % 10) })}`), s.get(`/api/find${q({ v: 1, q: 'IMG' })}`));
+    const landed = await Promise.all(flying);
+    const codes = {};
+    for (const x of landed) codes[x.status] = (codes[x.status] || 0) + 1;
+    check(`regions and questions in flight while the snapshot is read again are answered or refused as stale, never failed (${JSON.stringify(codes)})`,
+      landed.every((x) => x.status === 200 || (x.status === 409 && x.body?.code === 'ESTALE')));
     const t2 = await s.ready(20000, 2);
     check('build=1 reads the snapshot again, and the generation rises', t2?.v === 2 && t2.state === 'ready');
     e = await s.get(`/api/region${q({ v: 1, ids: '0' })}`);
@@ -1064,6 +1185,121 @@ section('10. Live mode, the warm cache read at startup and checked in place (por
   } finally {
     sse.destroy();
     await s.stop();
+  }
+}
+
+/* ---------- 11. outside changes, a page listening or not ---------- */
+
+/** Listens to /api/events; resolves to { said, close }. */
+function listen(s) {
+  const said = [];
+  const req = http.get({ host: '127.0.0.1', port: s.port, path: `/api/events?t=${s.token}&dirs=0` }, (res) => {
+    let buf = '';
+    res.on('data', (chunk) => {
+      buf += chunk;
+      let at;
+      while ((at = buf.indexOf('\n\n')) >= 0) {
+        const block = buf.slice(0, at);
+        buf = buf.slice(at + 2);
+        for (const line of block.split('\n')) if (line.startsWith('data: ')) said.push(JSON.parse(line.slice(6)));
+      }
+    });
+  });
+  req.on('error', () => {});
+  return { said, close: () => req.destroy() };
+}
+
+section('11. Live mode: outside changes read into the kept tree, a page listening or not (ports 5227, 5228)');
+{
+  const root = path.join(work, 'watched');
+  const put = (rel, text) => {
+    fs.mkdirSync(path.dirname(path.join(root, ...rel.split('/'))), { recursive: true });
+    fs.writeFileSync(path.join(root, ...rel.split('/')), text);
+  };
+  for (const [rel, text] of [['a/one.txt', 'one'], ['a/two.txt', 'two two'], ['b/three.txt', 'three'], ['b/sub/x.txt', 'x'], ['top.txt', 'top']]) put(rel, text);
+  /** The names of a folder's region as the tree answers it now. */
+  const namesIn = async (s, rel) => {
+    const r = await s.get(`/api/region${q({ v: 1, path: rel })}`);
+    const R = r.body?.regions?.at(-1);
+    if (!R) return null;
+    const out = [];
+    for (let i = 0; i < R.f.length; i += 4) out.push(R.f[i]);
+    for (const d of R.d) out.push(`${d[D_NAME]}/`);
+    return out;
+  };
+  const total = async (s, text) => (await s.get(`/api/find${q({ v: 1, q: text })}`)).body?.total;
+  let s = await boot([root, '--region-threshold', '0', '--no-warm'], 5227, { watch: true });
+  try {
+    await s.get('/api/tree?build=1');
+    const t = await s.ready();
+    let page = listen(s);
+    const live = await until(() => page.said.find((m) => m.type === 'watch'), 6000);
+    check(`a page's change stream starts the watcher (${live?.state})`, live?.state === 'live');
+    await wait(300);
+    put('a/while-here.txt', 'written while a page listens');
+    const ev = await until(() => page.said.find((m) => m.type === 'change' && m.dirs.includes('a')), 8000);
+    check('a change while a page listens is read into the tree and announced as kept', ev?.kept === true && (await namesIn(s, 'a'))?.includes('while-here.txt'), JSON.stringify(page.said));
+    // The page goes away; the disk changes; nobody asks for a fresh read.
+    page.close();
+    await wait(400);
+    put('added-while-away.txt', 'written with no page listening');
+    fs.rmSync(path.join(root, 'b'), { recursive: true });
+    const seen = await until(async () => {
+      const names = await namesIn(s, '');
+      return names && names.includes('added-while-away.txt') && !names.includes('b/') && names;
+    }, 8000);
+    check('with no page listening, the watcher\'s changes are read into the kept tree: a file at the root is in, a folder gone is gone', !!seen, JSON.stringify(await namesIn(s, '')));
+    check('find answers from the tree as it is now: the new file found, the gone folder\'s file not', (await total(s, 'added-while-away')) === 1 && (await total(s, 'three')) === 0);
+    const t2 = (await s.get('/api/tree')).body;
+    check(`the same generation, its entries the disk's (${t.entries} then ${t2.entries})`, t2.v === t.v && t2.entries === t.entries + 1 + 1 - 4, JSON.stringify([t.entries, t2.entries]));
+    // A page that comes back is told nothing it must read: the tree is current.
+    page = listen(s);
+    await wait(800);
+    check('a page that comes back is sent no change it would have to read for itself', !page.said.some((m) => m.type === 'change' && !m.kept));
+    // The survey of a tree that changed since it was worked out: the last
+    // one, marked stale, until it may be worked out again.
+    const sv1 = (await s.get(`/api/survey${q({ v: 1 })}`)).body;
+    await s.get(`/api/region${q({ v: 1, fresh: 1, paths: JSON.stringify(['a']) })}`);
+    const sv2 = (await s.get(`/api/survey${q({ v: 1 })}`)).body;
+    check(`a survey asked right after a change answers the last one, stale, with when to ask again (${sv2.retry} ms)`, !sv1.stale && sv2.stale === true && sv2.retry > 0 && same(sv2.largest, sv1.largest), JSON.stringify({ s1: sv1.stale, s2: sv2.stale, r: sv2.retry }));
+    await wait(sv2.retry + 50);
+    const sv3 = (await s.get(`/api/survey${q({ v: 1 })}`)).body;
+    check('asked again after that, it is worked out afresh', sv3.stale === undefined && Array.isArray(sv3.largest));
+    page.close();
+  } finally {
+    await s.stop();
+  }
+
+  // Unwatched (--no-watch): a page's arrival checks the tree by folder times.
+  s = await boot([root, '--region-threshold', '0', '--no-warm'], 5228);
+  try {
+    await s.get('/api/tree?build=1');
+    await s.ready();
+    put('a/while-unwatched.txt', 'the disk is not watched');
+    const page = listen(s);
+    const ev = await until(() => page.said.find((m) => m.type === 'change' && m.dirs.includes('a')), 8000);
+    check('unwatched, a page that arrives has the tree checked by folder times: the change read in, announced as kept', ev?.kept === true && (await namesIn(s, 'a'))?.includes('while-unwatched.txt'), JSON.stringify(page.said));
+    page.close();
+    put('a/second.txt', 'too soon to check again');
+    const again = listen(s);
+    await wait(800);
+    check('a second page within ten seconds does not check again', !again.said.some((m) => m.type === 'change') && !(await namesIn(s, 'a')).includes('second.txt'));
+    again.close();
+  } finally {
+    await s.stop();
+  }
+
+  // On the region path a search's marks are never worked out again.
+  {
+    const tt = treeFrom([[[0, -1, 'root', NOW, 0, ['report.txt', 5, NOW, 0]], [1, 0, 'docs', NOW, 0, ['report-2.txt', 6, NOW, 0]]]], { name: 'root', anchor: NOW });
+    const f1 = (await answer(tt, 'find', { v: '1', q: 'report' }, { v: 1 })).json;
+    const r1 = (await answer(tt, 'region', { v: '1', ids: '0', q: f1.qid }, { v: 1 })).json;
+    tt.replace(1, [[0, -1, 'docs', NOW, 0, ['report-2.txt', 6, NOW, 0, 'report-3.txt', 7, NOW, 0]]]);
+    const r2 = (await answer(tt, 'region', { v: '1', ids: '0,1', q: f1.qid }, { v: 1 })).json;
+    const f2 = (await answer(tt, 'find', { v: '1', q: 'report' }, { v: 1 })).json;
+    const r3 = (await answer(tt, 'region', { v: '1', ids: '1', q: f2.qid }, { v: 1 })).json;
+    check('a region asked with a search the tree changed since carries no marks, rather than working it out; the search asked again marks it',
+      r1.regions[0].mk?.q === f1.qid && r2.regions.every((x) => !x.mk) && f2.total === 3 && r3.regions[0].mk?.f.length === 2);
   }
 }
 

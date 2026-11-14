@@ -14,7 +14,10 @@
  *
  * ✒ Changelog:
  *     - 1.0.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] —
- *       Initial release.
+ *       Initial release. After the review: regions-outside, outside
+ *       changes with the page open and after it was away, entries held
+ *       past a folder's 5,000 kept when the folder changes, and Findings
+ *       turned page by page.
  *
  * ✒ Description:
  *     Drives the page in region mode on the fixture: a service told to
@@ -52,6 +55,16 @@
  *       check held by a gate file: S.warm set, the notice, N refused with
  *       nothing sent; released, S.warm clears, the file is in, and the
  *       notice says "Checked against the disk: 1 folder read again; ..."
+ *     - regions-outside (write, threshold 0): a file written from outside
+ *       while the page is open is in its folder, asked for as kept, no
+ *       read; a folder of 5,010 files: a tail file revealed and selected
+ *       stays the same node, selected, when another file is renamed from
+ *       outside, and a tail folder selected (and, without WebGL, the one
+ *       you are in) stays so; the status line's entries are the disk's;
+ *       in:tailbox in Findings turns to its second page by the arrow on
+ *       the count row, the tail there, and back;
+ *       a page opened again after a file was added and the folder removed
+ *       with no page open shows both, and search agrees
  *     - regions-switch (read-only, threshold 1,000): the whole survey
  *       begun, stopped, the tree asked for with build=1, the page drawn in
  *       regions and the status line saying so
@@ -604,6 +617,103 @@ export default [
       t.check('a notice says what the check found, and the one that said changes wait is withdrawn',
         done.notes.some((x) => /^Checked against the disk: 1 folder read again; 0 files changed, 1 here now, 0 gone since the last session\.$/.test(x))
         && !done.notes.some((x) => /changes wait until then/.test(x)), done.notes.join(' | '));
+    },
+  },
+  {
+    name: 'regions-outside',
+    title: 'Regions: outside changes read into the service\'s tree, the page open or not, and what is held past a folder\'s 5,000 kept',
+    data: 'fixture',
+    write: true,
+    regions: 0,
+    timeout: 300000,
+    async run(t) {
+      const dir = t.manifest.chain.dirs[0];
+      // A change from outside while the page is open: the service's watcher
+      // reads it into its tree and says so, and the page asks for it kept.
+      await t.app(async (T, r) => { await T.api.ensure(await T.api.resolve(r)); return true; }, dir);
+      const before = await t.app((T) => ({ kept: T.S.regions.stats.kept, fresh: T.S.regions.stats.fresh, watch: T.S.watch }));
+      fs.writeFileSync(t.abs(`${dir}/written-from-outside.txt`), 'a change the page did not make');
+      const seen = await t.waitFor((T, r) => T.S.model.find(r)?.c.some((c) => c.n === 'written-from-outside.txt') && T.S.regions.stats, { args: [dir], timeout: 20000, what: 'the outside change in the folder held' });
+      t.check(`a file written from outside while the page is open is in its folder, asked for as kept (${seen.kept - before.kept} kept, ${seen.fresh - before.fresh} read; watch ${before.watch})`,
+        before.watch === 'live' && seen.kept > before.kept && seen.fresh === before.fresh, JSON.stringify({ before, seen: { kept: seen.kept, fresh: seen.fresh } }));
+
+      // A folder of 5,010 files and a small folder: its region holds the
+      // 5,000 largest, the rest (the ten smallest and the folder) its tail.
+      const box = path.join(t.root, 'tailbox');
+      fs.mkdirSync(path.join(box, 'smallsub'), { recursive: true });
+      fs.writeFileSync(path.join(box, 'smallsub', 's.txt'), 's');
+      for (let i = 0; i < 5010; i++) fs.writeFileSync(path.join(box, `f-${String(i).padStart(4, '0')}.dat`), 'x'.repeat(100 + 5009 - i));
+      await t.waitFor((T) => {
+        const b = T.S.model.root.c.find((c) => c.n === 'tailbox');
+        return b && T.api.kids(b) === 5011;
+      }, { timeout: 60000, what: 'tailbox in the root, all 5,011 counted' });
+      await t.app((T) => { T.api.resolve('tailbox/f-5005.dat').then((n) => T.api.select(n)); return true; });
+      const picked = await t.waitFor((T) => T.S.primary?.n === 'f-5005.dat' && T.api.isAttached(T.S.primary) && { tail: T.S.primary.p.tail?.n, held: T.S.primary.p.c.length }, { timeout: 20000, what: 'the tail file selected' });
+      t.check(`a file in the folder's tail is revealed and selected (${picked.held} held, ${picked.tail} in the tail)`, picked.held === 5001 && picked.tail === 10, JSON.stringify(picked));
+      await t.app((T) => { T.__tailNode = T.S.primary; return true; });
+      fs.renameSync(path.join(box, 'f-0001.dat'), path.join(box, 'renamed-0001.dat'));
+      await t.waitFor((T) => T.S.model.find('tailbox')?.c.some((c) => c.n === 'renamed-0001.dat'), { timeout: 20000, what: 'the rename from outside in tailbox' });
+      await t.settle();
+      const kept = await t.app((T) => ({ same: T.S.primary === T.__tailNode, attached: T.api.isAttached(T.__tailNode), sel: T.S.sel.size, selHas: T.S.sel.has(T.__tailNode) }));
+      t.check('after another file in its folder is renamed from outside, the selected tail file is still selected, the same node, attached', kept.same && kept.attached && kept.sel === 1 && kept.selHas, JSON.stringify(kept));
+      // A folder in the tail, selected (and, without WebGL, the folder you
+      // are in: with WebGL the eye decides where you are), stays so when
+      // its parent changes. tailbox's tail is then the ten smallest files
+      // and the file added, the folder being held.
+      await t.app((T) => { T.api.select(null); T.api.resolve('tailbox/smallsub').then((n) => { T.api.select(n); if (T.S.noGL) T.api.setFocus(n, { remember: false }); }); return true; });
+      await t.waitFor((T) => T.S.primary?.n === 'smallsub' && (!T.S.noGL || (T.api.relPath(T.S.focus) === 'tailbox/smallsub' && !T.S.focus.u)), { timeout: 20000, what: 'the tail folder selected' });
+      await t.settle();
+      await t.app((T) => { T.__tailDir = T.S.primary; return true; });
+      fs.writeFileSync(path.join(box, 'added-later.txt'), 'later');
+      await t.waitFor((T) => T.S.model.find('tailbox')?.tail?.n === 11, { timeout: 20000, what: 'the file added to tailbox, in its tail' });
+      await t.settle();
+      const here = await t.app((T) => ({ same: T.S.primary === T.__tailDir, attached: T.api.isAttached(T.__tailDir), focus: T.api.relPath(T.S.focus), noGL: T.S.noGL }));
+      t.check(`a folder in its parent's tail stays selected${t.gl ? '' : ' and the folder you are in'} when the parent changes (${here.focus})`,
+        here.same && here.attached && (!here.noGL || here.focus === 'tailbox/smallsub'), JSON.stringify(here));
+      // The status line's entries follow the tree.
+      const st = await t.app((T) => ({ entries: T.S.regions.entries, shown: document.getElementById('status').textContent }));
+      t.check(`the status line's entries are the tree's as it is now (${st.entries})`, st.entries === entriesOnDisk(t.root) && st.shown.includes(`of ${st.entries.toLocaleString('en-US')} entries held`), JSON.stringify(st));
+
+      // Findings turns through more than 5,000 matches: in:tailbox lists
+      // its tail on the second page, by the arrows on the count row.
+      await t.app((T) => { T.api.select(null); T.api.setQuery('in:tailbox'); return true; });
+      const first = await t.waitFor((T) => T.S.search?.regions && T.S.search.text === 'in:tailbox' && T.S.tab === 'findings' && !!document.querySelector('#ledger-sub [data-k="page-next"]')
+        && { total: T.S.search.total, from: T.S.search.from, listed: T.S.search.list.length, note: document.querySelector('#ledger-sub .sub-note')?.textContent, prevOff: document.querySelector('#ledger-sub [data-k="page-prev"]').getAttribute('aria-disabled') },
+      { timeout: 20000, what: 'Findings for in:tailbox with its pager' });
+      t.check(`in:tailbox finds ${first.total} and lists the first 5,000, the note saying which, Previous unavailable ("${first.note}")`,
+        first.total === 5013 && first.from === 0 && first.listed === 5000 && /(^|\. )Matches 1 to 5,000 of 5,013, in this order, 5,000 to a page\.$/.test(first.note) && first.prevOff === 'true', JSON.stringify(first));
+      await t.tabTo('#ledger-sub [data-k="page-next"]', { max: 120 });
+      await t.key('Enter');
+      const second = await t.waitFor((T) => T.S.search.from === 5000 && {
+        listed: T.list.items.map((n) => T.api.relPath(n)), live: document.getElementById('live').textContent, focus: document.activeElement?.dataset?.k ?? null,
+        nextOff: document.querySelector('#ledger-sub [data-k="page-next"]').getAttribute('aria-disabled'),
+      }, { timeout: 20000, what: 'the second page' });
+      t.check(`Next lists the rest, the tail among them, says "${second.live}", and keeps focus on the arrow`,
+        second.listed.length === 13 && second.listed.includes('tailbox/f-5005.dat') && second.listed.includes('tailbox/added-later.txt') && second.live === 'Matches 5,001 to 5,013 of 5,013.'
+        && second.focus === 'page-next' && second.nextOff === 'true', JSON.stringify({ ...second, listed: second.listed.slice(0, 4) }));
+      await t.tabTo('#ledger-sub [data-k="page-prev"]', { back: true, max: 4 });
+      await t.key('Enter');
+      await t.waitFor((T) => T.S.search.from === 0 && T.list.items.length === 5000, { timeout: 20000, what: 'the first page again' });
+      t.check('Previous turns back to the first page', true);
+      await t.app((T) => { T.api.setQuery(''); return true; });
+      await t.waitFor((T) => !T.S.search, { what: 'Find cleared' });
+
+      // The page goes away; the disk changes; the page comes back.
+      await t.page.send('Page.navigate', { url: 'about:blank' });
+      await t.sleep(600);
+      fs.writeFileSync(path.join(t.root, 'added-while-away.txt'), 'written with no page open');
+      fs.rmSync(box, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
+      await t.sleep(2500);
+      await t.goto(t.url);
+      const back = await t.waitFor(async (T) => {
+        const r = T.S.model.root;
+        if (!T.S.regions || r.u) return false;
+        const a = await T.api.ask('find', { q: 'added-while-away', limit: '0' });
+        const b = await T.api.ask('find', { q: 'renamed-0001', limit: '0' });
+        return { hasNew: r.c.some((c) => c.n === 'added-while-away.txt'), hasBox: r.c.some((c) => c.n === 'tailbox'), findNew: a.total, findGone: b.total, entries: T.S.regions.entries };
+      }, { timeout: 30000, what: 'the page open again' });
+      t.check(`a page opened again after changes made while it was away shows them: the new file at the root, the folder gone, search agreeing (${JSON.stringify(back)})`,
+        back.hasNew && !back.hasBox && back.findNew === 1 && back.findGone === 0 && back.entries === entriesOnDisk(t.root), `${entriesOnDisk(t.root)} on disk`);
     },
   },
   {
