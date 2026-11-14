@@ -27,7 +27,9 @@
  *       entries, never a pinned folder or one standing open. The service
  *       answers search, the survey and Verify there: Findings lists the
  *       first 5,000 of the true total as refs, each made a node when acted
- *       on, and marks by name dim and pin what is held.
+ *       on, and marks by name dim and pin what is held. A warm start is
+ *       checked by folder modification times (GET /api/check), and in
+ *       region mode in place by the service while changes wait.
  *     - 1.11.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] —
  *       Paint gives each file its kind's colour in a tone of its own
  *       extension, a closed mass a richer tint and, on its sides, strata
@@ -53,10 +55,13 @@
  *       hands over once the world has something to show
  *     - Streams the scan into the model and redraws while it is running
  *     - A warm start: the tree the service kept from the last complete
- *       survey is drawn at once and checked by a survey in the
- *       background; the location, the selection and the eye stay where
- *       they are, changes wait until it is done, and a notice says what
- *       changed since the last session
+ *       survey is drawn at once and checked in the background by folder
+ *       modification times, only the folders that changed read again (the
+ *       service's sweep then finds files rewritten in place); the
+ *       location, the selection and the eye stay where they are, changes
+ *       wait until it is done, and a notice says what changed since the
+ *       last session. In region mode the service checks the tree it read
+ *       from the cache in place, and changes wait for it the same way
  *     - One selection shared by the viewport and the ledger; either can
  *       drive it, by pointer or by keyboard
  *     - Location follows the eye: the folder you are in is derived from
@@ -156,14 +161,16 @@
  *       thumbs.js, timeline.js, regions.js (and its worker,
  *       region-worker.js), strata.js (the Age lens's mass colours),
  *       places.js (anchorOf, poseRelative, vantage: the eye through a
- *       warm start's catch-up), features.js, icons.js, motion.js, hud.js,
+ *       warm start's check), features.js, icons.js, motion.js, hud.js,
  *       float.js, splash.js
  *     - Compatible platforms: current evergreen browsers with WebGL2
  *     - Limitations: when WebGL is unavailable the ledger, inspector,
- *       search and every operation keep working without the 3D world;
- *       during a warm start's catch-up the page holds two trees, about
- *       twice 150 MB per million entries. In region mode the twins of an
- *       open archive are not looked for, and Findings and the Survey's lists
+ *       search and every operation keep working without the 3D world. A
+ *       file rewritten in place keeps its folder's time, so a warm start's
+ *       check misses it until the sweep that follows reads it. Survey
+ *       again, after a check that failed, surveys the whole directory and
+ *       holds two trees while it runs. In region mode the twins of an open
+ *       archive are not looked for, and Findings and the Survey's lists
  *       hold the first 5,000 and 1,000 the service sends
  * ----------------------------------------------------------------------------
  */
@@ -828,6 +835,11 @@ function connectEvents() {
     else if (msg.type === 'change' && !S.scanning) refreshDirs(msg.dirs);
     else if (msg.type === 'bulk') {
       notice(`${fmtCount(msg.count)} folders changed on disk.`, { kind: 'info', action: { label: 'Rescan all', run: fullScan } });
+    } else if (msg.type === 'checked') regionsChecked();
+    else if (msg.type === 'swept') {
+      // The sweep after a check: files rewritten in place, which a folder's
+      // time does not show, arrived as ordinary changes and were read again.
+      if (msg.changed > 0) notice(`${plural(msg.changed, 'file')} rewritten in place since the last session ${msg.changed === 1 ? 'was' : 'were'} read again.`, { kind: 'info' });
     } else if (msg.type === 'snapshot') {
       S.info.snapshot = { ...S.info.snapshot, takenAt: msg.takenAt, folders: msg.folders, files: msg.files };
       notice(`A newer snapshot is ready: ${fmtCount(msg.files)} files, taken ${fmtDate(msg.takenAt)}.`,
@@ -908,8 +920,13 @@ const WARM_SENTENCE = `Changes wait while ${WARM_WAIT}. They are available again
 let firstDrawMs = null;
 /** Whether this page was drawn from the tree from the last session, and when its catch-up ended. */
 const warmRecord = { used: false, settledMs: null };
-/** The catch-up survey's AbortController while it runs. */
+/** The check's (or a survey again's) AbortController while it runs. */
 let catching = null;
+
+/** What a check found, in one sentence. */
+const checkedSentence = ({ read = 0, changed = 0, added = 0, removed = 0 }) => (changed || added || removed
+  ? `Checked against the disk: ${plural(read, 'folder')} read again; ${plural(changed, 'file')} changed, ${fmtCount(added)} here now, ${fmtCount(removed)} gone since the last session.`
+  : 'Nothing changed since the last session.');
 
 /** A new S.warm: what the page is waiting for, and a promise that settles once it has caught up. */
 function warmState(takenAt) {
@@ -958,15 +975,115 @@ async function warmStart(w) {
 }
 
 /**
- * Surveys the directory as it is now while the tree from the last
- * session stays on screen, then takes the new tree on node by node
- * (Model.adopt), so the selection, the location, benchmarks and anything
- * else that holds a node keep it. The eye stays where it was relative to
- * the folder you are in. Changes wait until then; the folders the change
- * stream or a refresh asked for meanwhile are read afterwards, so what
- * changed while the survey ran is not lost.
+ * Checks the tree from the last session against the disk while it stays
+ * on screen: the service reads its cache, lists again only the folders
+ * whose modification times changed (GET /api/check) and answers each as
+ * it goes; once it is done they are taken on folder by folder
+ * (Model.reconcile, and Model.ingest for a new folder), so the selection,
+ * the location, benchmarks and anything else that holds a node keep it.
+ * The eye stays where it was relative to the folder you are in. Changes
+ * wait until then; the folders the change stream or a refresh asked for
+ * meanwhile are read afterwards, so what changed while it ran is not
+ * lost. A file rewritten in place keeps its folder's time: the service's
+ * sweep finds those afterwards and sends them as ordinary changes.
  */
-async function catchUp() {
+async function checkUp() {
+  const W = S.warm;
+  if (!W || catching) return;
+  W.failed = false;
+  drawStatus();
+  const ac = new AbortController();
+  catching = ac;
+  const reads = [];
+  let done = null;
+  try {
+    await scanStream('', 0, (msg) => {
+      if (msg.error) throw new Error(msg.error);
+      if (msg.done) done = msg;
+      else reads.push(msg);
+    }, { route: 'check', signal: ac.signal });
+    if (!done) throw new Error('the check ended before it was done');
+  } catch (err) {
+    if (ac.signal.aborted || S.warm !== W) return;
+    W.failed = true;
+    drawStatus();
+    notice(`The directory could not be surveyed again (${err.message}). The tree from the last session stays on screen, and changes wait until a survey has checked it.`,
+      { kind: 'error', ms: 30000, action: { label: 'Survey again', run: surveyAgain } });
+    return;
+  } finally {
+    if (catching === ac) catching = null;
+  }
+  if (ac.signal.aborted || S.warm !== W) return;
+  // Where the eye stands relative to the box of the folder you are in,
+  // unless it is on its way somewhere.
+  let at = null;
+  if (!S.noGL && S.layout && !S.view.flight && !S.view.keys?.size) {
+    const i = S.layout.index.get(S.focus);
+    if (i !== undefined && i < S.view.n) {
+      const a = anchorOf(S.layout, i);
+      at = { dir: S.focus, a, pose: poseRelative(S.view.pose(), a) };
+    }
+  }
+  // Parents first: a folder listed again, then each new folder in it whole.
+  for (const r of reads) {
+    const node = S.model.find(r.dir);
+    if (!node?.d) continue;
+    if (r.records) S.model.reconcile(node, r.records);
+    else if (r.deep) S.model.ingest(r.deep, [], node);
+  }
+  const was = S.focus;
+  for (const n of [...S.sel]) if (!isAttached(n)) S.sel.delete(n);
+  if (S.primary && !isAttached(S.primary)) S.primary = [...S.sel].at(-1) || null;
+  if (!isAttached(S.focus)) S.focus = S.model.root;
+  S.trail = S.trail.filter(isAttached);
+  runHooks(AFTER_REFRESH, null);
+  focusMoved(was);
+  clearTimeout(S.surveyTimer);
+  S.surveyTimer = 0;
+  S.survey = S.model.survey();
+  S.survey.dupGroups = keepVerified(S.survey.dupGroups);
+  S.model.dupGroups = S.survey.dupGroups;
+  runHooks(AFTER_SURVEY, S.survey, { full: false, settled: true });
+  // The tree is checked: changes, benchmarks and refreshes go ahead again.
+  S.warm = null;
+  W.notice?.();
+  if (S.search) runQuery();
+  clearTimeout(S.layoutTimer);
+  S.layoutTimer = 0;
+  // The location holds through the new layout while the eye stands where
+  // it was; if the folder's box moved as the totals changed, the eye
+  // moves with it and the location holds while it stands there.
+  const held = hold;
+  if (at && isAttached(at.dir)) hold = { dir: at.dir, goal: S.view.pose() };
+  relayout();
+  hold = held;
+  if (at && isAttached(at.dir)) {
+    const i = S.layout.index.get(at.dir);
+    if (i !== undefined && i < S.view.n) {
+      const a = anchorOf(S.layout, i);
+      if (a.x !== at.a.x || a.y !== at.a.y || a.z !== at.a.z || a.w !== at.a.w) {
+        S.view.flyTo(vantage(at.pose, a), 0);
+        hold = { dir: at.dir, goal: S.view.pose() };
+      }
+    }
+  }
+  drawAll();
+  warmRecord.settledMs = Math.round(performance.now());
+  const pending = [...W.pending];
+  (pending.length ? refreshDirs(pending) : Promise.resolve()).then(W.release, W.release);
+  notice(checkedSentence(done), { kind: 'info' });
+}
+
+/**
+ * What Survey again does after a check failed: the whole directory
+ * surveyed as it is now while the tree from the last session stays on
+ * screen, then taken on node by node (Model.adopt), so the selection, the
+ * location, benchmarks and anything else that holds a node keep it. The
+ * eye stays where it was relative to the folder you are in. Changes wait
+ * until then; the folders the change stream or a refresh asked for
+ * meanwhile are read afterwards, so what changed while it ran is not lost.
+ */
+async function surveyAgain() {
   const W = S.warm;
   if (!W || catching) return;
   W.failed = false;
@@ -982,7 +1099,7 @@ async function catchUp() {
     W.failed = true;
     drawStatus();
     notice(`The directory could not be surveyed again (${err.message}). The tree from the last session stays on screen, and changes wait until a survey has checked it.`,
-      { kind: 'error', ms: 30000, action: { label: 'Survey again', run: catchUp } });
+      { kind: 'error', ms: 30000, action: { label: 'Survey again', run: surveyAgain } });
     return;
   } finally {
     if (catching === ac) catching = null;
@@ -1259,6 +1376,15 @@ async function startRegions({ build = false, t0 = performance.now() } = {}) {
   if (!S.noGL) hideVeil();
   expose(t0);
   if (tree.error) notice(tree.error, { kind: 'error' });
+  // Read from the tree the last session kept, and being checked: changes
+  // wait until the service says it is (GET /api/tree, or 'checked').
+  if (tree.warm?.checking) {
+    warmRecord.used = true;
+    S.warm = warmState(tree.warm.takenAt);
+    S.warm.notice = notice(`Showing ${S.info.name} as it was when the last session surveyed it, ${fmtDate(tree.warm.takenAt)}. Checking it against the disk; changes wait until then.`, { kind: 'info', ms: 12000 });
+    drawAll();
+    watchChecked(client);
+  }
   if (S.model.root.e) notice(`The root could not be read: ${S.model.root.e}`, { kind: 'error' });
   connectEvents();
   endSplash();
@@ -1292,6 +1418,56 @@ function reopenRegions({ build = false } = {}) {
     }
   })().finally(() => { reopening = null; });
   return reopening;
+}
+
+/**
+ * Region mode, a tree read from the last session's cache: polls GET
+ * /api/tree until the service says its check is done (the 'checked' event
+ * does the same sooner), then lets changes go.
+ */
+function watchChecked(client) {
+  const poll = async () => {
+    if (S.regions !== client || !S.warm) return;
+    try {
+      const t = await get('tree', { peek: '1' });
+      if (!t.warm?.checking) {
+        regionsChecked(t.warm);
+        return;
+      }
+    } catch { /* the next poll */ }
+    setTimeout(poll, 1000);
+  };
+  setTimeout(poll, 1000);
+}
+
+/**
+ * The service has checked the tree it read from the cache: what it read
+ * again is read again here too (with what the change stream asked for
+ * meanwhile), changes go ahead, and a notice says what changed.
+ */
+async function regionsChecked(w = null) {
+  const W = S.warm;
+  if (!S.regions || !W) return;
+  let info = w;
+  if (!info) {
+    try {
+      info = (await get('tree', { peek: '1' })).warm;
+    } catch {
+      info = null;
+    }
+  }
+  if (S.warm !== W) return;
+  if (info?.checking) return;
+  S.warm = null;
+  W.notice?.();
+  warmRecord.settledMs = Math.round(performance.now());
+  drawAll();
+  const dirs = new Set([...W.pending, ...(info?.checked?.dirs || [])]);
+  if (info?.checked?.more) reopenRegions({ build: false });
+  else if (dirs.size) refreshDirs([...dirs]);
+  W.release();
+  if (info?.failed) notice(info.failed, { kind: 'error' });
+  else notice(checkedSentence(info?.checked || {}), { kind: 'info' });
 }
 
 /* ---------- regions landing, and the budget ---------- */
@@ -4564,7 +4740,7 @@ async function start() {
     return;
   }
   // The tree the service kept from the last complete survey, when there is
-  // one: drawn first, then checked against the disk (catchUp).
+  // one: drawn first, then checked against the disk (checkUp).
   const warm = S.info.warm && !S.info.snapshot ? S.info.warm : null;
   if (!S.noGL) fatal(S.info.snapshot ? 'Reading the snapshot' : warm ? 'Drawing the last session\'s tree' : 'Surveying', S.info.root, 'busy');
   splash?.stage(S.info.snapshot ? `Reading the snapshot of ${S.info.name}` : warm ? `Drawing ${S.info.name} as it was on ${fmtDate(warm.takenAt)}` : `Surveying ${S.info.name}`);
@@ -4582,7 +4758,7 @@ async function start() {
       // catch-up runs is noted (refreshDirs keeps it for afterwards) and
       // not lost between the survey's pass over its folder and the end.
       connectEvents();
-      catchUp();
+      checkUp();
       return;
     }
     // Read part way, or not at all: the page surveys from nothing.

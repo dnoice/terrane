@@ -1,18 +1,23 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Warm Start Scenario (Terrane Edition - v1.0)
+ *     - Title: Warm Start Scenario (Terrane Edition - v1.1)
  *     - File Name: warm.mjs
  *     - Relative Path: tools/ui-scenarios/warm.mjs
  *     - Artifact Type: test
- *     - Version: 1.0.0
- *     - Date: 11/13/2026
- *     - Update: Friday, November 13, 2026
+ *     - Version: 1.1.0
+ *     - Date: 11/14/2026
+ *     - Update: Saturday, November 14, 2026
  *     - Author: Dennis 'dendogg' Smaltz
  *     - A.I. Acknowledgement: Anthropic - Claude Opus 5.5
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
  *
  * ✒ Changelog:
+ *     - 1.1.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
+ *       check is held at the network as GET /api/check, the page's check
+ *       by folder modification times, and the notice expected is "Checked
+ *       against the disk: N folders read again; M files changed, 1 here
+ *       now, 1 gone since the last session."
  *     - 1.0.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] —
  *       Initial release.
  *
@@ -27,9 +32,9 @@
  *     - The first load is cold: no kept tree, its first box drawn and
  *       timed (firstDrawMs), S.warm never set, and its survey kept
  *     - A folder gone into and a file selected; a file written and
- *       another removed on disk; then a reload, whose catch-up survey is
- *       held at the network (DevTools Fetch) while the warm tree is
- *       checked
+ *       another removed on disk; then a reload, whose check by folder
+ *       times (GET /api/check) is held at the network (DevTools Fetch)
+ *       while the warm tree is checked
  *     - Warm: S.warm set, the tree as the last session surveyed it, the
  *       notice and the status say so, the remembered folder and selection
  *       come back, F2 and N say changes wait and send nothing, and the
@@ -37,8 +42,8 @@
  *     - Released: S.warm clears, the new file is in and the removed one
  *       gone, the folder and selection are kept by path, the notice says
  *       what changed, and with WebGL the eye stands within 2% of where it
- *       stood relative to the folder's box; the catch-up's survey is kept
- *       for the next launch
+ *       stood relative to the folder's box; the checked tree is kept for
+ *       the next launch
  *     - A kept tree cut short (its meta made to agree): the page surveys
  *       afresh and says so
  *     - Both first-draw times are noted
@@ -145,7 +150,7 @@ export default {
       if (releasing) t.page.send('Fetch.continueRequest', { requestId: msg.params.requestId }).catch(() => {});
       else held.push(msg.params.requestId);
     });
-    await t.page.send('Fetch.enable', { patterns: [{ urlPattern: '*/api/scan?*', requestStage: 'Request' }] });
+    await t.page.send('Fetch.enable', { patterns: [{ urlPattern: '*/api/check*', requestStage: 'Request' }] });
     const release = async () => {
       releasing = true;
       for (const id of held.splice(0)) await t.page.send('Fetch.continueRequest', { requestId: id }).catch(() => {});
@@ -171,7 +176,7 @@ export default {
       }), dir, picked.other);
       t.check(`the reload draws the tree from the last session at once: S.warm set, its first box drawn at ${w.first} ms`,
         state === 'ready' && w.warm && w.used && !w.scanning && w.first > 0, JSON.stringify({ state, ...w }));
-      t.check('the survey that checks it was asked for at once (held here while these checks run)', held.length >= 1, `${held.length} held`);
+      t.check('the check by folder times was asked for at once (GET /api/check, held here while these checks run)', held.length >= 1, `${held.length} held`);
       t.check('it is the tree as the last session surveyed it: the file written since is not in it, the one removed since still is', !w.hasNew && w.hasGone, JSON.stringify(w));
       const notes = await t.eval(NOTICES);
       t.check('a notice says it shows the last session\'s tree and that changes wait', notes.some((x) => /as it was when the last session surveyed it, \d\d\/\d\d\/\d{4} \d\d:\d\d\. Surveying it as it is now; changes wait until then\./.test(x)),
@@ -205,7 +210,7 @@ export default {
 
       /* ---- released: the directory as it is now ---- */
       await release();
-      await t.waitFor((T) => !T.S.warm, { timeout: 60000, what: 'the survey that checks the tree from the last session' });
+      await t.waitFor((T) => !T.S.warm, { timeout: 60000, what: 'the check of the tree from the last session' });
       await t.settle();
       const a = await t.app((T, d, f, o) => ({
         hasNew: !!T.S.model.find(`${d}/warm-here-now.txt`), hasGone: !!T.S.model.find(`${d}/${o}`),
@@ -214,12 +219,12 @@ export default {
         status: document.getElementById('status-label').textContent,
         rename: [...document.querySelectorAll('#inspector-body button')].find((x) => /^Rename/.test(x.textContent.trim()))?.getAttribute('aria-disabled') ?? 'none',
       }), dir, picked.file, picked.other);
-      t.check('once surveyed again, the file written since is in the tree and the one removed since is gone', a.hasNew && !a.hasGone, JSON.stringify(a));
+      t.check('once checked, the file written since is in the tree and the one removed since is gone', a.hasNew && !a.hasGone, JSON.stringify(a));
       t.check('the folder you are in and the selection are kept, by path, on the same node', a.focus === where && a.primary === `${dir}/${picked.file}` && a.sel === 1 && a.same, JSON.stringify(a));
       t.check(`S.warm clears, the status no longer says last session (${a.status}), and Rename is available again`, a.settled > 0 && !/Last session/.test(a.status) && a.rename !== 'true', JSON.stringify(a));
       const said = await t.eval(NOTICES);
       t.check('a notice says what changed since the last session, and the one that said changes wait is withdrawn',
-        said.some((x) => /^Surveyed again: \d+ files? changed, 1 here now, 1 gone since the last session\.$/.test(x))
+        said.some((x) => /^Checked against the disk: \d+ folders? read again; \d+ files? changed, 1 here now, 1 gone since the last session\.$/.test(x))
         && !said.some((x) => /changes wait until then/.test(x)), said.join(' | '));
       if (t.gl) {
         const eye1 = await t.app(EYE);
@@ -233,7 +238,7 @@ export default {
         const info = await (await fetch('/api/info', { headers: { 'X-Terrane-Token': token } })).json();
         return info.warm && info.warm.takenAt > k && { ...info.warm, now: T.S.model.root.fc };
       }, { args: [kept.takenAt], timeout: 15000 });
-      t.check('the survey that checked it is kept in its place, for the next launch', !!fresh && fresh.files === fresh.now, JSON.stringify(fresh));
+      t.check('the tree it checked is kept in its place, for the next launch', !!fresh && fresh.files === fresh.now, JSON.stringify(fresh));
     } finally {
       if (!releasing) await release();
     }

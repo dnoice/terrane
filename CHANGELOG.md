@@ -26,7 +26,8 @@
       1.6.0 and layout.js 1.5.0, whose 1.3.0 and 1.2.0 entries leave their headers; this
       file already holds them. It adds the section for web/js/places.js, whose 1.0.0 entry
       left its header with places.js 1.3.0. The whole-tree questions answered by the service
-      extend the entries of app.js (1.12.0), model.js (1.6.0) and traverse.js (1.3.0).
+      extend the entries of app.js (1.12.0), model.js (1.6.0) and traverse.js (1.3.0), and the
+      warm cache checked by folder modification times that of app.js again.
     - 1.8.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — Records the names on the blocks:
       viewport.js 1.7.0. viewport.js's header rolls its 1.4.0 entry out; this file already
       holds it.
@@ -113,7 +114,9 @@ short form is kept too.
   answers are decoded in a module worker, and regions are let go under a budget of held entries,
   never a pinned folder or one standing open. The service answers search, the survey and Verify
   there: Findings lists the first 5,000 of the true total as refs, each made a node when acted
-  on, and marks by name dim and pin what is held. drawContents builds div.sub-row.is-count
+  on, and marks by name dim and pin what is held. A warm start is checked by folder modification
+  times (GET /api/check), and in region mode in place by the service while changes wait.
+  drawContents builds div.sub-row.is-count
   (span.sub-count with span.n "14 items" and span.b " · 199 GB", then the LEDGER_SUB tools) and
   div.sub-row.is-columns with the sort keys in the order seen, Name, Changed, Untouched, Size;
   drawFindings the count row, the
@@ -159,6 +162,19 @@ short form is kept too.
   hashes them by path, keeps what it proved by path (provedRel) and regroups later surveys
   with it (dupMap); duplicate ties reach the held box nearest each copy. api.ask and
   api.resolveRow serve the features, and __terrane.asked counts the questions and their times.
+  The warm start's catch-up becomes checkUp: GET /api/check is read whole (a line with error
+  fails it), then each folder listed again is taken on with Model.reconcile and each new one
+  with Model.ingest, parents first, so every node still there is kept; the settle sequence and
+  the eye's hold are as before, and the notice reads "Checked against the disk: N folders read
+  again; M files changed, A here now, R gone since the last session." or "Nothing changed since
+  the last session." A check that fails keeps its wording, and Survey again runs the old
+  catch-up (surveyAgain: a whole survey taken on with Model.adopt). The change stream's swept
+  event says "N files rewritten in place since the last session were read again." when the
+  sweep read any. In region mode a tree the service read from the cache arrives with
+  warm.checking: S.warm is set with the notice "... Checking it against the disk; changes wait
+  until then.", the page polls GET /api/tree?peek=1 each second (or hears checked), then reads
+  again what the check listed (warm.checked.dirs) with what the change stream asked for, clears
+  S.warm and says what the check found.
   Region mode (Scale, Stage 4): GET /api/info's regions decides at the start, when the
   threshold is 0 or the entries known are above it. When the service cannot say how large the
   tree is, a whole survey counts root.fc + root.dc + 1 per batch and, once past the threshold,

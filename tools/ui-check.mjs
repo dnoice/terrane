@@ -30,6 +30,9 @@
  *       --region-threshold n, so the page draws in regions above n entries:
  *       a write or warm scenario's on the next port, any other's read-only
  *       on the shared data two ports up, with readOnlyUrl the shared one.
+ *       A write or warm scenario can stop its service and start it again
+ *       on the same data (t.restartService({ env }), resolving to its
+ *       address), so a warm start can be read by a service starting.
  *     - 1.5.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — A
  *       tab's first page forgets the view and the searches the page keeps
  *       (the localStorage keys starting terrane.view. and
@@ -305,12 +308,12 @@ let DATA = null;
  * no tree for a warm start (--no-warm) unless warm is true, or every page
  * after the first would start from the last one's tree.
  */
-async function startService(args, port, launchLog, { warm = false, regions = undefined } = {}) {
+async function startService(args, port, launchLog, { warm = false, regions = undefined, env: more = {} } = {}) {
   const heap = SERVICE_HEAP ? [`--max-old-space-size=${Math.round(SERVICE_HEAP)}`] : [];
   // A scenario's region threshold: the page draws in regions above it (0: always).
   const threshold = regions === undefined ? [] : ['--region-threshold', String(regions)];
   const child = spawn(process.execPath, [...heap, SERVER, ...args, ...threshold, ...(warm ? [] : ['--no-warm']), '--no-open', '--port', String(port)], {
-    stdio: ['ignore', 'pipe', 'pipe'], env: { ...process.env, TERRANE_LAUNCH_LOG: launchLog, TERRANE_DATA: DATA },
+    stdio: ['ignore', 'pipe', 'pipe'], env: { ...process.env, TERRANE_LAUNCH_LOG: launchLog, TERRANE_DATA: DATA, ...more },
   });
   let out = '';
   const actual = await new Promise((resolve, reject) => {
@@ -662,6 +665,9 @@ function context(page, env) {
     // The dataset home every service was given (TERRANE_DATA): where a warm
     // scenario's service keeps the tree of its last survey.
     dataDir: DATA,
+    // A write or warm scenario's own service stopped and started again
+    // ({ env }), resolving to its address; null for any other scenario.
+    restartService: env.restartService || null,
     /** The launches written to a log so far: [{ cmd, args, cwd }]. */
     launches(file = env.launchLog) {
       try {
@@ -1187,9 +1193,18 @@ async function main() {
         }
         const root = path.join(work, `write-${pass}-${s.name}`);
         const manifest = await makeFixture(root, { files: data.files || FILES, seed: data.seed || SEED });
-        const svc = await startService([root], PORT + 1, path.join(work, `launch-${PORT + 1}.log`), { warm: !!s.warm, regions: s.regions });
+        const launchLog = path.join(work, `launch-${PORT + 1}.log`);
+        let svc = await startService([root], PORT + 1, launchLog, { warm: !!s.warm, regions: s.regions });
+        // Stops the scenario's own service and starts it again on the same
+        // data (extra environment, such as TERRANE_CHECK_GATE, beside it);
+        // resolves to its address, which the scenario goes to.
+        const restartService = async ({ env: more = {} } = {}) => {
+          await svc.stop();
+          svc = await startService([root], PORT + 1, launchLog, { warm: !!s.warm, regions: s.regions, env: more });
+          return svc.url;
+        };
         await runScenario(browser, s, {
-          ...env, scenario: s.name, prefix, root, url: svc.url, readOnlyUrl: env.url, launchLog: svc.launchLog, readOnlyLaunchLog: env.launchLog, data: { ...data, manifest, root },
+          ...env, scenario: s.name, prefix, root, url: svc.url, readOnlyUrl: env.url, launchLog: svc.launchLog, readOnlyLaunchLog: env.launchLog, data: { ...data, manifest, root }, restartService,
         });
         await svc.stop();
         removeDir(root);

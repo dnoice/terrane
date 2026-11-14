@@ -47,6 +47,11 @@
  *     - The Survey from the service: Largest files reveals; the quick
  *       searches carry its counts; Verify confirms the fixture's three
  *       copies; Keep newest moves two and Ctrl+Z puts them back
+ *     - regions-warm (warm, threshold 0): a first load walks the tree and
+ *       keeps it; a file is written; the service starts again with its
+ *       check held by a gate file: S.warm set, the notice, N refused with
+ *       nothing sent; released, S.warm clears, the file is in, and the
+ *       notice says "Checked against the disk: 1 folder read again; ..."
  *     - regions-switch (read-only, threshold 1,000): the whole survey
  *       begun, stopped, the tree asked for with build=1, the page drawn in
  *       regions and the status line saying so
@@ -64,6 +69,8 @@
  */
 
 import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
 
 /** Folders and files under root, the root counted, links not followed, the holding area left out. */
 function entriesOnDisk(root) {
@@ -527,6 +534,75 @@ export default [
       await t.key('Ctrl+Z');
       t.check('Ctrl+Z puts them back', await t.poll(() => [a, b, c].every(on), { timeout: 15000 }));
       await t.waitFor((T, r) => r.every((x) => !!T.S.model.find(x) || !T.S.model.find(x.slice(0, x.lastIndexOf('/')))?.c.length), { args: [[a, b, c]], timeout: 20000, what: 'the copies back in the regions' });
+    },
+  },
+  {
+    name: 'regions-warm',
+    title: 'Regions from the last session: read at startup, checked in place, changes waiting until then',
+    data: 'fixture',
+    warm: true,
+    regions: 0,
+    timeout: 240000,
+    async run(t) {
+      const first = await t.app((T) => ({ regions: !!T.S.regions, warm: T.S.warm, used: T.warm.used }));
+      t.check('the first load reads the tree in regions with no kept tree: S.warm never set', first.regions && first.warm === null && !first.used, JSON.stringify(first));
+      const kept = await t.waitFor(async () => {
+        const token = document.querySelector('meta[name="terrane-token"]').content;
+        return (await (await fetch('/api/info', { headers: { 'X-Terrane-Token': token } })).json()).warm;
+      }, { timeout: 15000, what: 'the walk to be kept' });
+      t.check(`the service's walk is kept for the next launch (${kept.files} files)`, kept.files > 0);
+
+      // Between the sessions, a file written on disk; then the service
+      // starts again, reads the kept tree at once and holds its check
+      // while the gate file exists.
+      const dir = t.manifest.chain.dirs[0];
+      const added = `${dir}/regions-warm-here-now.txt`;
+      fs.writeFileSync(t.abs(added), 'written between the sessions');
+      const gate = path.join(os.tmpdir(), `terrane-check-gate-${process.pid}-${t.pass}`);
+      fs.writeFileSync(gate, 'held');
+      try {
+        const url = await t.restartService({ env: { TERRANE_CHECK_GATE: gate } });
+        await t.eval('window.__oldPage = true');
+        await t.page.send('Page.navigate', { url });
+        const ready = await t.until(() => {
+          if (window.__oldPage) return '';
+          const T = window.__terrane;
+          const s = document.getElementById('splash');
+          if (!T?.S.regions || !T.S.warm) return '';
+          if (s && !s.hidden && s.dataset.phase === 'intro') s.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }));
+          return !s || s.hidden ? 'ready' : '';
+        }, { timeout: 60000 });
+        const w = await t.app((T, r) => ({
+          warm: !!T.S.warm, used: T.warm.used, regions: !!T.S.regions, has: !!T.api.nearest(r) && T.api.relPath(T.api.nearest(r)) === r,
+          notes: [...document.querySelectorAll('#notices .notice-text')].map((n) => n.textContent),
+        }), added);
+        t.check('the page opens the tree the service read from the cache, its check held: S.warm set, in regions', ready === 'ready' && w.warm && w.used && w.regions, JSON.stringify(w));
+        t.check('a notice says it shows the last session\'s tree and that changes wait until it is checked',
+          w.notes.some((x) => /as it was when the last session surveyed it, \d\d\/\d\d\/\d{4} \d\d:\d\d\. Checking it against the disk; changes wait until then\./.test(x)), w.notes.join(' | '));
+        await t.settle();
+        const mark = t.mark();
+        await t.tabTo('#view', { max: 120 });
+        await t.key('n');
+        const waits = await t.until(() => [...document.querySelectorAll('#notices .notice-text')].some((x) => /^Changes wait while the tree from the last session is still being checked\./.test(x.textContent))
+          && !document.getElementById('dialog').open, { timeout: 4000 });
+        t.check('N says changes wait while the tree from the last session is checked, asks nothing and sends nothing',
+          !!waits && t.requests(mark).every((r) => r.path !== '/api/op'));
+      } finally {
+        fs.rmSync(gate, { force: true });
+      }
+      await t.waitFor((T) => !T.S.warm, { timeout: 60000, what: 'the check to finish' });
+      await t.settle();
+      const done = await t.app(async (T, r) => {
+        const node = await T.api.resolve(r);
+        return {
+          has: !!node && T.api.relPath(node) === r, settled: T.warm.settledMs,
+          notes: [...document.querySelectorAll('#notices .notice-text')].map((n) => n.textContent),
+        };
+      }, added);
+      t.check('once checked, S.warm clears and the file written between the sessions is in the tree', done.has && done.settled > 0, JSON.stringify(done));
+      t.check('a notice says what the check found, and the one that said changes wait is withdrawn',
+        done.notes.some((x) => /^Checked against the disk: 1 folder read again; 0 files changed, 1 here now, 0 gone since the last session\.$/.test(x))
+        && !done.notes.some((x) => /changes wait until then/.test(x)), done.notes.join(' | '));
     },
   },
   {

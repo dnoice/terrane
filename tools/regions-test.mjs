@@ -58,11 +58,16 @@
  *       sessions with sessionOf and nearest, places against fuzzy.rank,
  *       and their ceilings; through the service in snapshot mode, every
  *       route, ESTALE, EQUERY, the caps, the token, the Host and POST
+ *     - Live mode with the warm cache on port 5228: the service read again
+ *       loads the cache at startup with warm.checking, its check held by a
+ *       gate file; released, a file added on disk is in after the change
+ *       event and { type: 'checked' }, and a rewrite in place with its
+ *       folder's time put back is caught by the sweep, never as bulk
  *
  * ✒ Usage Instructions:
  *     node tools/regions-test.mjs
  *     npm test runs it after the warm test and before the demo test. It
- *     boots services on ports 5225, 5226 and 5227.
+ *     boots services on ports 5225, 5226, 5227 and 5228.
  *
  * ✒ Other Important Information:
  *     - Dependencies: Node.js 22.5+; web/js/columns.js, model.js,
@@ -108,6 +113,15 @@ const check = (name, cond, detail = '') => {
 const section = (title) => console.log(`\n${title}`);
 const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+/** Polls until fn() is truthy, or the time runs out; resolves to its last value. */
+async function until(fn, ms = 6000) {
+  const end = Date.now() + ms;
+  for (;;) {
+    const v = await fn();
+    if (v || Date.now() > end) return v;
+    await wait(40);
+  }
+}
 const NOW = 1794744000000;
 const work = fs.mkdtempSync(path.join(os.tmpdir(), 'terrane-regions-'));
 
@@ -457,10 +471,10 @@ section('5. The generator');
 /* ---------- services ---------- */
 
 /** Boots the service; resolves to a client with the token. */
-async function boot(args, port, { home = path.join(work, 'data'), node = [] } = {}) {
+async function boot(args, port, { home = path.join(work, 'data'), node = [], env = {} } = {}) {
   fs.mkdirSync(home, { recursive: true });
   const child = spawn(process.execPath, [...node, SERVER, ...args, '--no-open', '--no-watch', '--port', String(port)], {
-    stdio: ['ignore', 'pipe', 'pipe'], env: { ...process.env, TERRANE_DATA: home, TERRANE_REGION_THRESHOLD: undefined },
+    stdio: ['ignore', 'pipe', 'pipe'], env: { ...process.env, TERRANE_DATA: home, TERRANE_REGION_THRESHOLD: undefined, ...env },
   });
   let printed = '';
   child.stderr.on('data', (c) => { printed += c; });
@@ -972,6 +986,84 @@ section('9. The whole-tree questions, against the page\'s own (120,000 entries, 
       findMs <= 300 && freshSurveyMs <= 600 && freshSessionsMs <= 400, `cached: survey ${surveyMs.toFixed(0)}, sessions ${sessionsMs.toFixed(0)}`);
   } finally {
     Date.now = realNow;
+  }
+}
+
+/* ---------- 10. a live tree read from the warm cache ---------- */
+
+section('10. Live mode, the warm cache read at startup and checked in place (port 5228)');
+{
+  const root = path.join(work, 'warmlive');
+  const put = (rel, text) => {
+    fs.mkdirSync(path.dirname(path.join(root, ...rel.split('/'))), { recursive: true });
+    fs.writeFileSync(path.join(root, ...rel.split('/')), text);
+  };
+  for (const [rel, text] of [['docs/a.txt', 'aaa'], ['docs/b.txt', 'bbbb'], ['pics/c.jpg', 'ccccc'], ['pics/old/d.png', 'dd'], ['top.md', 'top']]) put(rel, text);
+  // Whole seconds, so a time put back reads back exactly.
+  const T = new Date(Math.floor(Date.now() / 1000) * 1000 - 7200e3);
+  fs.utimesSync(path.join(root, 'pics'), T, T);
+  const home = path.join(work, 'warmlive-home');
+  let s = await boot([root, '--region-threshold', '0'], 5228, { home });
+  let first;
+  try {
+    await s.get('/api/tree?build=1');
+    first = await s.ready();
+    await wait(300);
+    const info = (await s.get('/api/info')).body;
+    check(`a walk in region mode writes the warm cache (${info.warm?.files} files)`, first?.state === 'ready' && info.warm?.files === first.files && first.warm === null);
+  } finally {
+    await s.stop();
+  }
+  // Between the sessions: a file added, and another rewritten in place with its folder's time put back.
+  put('docs/new.txt', 'new file');
+  put('pics/c.jpg', 'ccccc, rewritten in place and longer');
+  fs.utimesSync(path.join(root, 'pics'), T, T);
+  const gate = path.join(work, 'check-gate');
+  fs.writeFileSync(gate, 'held');
+  s = await boot([root, '--region-threshold', '0'], 5228, { home, env: { TERRANE_CHECK_GATE: gate } });
+  const said = [];
+  const sse = http.get({ host: '127.0.0.1', port: s.port, path: `/api/events?t=${s.token}&dirs=0` }, (res) => {
+    let buf = '';
+    res.on('data', (chunk) => {
+      buf += chunk;
+      let at;
+      while ((at = buf.indexOf('\n\n')) >= 0) {
+        const block = buf.slice(0, at);
+        buf = buf.slice(at + 2);
+        for (const line of block.split('\n')) if (line.startsWith('data: ')) said.push(JSON.parse(line.slice(6)));
+      }
+    });
+  });
+  sse.on('error', () => {});
+  try {
+    const t = await s.ready();
+    check('at startup the tree is read from the cache and served at once, warm.checking true', t?.state === 'ready' && t.warm?.checking === true && t.warm.takenAt > 0 && t.files === first.files, JSON.stringify(t?.warm));
+    const before = await s.get(`/api/region${q({ v: 1, path: 'docs' })}`);
+    const names = (r) => {
+      const R = r.body?.regions?.at(-1);
+      const out = [];
+      for (let i = 0; i < (R?.f.length || 0); i += 4) out.push(R.f[i]);
+      return out;
+    };
+    check('while it is checked, regions answer from the tree the last session kept', before.status === 200 && !names(before).includes('new.txt'));
+    fs.rmSync(gate);
+    const checked = await until(() => said.find((m) => m.type === 'checked'), 15000);
+    const change = said.find((m) => m.type === 'change');
+    check(`the check sends the folders it read again as a change event (${JSON.stringify(change?.dirs)}) and then checked (${checked?.read} read, ${checked?.added} here now)`,
+      same(change?.dirs, ['docs']) && checked?.read === 1 && checked.added === 1 && checked.removed === 0 && said.indexOf(change) < said.indexOf(checked), JSON.stringify(said));
+    const after = await s.get(`/api/region${q({ v: 1, path: 'docs' })}`);
+    const tr = (await s.get('/api/tree')).body;
+    check('after it, the file added on disk is in the tree, in the same generation, and warm.checking is false', names(after).includes('new.txt') && tr.v === 1 && tr.warm?.checking === false && same(tr.warm.checked.dirs, ['docs']), JSON.stringify(tr.warm));
+    const swept = await until(() => said.find((m) => m.type === 'swept'), 15000);
+    const later = said.slice(said.indexOf(checked) + 1).find((m) => m.type === 'change');
+    check(`the sweep then finds the file rewritten in place (${JSON.stringify(later?.dirs)}), never as bulk, and ends with swept (${swept?.changed} changed)`,
+      same(later?.dirs, ['pics']) && swept?.changed === 1 && said.indexOf(later) < said.indexOf(swept) && said.every((m) => m.type !== 'bulk'), JSON.stringify(said));
+    const pics = await s.get(`/api/region${q({ v: 1, path: 'pics/c.jpg' })}`);
+    const R = pics.body.regions.at(-1);
+    check('and the tree holds its new size', R.f[R.f.indexOf('c.jpg') + 1] === 'ccccc, rewritten in place and longer'.length);
+  } finally {
+    sse.destroy();
+    await s.stop();
   }
 }
 

@@ -45,6 +45,13 @@
  *     - The handlers parse and cap their parameters (64 ids, 100 names,
  *       50 fresh paths), answer through columns.js answer() and write JSON
  *       with no-store; mem is the process's memory in MB
+ *     - loadWarm (live mode, a warm cache above the threshold): the tree
+ *       is read from the cache at startup and served at once with
+ *       warm.checking, then checked in place by folder modification times
+ *       through the mutation chain (warm.mjs checkWarm); the folders read
+ *       again go out as change events, then { type: 'checked' }; the cache
+ *       is written again, and the sweep's changes follow, then { type:
+ *       'swept' }. A walk (build=1) ends any check under way
  *     - handleAsk answers the whole-tree questions (find, marks, survey,
  *       sessions, places: questions.js) after any change under way; the
  *       survey is worked out before a new tree is served (prepMs), so
@@ -79,12 +86,14 @@
  * ----------------------------------------------------------------------------
  */
 
+import fs from 'node:fs';
 import path from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { scan } from './scan.mjs';
 import { relParts, GuardError } from './guard.mjs';
 import { ColumnTree, answer, REGION_THRESHOLD } from '../web/js/columns.js';
 import { prepare, QUESTION_ROUTES } from '../web/js/questions.js';
+import { readWarmTree, checkWarm, sweepWarm, writeWarmTree } from './warm.mjs';
 
 const BATCH = 200;
 const PROGRESS_ROWS = 50000;
@@ -116,6 +125,10 @@ export function makeRegions({ guard = null, snap = null, meta = null, threshold 
   let building = null;
   let ac = null;
   let chain = Promise.resolve();
+  // A tree read from the warm cache, checked in place: { takenAt, checking,
+  // checked: { read, changed, added, removed, dirs } | null, failed }.
+  let warm = null;
+  let checker = null;
 
   /** Runs fn after every mutation before it, and before every one after it. */
   const serial = (fn) => {
@@ -236,6 +249,9 @@ export function makeRegions({ guard = null, snap = null, meta = null, threshold 
           tree = next;
           if (loaded++ > 0) v++;
         });
+        // A walk is checked by being one: whatever warm check ran is done with.
+        checker?.abort();
+        warm = null;
         state = 'ready';
       } catch (err) {
         if (signal.aborted) state = tree ? 'ready' : 'none';
@@ -262,9 +278,93 @@ export function makeRegions({ guard = null, snap = null, meta = null, threshold 
   };
   const readers = guard ? { depth1: (rel) => collect(rel, 1), deep: (rel) => collect(rel, Infinity) } : null;
 
-  const ctx = (warm) => ({
-    threshold, state, v, progress, loadMs, prepMs, error, mem: memMB(), warm: null, entries: entriesOf(warm), relParts,
+  const ctx = (kept) => ({
+    threshold, state, v, progress, loadMs, prepMs, error, mem: memMB(), warm, entries: entriesOf(kept), relParts,
   });
+
+  /**
+   * Checks the tree read from the warm cache against the disk, in place,
+   * every change made through the mutation chain so region reads wait for
+   * it: the folders whose modification times changed are listed again and
+   * sent as change events (100 at a time), then { type: 'checked' } with
+   * the counts; the cache is written from the checked tree; then the sweep
+   * finds files rewritten in place, sends them as change events and ends
+   * with { type: 'swept' }, writing the cache again if it read anything.
+   * gate (a path, for checks): the check waits while that file exists.
+   */
+  async function checkInPlace(t, { broadcast, busy, gate }) {
+    checker?.abort();
+    const own = new AbortController();
+    checker = own;
+    const signal = own.signal;
+    const mutate = (fn) => serial(fn);
+    try {
+      while (gate && fs.existsSync(gate) && !signal.aborted) await new Promise((r) => setTimeout(r, 100));
+      const r = await checkWarm(guard, t, () => {}, { signal, mutate });
+      if (tree !== t) return;
+      const dirs = [...r.listed].filter((id) => t.has(id)).map((id) => t.relOf(id));
+      for (let i = 0; i < dirs.length; i += 100) broadcast({ type: 'change', dirs: dirs.slice(i, i + 100) });
+      const counts = { read: r.read, changed: r.changed, added: r.added, removed: r.removed };
+      warm = { ...warm, checking: false, checked: { ...counts, dirs: dirs.slice(0, 5000), more: dirs.length > 5000 } };
+      broadcast({ type: 'checked', ...counts });
+      await writeWarmTree(guard.root, t, { version });
+      const sw = await sweepWarm(guard, t, { skip: r.listed, onChange: (d) => broadcast({ type: 'change', dirs: d }), busy, signal, mutate });
+      if (signal.aborted || tree !== t) return;
+      if (sw.read) await writeWarmTree(guard.root, t, { version });
+      warm = { ...warm, swept: sw };
+      broadcast({ type: 'swept', folders: sw.folders, files: sw.files, changed: sw.changed });
+    } catch (err) {
+      if (signal.aborted || tree !== t) return;
+      warm = { ...warm, checking: false, failed: `The tree from the last session could not be checked: ${err.message}` };
+      broadcast({ type: 'checked', failed: warm.failed });
+    } finally {
+      if (checker === own) checker = null;
+    }
+  }
+
+  /**
+   * Live mode, a warm cache above the threshold: the tree is read from the
+   * cache at startup and served at once (warm.checking), then checked in
+   * place. Without a cache that reads whole, nothing is loaded and the
+   * page asks for a walk (build=1) as it would.
+   */
+  function loadWarm(hooks) {
+    if (building || !guard) return building;
+    state = 'loading';
+    error = null;
+    const t0 = Date.now();
+    ac = new AbortController();
+    const signal = ac.signal;
+    building = (async () => {
+      let next = null;
+      try {
+        next = await readWarmTree(guard.root, { signal, onProgress: (p) => { progress = p; } });
+        if (!next || signal.aborted) {
+          state = tree ? 'ready' : 'none';
+          return;
+        }
+        loadMs = Date.now() - t0;
+        const p0 = Date.now();
+        prepare(next);
+        prepMs = Date.now() - p0;
+        await serial(() => {
+          tree = next;
+          if (loaded++ > 0) v++;
+        });
+        warm = { takenAt: next.warmMeta.takenAt, checking: true, checked: null, failed: null };
+        state = 'ready';
+      } catch (err) {
+        state = tree ? 'ready' : 'none';
+        error = signal.aborted ? null : `The tree from the last session could not be read: ${err.message}`;
+        next = null;
+      } finally {
+        building = null;
+        ac = null;
+      }
+      if (next) checkInPlace(next, hooks);
+    })();
+    return building;
+  }
 
   const send = (res, status, body) => {
     res.writeHead(status, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
@@ -300,6 +400,12 @@ export function makeRegions({ guard = null, snap = null, meta = null, threshold 
     },
 
     build,
+    loadWarm,
+
+    /** The warm state of the tree, for GET /api/info and checks. */
+    get warm() {
+      return warm;
+    },
 
     /**
      * GET /api/tree[?build=1]. In snapshot mode the first ask starts the
@@ -345,9 +451,10 @@ export function makeRegions({ guard = null, snap = null, meta = null, threshold 
     /** The routes handleAsk answers. */
     asks: QUESTION_ROUTES,
 
-    /** Stops a build that is running; the process is about to end. */
+    /** Stops a build or a check that is running; the process is about to end. */
     shutdown() {
       ac?.abort();
+      checker?.abort();
     },
   };
 }

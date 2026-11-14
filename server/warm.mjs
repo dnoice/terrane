@@ -1,18 +1,27 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Warm Start Cache (Terrane Edition - v1.0)
+ *     - Title: Warm Start Cache (Terrane Edition - v1.1)
  *     - File Name: warm.mjs
  *     - Relative Path: server/warm.mjs
  *     - Artifact Type: javascript
- *     - Version: 1.0.0
- *     - Date: 11/13/2026
- *     - Update: Friday, November 13, 2026
+ *     - Version: 1.1.0
+ *     - Date: 11/14/2026
+ *     - Update: Saturday, November 14, 2026
  *     - Author: Dennis 'dendogg' Smaltz
  *     - A.I. Acknowledgement: Anthropic - Claude Opus 5.5
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
  *
  * ✒ Changelog:
+ *     - 1.1.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
+ *       cache is checked by folder modification times: readWarmTree reads
+ *       it into a column tree; checkWarm lstats every folder, 12 at a
+ *       time, breadth first, and lists again only the folders whose time
+ *       changed (a new folder whole, a gone one through its parent),
+ *       answering parents first; sweepWarm then lstats the files of every
+ *       other folder, 8 at a time, waiting while a change runs, and lists
+ *       again a folder with a file rewritten in place, 100 at a time;
+ *       writeWarmTree writes the checked tree back through warmWriter.
  *     - 1.0.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] —
  *       Initial release.
  *
@@ -50,6 +59,25 @@
  *       minutes ago are removed when a writer starts
  *     - The records are the scanner's: names, sizes, dates and flags,
  *       never what a file contains
+ *     - readWarmTree(root): the cache as a finished column tree
+ *       (columns.js), or null when it does not read whole or its counts
+ *       differ from its meta's
+ *     - checkWarm(guard, tree, emit): every folder lstat'ed, 12 at a time,
+ *       breadth first; one whose time differs listed again (depth 1), each
+ *       new folder in it read whole, a folder that is gone or no longer a
+ *       folder read through its parent; emit hears { dir, records }, {
+ *       dir, deep } and { done, folders, read, added, removed, changed,
+ *       ms }, parents first; the tree takes each read through mutate
+ *     - sweepWarm(guard, tree): the files of every folder the check did
+ *       not list again, lstat'ed 8 at a time while no change runs; a
+ *       folder with a file whose size or rounded time differs is listed
+ *       again, and onChange hears them 100 at a time, never as bulk
+ *     - writeWarmTree(root, tree): the tree's records() as the cache,
+ *       committed atomically as a survey's are
+ *     - Every read of the disk goes through guard.resolve and
+ *       guard.assertDirInside (folderReaders), or lstat of a path built
+ *       from the guard's root and the scanner's names through relParts;
+ *       no shell, nothing outside the root
  *
  * ✒ Usage Instructions:
  *     import { warmWriter, readWarm, warmPaths, warmInside } from './warm.mjs';
@@ -67,8 +95,9 @@
  *       { format: 1, root, takenAt, folders, files, bytes, size, version }
  *
  * ✒ Other Important Information:
- *     - Dependencies: Node.js built-ins only (fs, zlib, crypto, stream);
- *       snapshot.mjs (datasetHome, slugOf), guard.mjs (foldName)
+ *     - Dependencies: Node.js built-ins only (fs, zlib, crypto, stream,
+ *       readline); snapshot.mjs (datasetHome, slugOf), guard.mjs
+ *       (foldName, relParts), scan.mjs, web/js/columns.js (ColumnTree)
  *     - Compatible platforms: Node.js 22.5+ on Windows, macOS, Linux
  *     - Security: the cache holds real file names, as a snapshot does, so
  *       it stays in the dataset home, outside the project. The service
@@ -77,8 +106,10 @@
  *       never written inside the root; read-only mode, which refuses
  *       changes to the directory, still writes it there
  *     - Limitations: one cache per root, replaced by every complete
- *       survey; a cache from a survey that was dropped part way is never
- *       written
+ *       survey and every check; a cache from a survey that was dropped
+ *       part way is never written. A file rewritten in place keeps its
+ *       folder's time, so until the sweep reaches it the check's tree can
+ *       hold its old size and date
  * ----------------------------------------------------------------------------
  */
 
@@ -87,9 +118,12 @@ import fsp from 'node:fs/promises';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import zlib from 'node:zlib';
+import readline from 'node:readline';
 import { pipeline } from 'node:stream';
 import { datasetHome, slugOf } from './snapshot.mjs';
-import { foldName } from './guard.mjs';
+import { foldName, relParts } from './guard.mjs';
+import { scan } from './scan.mjs';
+import { ColumnTree } from '../web/js/columns.js';
 
 export const WARM_FORMAT = 1;
 /** A temporary file of another process older than this is taken as left behind. */
@@ -300,4 +334,247 @@ export async function readWarm(root) {
   } catch {
     return null;
   }
+}
+
+/* ---------- the check by folder modification times ---------- */
+
+/** How many folders are lstat'ed at once by the check, and files by the sweep. */
+const CHECK_CONCURRENCY = 12;
+const SWEEP_CONCURRENCY = 8;
+/** The most folders one change event of the sweep names. */
+const SWEEP_BATCH = 100;
+
+/**
+ * Reads the cache for root into a finished column tree, as a scan of the
+ * root would build it. Resolves to null when there is no cache, or when
+ * it cannot be read whole or does not hold the counts its meta records.
+ * onProgress({ folders, files, of }) hears it every 50,000 rows.
+ */
+export async function readWarmTree(root, { name = path.basename(root) || root, onProgress = null, signal } = {}) {
+  const m = await readWarm(root);
+  if (!m) return null;
+  const tree = new ColumnTree({ name, expect: { folders: m.folders, files: m.files } });
+  let folders = 0;
+  let files = 0;
+  let mark = 50000;
+  const lines = readline.createInterface({ input: fs.createReadStream(warmPaths(root).data).pipe(zlib.createGunzip()), crlfDelay: Infinity });
+  try {
+    for await (const line of lines) {
+      if (signal?.aborted) return null;
+      if (!line) continue;
+      const batch = JSON.parse(line);
+      tree.add(batch);
+      folders += batch.length;
+      for (const r of batch) files += r[5].length / 4;
+      if (folders + files >= mark) {
+        mark = folders + files + 50000;
+        onProgress?.({ folders, files, of: m.folders + m.files });
+        await new Promise((r) => setImmediate(r));
+      }
+    }
+  } catch {
+    return null;
+  }
+  tree.finish({ anchor: Date.now() });
+  if (tree.folders !== m.folders || tree.files !== m.files) return null;
+  return Object.assign(tree, { warmMeta: m });
+}
+
+/**
+ * The reads a check and a sweep make: a folder at a root-relative path,
+ * depth 1 or whole, through guard.resolve and guard.assertDirInside, as
+ * GET /api/scan reads it; the holding area left out at the root. A folder
+ * that is gone rejects with ENOENT.
+ */
+export function folderReaders(guard) {
+  const collect = async (rel, depth) => {
+    const parts = relParts(rel);
+    const abs = guard.resolve(parts.join('/'));
+    await guard.assertDirInside(abs);
+    const out = [];
+    for await (const b of scan(abs, { depth, isRoot: parts.length === 0 })) for (const r of b) out.push(r);
+    return out;
+  };
+  return { depth1: (rel) => collect(rel, 1), deep: (rel) => collect(rel, Infinity) };
+}
+
+/** The real path of a folder of the tree: the guard's root and the names the scanner read, each checked as a path's segments are. */
+const absOf = (guard, rel) => path.join(guard.root, ...relParts(rel));
+
+/** Runs fn over items, limit at a time, in order of start. */
+async function mapLimit(items, limit, fn) {
+  const out = new Array(items.length);
+  let next = 0;
+  const run = async () => {
+    while (next < items.length) {
+      const i = next++;
+      out[i] = await fn(items[i], i);
+    }
+  };
+  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, run));
+  return out;
+}
+
+/**
+ * Checks a tree read from the cache against the disk by folder
+ * modification times. Every folder is lstat'ed, 12 at a time, breadth
+ * first; a folder whose time differs from the cache's is listed again
+ * (depth 1) and a new folder in it read whole, and a folder that is gone
+ * (or no longer a folder) has its parent listed again instead. The tree
+ * takes each read as it comes (through mutate, so readers of it wait),
+ * and emit hears, parents first, { dir, records } for a folder read
+ * again, { dir, deep } for a new one, and { done, folders, read, added,
+ * removed, changed, ms } at the end. Resolves to that last, with read,
+ * the set of folder ids listed again. A file rewritten in place does not
+ * change its folder's time: sweepWarm finds those.
+ */
+export async function checkWarm(guard, tree, emit, { signal, readers = folderReaders(guard), mutate = (fn) => fn() } = {}) {
+  const t0 = Date.now();
+  const listed = new Set();
+  const count = { read: 0, added: 0, removed: 0, changed: 0 };
+  const stop = () => {
+    if (signal?.aborted) throw Object.assign(new Error('The check was stopped.'), { code: 'EABORT' });
+  };
+  /** Lists folder id again and fills every new folder in it. */
+  const relist = async (id) => {
+    for (;;) {
+      if (listed.has(id) || !tree.has(id)) return;
+      const rel = tree.relOf(id);
+      let records;
+      try {
+        records = await readers.depth1(rel);
+      } catch (err) {
+        if (err?.code === 'ENOENT' && id !== 0) {
+          id = tree.parentOf(id);
+          continue;
+        }
+        throw err;
+      }
+      stop();
+      const r = await mutate(() => tree.replace(id, records));
+      listed.add(id);
+      count.read++;
+      count.changed += r.changed;
+      count.removed += r.removed;
+      count.added += r.addedFiles;
+      emit({ dir: rel, records });
+      for (const a of r.added) {
+        let deep;
+        try {
+          deep = await readers.deep(a.rel);
+        } catch (err) {
+          if (err?.code !== 'ENOENT') throw err;
+          await mutate(() => tree.remove(a.id));
+          continue;
+        }
+        stop();
+        const g = await mutate(() => tree.graft(a.id, deep));
+        count.added += g.folders + g.files;
+        emit({ dir: a.rel, deep });
+      }
+      return;
+    }
+  };
+  const F = tree.F;
+  for (let i = 0; i < F; i += CHECK_CONCURRENCY) {
+    stop();
+    const ids = [];
+    for (let id = i; id < Math.min(F, i + CHECK_CONCURRENCY); id++) if (tree.has(id)) ids.push(id);
+    const times = await mapLimit(ids, CHECK_CONCURRENCY, async (id) => {
+      try {
+        const st = await fsp.lstat(absOf(guard, tree.relOf(id)));
+        return st.isDirectory() ? Math.round(st.mtimeMs) : null;
+      } catch {
+        return null;
+      }
+    });
+    for (let k = 0; k < ids.length; k++) {
+      const id = ids[k];
+      if (!tree.has(id) || listed.has(id)) continue;
+      if (times[k] === null) {
+        if (id === 0) throw Object.assign(new Error('The directory itself can no longer be read.'), { code: 'ENOENT' });
+        await relist(tree.parentOf(id));
+      } else if (times[k] !== tree.mtime[id]) await relist(id);
+    }
+  }
+  const done = { done: true, folders: tree.folders, ...count, ms: Date.now() - t0 };
+  emit(done);
+  return { ...done, listed };
+}
+
+/**
+ * Finds the files rewritten in place since the cache was written, which
+ * a check by folder times cannot see: the files of every folder the check
+ * did not list again (skip) are lstat'ed, 8 at a time, pausing while
+ * busy() says a change is running; a folder with any file whose size or
+ * rounded time differs is listed again, the tree takes it (mutate), and
+ * onChange(dirs) hears them in batches of at most 100, never as bulk.
+ * Resolves to { folders, files, changed, read }: folders and files
+ * looked at, files changed, folders listed again.
+ */
+export async function sweepWarm(guard, tree, { skip = new Set(), onChange = () => {}, busy = () => false, signal, readers = folderReaders(guard), mutate = (fn) => fn() } = {}) {
+  let folders = 0;
+  let files = 0;
+  let changed = 0;
+  let read = 0;
+  let pending = [];
+  const flush = async () => {
+    const dirs = [];
+    for (const id of pending) {
+      if (!tree.has(id)) continue;
+      const rel = tree.relOf(id);
+      let records;
+      try {
+        records = await readers.depth1(rel);
+      } catch (err) {
+        if (err?.code === 'ENOENT') continue;
+        throw err;
+      }
+      const r = await mutate(() => tree.replace(id, records));
+      changed += r.changed + r.addedFiles;
+      read++;
+      for (const a of r.added) {
+        try {
+          const deep = await readers.deep(a.rel);
+          await mutate(() => tree.graft(a.id, deep));
+        } catch {
+          await mutate(() => (tree.has(a.id) ? tree.remove(a.id) : null));
+        }
+      }
+      dirs.push(rel);
+    }
+    pending = [];
+    if (dirs.length) onChange(dirs);
+  };
+  const F = tree.F;
+  for (let id = 0; id < F; id++) {
+    if (signal?.aborted) break;
+    if (!tree.has(id) || skip.has(id) || !tree.fileN[id]) continue;
+    while (busy() && !signal?.aborted) await new Promise((r) => setTimeout(r, 200));
+    const dir = absOf(guard, tree.relOf(id));
+    const f0 = tree.file0[id];
+    const slots = Array.from({ length: tree.fileN[id] }, (_, k) => f0 + k);
+    folders++;
+    files += slots.length;
+    const differs = await mapLimit(slots, SWEEP_CONCURRENCY, async (j) => {
+      try {
+        const st = await fsp.lstat(path.join(dir, tree.fname[j]));
+        const size = st.isSymbolicLink() ? 0 : st.size;
+        return size !== tree.fsize[j] || Math.round(st.mtimeMs) !== tree.fmtime[j];
+      } catch {
+        return true;
+      }
+    });
+    if (differs.some(Boolean)) pending.push(id);
+    if (pending.length >= SWEEP_BATCH) await flush();
+  }
+  if (pending.length && !signal?.aborted) await flush();
+  return { folders, files, changed, read };
+}
+
+/** Writes the tree to the cache for root, as a whole survey writes it: one batch per line, committed atomically. Resolves to the meta, or null. */
+export async function writeWarmTree(root, tree, { version = '' } = {}) {
+  const w = warmWriter(root, { version });
+  for (const batch of tree.records()) w.push(batch);
+  return w.commit();
 }
