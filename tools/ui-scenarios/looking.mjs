@@ -17,10 +17,11 @@
  *       Initial release.
  *
  * ✒ Description:
- *     Drives Quick look in the real page, by keyboard where a person
- *     would, in both passes, on the default fixture: the sheet over a text
- *     file, a cut text file, a picture, a sound or film, stepping through
- *     the list and closing back to it.
+ *     Drives looking before you act in the real page, by keyboard where a
+ *     person would, in both passes, on the default fixture: Quick look over
+ *     a text file, a cut text file, a picture, a sound or film, stepping
+ *     through the list and closing back to it; the selection's total, the
+ *     quick searches and the Untouched order.
  *
  * ✒ Key Features:
  *     - quicklook: P on a text file in the list opens the sheet with focus
@@ -32,9 +33,15 @@
  *       answered 206 in byte ranges; Escape gives focus back to the list;
  *       P on a folder says why nothing opened; the inspector's button
  *       opens it too; no raw request ever asks for more than 2 MB
+ *     - presets: Quick searches stands after Working sessions, closed;
+ *       opened, each count and size equals runSearch on its query; Enter
+ *       runs one into Findings and says what it found; Ctrl+ArrowDown and
+ *       Space select two rows and the count row shows their total, which
+ *       a single selection hides; Untouched equals the medianStep order,
+ *       reverses on Enter, and four keys fit a 252 px ledger on one line
  *
  * ✒ Usage Instructions:
- *     node tools/ui-check.mjs quicklook --no-shots --port 5020
+ *     node tools/ui-check.mjs quicklook presets --no-shots --port 5020
  *
  * ✒ Other Important Information:
  *     - Dependencies: tools/ui-check.mjs (the context t); the fixture's
@@ -290,4 +297,147 @@ const quicklook = {
   },
 };
 
-export default [quicklook];
+/* ---------- presets ---------- */
+
+/** The selection's total on the count row: its text, or null while it is hidden or absent. */
+const totalShown = () => {
+  const s = document.querySelector('#ledger-sub [data-k="sel-total"]');
+  return s && !s.hidden && s.checkVisibility() ? s.textContent : null;
+};
+
+const presets = {
+  name: 'presets',
+  title: 'Totals, quick searches and the Untouched order',
+  data: 'fixture',
+  async run(t) {
+    await t.settle();
+
+    // Quick searches: counted once opened, each as Find would count it.
+    await t.app((T) => {
+      T.S.tab = 'survey';
+      T.api.drawLedger();
+      return true;
+    });
+    await t.tabTo('#ledger-rich summary', { max: 120 });
+    const summaries = await t.eval(() => [...document.querySelectorAll('#ledger-rich > details > summary')].map((s) => s.firstChild.textContent));
+    t.check('Quick searches stands after Working sessions and before Largest files, closed',
+      summaries.indexOf('Quick searches') === summaries.indexOf('Working sessions') + 1 && summaries.indexOf('Largest files') === summaries.indexOf('Quick searches') + 1
+      && (await t.eval(() => [...document.querySelectorAll('#ledger-rich > details')].find((d) => d.querySelector('summary').firstChild.textContent === 'Quick searches').open)) === false,
+      JSON.stringify(summaries));
+    await t.tabTo('#ledger-rich details:has([data-k^="preset:"]) > summary', { max: 6 });
+    await t.key('Enter');
+    const rows = await t.waitFor(() => {
+      const r = [...document.querySelectorAll('#ledger-rich [data-k^="preset:"]')].map((b) => ({ k: b.dataset.k, name: b.querySelector('.nm').textContent, query: b.querySelector('.path').textContent, fig: b.querySelector('.fig').textContent }));
+      return r.length === 4 && r.every((x) => x.fig !== '…') && r;
+    }, { what: 'the four quick searches counted' });
+    await t.shot('quick-searches');
+    const want = await t.app(async (T, qs) => {
+      const M = await import(new URL('js/model.js', document.baseURI).href);
+      return qs.map((q) => {
+        const s = M.runSearch(T.S.model, M.parseQuery(q, T.api.QUERY));
+        return `${M.fmtCount(s.list.length)} · ${M.fmtBytes(s.bytes)}`;
+      });
+    }, rows.map((r) => r.query));
+    t.check(`the four rows are Big and stale, Large media, Changed this week and Empty folders, each with its query (${rows.map((r) => r.fig).join(', ')})`,
+      JSON.stringify(rows.map((r) => `${r.name}|${r.query}`)) === JSON.stringify(['Big and stale|>100mb older:1y', 'Large media|kind:video,audio,image >50mb', 'Changed this week|newer:7d', 'Empty folders|is:empty is:folder']),
+      JSON.stringify(rows));
+    t.check('each count and size equals the search itself run in Find', JSON.stringify(rows.map((r) => r.fig)) === JSON.stringify(want), `${JSON.stringify(rows.map((r) => r.fig))} vs ${JSON.stringify(want)}`);
+    await t.tabTo('#ledger-rich [data-k="preset:this-week"]', { max: 8 });
+    await t.key('Enter');
+    const ran = await t.waitFor((T) => T.S.query === 'newer:7d' && T.S.search && {
+      tab: T.S.tab, focus: document.activeElement?.id, n: T.S.search.list.length, live: document.getElementById('live').textContent,
+    }, { what: 'Changed this week in Find' });
+    t.check(`Enter on Changed this week runs it into Findings, the list focused, and says what it found (${ran.live})`,
+      ran.tab === 'findings' && ran.focus === 'ledger-list' && ran.n > 0 && ran.live.startsWith(`Quick search Changed this week: ${ran.n.toLocaleString('en-US')} matches, `), JSON.stringify(ran));
+    const cmd = await t.app((T) => T.api.COMMANDS.get('presets').items().map((i) => i.label));
+    t.check('the command palette offers each one', JSON.stringify(cmd) === JSON.stringify(['Quick search: Big and stale', 'Quick search: Large media', 'Quick search: Changed this week', 'Quick search: Empty folders']), JSON.stringify(cmd));
+
+    // The selection's total, in Findings: Ctrl moves the cursor, Space adds.
+    await t.key('Home');
+    await t.key('Ctrl+ArrowDown');
+    await t.key('Space');
+    const two = await t.waitFor((T) => T.S.sel.size === 2 && {
+      shown: (() => { const s = document.querySelector('#ledger-sub [data-k="sel-total"]'); return s && !s.hidden ? s.textContent : null; })(),
+      // An item inside another selected one is counted with it (the rows of
+      // a search can be a folder and a file in it).
+      bytes: [...T.S.sel].filter((n) => ![...T.S.sel].some((o) => o !== n && T.api.relPath(n).startsWith(`${T.api.relPath(o)}/`))).reduce((a, n) => a + n.s, 0),
+      nested: [...T.S.sel].some((n) => [...T.S.sel].some((o) => o !== n && T.api.relPath(n).startsWith(`${T.api.relPath(o)}/`))),
+      live: document.getElementById('live').textContent,
+    }, { what: 'two rows selected' });
+    const twoWant = await t.app(async (T, b) => (await import(new URL('js/model.js', document.baseURI).href)).fmtBytes(b), two.bytes);
+    t.check(`Home, Ctrl+ArrowDown and Space select two rows, and the count row shows their total (${two.shown}${two.nested ? ', one inside the other, counted once' : ''})`,
+      two.shown === `2 selected · ${twoWant}` && two.live === `2 items selected, ${twoWant}`, JSON.stringify(two));
+    await t.key('ArrowDown');
+    await t.waitFor((T) => T.S.sel.size === 1, { what: 'one row selected' });
+    t.check('a single selection hides it again', (await t.eval(totalShown)) === null);
+    await t.key('Escape');
+
+    // Contents: the total, and the Untouched order.
+    await goTo(t, 'edge cases/copy-a.dat');
+    await t.key('Ctrl+ArrowDown');
+    await t.key('Space');
+    await t.key('Ctrl+ArrowDown');
+    await t.key('Space');
+    const three = await t.waitFor((T) => T.S.sel.size === 3 && { shown: document.querySelector('#ledger-sub [data-k="sel-total"]')?.textContent, sel: [...T.S.sel].map((n) => n.n) }, { what: 'three rows selected' });
+    await t.shot('selection-total');
+    t.check(`in Contents too (${three.shown})`, /^3 selected · /.test(three.shown || ''), JSON.stringify(three));
+    await t.key('Escape');
+    await t.waitFor((T) => T.S.sel.size === 0);
+    t.check('none selected, none shown', (await t.eval(totalShown)) === null);
+
+    await t.tabTo('#ledger-sub .sort[title^="Longest untouched"]', { max: 120 });
+    await t.key('Enter');
+    const order = (T, flip) => {
+      const ages = T.S.ages;
+      const at = (n) => (n.d ? n.mm : n.m);
+      const byName = (a, b) => a.n.localeCompare(b.n, undefined, { numeric: true, sensitivity: 'base' });
+      const want = [...T.S.focus.c].sort((a, b) => (ages.medianStep(b) - ages.medianStep(a) || at(a) - at(b) || byName(a, b)) * flip).map((n) => n.n);
+      const steps = [...T.S.focus.c].map((n) => ages.medianStep(n));
+      return {
+        sort: `${T.S.sort.key}:${T.S.sort.dir}`, got: T.list.items.map((n) => n.n), want, kinds: new Set(steps).size,
+        byDate: [...T.S.focus.c].sort((a, b) => at(a) - at(b)).map((n) => n.n),
+        key: (() => { const b = document.querySelector('#ledger-sub .sort[aria-pressed=true]'); return b && `${b.textContent}|${b.title}`; })(),
+        focus: document.activeElement?.textContent,
+      };
+    };
+    await t.waitFor((T) => T.S.sort.key === 'untouched', { what: 'the Untouched order' });
+    const untouched = await t.app(order, 1);
+    t.check(`Untouched lists the folder by typical age, longest untouched first, then the older change, then the name (${untouched.kinds} different steps)`,
+      untouched.sort === 'untouched:1' && JSON.stringify(untouched.got) === JSON.stringify(untouched.want), JSON.stringify({ got: untouched.got.slice(0, 8), want: untouched.want.slice(0, 8) }));
+    t.check(`its key is pressed, says its order, and keeps focus (${untouched.key})`, untouched.key === 'Untouched|Sorted longest untouched first (typical age); click to reverse' && untouched.focus === 'Untouched', JSON.stringify(untouched));
+    t.note(`by Changed instead, the order would ${JSON.stringify(untouched.byDate) === JSON.stringify(untouched.got) ? 'be the same here' : 'differ'}`);
+    await t.key('Enter');
+    await t.waitFor((T) => T.S.sort.dir === -1, { what: 'the Untouched order reversed' });
+    const back = await t.app(order, -1);
+    t.check('Enter again reverses it, most recently touched first', back.sort === 'untouched:-1' && JSON.stringify(back.got) === JSON.stringify(back.want), JSON.stringify(back.got.slice(0, 8)));
+
+    // Four sort keys still fit the narrow ledger on one line.
+    const fit = await t.eval(async () => {
+      const main = document.querySelector('main');
+      main.style.setProperty('--ledger-w', '252px');
+      // The columns ease to their new width; measure once they are there.
+      await new Promise((r) => setTimeout(r, 700));
+      const keys = [...document.querySelectorAll('#ledger-sub .sorts .sort')];
+      const sub = document.getElementById('ledger-sub').getBoundingClientRect();
+      const out = {
+        n: keys.length, tops: new Set(keys.map((k) => Math.round(k.getBoundingClientRect().top))).size,
+        right: Math.round(Math.max(...keys.map((k) => k.getBoundingClientRect().right))), edge: Math.round(sub.right),
+        width: Math.round(document.getElementById('ledger').getBoundingClientRect().width),
+      };
+      main.style.removeProperty('--ledger-w');
+      await new Promise((r) => setTimeout(r, 700));
+      return out;
+    });
+    t.check(`at ${fit.width} px the four sort keys stand on one line inside the ledger`, fit.n === 4 && fit.tops === 1 && fit.right <= fit.edge, JSON.stringify(fit));
+    await t.app((T) => {
+      T.S.sort = { key: 'size', dir: -1 };
+      T.api.select(null);
+      T.api.setFocus(T.S.model.root);
+      T.api.drawLedger();
+      return true;
+    });
+    await t.settle();
+  },
+};
+
+export default [quicklook, presets];

@@ -19,7 +19,8 @@
       releases. Then the features themselves: terrane.css 2.4.0, and the first section for
       web/js/features.js (1.3.0, the palette, the remembered view and searches), whose
       1.0.0 entry left its header with that release. Looking before you act extends
-      the same entries of app.js, model.js, terrane.css and features.js: Quick look.
+      the same entries of app.js, model.js, terrane.css and features.js: Quick look;
+      the selection's total, the quick searches and the Untouched order.
     - 1.4.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — Records app.js 1.8.0:
       single-key shortcuts are off unless turned on in the guide.
     - 1.3.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — Records the hardening
@@ -87,7 +88,15 @@ here unchanged in the same edit.
   history's arrows can step without the list taking focus. Looking before you act: P is
   allocated to Quick look in KEY_OWNERS; the api gains rawUrl(node, max), the address of a
   file's bytes for a preview; and the inspector's preview reads its picture and text
-  extensions from model.js (IMAGE_EXT, TEXT_EXT), the list Quick look reads too.
+  extensions from model.js (IMAGE_EXT, TEXT_EXT), the list Quick look reads too. Contents
+  gains a fourth sort key, Untouched (titled "Longest untouched first (typical age)"):
+  the median step of the age table, descending (a file by its own step), then the older
+  last change, then the name; before the first age table, and inside an open archive,
+  whose folders the table does not hold, the last change alone, oldest first. It starts
+  in its natural order (dir 1) and reverses like the others; sortToggle takes titles for
+  an order that ascending and descending do not describe. In the ledger list, Ctrl with an
+  arrow, Page Up or Down, Home or End moves the cursor and leaves the selection alone, so
+  Space can gather several rows by keyboard.
 - 1.8.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — Single-key shortcuts are
   off unless turned on in the guide, on Dennis's call after the hardening pass offered the
   setting with shortcuts on: letters, digits and signs act while the world or the ledger
@@ -202,7 +211,8 @@ here unchanged in the same edit.
   ruled head with the kind swatch, the name, Close, the facts, the position and the cut
   note; one scroll container for the body, text as a sticky gutter of line numbers beside
   a pre, a picture or a player fitted and centred, facts under a sentence; a foot line of
-  keys.
+  keys. And components/presets.css: the selection's total on the ledger's count row, in
+  mono on a highlighter wash, and the Survey's Quick searches rows with the search icon.
 - 2.3.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — Imports components/traverse.css:
   the Findings sub-line in two rows with its sort keys and note, the Working sessions rows and the
   traverse glyph; components/strata.css: the inspector's Bytes by last change and the
@@ -310,7 +320,9 @@ here unchanged in the same edit.
   (resume.js); and the search history, saved searches and the in: token (searches.js).
   resume.js and searches.js keep their data through the DOM-free memory.js. Then,
   looking before you act: Quick look, P, the selected file's text, picture, sound or
-  film in a large sheet, stepped through the list shown with the arrows (quicklook.js).
+  film in a large sheet, stepped through the list shown with the arrows (quicklook.js);
+  totals and quick searches, the selection's size on the ledger's count row and four
+  common searches counted in the Survey and run with a key (presets.js).
 - 1.2.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — The third: Session
   traverse, working sessions as a search and a route (traverse.js). The fourth: Strata,
   bytes by last change and the Age lens's typical age for closed masses (strata.js). The
@@ -329,7 +341,8 @@ here unchanged in the same edit.
   to the end of the query, and empty quotes add nothing. A query without quotes is split
   and read exactly as before. IMAGE_EXT and TEXT_EXT: the extensions a preview shows as a
   picture or reads as text, one list for the inspector's preview and Quick look, moved
-  here from app.js.
+  here from app.js. ext: and kind: take a comma list, any of them: ext:jpg,png and
+  kind:video,audio,image; a listed word that names no kind adds nothing.
 - 1.3.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — fmtDay (MM/DD/YYYY) and
   plural are the one date formatter and count wording every module imports; fmtDate builds
   on fmtDay. isDir, which nothing used, is gone.

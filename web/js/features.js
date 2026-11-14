@@ -18,7 +18,8 @@
  *       (palette.js); the remembered view and links, a reload and an
  *       address coming back to a folder (resume.js); and the search
  *       history, saved searches and in: (searches.js). Then, looking
- *       before you act: Quick look, P (quicklook.js).
+ *       before you act: Quick look, P (quicklook.js); the selection's
+ *       total and the Survey's Quick searches (presets.js).
  *     - 1.2.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
  *       third: Session traverse, working sessions as a search and a route
  *       (traverse.js). The fourth: Strata, bytes by last change and the
@@ -63,7 +64,7 @@
  * ✒ Other Important Information:
  *     - Dependencies: the feature modules it lists: time.js, landmarks.js,
  *       traverse.js, strata.js, interior.js, palette.js, resume.js,
- *       searches.js, quicklook.js
+ *       searches.js, quicklook.js, presets.js
  *     - Registry entries a feature adds carry owner: '<feature>', so a
  *       check can tell them from the controller's own
  *     - Compatible platforms: any browser with ES2022 modules
@@ -83,6 +84,7 @@ import * as palette from './palette.js';
 import * as resume from './resume.js';
 import * as searches from './searches.js';
 import * as quicklook from './quicklook.js';
+import * as presets from './presets.js';
 
 /** Feature modules in install order. */
-export const FEATURES = [time, landmarks, traverse, strata, interior, palette, resume, searches, quicklook];
+export const FEATURES = [time, landmarks, traverse, strata, interior, palette, resume, searches, quicklook, presets];

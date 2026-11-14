@@ -26,6 +26,9 @@
  *       guarded (nosniff, sandbox, no-store, Accept-Ranges), the media
  *       types, and the token, the holding area, a climbing path and a
  *       link that leads outside refused; snapshot mode refuses a range.
+ *       The search tokens: ext: and kind: take comma lists, any of them;
+ *       a word that names no kind adds nothing, and a list combines with
+ *       other tokens.
  *     - 1.5.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
  *       hardening checks. Through the service: the holding area refused
  *       under every other spelling (case, a trailing dot, NTFS stream
@@ -1481,6 +1484,19 @@ const hits = (q, ext) => {
 const plain = ['report', 'ext:js', 'is:empty', '>1kb', 'older:1h', 'kind:code', '*.md', 'foo:bar'].map((q) => JSON.stringify(hits(q)));
 check('without feature tokens every query answers as before', JSON.stringify(plain)
   === JSON.stringify([['Report-2026.pdf'], ['a.js', 'b.js'], ['empty.txt'], ['Report-2026.pdf'], ['Report-2026.pdf', 'Session', 'a.js', 'b.js', 'empty.txt', 'notes.md'], ['a.js', 'b.js'], ['notes.md'], []].map((x) => JSON.stringify(x))), plain.join(' '));
+{
+  const lists = {
+    ext: hits('ext:js,md'), dotted: hits('ext:.pdf,.md'), kinds: hits('kind:code,document'), media: hits('kind:video,audio,image'),
+    unknown: hits('kind:code,nonsense'), bare: hits('ext:,'), sized: hits('kind:code,document >1kb'), one: hits('kind:doc'),
+  };
+  check('ext: and kind: take a comma list, any of them: ext:js,md, ext:.pdf,.md, kind:code,document',
+    JSON.stringify(lists.ext) === '["a.js","b.js","notes.md"]' && JSON.stringify(lists.dotted) === '["Report-2026.pdf","notes.md"]'
+    && JSON.stringify(lists.kinds) === '["Report-2026.pdf","a.js","b.js","empty.txt","notes.md"]' && JSON.stringify(lists.one) === '["Report-2026.pdf","empty.txt","notes.md"]',
+    JSON.stringify(lists));
+  check('a listed word that names no kind adds nothing, a list of nothing matches nothing, and a list combines with other tokens',
+    JSON.stringify(lists.media) === '[]' && JSON.stringify(lists.unknown) === '["a.js","b.js"]' && JSON.stringify(lists.bare) === '[]' && JSON.stringify(lists.sized) === '["Report-2026.pdf"]',
+    JSON.stringify(lists));
+}
 const marked = new Set();
 let seenRaw = null;
 const ext = {

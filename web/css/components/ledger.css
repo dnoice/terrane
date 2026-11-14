@@ -1,11 +1,11 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Ledger (Terrane Edition - v1.1)
+ *     - Title: Ledger (Terrane Edition - v1.2)
  *     - File Name: ledger.css
  *     - Relative Path: web/css/components/ledger.css
  *     - Artifact Type: stylesheet
- *     - Version: 1.1.0
+ *     - Version: 1.2.0
  *     - Date: 11/13/2026
  *     - Update: Friday, November 13, 2026
  *     - Author: Dennis 'dendogg' Smaltz
@@ -13,6 +13,10 @@
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
  *
  * ✒ Changelog:
+ *     - 1.2.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — Four
+ *       sort keys (Untouched joins Name, Size and Changed) stand on one
+ *       line in a narrow ledger, set a little tighter there; a count
+ *       row's feature controls that are all hidden take no room.
  *     - 1.1.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — A
  *       selected row is edged in ink as well as highlighted, and its
  *       small text uses --text-2, which reads on yellow; the unused
@@ -38,6 +42,7 @@
  *     - Swatch conventions: solid kind colour, folder base, hatch for
  *       sealed, dashed for empty
  *     - Collapsible sections with a turning chevron and counted headers
+ *     - Four sort keys on one line down to the narrowest ledger
  *
  * ✒ Other Important Information:
  *     - Dependencies: tokens.css, base.css, controls.css; web/js/ui.js
@@ -187,6 +192,15 @@
   font-stretch: var(--wdth-condensed);
 }
 .item { --sweep-color: var(--mark-wash); }
+
+/* A count row's feature controls that are all hidden (such as the
+   selection's total at one item) take no room, so they leave no gap. */
+.panel-sub .sub-tools:not(:has(> :not([hidden]))) { display: none; }
+/* Four sort keys (Name, Size, Changed, Untouched) on one line in a narrow
+   ledger: tighter spacing, the same type. */
+@container ledger (max-width: 300px) {
+  .panel-sub .sorts .sort { padding-inline: 3px; letter-spacing: 0.02em; font-stretch: 100%; }
+}
 .item .nm { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .item .path {
   display: block;

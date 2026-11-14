@@ -25,7 +25,9 @@
  *       keys give way to a feature's listener that claimed one first.
  *       Looking before you act: P is Quick look's in KEY_OWNERS, the api
  *       gains rawUrl, and the preview's picture and text extensions are
- *       model.js's IMAGE_EXT and TEXT_EXT.
+ *       model.js's IMAGE_EXT and TEXT_EXT. Contents sorts Untouched too,
+ *       by typical age; Ctrl with an arrow moves the list's cursor and
+ *       leaves the selection, so Space can gather several rows.
  *     - 1.8.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] —
  *       Single-key shortcuts are off unless turned on in the guide:
  *       letters, digits and signs act while the world or the ledger
@@ -69,6 +71,8 @@
  *     - Search that dims everything else, pins the matches, and marks
  *       closed masses and scree that contain matches; Findings lists them
  *       by size or by last change, and says so when nothing matches
+ *     - Contents sorts by name, size, last change or Untouched: typical
+ *       age from the age table, longest untouched first
  *     - Real operations through the service: open, reveal, copy path, new
  *       folder, rename, move, copy, duplicate, remove to holding, restore,
  *       undo; every result or refusal is reported in words
@@ -1703,11 +1707,32 @@ function rowFor(node, { showPath = false, total } = {}) {
   return row;
 }
 
+const byName = (a, b) => a.n.localeCompare(b.n, undefined, { numeric: true, sensitivity: 'base' });
+
+/**
+ * The Untouched order, longest untouched first: by typical age, the median
+ * step of the age table (a file by its own step), the larger step first;
+ * then the older last change; then the name. Before the first age table,
+ * and inside an open archive, whose folders the table does not hold, by
+ * the last change alone, oldest first, then the name.
+ */
+function untouchedOrder() {
+  const ages = S.ages;
+  if (!ages || hostOf(S.focus)) return (a, b) => changedAt(a) - changedAt(b) || byName(a, b);
+  const steps = new Map();
+  const stepOf = (n) => {
+    let k = steps.get(n);
+    if (k === undefined) steps.set(n, (k = ages.medianStep(n)));
+    return k;
+  };
+  return (a, b) => stepOf(b) - stepOf(a) || changedAt(a) - changedAt(b) || byName(a, b);
+}
+
 function sortedContents() {
   const { key, dir } = S.sort;
   const items = [...S.focus.c];
-  const cmp = key === 'name' ? (a, b) => a.n.localeCompare(b.n, undefined, { numeric: true, sensitivity: 'base' })
-    : key === 'date' ? (a, b) => (a.d ? a.mm : a.m) - (b.d ? b.mm : b.m) : (a, b) => a.s - b.s;
+  const cmp = key === 'name' ? byName : key === 'date' ? (a, b) => changedAt(a) - changedAt(b)
+    : key === 'untouched' ? untouchedOrder() : (a, b) => a.s - b.s;
   items.sort((a, b) => cmp(a, b) * dir);
   return items;
 }
@@ -1807,14 +1832,23 @@ function drawLedgerNow(keepScroll) {
   tab.draw(sub, useList ? listHost : rich, keepScroll);
 }
 
-/** A sort key toggle for the ledger's sub-line; the chosen one shows its direction. */
-function sortToggle(label, on, dir, onclick) {
-  return el('button', {
-    class: 'sort', type: 'button', 'aria-pressed': String(on),
-    title: on ? `Sorted by ${label.toLowerCase()}, ${dir < 0 ? 'descending' : 'ascending'}; click to reverse` : `Sort by ${label.toLowerCase()}`,
-    onclick,
-  }, label, on ? icon(dir < 0 ? 'sortDown' : 'sortUp') : null);
+/**
+ * A sort key toggle for the ledger's sub-line; the chosen one shows its
+ * direction. titles ({ off, up, down }) names an order that ascending and
+ * descending do not describe.
+ */
+function sortToggle(label, on, dir, onclick, titles = null) {
+  const title = titles ? (on ? `${dir < 0 ? titles.down : titles.up}; click to reverse` : titles.off)
+    : on ? `Sorted by ${label.toLowerCase()}, ${dir < 0 ? 'descending' : 'ascending'}; click to reverse` : `Sort by ${label.toLowerCase()}`;
+  return el('button', { class: 'sort', type: 'button', 'aria-pressed': String(on), title, onclick }, label, on ? icon(dir < 0 ? 'sortDown' : 'sortUp') : null);
 }
+
+/** The Untouched key's titles: its order is by typical age, not by a value up or down. */
+const UNTOUCHED = Object.freeze({
+  off: 'Longest untouched first (typical age)',
+  up: 'Sorted longest untouched first (typical age)',
+  down: 'Sorted most recently touched first (typical age)',
+});
 
 /**
  * The controls LEDGER_SUB entries add to a tab's count row, in a
@@ -1853,17 +1887,19 @@ function tabSections(tab) {
 }
 
 function drawContents(sub, _host, keepScroll) {
-  const sortBtn = (key, label) => sortToggle(label, S.sort.key === key, S.sort.dir, () => {
-    S.sort = { key, dir: S.sort.key === key ? -S.sort.dir : key === 'name' ? 1 : -1 };
+  // Name and Untouched start in their natural order (dir 1), size and
+  // Changed largest and newest first; a second press reverses.
+  const sortBtn = (key, label, titles) => sortToggle(label, S.sort.key === key, S.sort.dir, () => {
+    S.sort = { key, dir: S.sort.key === key ? -S.sort.dir : key === 'name' || key === 'untouched' ? 1 : -1 };
     drawLedger();
-  });
+  }, titles);
   const n = S.focus.c.length;
   const items = sortedContents();
   const tools = subTools('contents', { items, search: S.search, focus: S.focus });
   // The sort keys stay together: in a narrow ledger they move under the
   // count as one. An empty folder has nothing to sort, so it shows none.
   sub.replaceChildren(el('span', { class: 'sub-count', text: `${fmtCount(n)} item${n === 1 ? '' : 's'} · ${fmtBytes(S.focus.s)}` }),
-    ...(n ? [el('span', { class: 'sorts' }, sortBtn('name', 'Name'), sortBtn('size', 'Size'), sortBtn('date', 'Changed'))] : []),
+    ...(n ? [el('span', { class: 'sorts' }, sortBtn('name', 'Name'), sortBtn('size', 'Size'), sortBtn('date', 'Changed'), sortBtn('untouched', 'Untouched', UNTOUCHED))] : []),
     ...(tools ? [tools] : []));
   list.render = (node) => rowFor(node, { total: S.focus.s });
   list.setEmpty(S.focus.e ? `This folder could not be read (${S.focus.e}).` : S.focus.stub ? 'This folder has not been read yet.' : 'This folder is empty.');
@@ -2944,8 +2980,11 @@ async function start() {
     render: (n) => rowFor(n),
     onKey: (e, node) => {
       if (!node) return;
-      if (e.key.startsWith('Arrow') || e.key.startsWith('Page') || e.key === 'Home' || e.key === 'End') select(node, { quiet: true });
-      else if (e.key === 'Enter') {
+      if (e.key.startsWith('Arrow') || e.key.startsWith('Page') || e.key === 'Home' || e.key === 'End') {
+        // With Ctrl the cursor moves and the selection stays, so Space can
+        // add the row it reaches: several rows selected by keyboard alone.
+        if (!(e.ctrlKey || e.metaKey)) select(node, { quiet: true });
+      } else if (e.key === 'Enter') {
         e.preventDefault();
         if (S.placing && node.d) transfer(S.placing.type, S.placing.nodes, node);
         else (TABS.get(S.tab)?.enter || activate)(node);

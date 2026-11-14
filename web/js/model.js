@@ -18,7 +18,8 @@
  *       "two words" is one name term, and in:"My Folder" reaches its
  *       prefix as the value my folder and the raw My Folder. IMAGE_EXT
  *       and TEXT_EXT, the extensions a preview shows as a picture or
- *       reads as text, for the inspector and Quick look alike.
+ *       reads as text, for the inspector and Quick look alike. ext: and
+ *       kind: take comma lists, any of them: kind:video,audio,image.
  *     - 1.3.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] —
  *       fmtDay (MM/DD/YYYY) and plural are the one date formatter and
  *       count wording every module imports; fmtDate builds on fmtDay.
@@ -47,8 +48,9 @@
  *     - Nine content kinds derived from the extension, and the one list
  *       of extensions a preview shows as a picture or reads as text
  *     - Search grammar: free text, glob, ext:, kind:, is:, size and age
- *       comparisons, all combinable; double quotes keep spaces in one
- *       term or one prefix value
+ *       comparisons, all combinable; ext: and kind: take a comma list of
+ *       any of them; double quotes keep spaces in one term or one prefix
+ *       value
  *     - Extensible search: callers add is: words and name:value tokens
  *       without changing the grammar here; built-in ones cannot be replaced
  *     - Survey: largest files, heavyweight files, empty folders, unreadable
@@ -68,6 +70,7 @@
  *     *.test.js         glob on the name
  *     ext:mp4 >1gb      video files over a gigabyte
  *     kind:image newer:30d
+ *     kind:video,audio  either kind            ext:jpg,png  either extension
  *     is:empty          empty folders          is:dup   duplicate candidates
  *     is:hidden         dot-named entries      is:link  symbolic links
  *     is:sealed         folders that could not be read
@@ -436,11 +439,13 @@ export function parseQuery(text, ext = {}) {
     let m;
     if (quoted) terms.push(tok);
     else if ((m = tok.match(/^ext:\.?(.+)$/))) {
-      const e = m[1];
-      tests.push((n) => !n.d && extOf(n.n) === e);
+      // A comma list is any of them: ext:jpg,png,.gif.
+      const exts = new Set(m[1].split(',').map((e) => e.replace(/^\./, '')).filter(Boolean));
+      tests.push((n) => !n.d && exts.has(extOf(n.n)));
     } else if ((m = tok.match(/^kind:(.+)$/))) {
-      const k = KINDS.findIndex((x) => x.key.startsWith(m[1]) || x.label.toLowerCase().startsWith(m[1]));
-      tests.push((n) => !n.d && n.k === k);
+      // kind:video,audio is either kind; a word that names no kind matches nothing.
+      const kinds = new Set(m[1].split(',').filter(Boolean).map((w) => KINDS.findIndex((x) => x.key.startsWith(w) || x.label.toLowerCase().startsWith(w))));
+      tests.push((n) => !n.d && kinds.has(n.k));
     } else if ((m = tok.match(/^is:(.+)$/))) {
       const what = m[1];
       const table = {
