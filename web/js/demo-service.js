@@ -23,10 +23,11 @@
  *     - Read routes: info, scan (the scanner's records, order, batches
  *       and depth stubs), stat, raw, inside (zip interiors; other formats
  *       refused in the service's words), journal, thumbs
- *     - Every operation: new folder, rename, move, copy, remove to the
- *       holding area, restore, permanent deletion of held items, undo,
- *       cancel, with the service's checks: names, collisions and "keep
- *       both", a folder into itself, nested selections
+ *     - Every operation: new folder, rename, a batch rename, move, copy,
+ *       remove to the holding area, restore, permanent deletion of held
+ *       items, undo, cancel, with the service's checks: names, collisions
+ *       and "keep both", a folder into itself, nested selections, and a
+ *       batch's chains, swaps, twins and nesting
  *     - The same undo journal: moves, created folders, copies and
  *       removals reversed newest first, refusals when the tree has
  *       changed underneath; entries from an earlier session included
@@ -35,8 +36,9 @@
  *       size and can be cancelled part way, keeping what it finished
  *     - Hashes for duplicate checks follow the content: true duplicates
  *       match, same-size decoys do not, large files are sampled
- *     - Open and Reveal refuse with a plain explanation: there is no file
- *       on disk to hand to another program
+ *     - Open, Reveal and a terminal refuse with a plain explanation: there
+ *       is no file on disk to hand to another program; nor is there a
+ *       tree kept from an earlier session for a warm start
  *     - arrive() adds a file as a download would, and emits the change
  *       the service's watcher would send
  *     - No DOM: the same module answers in the page and in Node tests
@@ -78,6 +80,7 @@ const FULL_HASH = 16 * 1024 * 1024;
 const COPY_RATE = 1.4 * 1024 ** 3;   // bytes a second, for how long a copy seems to take
 const COPY_MAX_MS = 4000;
 const TICK_MS = 120;
+const RENAMES_MAX = 5000;
 
 export class DemoError extends Error {
   constructor(code, message, status = 400, extra = {}) {
@@ -357,6 +360,55 @@ export function createDemoService({ now = Date.now(), seed, emit = () => {}, clo
       touch(parent);
       const to = join(pr, name);
       return { ...record('rename', `Renamed "${from}" to "${name}"`, { kind: 'moves', pairs: [[rel, to]] }, [pr]), renamed: to };
+    },
+
+    renames({ items }) {
+      if (!Array.isArray(items) || items.length === 0) throw new DemoError('EARGS', 'Nothing was selected.');
+      if (items.length > RENAMES_MAX) throw new DemoError('EARGS', `At most ${RENAMES_MAX.toLocaleString('en-US')} items can be renamed at once; ${items.length.toLocaleString('en-US')} were sent.`);
+      const all = [];
+      const byPath = new Map();
+      for (const item of items) {
+        if (!item || typeof item !== 'object' || typeof item.path !== 'string') throw new DemoError('EARGS', 'Each item needs a path and a name.');
+        checkName(item.name);
+        const node = target(item.path);
+        const from = parts(item.path).join('/');
+        if (byPath.has(from)) throw new DemoError('EARGS', `"${node.name}" is listed twice. Nothing was changed.`);
+        const one = { node, from, to: join(parentOf(from), item.name), name: item.name };
+        byPath.set(from, one);
+        all.push(one);
+      }
+      for (const one of all) {
+        for (let up = parentOf(one.from); up; up = parentOf(up)) {
+          const outer = byPath.get(up);
+          if (outer) throw new DemoError('ENEST', `"${one.node.name}" is inside "${outer.node.name}", which is renamed in the same batch. Rename them in two steps. Nothing was changed.`);
+        }
+      }
+      const work = all.filter((one) => one.from !== one.to);
+      const targets = new Map();
+      for (const one of work) {
+        if (find(root, one.to)) {
+          const other = byPath.get(one.to);
+          throw new DemoError('EEXIST', other
+            ? `"${one.name}" is the name of another item in this batch now, so "${one.node.name}" cannot take it. Rename them in two steps. Nothing was changed.`
+            : `"${one.name}" already exists in the folder of "${one.node.name}". Nothing was changed.`, 409);
+        }
+        const twin = targets.get(one.to);
+        if (twin) throw new DemoError('EEXIST', `"${twin.node.name}" and "${one.node.name}" would both be named "${one.name}". Nothing was changed.`, 409);
+        targets.set(one.to, one);
+      }
+      if (!work.length) return { ok: true, label: 'Names unchanged', affected: [], undoable: false, renamed: [] };
+      const affected = [...new Set(work.map((one) => parentOf(one.from)))];
+      for (const one of work) {
+        const parent = find(root, parentOf(one.from));
+        parent.kids.delete(one.node.name);
+        one.node.name = one.name;
+        if (one.name.startsWith('.')) one.node.flags = (one.node.flags || 0) | FLAG_HIDDEN;
+        else if (!one.node.dir) one.node.flags &= ~FLAG_HIDDEN;
+        parent.kids.set(one.name, one.node);
+        touch(parent);
+      }
+      const pairs = work.map((one) => [one.from, one.to]);
+      return { ...record('renames', `Renamed ${plural(work.length, 'item')}`, { kind: 'moves', pairs }, affected), renamed: pairs };
     },
 
     async transfer({ type, paths, dest, onConflict = 'fail' }, job) {
@@ -674,6 +726,7 @@ export function createDemoService({ now = Date.now(), seed, emit = () => {}, clo
           };
         }
         if (route === 'thumbs') return { status: 200, json: { rows: thumbRows() } };
+        if (route === 'warm') throw new DemoError('ENOWARM', 'The demo world is built afresh on every visit, so there is no tree kept from an earlier session.', 404);
       }
       if (method === 'POST') {
         if (route === 'op') return { status: 200, json: await run(body || {}) };
@@ -709,6 +762,9 @@ export function createDemoService({ now = Date.now(), seed, emit = () => {}, clo
           job.aborted = true;
           job.emit();
           return { status: 200, json: { ok: true, label: 'Cancelling…' } };
+        }
+        if (route === 'terminal') {
+          throw new DemoError('EDEMO', 'This is the demo world, so there is no folder on disk to open a terminal in. On your own computer, Terrane opens your terminal in the folder.', 501);
         }
         if (route === 'hash') {
           const results = (body?.paths || []).slice(0, 4000).map((p) => {

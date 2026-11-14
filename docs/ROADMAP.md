@@ -479,7 +479,7 @@ every route and operation answered in the page, nothing sent anywhere.
 `npm run demo` serves the repository as Pages does; its `write`
 command puts the same world on disk for the real service; and
 `npm run export` writes a structure snapshot out as CSV and JSON.
-Checks on the branch: `node tools/demo-test.mjs`, "85 passed, 0
+Checks on the branch: `node tools/demo-test.mjs`, "93 passed, 0
 failed"; `node tools/ui-check.mjs demo`, both passes, "38 passed, 0
 failed". It waits to be merged after Wave 3.
 
