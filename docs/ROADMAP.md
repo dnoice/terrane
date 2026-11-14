@@ -12,6 +12,9 @@
     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
 
 ✒ Changelog:
+    - 1.6.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — Build
+      waves record the demo world, complete on its branch: the page runs
+      on a generated studio drive where no service served it.
     - 1.5.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
       load screen is complete: its reload check timed out because,
       with reduced motion, the sheet left before the first look, and
