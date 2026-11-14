@@ -18,6 +18,7 @@
  *       built by its caller, named, hearing its own keys, taking the
  *       floating slot as ask() does and giving focus back on close; an
  *       action chosen in it runs in the frame after the close event.
+ *       download(filename, text, type): a file to save, from a Blob.
  *     - 1.3.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] —
  *       Unavailable menu items are reached by the arrows and carry
  *       their reason as their description; the menu stops the browser's
@@ -39,9 +40,9 @@
  * ✒ Description:
  *     The small set of interface parts every Terrane panel is built from:
  *     element construction, the context menu, modal dialogs, notices with
- *     an optional action, the hover tip, sliding indicators and a virtual
- *     list for folders with tens of thousands of rows. Nothing here knows
- *     about the filesystem.
+ *     an optional action, a file to save, the hover tip, sliding
+ *     indicators and a virtual list for folders with tens of thousands of
+ *     rows. Nothing here knows about the filesystem.
  *
  * ✒ Key Features:
  *     - One floating surface at a time: opening a menu, dialog or tip
@@ -63,14 +64,17 @@
  *     - openSheet(build, { className, label, onKey }) for a richer modal
  *       surface in the same dialog (the command palette): focus comes
  *       back on close, and close(then) runs then once it has
+ *     - download(filename, text, type) hands text to the browser as a file
+ *       to save, through a Blob and its object URL, with no service call
  *
  * ✒ Usage Instructions:
- *     import { el, openMenu, ask, openSheet, notice, tip, VirtualList } from './ui.js';
+ *     import { el, openMenu, ask, openSheet, notice, tip, download, VirtualList } from './ui.js';
  *     openMenu(x, y, [{ label: 'Rename', icon: 'rename', hint: 'F2', run }, 'sep']);
  *     const values = await ask({ title, fields: [{ name, label, value }] });
  *     const sheet = openSheet((body) => body.append(input, listbox), { className: 'is-palette', label: 'Command palette', onKey });
  *     sheet.close(() => runTheChosenAction());
  *     notice('Moved 3 items', { action: { label: 'Undo', run: undo } });
+ *     download('terrane-projects-findings-2026-11-13.csv', csvText, 'text/csv;charset=utf-8');
  *     list.setEmpty('This folder is empty.');
  *
  * ✒ Other Important Information:
@@ -320,6 +324,22 @@ export function notice(message, { kind = 'ok', action, ms } = {}) {
     started = performance.now();
     timer = setTimeout(drop, Math.max(600, left));
   });
+}
+
+/* ---------- files to save ---------- */
+
+/**
+ * Hands text to the browser as a file to save, named filename: a Blob, an
+ * object URL and a[download].click(), the URL let go of a tick later.
+ * Nothing goes through the service, so it works in every mode.
+ */
+export function download(filename, text, type = 'text/plain;charset=utf-8') {
+  const url = URL.createObjectURL(new Blob([text], { type }));
+  const a = el('a', { href: url, download: filename, hidden: true });
+  document.body.append(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 0);
 }
 
 /* ---------- hover tip ---------- */

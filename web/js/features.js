@@ -21,7 +21,8 @@
  *       before you act: Quick look, P (quicklook.js); the selection's
  *       total and the Survey's Quick searches (presets.js). Then, acting
  *       on many: the batch rename, F2 with several selected (batch.js);
- *       duplicate cleanup (dupes.js); and copy as (copyas.js).
+ *       duplicate cleanup (dupes.js); and copy as (copyas.js). Then,
+ *       getting things in and out: lists saved as CSV (exports.js).
  *     - 1.2.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
  *       third: Session traverse, working sessions as a search and a route
  *       (traverse.js). The fourth: Strata, bytes by last change and the
@@ -68,7 +69,7 @@
  *     - Dependencies: the feature modules it lists: time.js, landmarks.js,
  *       traverse.js, strata.js, interior.js, palette.js, resume.js,
  *       searches.js, quicklook.js, presets.js, batch.js, dupes.js,
- *       copyas.js
+ *       copyas.js, exports.js
  *     - Registry entries a feature adds carry owner: '<feature>', so a
  *       check can tell them from the controller's own
  *     - Compatible platforms: any browser with ES2022 modules
@@ -76,7 +77,8 @@
  *       Landmarks; P is Quick look's; Ctrl+K is the command palette's;
  *       F2 with several selected is the batch rename's, through the
  *       controller's own F2; Session, Strata, the remembered view,
- *       searches, duplicate cleanup and copy as have no keys.
+ *       searches, duplicate cleanup, copy as and the exports have no
+ *       keys.
  *       app.js refuses a reserved key to any other owner (KEY_OWNERS)
  * ----------------------------------------------------------------------------
  */
@@ -94,6 +96,7 @@ import * as presets from './presets.js';
 import * as batch from './batch.js';
 import * as dupes from './dupes.js';
 import * as copyas from './copyas.js';
+import * as exportLists from './exports.js';
 
 /** Feature modules in install order. */
-export const FEATURES = [time, landmarks, traverse, strata, interior, palette, resume, searches, quicklook, presets, batch, dupes, copyas];
+export const FEATURES = [time, landmarks, traverse, strata, interior, palette, resume, searches, quicklook, presets, batch, dupes, copyas, exportLists];

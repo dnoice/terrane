@@ -23,7 +23,8 @@
       the selection's total, the quick searches and the Untouched order. The seams for
       acting on many extend those of app.js and landmarks.js, and acting on many itself
       those of terrane.css and features.js: the batch rename, duplicate cleanup and copy
-      as.
+      as. Getting things in and out extends those of ui.js and features.js: download()
+      and the lists saved as CSV.
     - 1.4.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — Records app.js 1.8.0:
       single-key shortcuts are off unless turned on in the guide.
     - 1.3.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — Records the hardening
@@ -326,6 +327,10 @@ here unchanged in the same edit.
   puts focus back on what had it before, and runs then in the next animation frame after
   the close event, so an action chosen in the sheet that moves focus keeps it where it put
   it rather than having the dialog's own return of focus undo it.
+  download(filename, text, type): text handed to the browser as a file to save, through a
+  Blob, its object URL and a hidden a[download] that is clicked and removed, the URL
+  revoked a tick later. Nothing goes through the service, so it works in snapshot and
+  read-only mode alike; the CSV export is the first to use it.
 - 1.3.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — Unavailable menu items are reached
   by the arrows and carry their reason as their description; the menu stops the browser's own
   context menu the Menu key would open over it. The virtual list keeps its cursor on its item
@@ -358,7 +363,12 @@ here unchanged in the same edit.
   the DOM-free rename.js works out, one change and one Undo (batch.js); duplicate cleanup,
   keep one verified copy and move the others to the holding area after reading them again
   (dupes.js); and copy as, names and relative paths from the menus and the palette
-  (copyas.js).
+  (copyas.js). Then, getting things in and out: lists saved as CSV, the Contents and
+  Findings in the order shown from Export CSV on their count rows, and the Survey's five
+  lists from its last section, Export as CSV, all in the palette too; the CSV is written
+  by the DOM-free csv.js (RFC 4180, a UTF-8 byte order mark, CRLF, and an apostrophe
+  before a text cell that begins with = + - @, a tab or a CR) and saved in the page,
+  with no service call (exports.js).
 - 1.2.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — The third: Session
   traverse, working sessions as a search and a route (traverse.js). The fourth: Strata,
   bytes by last change and the Age lens's typical age for closed masses (strata.js). The
