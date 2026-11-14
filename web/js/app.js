@@ -29,7 +29,11 @@
  *       first 5,000 of the true total as refs, each made a node when acted
  *       on, and marks by name dim and pin what is held. A warm start is
  *       checked by folder modification times (GET /api/check), and in
- *       region mode in place by the service while changes wait.
+ *       region mode in place by the service while changes wait. What
+ *       follows a region landing, a layout's location and a reveal's
+ *       panels run in tasks of their own there; the Survey is not drawn
+ *       again on select, and its closed sections of many rows build them
+ *       when first opened; a reveal paints its selection once.
  *     - 1.11.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] —
  *       Paint gives each file its kind's colour in a tone of its own
  *       extension, a closed mass a richer tint and, on its sides, strata
@@ -415,10 +419,12 @@ const READING = registry('READING', (x) => {
 
 /**
  * TABS: the ledger tabs: { id, order, label, draw(sub, host, keepScroll),
- * list, count(), enter(node), key() }. list tabs draw into the virtual
- * list, the rest into the rich panel; count() puts a figure on the tab;
- * enter(node) is Enter on a list row (default: go there or open it);
- * key() adds to what decides whether the ledger keeps its scroll.
+ * list, count(), enter(node), key(), selection }. list tabs draw into the
+ * virtual list, the rest into the rich panel; count() puts a figure on the
+ * tab; enter(node) is Enter on a list row (default: go there or open it);
+ * key() adds to what decides whether the ledger keeps its scroll;
+ * selection: false for a tab whose content does not follow the selection,
+ * which a select then leaves as it is.
  */
 const TABS = registry('TABS', (x) => {
   if (typeof x.label !== 'string') throw new TypeError(`TABS: "${x.id}" needs a label.`);
@@ -1920,22 +1926,27 @@ function resolveRow(ref) {
       notice(`${ref.rel || ref.n} is no longer in the tree.`, { kind: 'info' });
       return null;
     }
-    let swapped = false;
-    for (const arr of new Set([list?.items, S.search?.list, findCache.items])) {
-      if (!arr) continue;
-      const i = arr.indexOf(ref);
-      if (i >= 0) {
-        arr[i] = node;
-        swapped = true;
-      }
-    }
-    if (swapped) list?.draw();
+    if (swapRef(ref, node)) list?.draw();
     return node;
   });
 }
 
+/** Puts node in ref's place in every list that shows it; true when one did. */
+function swapRef(ref, node) {
+  let swapped = false;
+  for (const arr of new Set([list?.items, S.search?.list, findCache.items])) {
+    if (!arr) continue;
+    const i = arr.indexOf(ref);
+    if (i >= 0) {
+      arr[i] = node;
+      swapped = true;
+    }
+  }
+  return swapped;
+}
+
 /** fn(node), once a ref is a node; at once for a node. */
-const withNode = (node, fn) => (node?.ref ? resolveRow(node).then((n) => n && fn(n), (err) => notice(err.message, { kind: 'error' })) : fn(node));
+const withNode = (node, fn) => (node?.ref ? resolveRow(node).then((n) => n && nextTask(() => fn(n)), (err) => notice(err.message, { kind: 'error' })) : fn(node));
 
 /**
  * Select all in Findings. In region mode the first 1,000 matches are
@@ -1947,12 +1958,35 @@ async function selectAllMatches(items) {
     return;
   }
   const search = S.search;
-  const nodes = [];
-  for (const it of items.slice(0, SELECT_ALL_REGIONS)) {
-    const n = it.ref ? await resolveRow(it) : it;
-    if (S.search !== search) return;
-    if (n) nodes.push(n);
+  const first = items.slice(0, SELECT_ALL_REGIONS);
+  // Each folder's region held once, its matches found in it by name; only
+  // a match outside its folder's held children (a tail) is asked for alone.
+  const found = new Map();
+  const byDir = new Map();
+  for (const it of first) {
+    if (!it.ref) continue;
+    if (!byDir.has(it.p.rel)) byDir.set(it.p.rel, []);
+    byDir.get(it.p.rel).push(it);
   }
+  for (const [rel, refs] of byDir) {
+    const dir = await S.regions.ensure(await S.regions.resolve(rel));
+    if (S.search !== search) return;
+    const kids = new Map();
+    for (const c of dir?.d ? dir.c : []) kids.set(`${c.d ? 'd' : 'f'}:${c.n}`, c);
+    for (const ref of refs) {
+      const n = kids.get(`${ref.d ? 'd' : 'f'}:${ref.n}`) ?? await resolveRow(ref);
+      if (S.search !== search) return;
+      if (n) found.set(ref, n);
+    }
+  }
+  const nodes = [];
+  for (const it of first) {
+    const n = it.ref ? found.get(it) : it;
+    if (!n) continue;
+    if (it.ref) swapRef(it, n);
+    nodes.push(n);
+  }
+  list?.draw();
   selectAll(nodes, nodes[0] ?? null);
   say(`Select all takes the first ${fmtCount(SELECT_ALL_REGIONS)} matches at this size.`);
 }
@@ -1983,18 +2017,30 @@ function relayout({ animate = true } = {}) {
       console.error(`LAYOUT_OPTS "${o.id}" failed:`, err);
     }
   }
+  const tl = performance.now();
   S.layout = buildLayout(S.model.root, opts);
+  measure('terrane:layout', tl);
   if (firstDrawMs === null && S.layout.n > 0) firstDrawMs = Math.round(performance.now());
   S.view.setLayout(S.layout, paint(), { animate });
   syncViewSelection();
   drawPins();
-  updateWhere();
+  // Region mode: the location, and the ledger and inspector it may draw
+  // again, follow in the next task, so a layout and the panels never share
+  // one (the Stage 4 exit test's frames).
+  if (S.regions) queueWhere();
+  else updateWhere();
   drawStatus();
   runHooks(AFTER_LAYOUT, S.layout);
   // Region mode: the folders this layout would open whose children are
   // not held yet are asked for. Without WebGL nothing opens by approach.
   if (S.regions && !S.noGL) S.regions.want(S.layout.want);
   measure('terrane:relayout', t0);
+}
+
+let whereQueued = 0;
+/** updateWhere in the next task, once however often it is asked for meanwhile. */
+function queueWhere() {
+  if (!whereQueued) whereQueued = setTimeout(() => { whereQueued = 0; updateWhere(); }, 0);
 }
 
 /**
@@ -2059,9 +2105,12 @@ function moveFocus(dir) {
   if (S.regions && dir.u) {
     S.regions.ensure(dir).then((n) => {
       if (n !== dir || S.focus !== dir) return;
-      if (S.tab === 'contents') drawLedger(true);
-      if (!S.primary) drawInspector();
-      drawLegend();
+      nextTask(() => {
+        if (S.focus !== dir) return;
+        if (S.tab === 'contents') drawLedger(true);
+        if (!S.primary) drawInspector();
+        drawLegend();
+      });
     }, () => {});
   }
   drawCrumbs();
@@ -2428,7 +2477,12 @@ function describe(node) {
   return `${node.n}, ${KINDS[node.k].label}, ${fmtBytes(node.s)}, changed ${fmtAge(node.m)}`;
 }
 
-function select(node, { add = false, quiet = false } = {}) {
+/**
+ * Selects node (null: nothing), or adds it to the selection or takes it
+ * out (add). quiet leaves the ledger as it is; painted says a layout just
+ * painted this selection already (revealNow), so it is not painted again.
+ */
+function select(node, { add = false, quiet = false, painted = false } = {}) {
   // A ref (a list's entry the page may not hold) is made a node first:
   // the selection only ever holds nodes.
   if (node?.ref) {
@@ -2451,9 +2505,9 @@ function select(node, { add = false, quiet = false } = {}) {
     S.sel.add(node);
     S.primary = node;
   }
-  repaint();
+  if (!painted) repaint();
   drawInspector();
-  if (!quiet) drawLedger(true);
+  if (!quiet && TABS.get(S.tab)?.selection !== false) drawLedger(true);
   if (S.primary) say(S.sel.size > 1 ? `${S.sel.size} items selected` : describe(S.primary));
   runHooks(AFTER_SELECT, S.sel, S.primary);
   // Region mode: a folder selected whose children are not held is asked
@@ -2513,6 +2567,13 @@ function overview() {
  * Flies to a folder. "Where you are" then follows from the camera, or,
  * without a 3D view, moves to the folder at once.
  */
+/**
+ * Runs fn in a task of its own. In region mode a folder's region lands in
+ * a task that built its nodes; the relayout, paint and ledger that act on
+ * it follow in the next, so no task does both.
+ */
+const nextTask = (fn) => setTimeout(fn, 0);
+
 let goSeq = 0;
 function setFocus(dir, opts = {}) {
   if (!dir || !dir.d) return;
@@ -2520,7 +2581,7 @@ function setFocus(dir, opts = {}) {
   const seq = ++goSeq;
   if (S.regions && dir.x !== undefined && (dir.u || !S.regions.live(dir))) {
     S.regions.ensure(dir).then((node) => {
-      if (seq === goSeq && node?.d) goTo(node, opts);
+      if (seq === goSeq && node?.d) nextTask(() => { if (seq === goSeq) goTo(node, opts); });
     }, (err) => notice(err.message, { kind: 'error' }));
     return;
   }
@@ -2580,7 +2641,7 @@ function reveal(node) {
   if (node.ref || (S.regions && !isAttached(node))) {
     // A ref is put in its list's place as its node (resolveRow).
     const found = node.ref ? resolveRow(node) : S.regions ? S.regions.resolve(relPath(node)) : Promise.resolve(null);
-    found.then((n) => { if (seq === revealSeq && n) revealNow(n); }, (err) => notice(err.message, { kind: 'error' }));
+    found.then((n) => { if (seq === revealSeq && n) nextTask(() => { if (seq === revealSeq) revealNow(n); }); }, (err) => notice(err.message, { kind: 'error' }));
     return;
   }
   revealNow(node);
@@ -2589,9 +2650,16 @@ function reveal(node) {
 function revealNow(node) {
   if (!S.layout.index.has(node)) {
     forceOpen(node);
+    // Selected before the layout, so its paint shows the selection once.
+    S.sel.clear();
+    S.sel.add(node);
+    S.primary = node;
     relayout();
-  }
-  select(node);
+    // Region mode: the inspector and the ledger follow in the next task,
+    // so the layout and the panels do not share one.
+    if (S.regions) nextTask(() => { if (S.primary === node) select(node, { painted: true }); });
+    else select(node, { painted: true });
+  } else select(node);
   const i = visibleIndexOf(node);
   if (i > 0) S.view.frame(i);
 }
@@ -2615,7 +2683,7 @@ function stepSelection(key) {
   else if (key === 'ArrowDown' && S.regions && cur.d && cur.u) {
     const seq = ++stepSeq;
     S.regions.ensure(cur).then((n) => {
-      if (seq === stepSeq && S.primary === cur && n?.c.length) select(n.c[0]);
+      if (seq === stepSeq && S.primary === cur && n?.c.length) nextTask(() => { if (seq === stepSeq && S.primary === cur) select(n.c[0]); });
     }, () => {});
     return undefined;
   } else if (key === 'ArrowDown') next = cur.d ? cur.c[0] : I && cur === I.host ? I.root : null;
@@ -3412,8 +3480,11 @@ function drawContents(sub, _host, keepScroll) {
   const items = sortedContents();
   const tools = subTools('contents', { items, search: S.search, focus: f });
   // Region mode: a folder of more than 5,000 lists its largest; the rest
-  // lie in its scree, and the sentence says how many and how much.
-  const tail = f.tail ? `The largest ${fmtCount(f.c.length)} of ${fmtCount(n)} items are listed; the other ${fmtCount(f.tail.n)}, ${fmtBytes(f.tail.s)}, lie in the scree.` : null;
+  // lie in its scree, and the sentence says how many and how much, and
+  // how to list them all: a search the service answers, in: the folder.
+  const where = relPath(f) || '/';
+  const inToken = `in:${/\s/.test(where) ? `"${where}"` : where}`;
+  const tail = f.tail ? `The largest ${fmtCount(f.c.length)} of ${fmtCount(n)} items are listed; the other ${fmtCount(f.tail.n)}, ${fmtBytes(f.tail.s)}, lie in the scree. Find them with ${inToken}.` : null;
   // Two rows: the count and its tools, then the sort keys over the list's
   // columns (Name over the names, Size on the size column). An empty
   // folder has nothing to sort, so it shows no keys.
@@ -3495,10 +3566,26 @@ function drawFindings(sub, _host, keepScroll) {
 /** Which rich-panel sections a person opened or closed, by title: a redraw keeps them so. */
 const sectionOpen = new Map();
 
-/** A collapsible section of the rich ledger panel; open is its state until someone toggles it. */
+/**
+ * A collapsible section of the rich ledger panel; open is its state until
+ * someone toggles it. The body may be one function instead: it builds the
+ * body the first time the section is open (at once when it is drawn
+ * open), so a closed section of hundreds of rows costs nothing until then.
+ */
 const section = (title, count, open, ...body) => {
-  const d = el('details', { open: sectionOpen.get(title) ?? open }, el('summary', {}, el('span', { class: 't', text: title }), el('span', { class: 'n', text: count })), ...body);
-  d.addEventListener('toggle', () => sectionOpen.set(title, d.open));
+  const make = body.length === 1 && typeof body[0] === 'function' ? body[0] : null;
+  const d = el('details', { open: sectionOpen.get(title) ?? open }, el('summary', {}, el('span', { class: 't', text: title }), el('span', { class: 'n', text: count })), ...(make ? [] : body));
+  let built = !make;
+  const build = () => {
+    if (built || !d.open) return;
+    built = true;
+    d.append(...[make()].flat(Infinity).filter(Boolean));
+  };
+  build();
+  d.addEventListener('toggle', () => {
+    sectionOpen.set(title, d.open);
+    build();
+  });
   return d;
 };
 
@@ -3524,6 +3611,11 @@ function drawSurvey(sub, host) {
 /* The Survey tab's own sections, in SURVEY order. */
 
 function surveyDuplicates(sv) {
+  return section('Duplicate candidates', fmtCount(sv.dupGroups.length), false, () => duplicatesBody(sv));
+}
+
+/** The rows of Duplicate candidates, built when the section is first open. */
+function duplicatesBody(sv) {
   const verifiedGroups = sv.dupGroups.filter((g) => g.verified);
   const waste = sv.dupGroups.reduce((a, g) => a + g.waste, 0);
   const reclaimable = verifiedGroups.reduce((a, g) => a + g.waste, 0);
@@ -3541,7 +3633,7 @@ function surveyDuplicates(sv) {
       dupBody.push(...dupExtras(g, { node: null, where: 'survey', ro }));
     }
   } else dupBody.push(el('p', { class: 'note', text: 'No files of 4 KB or more share a size.' }));
-  return section('Duplicate candidates', fmtCount(sv.dupGroups.length), false, dupBody);
+  return dupBody;
 }
 
 async function drawJournal(sub, host) {
@@ -3679,8 +3771,10 @@ function settleInspector(host, subject) {
 }
 
 function drawInspector() {
+  const t0 = performance.now();
   const host = $('inspector-body');
   keepFocus(host, drawInspectorNow, host);
+  measure('terrane:inspector', t0);
 }
 
 function drawInspectorNow() {
@@ -4540,7 +4634,8 @@ function wireKeys() {
     id: 'findings', order: 20, label: 'Findings', list: true, draw: drawFindings, count: () => (S.search ? S.search.total ?? S.search.list.length : null), enter: (node) => reveal(node),
     key: () => { const o = findSort(); return `${o.key}:${o.dir}`; },
   });
-  TABS.add({ id: 'survey', order: 30, label: 'Survey', draw: drawSurvey });
+  // The Survey's lists do not follow the selection: a select leaves the tab as it is.
+  TABS.add({ id: 'survey', order: 30, label: 'Survey', draw: drawSurvey, selection: false });
   TABS.add({ id: 'journal', order: 40, label: 'Journal', draw: drawJournal });
 
   SURVEY.add({ id: 'largest', order: 10, build: (sv) => section('Largest files', fmtCount(sv.largest.length), true, sv.largest.slice(0, 80).map((f) => itemButton(f, fmtBytes(f.s)))) });
@@ -4552,7 +4647,7 @@ function wireKeys() {
     const shown = Math.min(300, sv[key].length);
     return sv.regions && n > shown ? el('p', { class: 'note', text: `The first ${fmtCount(shown)} of ${fmtCount(n)}.` }) : null;
   };
-  SURVEY.add({ id: 'empty', order: 30, build: (sv) => section('Empty folders', fmtCount(countOf(sv, 'empty')), false, sv.empty.length ? [cutNote(sv, 'empty'), sv.empty.slice(0, 300).map((d) => itemButton(d, ''))] : el('p', { class: 'note', text: 'None.' })) });
+  SURVEY.add({ id: 'empty', order: 30, build: (sv) => section('Empty folders', fmtCount(countOf(sv, 'empty')), false, () => (sv.empty.length ? [cutNote(sv, 'empty'), sv.empty.slice(0, 300).map((d) => itemButton(d, ''))] : el('p', { class: 'note', text: 'None.' }))) });
   SURVEY.add({
     id: 'sealed', order: 40,
     build: (sv) => section('Sealed folders', fmtCount(countOf(sv, 'sealed')), sv.sealed.length > 0, sv.sealed.length
@@ -4561,9 +4656,9 @@ function wireKeys() {
   });
   SURVEY.add({
     id: 'links', order: 50,
-    build: (sv) => section('Symbolic links', fmtCount(countOf(sv, 'links')), false, sv.links.length
+    build: (sv) => section('Symbolic links', fmtCount(countOf(sv, 'links')), false, () => (sv.links.length
       ? [el('p', { class: 'note', text: 'Shown but never followed.' }), cutNote(sv, 'links'), sv.links.slice(0, 300).map((f) => itemButton(f, 'link'))]
-      : el('p', { class: 'note', text: 'None.' })),
+      : el('p', { class: 'note', text: 'None.' }))),
   });
 }
 

@@ -59,8 +59,11 @@
  *       heap is still measured
  *     - In region mode: held entries and regions, region requests' median
  *       and 95th percentile, bytes read and whether the worker decoded
- *       them; the search and the survey, not yet answered at this size,
- *       are typed and opened and their sentences noted
+ *       them; the search and the survey answered by the service, each
+ *       answer's time in the page and in the service (T.asked), and the
+ *       second search waited for until its own answer has landed
+ *     - The five tasks with the most script, each with the time every
+ *       terrane:* measure took inside it (frames.longestTasks)
  *
  * ✒ Usage Instructions:
  *     node tools/make-synthetic.mjs --entries 100k --out <dir>
@@ -158,6 +161,8 @@ function analyse(events) {
   let longestTask = 0;
   let over16 = 0;
   let over50 = 0;
+  // The five tasks with the most script, for what each terrane:* measure took inside them.
+  const top = [];
   for (const [a, b] of tasks) {
     while (j < scripts.length && scripts[j][1] <= a) j++;
     let sum = 0;
@@ -175,7 +180,14 @@ function analyse(events) {
     if (ms > 50) over50++;
     if ((b - a) / 1000 > longestTask) longestTask = (b - a) / 1000;
     if (!longest || ms > longest.ms) longest = { ms, a, b };
+    if (top.length < 5 || ms > top.at(-1).ms) {
+      top.push({ ms, a, b });
+      top.sort((x, y) => y.ms - x.ms);
+      if (top.length > 5) top.pop();
+    }
   }
+  const measuresIn = ({ a, b }) => marks.filter(([s, e]) => s < b && e > a).map(([s, e, ev]) => `${ev.name.slice(8)} ${r1((Math.min(e, b) - Math.max(s, a)) / 1000)}`);
+  const longestTasks = top.map((x) => ({ scriptMs: r1(x.ms), taskMs: r1((x.b - x.a) / 1000), measures: measuresIn(x) }));
   let attribution = null;
   if (longest) {
     // The deepest function call inside it, and the outermost.
@@ -203,7 +215,7 @@ function analyse(events) {
   }
   return {
     thread: main, tasks: tasks.length, longestScriptMs: r1(longest?.ms ?? 0), attribution, longestTaskMs: r1(longestTask),
-    over16, over50, longestGcMs: r1(gcs.reduce((m, [s, e]) => Math.max(m, (e - s) / 1000), 0)),
+    over16, over50, longestGcMs: r1(gcs.reduce((m, [s, e]) => Math.max(m, (e - s) / 1000), 0)), longestTasks,
   };
 }
 
@@ -291,22 +303,12 @@ export default {
       }
       tour.depth = depth;
 
-      // f. A search, a reveal from Findings, a second search, cleared.
-      // Until the service answers searches, a page in regions says that
-      // search is not available at this size; the tour types it anyway.
-      const searchable = await t.app((T) => !T.S.regions);
+      // f. A search, a reveal from Findings, a second search, cleared. In
+      // regions the service answers it, and the page shows the first
+      // 5,000 of its matches as refs, each made a node when acted on.
       await t.eval(() => document.getElementById('q').focus());
       await t.type('report');
-      if (!searchable) {
-        await t.waitFor((T) => T.S.query === 'report', { timeout: 30000, what: 'the query' });
-        await t.sleep(200);
-        tour.search = await t.live();
-        t.note(`search in regions: "${tour.search}"`);
-        await t.key('Escape');
-        await t.waitFor((T) => !T.S.query, { timeout: 30000, what: 'the search cleared' });
-        await t.settle({ timeout: 60000 });
-      }
-      if (searchable) {
+      {
         await t.waitFor((T) => T.S.query === 'report' && T.S.search?.list?.length > 0, { timeout: 120000, what: 'the matches for report' });
         tour.reportMatches = await t.app((T) => T.S.search.total ?? T.S.search.list.length);
         await t.eval(() => document.getElementById('ledger-list').focus());
@@ -322,19 +324,19 @@ export default {
           q.select();
         });
         await t.type('ext:psd >50mb');
-        await t.waitFor((T) => T.S.query === 'ext:psd >50mb', { timeout: 120000, what: 'the second search' });
+        // In regions the answer lands after the query is set: wait for it.
+        await t.waitFor((T) => T.S.query === 'ext:psd >50mb' && (!T.S.search?.regions || T.S.search.text === T.S.query), { timeout: 120000, what: 'the second search' });
         tour.psdMatches = await t.app((T) => (T.S.search ? T.S.search.total ?? T.S.search.list.length : 0));
         await t.key('Escape');
         await t.waitFor((T) => !T.S.query, { timeout: 30000, what: 'the search cleared' });
         await t.settle({ timeout: 60000 });
       }
 
-      // g. The Survey tab, and a reveal from Largest files (in regions,
-      // until the service answers the survey, the tab says it is not
-      // available at this size).
+      // g. The Survey tab (the service's survey, in regions), and a reveal
+      // from Largest files.
       await t.tabTo('.tabs [data-tab=survey]');
       await t.key('Enter');
-      await t.waitFor((T) => T.S.tab === 'survey' && !!T.S.survey, { timeout: 120000, what: 'the Survey tab' });
+      await t.waitFor((T) => T.S.tab === 'survey' && !!T.S.survey && !T.S.survey.pending, { timeout: 120000, what: 'the Survey tab' });
       if (await t.eval(() => !!document.querySelector('#ledger-rich .item'))) {
         await t.tabTo('#ledger-rich .item');
         await t.key('Enter');
@@ -385,14 +387,19 @@ export default {
       const st = T.S.regions.stats;
       const ms = st.ms.slice().sort((a, b) => a - b);
       const at = (q) => (ms.length ? Math.round(ms[Math.min(ms.length - 1, Math.floor(q * ms.length))] * 10) / 10 : null);
-      return { entries: st.held, regions: st.regions, requests: st.requests, dropped: st.dropped, bytesMB: Math.round(st.bytes / 1048576 * 10) / 10, regionMs: { median: at(0.5), p95: at(0.95) }, worker: T.regionWorker };
+      // The whole-tree questions: each answer's time in the page and in the service.
+      const of = (route) => T.asked.ms.filter((x) => x[0] === route).map((x) => ({ pageMs: x[1], serviceMs: x[2] }));
+      return {
+        entries: st.held, regions: st.regions, requests: st.requests, dropped: st.dropped, bytesMB: Math.round(st.bytes / 1048576 * 10) / 10, regionMs: { median: at(0.5), p95: at(0.95) }, worker: T.regionWorker,
+        asked: { find: of('find'), survey: of('survey'), marks: T.asked.marks, sessions: T.asked.sessions },
+      };
     });
 
     // l. The service: its memory and load time, starting nothing.
     result.service = await t.eval(async () => {
       const token = document.querySelector('meta[name="terrane-token"]').content;
       const r = await (await fetch('/api/tree?peek=1', { headers: { 'X-Terrane-Token': token } })).json();
-      return { state: r.state, loadMs: r.loadMs, mem: r.mem, v: r.v };
+      return { state: r.state, loadMs: r.loadMs, prepMs: r.prepMs, mem: r.mem, v: r.v };
     });
 
     // m. The first box again, the service already loaded.

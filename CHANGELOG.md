@@ -27,7 +27,9 @@
       file already holds them. It adds the section for web/js/places.js, whose 1.0.0 entry
       left its header with places.js 1.3.0. The whole-tree questions answered by the service
       extend the entries of app.js (1.12.0), model.js (1.6.0) and traverse.js (1.3.0), and the
-      warm cache checked by folder modification times that of app.js again.
+      warm cache checked by folder modification times that of app.js again. The Stage 4 exit
+      test extends app.js's again and records ui.js 1.5.0, whose 1.2.0 entry leaves its
+      header; this file already holds it.
     - 1.8.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — Records the names on the blocks:
       viewport.js 1.7.0. viewport.js's header rolls its 1.4.0 entry out; this file already
       holds it.
@@ -115,8 +117,11 @@ short form is kept too.
   never a pinned folder or one standing open. The service answers search, the survey and Verify
   there: Findings lists the first 5,000 of the true total as refs, each made a node when acted
   on, and marks by name dim and pin what is held. A warm start is checked by folder modification
-  times (GET /api/check), and in region mode in place by the service while changes wait.
-  drawContents builds div.sub-row.is-count
+  times (GET /api/check), and in region mode in place by the service while changes wait. What
+  follows a region landing, a layout's location and a reveal's panels run in tasks of their own
+  there; the Survey is not drawn again on select, and its closed sections of many rows build
+  them when first opened; a reveal paints its selection once. drawContents builds
+  div.sub-row.is-count
   (span.sub-count with span.n "14 items" and span.b " · 199 GB", then the LEDGER_SUB tools) and
   div.sub-row.is-columns with the sort keys in the order seen, Name, Changed, Untouched, Size;
   drawFindings the count row, the
@@ -142,7 +147,42 @@ short form is kept too.
   draws each group as a swatch and its words. The status line reads files, bytes, folders, so a
   narrow cell's ellipsis takes folders first, and its label's words go into span.text beside the
   lamp's icon. fatal() takes a detail: a quiet message is a sentence, and "3D view unavailable"
-  puts WebGL's error on a line of its own instead of in the middle of the sentence. In region
+  puts WebGL's error on a line of its own instead of in the middle of the sentence.
+  Region mode (Scale, Stage 4): GET /api/info's regions decides at the start, when the
+  threshold is 0 or the entries known are above it. When the service cannot say how large the
+  tree is, a whole survey counts root.fc + root.dc + 1 per batch and, once past the threshold,
+  stops (an AbortController through scanStream), drops the partial model and asks GET
+  /api/tree?build=1, the loading sheet and the veil saying "Large directory: reading it in
+  regions". startRegions opens the tree with a region client (createRegions), and takeRegions
+  puts the new model in place with nothing selected, the survey's placeholder ({ regions: true }
+  and empty lists), AFTER_SURVEY { full, regions } and a layout. relayout hands S.layout.want to
+  the client unless there is no WebGL, and a landed batch queues a layout in 30 ms; the
+  terrane:relayout, terrane:paint and terrane:ledger measures name a long task in a trace.
+  setFocus, select, stepSelection down into a folder, moveFocus and reveal hold the folder's
+  region first in region mode, with sequence numbers so a late answer never overrides a newer
+  action, and stay synchronous with a whole tree. refreshDirs reads folders again through
+  S.regions.refresh (fresh=1) and prunes as before, with no survey in the page; Rescan all and a
+  new generation (409 ESTALE) open the tree again and keep the folder you are in by its path.
+  kids() replaces c.length in paint's HOLLOW test, rowFor, the Contents count, nodeTitle, the
+  levels tip and the Travelling sentences, and Contents says "The largest 5,000 of 1,000,000
+  items are listed; the other 995,000, 1.2 GB, lie in the scree." of a folder held in part.
+  Search, the Survey and Verify are the service's in region mode (below). The api gains
+  regionMode, ensure, resolve, resolveAll, resolveRef, nearest, kids and notAtSize;
+  __terrane gains regions; the status line ends "Regions · N of M entries held". The
+  client's transport sends GET /api/region to a module worker (region-worker.js, made the
+  first time, given the token once): it fetches, parses and decodes there and posts the typed
+  arrays back with their buffers transferred, so the main thread builds nodes and never parses
+  an answer; the demo world, whose answers a worker's fetch never reaches, and a browser
+  without workers decode on the main thread, and a worker that fails hands what waits on it
+  to the main thread. __terrane.regionWorker says which. After a batch lands, once the entries
+  held pass the budget (200,000, down to 150,000) and the view is settled (no flight, no
+  transition, no layout waiting), the client lets go the least recently opened regions,
+  deepest first, except the folders regionPins names (the folder you are in, the folder of
+  everything selected and every selected folder's own, the trail, the forced chain, a held
+  flight's folder, every benchmark's and the return point's, an open archive's folder, with
+  every ancestor) and those standing open in the layout, then lays out again without
+  animation; prefetch stops once the floor is reached, so a view never loads what it would let
+  go. In region
   mode runQuery asks GET /api/find through askTree (parsed in the worker) with the query, the
   order, limit 5,000, the folder you are in and, for is:benchmark, the benchmarks' paths, and
   returns a promise; a later query drops an earlier answer. S.search is then { regions, qid,
@@ -151,8 +191,10 @@ short form is kept too.
   (GET /api/marks), and every region asked while a search shows carries its own by place
   (regionMarks, through the client's extra and onFilled). A sort key asks again with the
   qid; the count, q-count and the Findings tab say the total, and "The first 5,000 of N
-  matches, in this order." when it is larger; Select all takes the first 1,000 and says
-  "Select all takes the first 1,000 matches at this size."; screeHasMatch reads the tail.
+  matches, in this order." when it is larger; Select all takes the first 1,000, holding each
+  folder's region once and finding its matches there by name (one in a tail is asked for
+  alone), and says "Select all takes the first 1,000 matches at this size."; screeHasMatch
+  reads the tail.
   resolveRow makes a ref a node and puts it in its list's place; select, reveal, a row's
   click, double-click and context menu and the list's keys do it first, so S.sel and
   S.primary only ever hold nodes. The survey is asked of the service (debounced after a
@@ -174,43 +216,19 @@ short form is kept too.
   warm.checking: S.warm is set with the notice "... Checking it against the disk; changes wait
   until then.", the page polls GET /api/tree?peek=1 each second (or hears checked), then reads
   again what the check listed (warm.checked.dirs) with what the change stream asked for, clears
-  S.warm and says what the check found.
-  Region mode (Scale, Stage 4): GET /api/info's regions decides at the start, when the
-  threshold is 0 or the entries known are above it. When the service cannot say how large the
-  tree is, a whole survey counts root.fc + root.dc + 1 per batch and, once past the threshold,
-  stops (an AbortController through scanStream), drops the partial model and asks GET
-  /api/tree?build=1, the loading sheet and the veil saying "Large directory: reading it in
-  regions". startRegions opens the tree with a region client (createRegions), and takeRegions
-  puts the new model in place with nothing selected, the survey's placeholder ({ regions: true }
-  and empty lists), AFTER_SURVEY { full, regions } and a layout. relayout hands S.layout.want to
-  the client unless there is no WebGL, and a landed batch queues a layout in 30 ms; the
-  terrane:relayout, terrane:paint and terrane:ledger measures name a long task in a trace.
-  setFocus, select, stepSelection down into a folder, moveFocus and reveal hold the folder's
-  region first in region mode, with sequence numbers so a late answer never overrides a newer
-  action, and stay synchronous with a whole tree. refreshDirs reads folders again through
-  S.regions.refresh (fresh=1) and prunes as before, with no survey in the page; Rescan all and a
-  new generation (409 ESTALE) open the tree again and keep the folder you are in by its path.
-  kids() replaces c.length in paint's HOLLOW test, rowFor, the Contents count, nodeTitle, the
-  levels tip and the Travelling sentences, and Contents says "The largest 5,000 of 1,000,000
-  items are listed; the other 995,000, 1.2 GB, lie in the scree." of a folder held in part.
-  runQuery says "Search is not available at this size.", the Survey tab "The survey of the
-  whole directory is not available at this size.", and Verify does nothing. The api gains
-  regionMode, ensure, resolve, resolveAll, resolveRef, nearest, kids and notAtSize;
-  __terrane gains regions; the status line ends "Regions · N of M entries held". The
-  client's transport sends GET /api/region to a module worker (region-worker.js, made the
-  first time, given the token once): it fetches, parses and decodes there and posts the typed
-  arrays back with their buffers transferred, so the main thread builds nodes and never parses
-  an answer; the demo world, whose answers a worker's fetch never reaches, and a browser
-  without workers decode on the main thread, and a worker that fails hands what waits on it
-  to the main thread. __terrane.regionWorker says which. After a batch lands, once the entries
-  held pass the budget (200,000, down to 150,000) and the view is settled (no flight, no
-  transition, no layout waiting), the client lets go the least recently opened regions,
-  deepest first, except the folders regionPins names (the folder you are in, the folder of
-  everything selected and every selected folder's own, the trail, the forced chain, a held
-  flight's folder, every benchmark's and the return point's, an open archive's folder, with
-  every ancestor) and those standing open in the layout, then lays out again without
-  animation; prefetch stops once the floor is reached, so a view never loads what it would let
-  go.
+  S.warm and says what the check found. For the Stage 4 exit test's frames: in region mode the
+  reveal, the go, the step into a folder and a ref's row act in the task after the one that
+  ingested the region they waited for (nextTask); a tab entry may say selection: false (the
+  Survey), and select() then leaves the ledger as it is; section() takes one function as its
+  body and builds it the first time the section is open, which Duplicate candidates, Empty
+  folders and Symbolic links do; revealNow sets the selection before the layout it forces, so
+  that layout's paint shows it and select({ painted: true }) does not paint again, and in region
+  mode that select (the inspector and the ledger) runs in the next task; in region mode relayout
+  updates the location in the next task too (queueWhere), since updateWhere can draw the ledger
+  and the inspector again; buildLayout is measured as terrane:layout and drawInspector as
+  terrane:inspector. The Contents sentence of a folder held in part ends "Find them with
+  in:<path>." (in:/ for the root, the path in quotes when it holds a space), now that the
+  service answers that search.
 
 - 1.11.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — Paint gives each file its
   kind's colour in a tone of its own extension (extTone): five steps from 22 % darker to 24 %
@@ -603,6 +621,12 @@ short form is kept too.
 - 1.0.0 (11/09/2026) [dendogg + Anthropic - Claude Fable 5.2] — Initial release.
 
 ## web/js/ui.js
+
+- 1.5.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — The virtual list draws a new size
+  in a task of its own: drawn inside its ResizeObserver, it read its size while another observer
+  of the same frame had changed the page, and laid it all out again. The draw waits behind one
+  setTimeout (several resizes in a frame draw once); measured at a million entries in region
+  mode, the frame that held it had run 19.6 ms of script, most of it that forced layout.
 
 - 1.4.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — openSheet(build, {
   className, label, onKey }): a sheet in the shared dialog for something richer than ask(),

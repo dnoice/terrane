@@ -16,6 +16,8 @@
  *     - 1.7.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — A
  *       LEDGER_SUB control stands on the count row after the count, where the
  *       polished head puts a feature's tools.
+ *       Duplicate candidates are opened before the DUP_GROUP rows are
+ *       counted: the section builds its rows the first time it is open.
  *     - 1.6.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — The core's
  *       Closed mass row says that a mass's sides show its strata.
  *     - 1.5.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
@@ -699,6 +701,12 @@ export default {
       const inInspector = document.querySelector('#inspector-body .seam-dup')?.textContent ?? null;
       T.S.tab = 'survey';
       a.drawLedger();
+      // Duplicate candidates build their rows when the section is first open.
+      const dd = [...document.querySelectorAll('#ledger-rich > details')].find((x) => x.querySelector(':scope > summary .t')?.textContent === 'Duplicate candidates');
+      if (dd && !dd.open) {
+        dd.open = true;
+        dd.dispatchEvent(new Event('toggle'));
+      }
       const inSurvey = [...document.querySelectorAll('#ledger-rich .seam-dup')].map((p) => p.textContent);
       const first = document.querySelector('#ledger-rich .group-head');
       const firstDup = document.querySelector('#ledger-rich .seam-dup');

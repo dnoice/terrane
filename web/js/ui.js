@@ -1,18 +1,22 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Interface Primitives (Terrane Edition - v1.4)
+ *     - Title: Interface Primitives (Terrane Edition - v1.5)
  *     - File Name: ui.js
  *     - Relative Path: web/js/ui.js
  *     - Artifact Type: javascript
- *     - Version: 1.4.0
- *     - Date: 11/13/2026
- *     - Update: Friday, November 13, 2026
+ *     - Version: 1.5.0
+ *     - Date: 11/14/2026
+ *     - Update: Saturday, November 14, 2026
  *     - Author: Dennis 'dendogg' Smaltz
  *     - A.I. Acknowledgement: Anthropic - Claude Opus 5.5
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
  *
  * ✒ Changelog:
+ *     - 1.5.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
+ *       virtual list draws a new size in a task of its own: drawn inside
+ *       its ResizeObserver, it read its size while another observer of
+ *       the same frame had changed the page, and laid it all out again.
  *     - 1.4.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] —
  *       openSheet: a sheet in the shared dialog for the command palette,
  *       built by its caller, named, hearing its own keys, taking the
@@ -30,13 +34,6 @@
  *       on its confirm button. A closed menu keeps its items while it
  *       fades out; an empty list shows the sentence setEmpty gives it,
  *       and its name carries the same words.
- *     - 1.2.0 (11/12/2026) [dendogg + Anthropic - Claude Opus 5.5] — Menu
- *       items and notices carry icons; the menu and tip are placed by
- *       Floating UI and unfold from the pointer's corner; notices show
- *       their time left, pause it under the pointer, and leave with an
- *       animation while their neighbours slide (FLIP); the virtual list
- *       cascades rows in when its items change; slideIndicator moves the
- *       ink plate of a tab strip or segmented switch.
  *     Earlier entries: see CHANGELOG.md
  *
  * ✒ Description:
@@ -402,7 +399,13 @@ export class VirtualList {
     if (multiple) host.setAttribute('aria-multiselectable', 'true');
     host.replaceChildren(this.spacer, this.rows, this.note);
     host.addEventListener('scroll', () => this.draw(true));
-    new ResizeObserver(() => this.draw()).observe(host);
+    // A new size is drawn in a task of its own: drawn inside the observer,
+    // it would read the list's size while another observer of the same
+    // frame has changed the page, and lay the whole page out again there.
+    this.resized = 0;
+    new ResizeObserver(() => {
+      if (!this.resized) this.resized = setTimeout(() => { this.resized = 0; this.draw(); }, 0);
+    }).observe(host);
     host.addEventListener('keydown', (e) => {
       const n = this.items.length;
       if (!n) return;

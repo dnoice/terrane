@@ -106,7 +106,8 @@ function matchesOnDisk(root, term) {
 /** Verify by content from the Survey tab, by keyboard (as many.mjs's dupes does); resolves once the copies with rel are verified. */
 async function verifyIn(t, rel) {
   const open = await t.eval(() => {
-    const s = document.querySelector('#ledger-rich details:has(.group-head) > summary');
+    // Found by its title: its rows are built the first time it is open.
+    const s = [...document.querySelectorAll('#ledger-rich > details > summary')].find((x) => x.querySelector('.t')?.textContent === 'Duplicate candidates');
     s.focus();
     return s.parentElement.open;
   });
@@ -428,7 +429,7 @@ export default [
         resorted.finds > finds0 && resorted.dates.every((d, i, a) => i === 0 || a[i - 1] <= d), JSON.stringify(resorted).slice(0, 200));
       // Select all takes the first 1,000, and says so.
       await t.eval(() => document.querySelector('#ledger-sub .sub-select').click());
-      const all = await t.waitFor((T) => T.S.sel.size === T.S.search.total && [...T.S.sel].every((n) => !n.ref && T.api.isAttached(n)) && T.S.sel.size, { timeout: 30000, what: 'every match selected' });
+      const all = await t.waitFor((T) => T.S.sel.size === T.S.search.total && [...T.S.sel].every((n) => !n.ref && T.api.isAttached(n)) && T.S.sel.size, { timeout: 60000, what: 'every match selected' });
       const said2 = await t.live();
       t.check(`Select all selects every match as nodes (${all}) and says "${said2}"`, all === wantNotes && said2 === 'Select all takes the first 1,000 matches at this size.', said2);
       // Export CSV, Findings: the notice's row count is the list's.

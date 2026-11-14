@@ -16,7 +16,9 @@
  * ✒ Changelog:
  *     - 1.0.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] —
  *       Initial release. A browser point above the threshold runs, the
- *       page drawing it in regions; --force is gone.
+ *       page drawing it in regions; --force is gone. The default points
+ *       are 100k, 400k, 1m, 2m and 5m, and the table gives each find's
+ *       and the survey's time in the service.
  *
  * ✒ Description:
  *     Measures Terrane at several sizes of synthetic tree, one heavy
@@ -27,7 +29,7 @@
  *     machine that must stay responsive.
  *
  * ✒ Key Features:
- *     - Points of any size, 100k, 1m, 2m and 5m by default, each in a
+ *     - Points of any size, 100k, 400k, 1m, 2m and 5m by default, each in a
  *       dataset of its own under the OS temp folder, deleted after it is
  *       measured unless --keep
  *     - One heavy process at a time: the generator, then the service or
@@ -63,7 +65,7 @@
  * ✒ Command-Line Arguments:
  *     Input:
  *         --points <list>        Comma list of sizes: 100k, 400k, 1m, 2m, 5m
- *                                or numbers (default 100k,1m,2m,5m).
+ *                                or numbers (default 100k,400k,1m,2m,5m).
  *         --seed <n>             The generator's seed (default 11).
  *     Processing:
  *         --port <n>             First port (default 5220); ui-check uses
@@ -119,7 +121,7 @@ for (let i = 0; i < argv.length; i++) {
     process.exit(2);
   }
 }
-const POINTS = String(opt.points || '100k,1m,2m,5m').split(',').map((x) => parseEntries(x));
+const POINTS = String(opt.points || '100k,400k,1m,2m,5m').split(',').map((x) => parseEntries(x));
 const SEED = opt.seed === undefined ? 11 : Number(opt.seed);
 const PORT = Number(opt.port || 5220);
 const THRESHOLD = opt['region-threshold'] !== undefined ? Number(opt['region-threshold']) : REGION_THRESHOLD;
@@ -396,7 +398,9 @@ async function main() {
   for (const r of results) {
     const g = r.generator ? `${(r.generator.ms / 1000).toFixed(1)} s ${r.generator.dbMB} MB` : '-';
     const s = r.service ? `load ${r.service.loadMs} ms, rss ${r.service.memLoaded.rss}/${r.service.memAfter.rss} MB, region ${r.service.region.median}/${r.service.region.p95} ms, chain ${r.service.chains.median}/${r.service.chains.p95} ms` : '-';
-    const p = r.page?.scale ? `${r.page.scale.mode}, first box ${r.page.scale.firstBoxColdMs}/${r.page.scale.firstBoxReadyMs} ms, heap ${r.page.scale.settled.jsHeapUsedMB}/${r.page.scale.peak.jsHeapUsedMB}/${r.page.scale.afterTour.jsHeapUsedMB}/${r.page.scale.afterGC.jsHeapUsedMB} MB, script ${r.page.scale.frames?.longestScriptMs ?? '-'} ms (${r.page.passed} passed, ${r.page.failed} failed)` : r.skipped ? 'skipped' : r.error ? `stopped: ${r.error}` : '-';
+    const asked = r.page?.scale?.held?.asked;
+    const finds = asked?.find?.map((x) => x.serviceMs).join('+');
+    const p = r.page?.scale ? `${r.page.scale.mode}, first box ${r.page.scale.firstBoxColdMs}/${r.page.scale.firstBoxReadyMs} ms, heap ${r.page.scale.settled.jsHeapUsedMB}/${r.page.scale.peak.jsHeapUsedMB}/${r.page.scale.afterTour.jsHeapUsedMB}/${r.page.scale.afterGC.jsHeapUsedMB} MB, script ${r.page.scale.frames?.longestScriptMs ?? '-'} ms${finds ? `, find ${finds} ms, survey ${asked.survey.map((x) => x.serviceMs).join('+')} ms` : ''} (${r.page.passed} passed, ${r.page.failed} failed)` : r.skipped ? 'skipped' : r.error ? `stopped: ${r.error}` : '-';
     print(`  ${r.point.padEnd(6)} ${g.padEnd(16)} ${s.padEnd(46)} ${p}`);
   }
   print(`\n  Figures written to ${outFile}`);
