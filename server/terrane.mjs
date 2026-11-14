@@ -27,7 +27,10 @@
  *       aac, wav, flac, ogg, oga, opus). Every check before the bytes is
  *       unchanged and comes first, and snapshot mode still refuses. The
  *       bytes are streamed through pipeline(), so a reader the page drops
- *       is closed rather than left open.
+ *       is closed rather than left open. A preferred port that Windows
+ *       refuses with EACCES, because another program holds it
+ *       exclusively, is passed over for the next one, as a port in use
+ *       always was, instead of stopping the service.
  *     - 1.4.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — POST
  *       /api/hash reads a file only once its real location is proved
  *       inside the root and outside the holding area, as /api/raw and
@@ -737,7 +740,10 @@ const server = http.createServer(async (req, res) => {
 
 const listen = (attempt = 0) => {
   server.once('error', (err) => {
-    if (err.code === 'EADDRINUSE' && attempt < 20) {
+    // A port another program holds is EADDRINUSE, or on Windows EACCES
+    // when that program bound it exclusively (a system service on every
+    // address, as on 5040): either way the next one is tried.
+    if ((err.code === 'EADDRINUSE' || err.code === 'EACCES') && attempt < 20) {
       port += 1;
       listen(attempt + 1);
     } else {
