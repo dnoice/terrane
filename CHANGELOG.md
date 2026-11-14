@@ -109,7 +109,9 @@ short form is kept too.
   on its own line. A tree above the region threshold, or one a survey finds past it, is drawn
   from regions (regions.js) the page asks for as the eye nears them; a folder's region is held
   before you go there or select it; changed folders are read again as fresh regions; search and
-  the survey say they are not available at this size. drawContents builds div.sub-row.is-count
+  the survey say they are not available at this size. Region answers are decoded in a module
+  worker, and regions are let go under a budget of held entries, never a pinned folder or one
+  standing open. drawContents builds div.sub-row.is-count
   (span.sub-count with span.n "14 items" and span.b " · 199 GB", then the LEDGER_SUB tools) and
   div.sub-row.is-columns with the sort keys in the order seen, Name, Changed, Untouched, Size;
   drawFindings the count row, the
@@ -157,7 +159,21 @@ short form is kept too.
   runQuery says "Search is not available at this size.", the Survey tab "The survey of the
   whole directory is not available at this size.", and Verify does nothing. The api gains
   regionMode, ensure, resolve, resolveAll, resolveRef, nearest, kids and notAtSize;
-  __terrane gains regions; the status line ends "Regions · N of M entries held".
+  __terrane gains regions; the status line ends "Regions · N of M entries held". The
+  client's transport sends GET /api/region to a module worker (region-worker.js, made the
+  first time, given the token once): it fetches, parses and decodes there and posts the typed
+  arrays back with their buffers transferred, so the main thread builds nodes and never parses
+  an answer; the demo world, whose answers a worker's fetch never reaches, and a browser
+  without workers decode on the main thread, and a worker that fails hands what waits on it
+  to the main thread. __terrane.regionWorker says which. After a batch lands, once the entries
+  held pass the budget (200,000, down to 150,000) and the view is settled (no flight, no
+  transition, no layout waiting), the client lets go the least recently opened regions,
+  deepest first, except the folders regionPins names (the folder you are in, the folder of
+  everything selected and every selected folder's own, the trail, the forced chain, a held
+  flight's folder, every benchmark's and the return point's, an open archive's folder, with
+  every ancestor) and those standing open in the layout, then lays out again without
+  animation; prefetch stops once the floor is reached, so a view never loads what it would let
+  go.
 
 - 1.11.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — Paint gives each file its
   kind's colour in a tone of its own extension (extTone): five steps from 22 % darker to 24 %

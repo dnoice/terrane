@@ -23,7 +23,9 @@
  *       from regions (regions.js) the page asks for as the eye nears them;
  *       a folder's region is held before you go there or select it; changed
  *       folders are read again as fresh regions; search and the survey say
- *       they are not available at this size.
+ *       they are not available at this size. Region answers are decoded in
+ *       a module worker, and regions are let go under a budget of held
+ *       entries, never a pinned folder or one standing open.
  *     - 1.11.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] —
  *       Paint gives each file its kind's colour in a tone of its own
  *       extension, a closed mass a richer tint and, on its sides, strata
@@ -110,6 +112,11 @@
  *       closed folder once its region lands, reads a folder's region before
  *       going there, selecting it or measuring it, and finds any path or
  *       ref by asking for its chain; the status line says how much it holds
+ *     - Region answers fetched and decoded in a module worker
+ *       (region-worker.js), so the main thread never parses one; regions
+ *       let go under a budget once the view is settled, never those of the
+ *       folder you are in, the selection, the trail, a flight, a benchmark
+ *       or an open archive, nor a folder standing open
  *     - Instruments over the world: a north arrow that turns with the
  *       camera and back to north on a click, and a storage scale
  *
@@ -139,7 +146,8 @@
  *
  * ✒ Other Important Information:
  *     - Dependencies: model.js, layout.js, viewport.js, theme.js, ui.js,
- *       thumbs.js, timeline.js, regions.js, strata.js (the Age lens's mass colours),
+ *       thumbs.js, timeline.js, regions.js (and its worker,
+ *       region-worker.js), strata.js (the Age lens's mass colours),
  *       places.js (anchorOf, poseRelative, vantage: the eye through a
  *       warm start's catch-up), features.js, icons.js, motion.js, hud.js,
  *       float.js, splash.js
@@ -1054,9 +1062,11 @@ function switchAt() {
   return R && R.threshold > 0 && R.entries === null ? R.threshold : 0;
 }
 
-/* ---------- the transport ---------- */
+/* ---------- the transport: a worker decodes, the main thread builds ---------- */
 
-/** A region answer read and decoded on the main thread. */
+let regionWorker = null;
+
+/** A region answer read and decoded on the main thread: the demo world, and a page with no worker. */
 async function mainThreadRegion(params) {
   const res = await fetch(`/api/region?${new URLSearchParams(params)}`, { headers: { 'X-Terrane-Token': TOKEN } });
   if (!res.ok) {
@@ -1070,9 +1080,59 @@ async function mainThreadRegion(params) {
   return out;
 }
 
-/** The region client's transport: /api/region decoded here, anything else as get(). */
+/**
+ * The region worker (region-worker.js), made the first time it is needed;
+ * none in the demo world, whose answers a worker's fetch never reaches,
+ * nor where workers are missing. A worker that fails hands what waits on
+ * it, and everything after, to the main thread.
+ */
+function regionWorkerOf() {
+  if (regionWorker !== null) return regionWorker || null;
+  if (DEMO || typeof Worker !== 'function') {
+    regionWorker = false;
+    return null;
+  }
+  try {
+    const w = new Worker(new URL('./region-worker.js', import.meta.url), { type: 'module' });
+    const rw = { w, seq: 0, pending: new Map() };
+    w.onmessage = (e) => {
+      const m = e.data || {};
+      const p = rw.pending.get(m.id);
+      if (!p) return;
+      rw.pending.delete(m.id);
+      if (m.ok) p.resolve(m);
+      else {
+        const err = new Error(m.message);
+        err.code = m.code;
+        err.status = m.status;
+        p.reject(err);
+      }
+    };
+    w.onerror = (e) => {
+      e.preventDefault?.();
+      regionWorker = false;
+      for (const p of rw.pending.values()) mainThreadRegion(p.params).then(p.resolve, p.reject);
+      rw.pending.clear();
+      w.terminate();
+    };
+    w.postMessage({ type: 'init', token: TOKEN });
+    regionWorker = rw;
+  } catch {
+    regionWorker = false;
+  }
+  return regionWorker || null;
+}
+
+/** The region client's transport: /api/region through the worker (decoded there), anything else as get(). */
 function regionFetch(route, params) {
-  return route === 'region' ? mainThreadRegion(params) : get(route, params);
+  if (route !== 'region') return get(route, params);
+  const rw = regionWorkerOf();
+  if (!rw) return mainThreadRegion(params);
+  return new Promise((resolve, reject) => {
+    const id = ++rw.seq;
+    rw.pending.set(id, { resolve, reject, params });
+    rw.w.postMessage({ id, url: `/api/region?${new URLSearchParams(params)}` });
+  });
 }
 
 /* ---------- opening a tree in regions ---------- */
@@ -1181,11 +1241,68 @@ function reopenRegions({ build = false } = {}) {
   return reopening;
 }
 
-/* ---------- regions landing ---------- */
+/* ---------- regions landing, and the budget ---------- */
 
 /** A batch of regions is in: the folders that wanted them open in the next layout. */
 function regionsLanded() {
   queueLayout(30);
+  scheduleEvict();
+}
+
+let evictTimer = 0;
+/**
+ * Lets regions go once the entries held pass the budget, but only while
+ * the view is settled (no flight, no transition, no layout waiting), so
+ * nothing moving loses its ground; then lays out again without animation.
+ */
+function scheduleEvict() {
+  const R = S.regions;
+  if (!R || R.held <= R.budget || evictTimer) return;
+  const run = () => {
+    evictTimer = 0;
+    const C = S.regions;
+    if (!C || C.held <= C.budget || !S.layout) return;
+    if (S.layoutTimer || (!S.noGL && (S.view.flight || S.view.transition))) {
+      evictTimer = setTimeout(run, 120);
+      return;
+    }
+    const t0 = performance.now();
+    const n = C.evict(regionPins(), openSet(S.layout));
+    measure('terrane:evict', t0);
+    if (n) relayout({ animate: false });
+  };
+  evictTimer = setTimeout(run, 60);
+}
+
+/** The folders standing open (DIR boxes) in a layout. */
+function openSet(L) {
+  const out = new Set();
+  if (!L) return out;
+  for (let i = 0; i < L.n; i++) if (L.type[i] === BOX.DIR) out.add(L.node[i]);
+  return out;
+}
+
+/**
+ * The folders whose regions are never let go, with every ancestor: the
+ * folder you are in; the folder of everything selected and every selected
+ * folder's own; the trail; the forced chain; a held flight's folder; every
+ * benchmark's and the return point's; an open archive's folder.
+ */
+function regionPins() {
+  const pins = new Set();
+  const add = (n) => {
+    for (let a = n; a && !pins.has(a); a = a.p) pins.add(a);
+  };
+  add(S.focus);
+  for (const n of S.sel) add(n.d ? n : n.p);
+  if (S.primary) add(S.primary.d ? S.primary : S.primary.p);
+  for (const n of S.trail) add(n);
+  if (S.force) for (const n of S.force) add(n);
+  if (hold) add(hold.dir);
+  for (const b of S.places?.benchmarks || []) if (b.node) add(b.node);
+  if (S.places?.ret && S.regions) add(S.regions.nearest(S.places.ret.rel));
+  if (S.interior) add(S.interior.host.p);
+  return pins;
 }
 
 /** The deepest node of the whole tree on a path: api.nearest in whole-tree mode. */
@@ -4003,6 +4120,9 @@ function expose(t0) {
     get firstDrawMs() { return firstDrawMs; },
     get places() { return S.places; },
     get regions() { return S.regions; },
+    // Whether region answers are decoded in the worker: true, false (on the
+    // main thread), or null before the first one.
+    get regionWorker() { return regionWorker === null ? null : !!regionWorker; },
   };
 }
 

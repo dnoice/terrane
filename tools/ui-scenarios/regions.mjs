@@ -28,12 +28,15 @@
  *       overview drawn; the root's Contents equal the disk's top level;
  *       three folders down the fixture's chain by the ledger and Enter,
  *       each region asked for and listed, the inspector's figures equal
- *       to the whole tree's on the read-only service
+ *       to the whole tree's on the read-only service, the location
+ *       counted as reached when it settles in or below a folder
  *     - Bytes by last change, the Age lens's typical-age line and the time
  *       scrub's Since section of one folder, equal in both modes
  *     - B then a reload: the benchmark is found again and reads "no change"
  *     - F2 renames a file: listed again under its name, still selected,
  *       the sizes above unchanged; Ctrl+Z puts it back; N makes a folder
+ *     - A budget of 400 entries: six folders visited, the entries held
+ *       kept near it, the folder you are in still held
  *     - Rescan all: a new generation, the folder you are in kept by path
  *     - Find and the Survey tab say they are not available at this size
  *     - regions-switch (read-only, threshold 1,000): the whole survey
@@ -270,6 +273,60 @@ export default [
       const made = `${dir}/made-in-regions`;
       await t.waitFor((T, r) => T.S.primary && T.api.relPath(T.S.primary) === r, { args: [made], timeout: 20000, what: 'the new folder selected' });
       t.check('N makes a folder: on disk, in the region and selected', fs.existsSync(t.abs(made)) && (await t.app((T, d) => T.S.primary.d && T.S.primary.p === T.S.model.find(d), dir)));
+
+      // A small budget: six folders visited, the entries held kept near it.
+      const budget = await t.app((T) => {
+        T.S.regions.budget = 400;
+        T.S.regions.floor = 300;
+        T.api.select(null);
+        return T.S.model.root.c.filter((c) => c.d && T.api.kids(c) > 0).sort((a, b) => T.api.kids(b) - T.api.kids(a)).slice(0, 6).map((c) => T.api.relPath(c));
+      });
+      // With WebGL the location follows the eye and may settle inside the folder.
+      for (const rel of budget) {
+        await t.app((T, r) => { T.api.resolve(r).then((n) => T.api.setFocus(n, { remember: false })); return true; }, rel);
+        await t.waitFor((T, r) => {
+          const f = T.api.relPath(T.S.focus);
+          return (f === r || f.startsWith(`${r}/`)) && !T.S.focus.u;
+        }, { args: [rel], timeout: 20000, what: `the folder ${rel}` });
+        await t.settle();
+      }
+      await t.waitFor((T) => T.S.regions.stats.idle && !T.S.layoutTimer, { timeout: 20000, what: 'the regions to settle' });
+      await t.sleep(800);
+      await t.settle();
+      const held = await t.app((T) => {
+        let biggest = 0;
+        const stack = [T.S.model.root];
+        while (stack.length) {
+          const d = stack.pop();
+          if (d.u) continue;
+          biggest = Math.max(biggest, d.c.length);
+          for (const c of d.c) if (c.d) stack.push(c);
+        }
+        // What may not be let go: folders standing open in the layout, and
+        // the folder you are in, the trail and the forced chain with every
+        // ancestor. Every folder still held must be one of them.
+        const keep = new Set();
+        const L = T.S.layout;
+        for (let i = 0; i < L.n; i++) if (L.type[i] === 0) keep.add(L.node[i]);
+        for (const n of [T.S.focus, ...T.S.trail, ...(T.S.force || [])]) for (let a = n; a; a = a.p) keep.add(a);
+        let loose = 0;
+        const walk = [T.S.model.root];
+        while (walk.length) {
+          const d = walk.pop();
+          if (d.u) continue;
+          if (!keep.has(d)) loose++;
+          for (const c of d.c) if (c.d) walk.push(c);
+        }
+        return { held: T.S.regions.held, dropped: T.S.regions.stats.dropped, biggest, loose, focusHeld: T.S.focus.u === false, focus: T.api.relPath(T.S.focus) };
+      });
+      t.check(`with a budget of 400, regions are let go until the entries held are within 400 and one region, or all still held stand open or are pinned (${held.held} held, ${held.dropped} regions let go)`,
+        held.dropped > 0 && (held.held <= 400 + held.biggest || held.loose === 0), JSON.stringify(held));
+      t.check('the folder you are in is still held', held.focusHeld && (held.focus === budget.at(-1) || held.focus.startsWith(`${budget.at(-1)}/`)), JSON.stringify(held));
+      await t.app((T) => {
+        T.S.regions.budget = 200000;
+        T.S.regions.floor = 150000;
+        return true;
+      });
 
       // Rescan all: a new generation, the folder you are in kept by path.
       const was = await t.app((T) => ({ v: T.S.regions.v, rel: T.api.relPath(T.S.focus) }));
