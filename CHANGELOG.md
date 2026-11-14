@@ -1,17 +1,20 @@
 <!--
 ✒ Metadata
-    - Title: Shipped File Changelogs (Terrane Edition - v1.7)
+    - Title: Shipped File Changelogs (Terrane Edition - v1.8)
     - File Name: CHANGELOG.md
     - Relative Path: CHANGELOG.md
     - Artifact Type: docs
-    - Version: 1.7.0
-    - Date: 11/13/2026
-    - Update: Friday, November 13, 2026
+    - Version: 1.8.0
+    - Date: 11/14/2026
+    - Update: Saturday, November 14, 2026
     - Author: Dennis 'dendogg' Smaltz
     - A.I. Acknowledgement: Anthropic - Claude Opus 5.5
     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
 
 ✒ Changelog:
+    - 1.8.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — Records the names on the blocks:
+      viewport.js 1.7.0. viewport.js's header rolls its 1.4.0 entry out; this file already
+      holds it.
     - 1.7.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — Records the blocks'
       new look: viewport.js 1.6.0, app.js 1.11.0 and model.js 1.5.0. viewport.js's header
       rolls its 1.3.0 entry out, app.js's its 1.8.0 and model.js's its 1.2.0; this file
@@ -369,6 +372,29 @@ short form is kept too.
 - 1.0.0 (11/09/2026) [dendogg + Anthropic - Claude Fable 5.2] — Initial release.
 
 ## web/js/viewport.js
+
+- 1.7.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — Names are part of the boxes:
+  the box shader prints a file's name on its lid and a folder's in capitals, on a closed mass's
+  lid or along an open plateau's rim or cut into its riser, from lettering.js's distance-field
+  atlas. They are lit, shadowed and hazed with their surface and read upright from the eye; the
+  HTML file and folder tags are gone, and only mark tags stay in HTML. In full: aLetter, one
+  vec4 per box, gives the slot, where its name ends, the slot's height and its lower left corner
+  in the reading frame, in units of the box's short footprint side (its height on a riser), so a
+  name scales with its box while the box travels and stays on through a transition. Every name
+  shares one reading frame: the box axes nearest the view's right and its way ahead, which turns
+  a quarter only once the view has turned about eleven degrees past the diagonal. A lid's name
+  is centred, its capitals at most 17 % of the lid's short side, inside a margin of a tenth of
+  that side; an open plateau's capitals are 60 % of its rim (the 3.5 % band before its contents)
+  or 50 % of its riser, whichever reads larger from here, and a riser is used only when it faces
+  the eye. A pass ranks every box by the largest capitals it could carry, measures the first 360
+  exactly by projecting the name's ends and capital height, and prints the 96 largest whose
+  capitals reach 4.5 px and three quarters of whose extent is on the canvas; the shader fades
+  them in from 4.5 to 6.5 px, so nothing pops. The ink is a deep tone of a light or mid surface
+  and a pale one of a dark surface; small type is set a little heavier; the letters are cut a
+  sixteenth of their capitals into the surface, the floor beside the wall nearer the sun shaded
+  and the far wall lit. Hatching, stipple and bands give way under a name, and a hollow box
+  prints its name in ink. The pass runs before the frame is drawn, so the names and the eye
+  agree; names waiting for their slot bring it back on the next frame. No draw call more.
 
 - 1.6.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — Boxes look made, not drawn.
   The box material is a MeshStandardMaterial (roughness 0.46) whose shader, from each box's

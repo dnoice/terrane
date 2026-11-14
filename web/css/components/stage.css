@@ -1,18 +1,22 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Stage and Instruments (Terrane Edition - v1.1)
+ *     - Title: Stage and Instruments (Terrane Edition - v1.2)
  *     - File Name: stage.css
  *     - Relative Path: web/css/components/stage.css
  *     - Artifact Type: stylesheet
- *     - Version: 1.1.0
- *     - Date: 11/13/2026
- *     - Update: Friday, November 13, 2026
+ *     - Version: 1.2.0
+ *     - Date: 11/14/2026
+ *     - Update: Saturday, November 14, 2026
  *     - Author: Dennis 'dendogg' Smaltz
  *     - A.I. Acknowledgement: Anthropic - Claude Opus 5.5
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
  *
  * ✒ Changelog:
+ *     - 1.2.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] —
+ *       The file and folder tags are gone: names are printed on the
+ *       boxes by the world's own shader. The tag layer holds only mark
+ *       tags, which places.css draws.
  *     - 1.1.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] —
  *       Without WebGL the travel tools step aside; the explanation a
  *       page the service did not serve shows (#veil.is-elsewhere). The
@@ -24,8 +28,8 @@
  *       Initial release.
  *
  * ✒ Description:
- *     The middle of the sheet: the WebGL canvas, the labels laid over it,
- *     and the surveyor's instruments drawn around it: ruler ticks along
+ *     The middle of the sheet: the WebGL canvas, the layer the mark tags
+ *     stand in, and the surveyor's instruments drawn around it: ruler ticks along
  *     two edges, registration corners, the north arrow that turns with the
  *     camera, the storage scale, the view tools, the placing banner and
  *     the veil shown while the world is being surveyed.
@@ -39,7 +43,7 @@
  *       stands for at the current height
  *     - View tools as one ruled instrument strip of icon buttons with key
  *       hints in their titles
- *     - Labels in the world: plateau tags with leader lines, file tags
+ *     - The tag layer over the world, which never takes the pointer
  *     - Veil with the strata mark stacking in, a stippled progress rule,
  *       and an error form in garnet
  *
@@ -122,20 +126,6 @@
 
 #tags { position: absolute; inset: 0; z-index: 1; overflow: hidden; pointer-events: none; }
 .tag { position: absolute; top: 0; left: 0; white-space: nowrap; will-change: transform; }
-.tag-dir {
-  padding: 3px 5px;
-  border: var(--border);
-  background: var(--paper);
-  color: var(--text);
-  font: 700 var(--fs-xs) / 1 var(--sans);
-  font-stretch: 118%;
-  letter-spacing: 0.09em;
-  text-transform: uppercase;
-  box-shadow: var(--shadow-1);
-}
-.tag-dir::after { content: ''; position: absolute; top: 100%; left: 50%; width: 1px; height: 9px; background: var(--ink); }
-.tag-cap { background: var(--ink); color: var(--on-ink); }
-.tag-file { padding: 2px 4px; background: var(--paper-glass); color: var(--text); font: 500 var(--fs-xs) / 1 var(--mono); }
 
 /* ---------- instruments: north arrow and storage scale ---------- */
 
