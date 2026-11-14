@@ -1,10 +1,10 @@
 <!--
 ✒ Metadata
-    - Title: Package Manifest (Terrane Edition - v1.14)
+    - Title: Package Manifest (Terrane Edition - v1.15)
     - File Name: package.json
     - Relative Path: package.json
     - Artifact Type: config
-    - Version: 1.14.0
+    - Version: 1.15.0
     - Date: 11/14/2026
     - Update: Saturday, November 14, 2026
     - Author: Dennis 'dendogg' Smaltz
@@ -12,6 +12,9 @@
     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
 
 ✒ Changelog:
+    - 1.15.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
+      test script ends with tools/preview-test.mjs, the Node check of the
+      readers Quick look and Preview share (web/js/readers.js).
     - 1.14.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] —
       Raises the package version to 1.5.0: Wave 4, Scale and the
       interface polish, is merged.

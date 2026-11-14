@@ -1,11 +1,11 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Quick Look (Terrane Edition - v1.1)
+ *     - Title: Quick Look (Terrane Edition - v1.2)
  *     - File Name: quicklook.js
  *     - Relative Path: web/js/quicklook.js
  *     - Artifact Type: javascript
- *     - Version: 1.1.0
+ *     - Version: 1.2.0
  *     - Date: 11/14/2026
  *     - Update: Saturday, November 14, 2026
  *     - Author: Dennis 'dendogg' Smaltz
@@ -13,6 +13,11 @@
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
  *
  * ✒ Changelog:
+ *     - 1.2.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
+ *       readers move to readers.js, shared with Preview: what a file is
+ *       shown as, the sentences (word for word), the text read, the steps;
+ *       the sheet and its behaviour are unchanged. Its key entry opens
+ *       c.node when given one, so Preview's button opens it on its item.
  *     - 1.1.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — The foot
  *       line's hints are groups that never break (span.hint), each keycap
  *       with its words.
@@ -67,8 +72,8 @@
  *
  * ✒ Other Important Information:
  *     - Dependencies: ui.js (openSheet), thumbs.js, icons.js, model.js
- *       (KINDS, FLAG_LINK, IMAGE_EXT, TEXT_EXT, formatting), theme.js
- *       (cssHex); app.js's api: S, KEYS, INSPECTOR, rawUrl, listItems,
+ *       (KINDS, formatting), theme.js (cssHex), readers.js (classify,
+ *       sentence, readText, the steps); app.js's api: S, KEYS, INSPECTOR, rawUrl, listItems,
  *       cursorTo, select, hostOf, relPath, absPath, describe, say, el,
  *       actionButton; the service's /api/raw with byte ranges
  *     - Compatible platforms: any browser with ES2022 modules and the
@@ -82,36 +87,15 @@
 import { openSheet } from './ui.js';
 import { thumbs } from './thumbs.js';
 import { icon } from './icons.js';
-import { KINDS, FLAG_LINK, IMAGE_EXT, TEXT_EXT, extOf, fmtAge, fmtBytes, fmtCount, fmtDate } from './model.js';
+import { KINDS, extOf, fmtAge, fmtBytes, fmtCount, fmtDate } from './model.js';
 import { cssHex } from './theme.js';
+import {
+  TEXT_MAX, RAW_IMAGE_MAX, countLines, classify, lookAs, sentence, thumbSentence, readText, STEPS, canScroll, stepIndex, stopPlayer,
+} from './readers.js';
 
 export const name = 'Quick look';
 
 const OWNER = 'quicklook';
-/** The most of a text file the sheet reads: the service's own default. */
-const TEXT_MAX = 262144;
-/** A picture with no thumbnail is shown from the file only up to this size, as the inspector does. */
-const RAW_IMAGE_MAX = 2 * 1024 * 1024;
-const AUDIO_EXT = new Set(['mp3', 'm4a', 'aac', 'wav', 'flac', 'ogg', 'oga', 'opus']);
-const VIDEO_EXT = new Set(['mp4', 'm4v', 'webm', 'mov', 'ogv']);
-
-/** Lines in a text, a final newline ending the last one rather than starting another. */
-const countLines = (text) => (text ? text.split('\n').length - (text.endsWith('\n') ? 1 : 0) : 0);
-
-/** The keys that step through the list, and where each goes. */
-const STEPS = { ArrowLeft: -1, ArrowRight: 1, Home: 'first', End: 'last' };
-
-/**
- * Whether the body can still scroll the way a key scrolls it: the arrows
- * sideways, Home and End up and down, as a focused scroll region does.
- */
-function canScroll(pane, key) {
-  if (key === 'ArrowLeft') return pane.scrollLeft > 0;
-  if (key === 'ArrowRight') return pane.scrollLeft + pane.clientWidth < pane.scrollWidth - 1;
-  if (key === 'Home') return pane.scrollTop > 0;
-  if (key === 'End') return pane.scrollTop + pane.clientHeight < pane.scrollHeight - 1;
-  return false;
-}
 
 export function install(api) {
   const { S, el } = api;
@@ -138,19 +122,15 @@ export function install(api) {
     return `${fmtCount(i + 1)} of ${fmtCount(files.length)} file${files.length === 1 ? '' : 's'} in ${tab}`;
   }
 
-  /** What the sheet shows for a file: text, image, audio, video, or facts with a sentence why. */
+  /**
+   * What the sheet shows for a file: text, image, audio, video, or facts
+   * with a sentence why, from the readers Preview shares (readers.js).
+   */
   function kindOf(node) {
-    const ext = extOf(node.n);
-    const host = api.hostOf(node);
-    if (host) return { as: 'facts', why: `An entry of ${host.n}. Quick look does not read inside an archive, so nothing in it is fetched.` };
-    if (node.f & FLAG_LINK) return { as: 'facts', why: 'A symbolic link. Quick look does not follow it; the inspector says where it points.' };
-    if (node.s <= 0) return { as: 'facts', why: 'An empty file: there is nothing to show.' };
-    if (IMAGE_EXT.has(ext)) return { as: 'image' };
-    if (S.info.snapshot) return { as: 'facts', why: 'Snapshot mode holds names, sizes and dates, not contents.' };
-    if (VIDEO_EXT.has(ext)) return { as: 'video' };
-    if (AUDIO_EXT.has(ext)) return { as: 'audio' };
-    if (node.k === 0 || node.k === 6 || TEXT_EXT.has(ext)) return { as: 'text' };
-    return { as: 'facts', why: `${KINDS[node.k].label}: Quick look shows text, pictures, sound and film. Open hands this file to its own application.` };
+    const c = classify(node, { snapshot: !!S.info.snapshot, entryOf: api.hostOf });
+    const as = lookAs(c.as);
+    if (as === 'text' || as === 'image' || as === 'audio' || as === 'video') return { as };
+    return { as: 'facts', why: sentence(as, node, { surface: 'quicklook', host: c.host }) };
   }
 
   const note = (text) => el('p', { class: 'look-note', text });
@@ -161,21 +141,11 @@ export function install(api) {
     const ac = new AbortController();
     look.abort = ac;
     pane.replaceChildren(note('Reading…'));
-    fetch(api.rawUrl(node, TEXT_MAX), { signal: ac.signal })
-      .then(async (r) => {
-        if (!r.ok) {
-          let why = `the service answered ${r.status}`;
-          try {
-            why = (await r.json()).message || why;
-          } catch { /* not json */ }
-          throw new Error(why);
-        }
-        return { cut: r.headers.get('X-Terrane-Truncated') === '1', text: await r.text() };
-      })
-      .then(({ cut, text }) => {
+    readText(api.rawUrl(node, TEXT_MAX), { signal: ac.signal })
+      .then(({ cut, text, binary }) => {
         if (ac.signal.aborted || look?.node !== node) return;
-        if (text.includes('\u0000')) {
-          pane.replaceChildren(note('Binary content: no text preview.'));
+        if (binary) {
+          pane.replaceChildren(note(sentence('binary', node, { surface: 'quicklook' })));
           return;
         }
         const lines = countLines(text);
@@ -183,12 +153,12 @@ export function install(api) {
         for (let i = 1; i <= lines; i++) numbers.push(i);
         pane.classList.add('is-text');
         pane.replaceChildren(el('div', { class: 'look-gutter', 'aria-hidden': 'true', text: numbers.join('\n') }), el('pre', { class: 'look-text', text }));
-        look.parts.cut.textContent = cut ? `First 256 KB of ${fmtBytes(node.s)}` : '';
+        look.parts.cut.textContent = cut ? sentence('cut', node, { surface: 'quicklook' }) : '';
         look.parts.cut.hidden = !cut;
       })
       .catch((err) => {
         if (ac.signal.aborted || look?.node !== node) return;
-        pane.replaceChildren(note(`This file could not be read: ${err.message}.`));
+        pane.replaceChildren(note(sentence('read-error', node, { surface: 'quicklook', info: { message: err.message } })));
       });
   }
 
@@ -204,18 +174,14 @@ export function install(api) {
     if (img) {
       img.removeAttribute('loading');
       img.addEventListener('error', () => {
-        if (look?.node === node) pane.replaceChildren(note('This file could not be read as an image.'));
+        if (look?.node === node) pane.replaceChildren(note(sentence('image-error', node, { surface: 'quicklook' })));
       });
       pane.classList.add('is-picture');
       pane.replaceChildren(img);
       if (t?.w) look.parts.facts.textContent += ` · ${fmtCount(t.w)} × ${fmtCount(t.h)} px`;
       return;
     }
-    const why = t?.status === 'huge' ? 'Too large to thumbnail in the normal pass. npm run thumbs -- --huge makes one.'
-      : t?.status === 'heavy-svg' ? 'Heavy vector art. npm run thumbs -- --heavy-svg renders it.'
-        : t?.status === 'error' ? 'This file could not be read as an image.'
-          : 'No thumbnail yet. npm run thumbs makes one.';
-    pane.replaceChildren(note(why));
+    pane.replaceChildren(note(thumbSentence(t, node, { snapshot: !!S.info.snapshot, surface: 'quicklook' })));
   }
 
   function showMedia(node, pane, tag) {
@@ -223,7 +189,7 @@ export function install(api) {
     m.addEventListener('error', () => {
       if (look?.media !== m) return;
       stopMedia();
-      pane.replaceChildren(note('This file could not be played here.'));
+      pane.replaceChildren(note(sentence('media-error', node, { surface: 'quicklook' })));
     });
     look.media = m;
     pane.classList.add('is-media');
@@ -247,9 +213,7 @@ export function install(api) {
     const m = look?.media;
     if (!m) return;
     look.media = null;
-    m.pause();
-    m.removeAttribute('src');
-    m.load();
+    stopPlayer(m);
   }
 
   /** Stops whatever the last file left running: its read and its player. */
@@ -291,20 +255,17 @@ export function install(api) {
       api.say('Quick look steps through the files of the list shown, in Contents or Findings.');
       return;
     }
-    const i = files.indexOf(look.node);
-    let j;
-    if (to === 'first') j = 0;
-    else if (to === 'last') j = files.length - 1;
-    else if (i < 0) {
+    const go = stepIndex(files.length, files.indexOf(look.node), to);
+    if (go.missing) {
       api.say(`${look.node.n} is not in the list shown. Home and End go to its first and last file.`);
       return;
-    } else j = i + to;
+    }
     // At an end, or Home and End where it already is: say which end.
-    if (j < 0 || j >= files.length || j === i) {
-      api.say(j < 0 || to === 'first' || (to !== 'last' && to < 0) ? 'First file' : 'Last file');
+    if (go.edge) {
+      api.say(go.edge === 'first' ? 'First file' : 'Last file');
       return;
     }
-    const next = files[j];
+    const next = files[go.j];
     api.select(next, { quiet: true });
     api.cursorTo(next);
     show(next);
@@ -390,7 +351,9 @@ export function install(api) {
 
   /* ---------- registry entries ---------- */
 
-  api.KEYS.add({ id: 'quicklook', owner: OWNER, keys: ['p'], run: () => { open(); }, guide: ['Looking closer', 'P', 'Quick look at the selected file'] });
+  // run(c) opens c.node when one is given (Preview's button), else the
+  // selection, as P and the palette do.
+  api.KEYS.add({ id: 'quicklook', owner: OWNER, keys: ['p'], run: (c) => { open(c?.node); }, guide: ['Looking closer', 'P', 'Quick look at the selected file'] });
 
   api.INSPECTOR.node.add({
     id: 'quicklook', order: 62, owner: OWNER,
