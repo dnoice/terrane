@@ -1,17 +1,22 @@
 <!--
 ✒ Metadata
-    - Title: Package Manifest (Terrane Edition - v1.11)
+    - Title: Package Manifest (Terrane Edition - v1.12)
     - File Name: package.json
     - Relative Path: package.json
     - Artifact Type: config
-    - Version: 1.11.0
-    - Date: 11/13/2026
-    - Update: Friday, November 13, 2026
+    - Version: 1.12.0
+    - Date: 11/14/2026
+    - Update: Saturday, November 14, 2026
     - Author: Dennis 'dendogg' Smaltz
     - A.I. Acknowledgement: Anthropic - Claude Opus 5.5
     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
 
 ✒ Changelog:
+    - 1.12.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
+      test script runs tools/regions-test.mjs after the warm test and
+      before the demo test: the tree the service keeps in columns, its
+      regions and changes against the page's model, the generator of
+      synthetic trees, and the region routes through the service.
     - 1.11.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — Adds
       the demo script (tools/demo.mjs: the repository served as GitHub
       Pages serves it, or the demo world written to disk) and the export
@@ -95,8 +100,10 @@
       and name checks), the export test (CSV quoting, the byte order
       mark, CRLF and the columns, over a fresh fixture) and the warm
       test (the cache of the last survey, GET /api/warm, --no-warm and
-      Model.adopt) and the demo test (the demo world and the demo
-      service), each in Node
+      Model.adopt), the regions test (the column tree, regions and
+      changes against the model, the synthetic tree generator, GET
+      /api/tree and /api/region) and the demo test (the demo world and
+      the demo service), each in Node
     - vendor: fetches the pinned third-party browser files into
       web/vendor/ from jsDelivr; --check verifies them offline
     - ui-check: drives the page in headless Edge or Chrome, keyboard

@@ -1,16 +1,28 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Demo Service (Terrane Edition - v1.0)
+ *     - Title: Demo Service (Terrane Edition - v1.1)
  *     - File Name: demo-service.js
  *     - Relative Path: web/js/demo-service.js
  *     - Artifact Type: javascript
- *     - Version: 1.0.0
- *     - Date: 11/13/2026
- *     - Update: Friday, November 13, 2026
+ *     - Version: 1.1.0
+ *     - Date: 11/14/2026
+ *     - Update: Saturday, November 14, 2026
  *     - Author: Dennis 'dendogg' Smaltz
  *     - A.I. Acknowledgement: Anthropic - Claude Opus 5.5
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
+ *
+ * ✒ Changelog:
+ *     - 1.1.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
+ *       region routes: info carries regions { threshold, entries, v,
+ *       state }, and GET tree and region are answered by columns.js over a
+ *       ColumnTree built from the world's own scan on first use, with the
+ *       service's codes and sentences. A fresh read applies the world's
+ *       depth-1 records through the same refresh, after the changes queued
+ *       before it. createDemoService takes threshold (0 draws every tree in
+ *       regions).
+ *     - 1.0.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] —
+ *       Initial release.
  *
  * ✒ Description:
  *     The Terrane service's API, answered in the page over the demo world
@@ -23,6 +35,8 @@
  *     - Read routes: info, scan (the scanner's records, order, batches
  *       and depth stubs), stat, raw, inside (zip interiors; other formats
  *       refused in the service's words), journal, thumbs
+ *     - Region routes: tree and region (ids, a path's chain, a fresh read)
+ *       answered by columns.js, as the service answers them
  *     - Every operation: new folder, rename, a batch rename, move, copy,
  *       remove to the holding area, restore, permanent deletion of held
  *       items, undo, cancel, with the service's checks: names, collisions
@@ -54,6 +68,7 @@
  * ✒ Examples:
  *     svc.handle('GET', 'info')
  *     svc.handle('GET', 'stat', { path: 'Projects/harbor-api' })
+ *     svc.handle('GET', 'region', { v: 1, path: 'Projects/harbor-api', skip: 1 })
  *     svc.handle('POST', 'op', {}, { type: 'mkdir', parent: '', name: 'New' })
  *     svc.handle('POST', 'op', {}, { type: 'copy', paths: ['Video'], dest: 'Archive', job: 'k3x9' })
  *     svc.handle('POST', 'cancel', {}, { job: 'k3x9' })
@@ -61,7 +76,7 @@
  *     svc.handle('POST', 'hash', {}, { paths: ['Downloads/invoice-2026-02.pdf'] })
  *
  * ✒ Other Important Information:
- *     - Dependencies: demo-world.js
+ *     - Dependencies: demo-world.js, columns.js
  *     - Compatible platforms: current evergreen browsers; Node.js 20+
  *     - Limitations: changes live in memory only; a reload starts the
  *       world again from its seed. Paths are case-sensitive, as on Linux.
@@ -70,6 +85,7 @@
  */
 
 import { buildWorld, find, walk, textOf, insideOf, isBinary, extOf, hash32, rng, FLAG_LINK, FLAG_HIDDEN } from './demo-world.js';
+import { REGION_THRESHOLD, treeFrom, answer } from './columns.js';
 
 export const DEMO_VERSION = '1.4.0';
 export const DEMO_ROOT = '/demo/Studio';
@@ -151,7 +167,7 @@ const ARCHIVE_FOUND = [
  * Creates the demo service over a fresh world. emit(msg) receives what
  * the service's event stream would carry: { type: 'job' | 'change' | ... }.
  */
-export function createDemoService({ now = Date.now(), seed, emit = () => {}, clock = () => Date.now() } = {}) {
+export function createDemoService({ now = Date.now(), seed, emit = () => {}, clock = () => Date.now(), threshold = REGION_THRESHOLD } = {}) {
   const world = buildWorld({ now, seed });
   const root = world.root;
   const SESSION = `d${now.toString(36)}`;
@@ -255,6 +271,39 @@ export function createDemoService({ now = Date.now(), seed, emit = () => {}, clo
     if (out.length) batches.push(out);
     return batches;
   }
+
+  /* ---------- the tree in columns, for regions ---------- */
+
+  // Built from the world's own scan the first time a region route is
+  // asked; a fresh read applies the world's depth-1 records to it through
+  // columns.js, so a change made here shows up there.
+  let columns = null;
+  let builtMs = null;
+  const tree = () => {
+    if (!columns) {
+      const t0 = globalThis.performance?.now?.() ?? Date.now();
+      columns = treeFrom(scan('', Infinity), { name: root.name, anchor: clock() });
+      builtMs = Math.round((globalThis.performance?.now?.() ?? Date.now()) - t0);
+    }
+    return columns;
+  };
+  /** A folder's records, read again; a folder that became a file reads as gone. */
+  const reread = (rel, depth) => {
+    try {
+      return scan(rel, depth).flat();
+    } catch (err) {
+      if (err.code === 'ENOTDIR') throw new DemoError('ENOENT', 'Folder is not reachable: it is no longer there.', 404);
+      throw err;
+    }
+  };
+  const regionCtx = () => {
+    const t = tree();
+    return {
+      threshold, state: 'ready', v: 1, loadMs: builtMs, mem: null, warm: null,
+      progress: { folders: t.folders, files: t.files, of: t.entries }, relParts: parts,
+      readers: { depth1: (rel) => reread(rel, 1), deep: (rel) => reread(rel, Infinity) },
+    };
+  };
 
   /* ---------- journal and holding ---------- */
 
@@ -666,6 +715,7 @@ export function createDemoService({ now = Date.now(), seed, emit = () => {}, clo
   const info = () => ({
     version: DEMO_VERSION, root: DEMO_ROOT, name: root.name, sep: '/', platform: 'demo', readOnly: false, watch: 'demo',
     demo: { seed: world.seed, builtAt: world.now, files: world.stats.files, folders: world.stats.folders, bytes: world.stats.bytes },
+    regions: { threshold, entries: columns ? columns.entries : world.stats.folders + world.stats.files, v: 1, state: 'ready' },
   });
 
   async function handle(method, route, params = {}, body = {}) {
@@ -727,6 +777,13 @@ export function createDemoService({ now = Date.now(), seed, emit = () => {}, clo
         }
         if (route === 'thumbs') return { status: 200, json: { rows: thumbRows() } };
         if (route === 'warm') throw new DemoError('ENOWARM', 'The demo world is built afresh on every visit, so there is no tree kept from an earlier session.', 404);
+        if (route === 'tree') return answer(tree(), 'tree', params, regionCtx());
+        if (route === 'region') {
+          // A fresh read changes the tree, so it waits its turn as a change does.
+          const fresh = (params instanceof URLSearchParams ? params.get('fresh') : q.fresh) === '1';
+          const ask = () => answer(tree(), 'region', params, regionCtx());
+          return fresh ? await serial(ask) : await ask();
+        }
       }
       if (method === 'POST') {
         if (route === 'op') return { status: 200, json: await run(body || {}) };
@@ -784,13 +841,17 @@ export function createDemoService({ now = Date.now(), seed, emit = () => {}, clo
       }
       throw new DemoError('EROUTE', 'No such endpoint.', 404);
     } catch (err) {
-      const status = err instanceof DemoError ? err.status : 500;
+      // A region answer's error carries its status, as the service's do.
+      const status = err instanceof DemoError ? err.status : Number.isInteger(err?.status) ? err.status : 500;
       return {
         status,
         json: {
           ok: false, code: err.code || 'EIO', message: err.message, affected: err.affected || [],
           ...(err.format !== undefined ? { format: err.format } : {}),
           ...(Array.isArray(err.results) ? { results: err.results } : {}),
+          ...(err.progress !== undefined ? { progress: err.progress } : {}),
+          ...(err.deepest !== undefined ? { deepest: err.deepest } : {}),
+          ...(err.code === 'ESTALE' ? { v: err.v } : {}),
         },
       };
     }

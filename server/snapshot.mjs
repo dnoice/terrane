@@ -1,16 +1,30 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Structure Snapshot (Terrane Edition - v1.0)
+ *     - Title: Structure Snapshot (Terrane Edition - v1.1)
  *     - File Name: snapshot.mjs
  *     - Relative Path: server/snapshot.mjs
  *     - Artifact Type: javascript
- *     - Version: 1.0.0
- *     - Date: 11/11/2026
- *     - Update: Wednesday, November 11, 2026
+ *     - Version: 1.1.0
+ *     - Date: 11/14/2026
+ *     - Update: Saturday, November 14, 2026
  *     - Author: Dennis 'dendogg' Smaltz
  *     - A.I. Acknowledgement: Anthropic - Claude Opus 5.5
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
+ *
+ * ✒ Changelog:
+ *     - 1.1.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] —
+ *       snapshotWriter(dir, { takenAt }) owns the schema, the PRAGMAs,
+ *       the prepared inserts and the path map: add(batch) takes scanner
+ *       records, finish(meta) creates the indexes after the rows, then
+ *       commits, analyses, renames the file into place and prunes, and
+ *       abort() drops the partial file. takeSnapshot writes through it,
+ *       record for record as before, and a generator of synthetic trees
+ *       writes the same kind of file. A meta value that is an object is
+ *       stored as JSON, and readMeta parses an optional synthetic field
+ *       back into one. prune touches only structure-*.db files.
+ *     - 1.0.0 (11/11/2026) [dendogg + Anthropic - Claude Opus 5.5] —
+ *       Initial release.
  *
  * ✒ Description:
  *     Records the structure of a directory (folders, file names, sizes,
@@ -33,17 +47,25 @@
  *       and an entries view joining them
  *     - Reader opens the database per request and closes it, so a newer
  *       snapshot can land while the service runs
+ *     - snapshotWriter: the one writer of a snapshot file, fed scanner
+ *       records by the live scanner or by a generator of synthetic trees;
+ *       its indexes are built once the rows are in
+ *     - readMeta parses a generated snapshot's synthetic field (seed,
+ *       entries, now, generator), so tools can tell it from a real one
  *     - Breadth-first replay with depth limits and STUB records, matching
  *       the live /api/scan contract
  *     - Dataset home outside synced folders by default
  *       (%LOCALAPPDATA%\terrane on Windows, ~/.cache/terrane elsewhere)
  *
  * ✒ Usage Instructions:
- *     import { takeSnapshot, openSnapshots, datasetHome } from './snapshot.mjs';
+ *     import { takeSnapshot, openSnapshots, datasetHome, snapshotWriter } from './snapshot.mjs';
  *     const dir = datasetHome('projects');
  *     const info = await takeSnapshot('C:/data/projects', dir);
  *     const src = openSnapshots(dir);          // newest snapshot in dir
  *     for await (const batch of src.scan('docs', { depth: 1 })) send(batch);
+ *     const w = snapshotWriter(dir, { takenAt });   // a snapshot from records
+ *     for (const batch of batches) w.add(batch);
+ *     await w.finish({ format: 1, root, name, takenAt, ...w.counts });
  *
  * ✒ Examples:
  *     sqlite3 structure-2026-11-11T21-40-00.db
@@ -92,14 +114,17 @@ CREATE TABLE files (
   mtime INTEGER NOT NULL,
   flags INTEGER NOT NULL
 );
-CREATE UNIQUE INDEX folders_path ON folders(path);
-CREATE INDEX folders_parent ON folders(parent_id);
-CREATE INDEX files_folder ON files(folder_id);
 CREATE VIEW entries AS
   SELECT f.path AS folder,
          CASE WHEN f.path = '' THEN x.name ELSE f.path || '/' || x.name END AS path,
          x.name, x.size, x.mtime, x.flags
   FROM files x JOIN folders f ON f.id = x.folder_id;
+`;
+// Made after the rows are in: one sort per index instead of an update per row.
+const INDEXES = `
+CREATE UNIQUE INDEX folders_path ON folders(path);
+CREATE INDEX folders_parent ON folders(parent_id);
+CREATE INDEX files_folder ON files(folder_id);
 `;
 
 /** Where datasets live for a given target, outside any synced folder. */
@@ -136,10 +161,102 @@ export function readMeta(file) {
   try {
     const meta = Object.fromEntries(db.prepare('SELECT key, value FROM meta').all().map((r) => [r.key, r.value]));
     for (const k of ['takenAt', 'durationMs', 'folders', 'files', 'bytes', 'format']) if (k in meta) meta[k] = Number(meta[k]);
+    // A generated snapshot says so: { seed, entries, now, generator }.
+    if ('synthetic' in meta) {
+      try {
+        meta.synthetic = JSON.parse(meta.synthetic);
+      } catch {
+        meta.synthetic = null;
+      }
+    }
     return meta;
   } finally {
     db.close();
   }
+}
+
+/**
+ * A writer of one new snapshot in dir: add(batch) takes scanner records,
+ * [id, pid, name, mtime, err, files], parents before children, and keeps
+ * each folder's path and depth; finish(meta) writes the meta, creates the
+ * indexes, commits, analyses, renames the file into place, prunes the
+ * oldest and resolves to { ...meta, file }; abort() drops the partial
+ * file. The schema, the PRAGMAs and the inserts live here alone, so a
+ * snapshot taken from a disk and one written by a generator are the
+ * same kind of file.
+ */
+export function snapshotWriter(dir, { takenAt = Date.now() } = {}) {
+  fs.mkdirSync(dir, { recursive: true });
+  const file = path.join(dir, `${PREFIX}${stamp(takenAt)}.db`);
+  const tmp = `${file}.partial`;
+  fs.rmSync(tmp, { force: true });
+  const db = new DatabaseSync(tmp);
+  let open = true;
+  const counts = { folders: 0, files: 0, bytes: 0 };
+  const where = new Map();
+  let addFolder;
+  let addFile;
+  try {
+    db.exec('PRAGMA journal_mode = OFF; PRAGMA synchronous = OFF;');
+    db.exec(SCHEMA);
+    addFolder = db.prepare('INSERT INTO folders (id, parent_id, name, path, depth, mtime, error) VALUES (?, ?, ?, ?, ?, ?, ?)');
+    addFile = db.prepare('INSERT INTO files (folder_id, name, size, mtime, flags) VALUES (?, ?, ?, ?, ?)');
+    db.exec('BEGIN');
+  } catch (err) {
+    db.close();
+    fs.rmSync(tmp, { force: true });
+    throw err;
+  }
+  const close = () => {
+    if (!open) return;
+    open = false;
+    try {
+      db.close();
+    } catch { /* already closed */ }
+  };
+
+  return {
+    file,
+    counts,
+    add(batch) {
+      for (const [id, parentId, name, mtime, err, packed] of batch) {
+        const parent = parentId === -1 ? null : where.get(parentId);
+        const rel = parent == null ? '' : parent.path ? `${parent.path}/${name}` : name;
+        const depth = parent == null ? 0 : parent.depth + 1;
+        where.set(id, { path: rel, depth });
+        addFolder.run(id, parentId === -1 ? null : parentId, name, rel, depth, mtime, err || null);
+        counts.folders++;
+        for (let i = 0; i < packed.length; i += 4) {
+          addFile.run(id, packed[i], packed[i + 1], packed[i + 2], packed[i + 3]);
+          counts.files++;
+          counts.bytes += packed[i + 1];
+        }
+      }
+    },
+    async finish(meta) {
+      try {
+        const addMeta = db.prepare('INSERT INTO meta (key, value) VALUES (?, ?)');
+        for (const [k, v] of Object.entries(meta)) addMeta.run(k, typeof v === 'object' && v !== null ? JSON.stringify(v) : String(v));
+        db.exec(INDEXES);
+        db.exec('COMMIT');
+        db.exec('ANALYZE');
+        close();
+        where.clear();
+        await fsp.rename(tmp, file);
+        prune(dir);
+        return { ...meta, file };
+      } catch (err) {
+        close();
+        await fsp.rm(tmp, { force: true });
+        throw err;
+      }
+    },
+    async abort() {
+      close();
+      where.clear();
+      await fsp.rm(tmp, { force: true });
+    },
+  };
 }
 
 /**
@@ -149,62 +266,26 @@ export function readMeta(file) {
 export async function takeSnapshot(rootInput, dir, { onProgress, signal } = {}) {
   const root = await fsp.realpath(path.resolve(rootInput));
   if (!(await fsp.stat(root)).isDirectory()) throw new Error(`Not a directory: ${root}`);
-  await fsp.mkdir(dir, { recursive: true });
   const takenAt = Date.now();
-  const file = path.join(dir, `${PREFIX}${stamp(takenAt)}.db`);
-  const tmp = `${file}.partial`;
-  await fsp.rm(tmp, { force: true });
-
-  const db = new DatabaseSync(tmp);
-  let folders = 0;
-  let files = 0;
-  let bytes = 0;
+  const w = snapshotWriter(dir, { takenAt });
   try {
-    db.exec('PRAGMA journal_mode = OFF; PRAGMA synchronous = OFF;');
-    db.exec(SCHEMA);
-    const addFolder = db.prepare('INSERT INTO folders (id, parent_id, name, path, depth, mtime, error) VALUES (?, ?, ?, ?, ?, ?, ?)');
-    const addFile = db.prepare('INSERT INTO files (folder_id, name, size, mtime, flags) VALUES (?, ?, ?, ?, ?)');
-    const where = new Map();
-    db.exec('BEGIN');
     for await (const batch of scan(root, { isRoot: true, signal })) {
-      for (const [id, parentId, name, mtime, err, packed] of batch) {
-        const parent = parentId === -1 ? null : where.get(parentId);
-        const rel = parent === null ? '' : parent.path ? `${parent.path}/${name}` : name;
-        const depth = parent === null ? 0 : parent.depth + 1;
-        where.set(id, { path: rel, depth });
-        addFolder.run(id, parentId === -1 ? null : parentId, name, rel, depth, mtime, err || null);
-        folders++;
-        for (let i = 0; i < packed.length; i += 4) {
-          addFile.run(id, packed[i], packed[i + 1], packed[i + 2], packed[i + 3]);
-          files++;
-          bytes += packed[i + 1];
-        }
-      }
-      onProgress?.({ folders, files, bytes });
+      w.add(batch);
+      onProgress?.({ ...w.counts });
     }
     if (signal?.aborted) throw new Error('Snapshot cancelled.');
-    const meta = {
-      format: SNAPSHOT_FORMAT, root, name: path.basename(root) || root, sep: path.sep, platform: process.platform,
-      takenAt, durationMs: Date.now() - takenAt, folders, files, bytes,
-    };
-    const addMeta = db.prepare('INSERT INTO meta (key, value) VALUES (?, ?)');
-    for (const [k, v] of Object.entries(meta)) addMeta.run(k, String(v));
-    db.exec('COMMIT');
-    db.exec('ANALYZE');
-    db.close();
-    await fsp.rename(tmp, file);
-    prune(dir);
-    return { ...meta, file };
   } catch (err) {
-    try {
-      db.close();
-    } catch { /* already closed */ }
-    await fsp.rm(tmp, { force: true });
+    await w.abort();
     throw err;
   }
+  const { folders, files, bytes } = w.counts;
+  return w.finish({
+    format: SNAPSHOT_FORMAT, root, name: path.basename(root) || root, sep: path.sep, platform: process.platform,
+    takenAt, durationMs: Date.now() - takenAt, folders, files, bytes,
+  });
 }
 
-/** Removes all but the newest KEEP snapshots; one still open is left for next time. */
+/** Removes all but the newest KEEP structure-*.db files; one still open is left for next time. */
 function prune(dir) {
   for (const old of listSnapshots(dir).slice(KEEP)) {
     try {

@@ -2,16 +2,27 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Demo Test (Terrane Edition - v1.0)
+ *     - Title: Demo Test (Terrane Edition - v1.1)
  *     - File Name: demo-test.mjs
  *     - Relative Path: tools/demo-test.mjs
  *     - Artifact Type: test
- *     - Version: 1.0.0
- *     - Date: 11/13/2026
- *     - Update: Friday, November 13, 2026
+ *     - Version: 1.1.0
+ *     - Date: 11/14/2026
+ *     - Update: Saturday, November 14, 2026
  *     - Author: Dennis 'dendogg' Smaltz
  *     - A.I. Acknowledgement: Anthropic - Claude Opus 5.5
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
+ *
+ * ✒ Changelog:
+ *     - 1.1.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
+ *       region routes: info.regions; the root region equals a column tree
+ *       built from the demo's own records; every folder's record equals
+ *       the browser model's node and the age table's row; a path's chain
+ *       with skip; a fresh read after a new folder shows it, with the
+ *       parent's new count in up; a stale generation and too many ids
+ *       refused in the service's words.
+ *     - 1.0.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] —
+ *       Initial release.
  *
  * ✒ Description:
  *     Checks the demo world and the demo service in Node, without a page:
@@ -42,6 +53,9 @@
  *     - Jobs: a large copy reports queued, counting, copying and end, and
  *       a cancel part way keeps what it finished and says so
  *     - Hashes: duplicates match, the decoy does not, large files sampled
+ *     - Regions: GET tree and region answered by columns.js over the
+ *       demo's own tree, figure for figure with the browser's model, and
+ *       a fresh read that takes a change on
  *
  * ✒ Usage Instructions:
  *     node tools/demo-test.mjs
@@ -49,7 +63,8 @@
  *
  * ✒ Other Important Information:
  *     - Dependencies: Node.js 22+; web/js/demo-world.js,
- *       web/js/demo-service.js, web/js/model.js, server/scan.mjs
+ *       web/js/demo-service.js, web/js/model.js, web/js/columns.js,
+ *       web/js/timeline.js, server/scan.mjs
  *     - Compatible platforms: Windows, macOS, Linux
  *     - Writes a small throwaway folder in the OS temp folder for the
  *       scan parity check and removes it
@@ -63,7 +78,9 @@ import path from 'node:path';
 
 const W = await import(new URL('../web/js/demo-world.js', import.meta.url).href);
 const { createDemoService } = await import(new URL('../web/js/demo-service.js', import.meta.url).href);
-const { Model } = await import(new URL('../web/js/model.js', import.meta.url).href);
+const { Model, relPath } = await import(new URL('../web/js/model.js', import.meta.url).href);
+const C = await import(new URL('../web/js/columns.js', import.meta.url).href);
+const { buildAgeTable, STEPS } = await import(new URL('../web/js/timeline.js', import.meta.url).href);
 const { scan } = await import(new URL('../server/scan.mjs', import.meta.url).href);
 
 let passed = 0;
@@ -353,6 +370,72 @@ check('large files are sampled, and a shared copy of a render matches it', big[0
 events.length = 0;
 check('a download arrives and the change is announced', svc.arrive() && events.at(-1)?.type === 'change' && events.at(-1).dirs[0] === 'Downloads');
 check('only once', svc.arrive() === false);
+
+section('Regions');
+{
+  const rs = createDemoService({ now: NOW, clock: () => NOW });
+  const rh = (r, q) => rs.handle('GET', r, q);
+  const q = (o) => new URLSearchParams(o);
+  const info = (await rh('info')).json;
+  check('info carries regions: the threshold, the entries, generation 1, ready', info.regions.threshold === C.REGION_THRESHOLD
+    && info.regions.entries === world.stats.folders + world.stats.files && info.regions.v === 1 && info.regions.state === 'ready', JSON.stringify(info.regions));
+  check('a demo made with threshold 0 says so', createDemoService({ now: NOW, threshold: 0 }).info().regions.threshold === 0);
+  const tree = (await rh('tree')).json;
+  check('GET tree: ready, the world\'s entries, the root record', tree.state === 'ready' && tree.entries === info.regions.entries
+    && tree.root.length === C.D_LEN && tree.root[C.D_FC] === world.stats.files);
+  const batches = (await rs.handle('GET', 'scan', { path: '' })).batches;
+  const local = C.treeFrom(batches, { name: rs.world.root.name, anchor: tree.anchor });
+  let r = await rh('region', q({ v: 1, ids: '0' }));
+  check('the root region equals a column tree built from the demo\'s records', r.status === 200 && JSON.stringify(r.json.regions[0]) === JSON.stringify(local.region(0)));
+  const model = new Model(rs.world.root.name);
+  const idMap = [];
+  for (const b of batches) model.ingest(b, idMap, model.root);
+  const ages = buildAgeTable(model.root, tree.anchor);
+  const nodes = [];
+  const stack = [model.root];
+  while (stack.length) {
+    const n = stack.pop();
+    nodes.push(n);
+    for (const c of n.c) if (c.d) stack.push(c);
+  }
+  const ids = nodes.map((n) => local.idOf(relPath(n)));
+  const got = new Map();
+  for (let i = 0; i < ids.length; i += 64) {
+    const part = ids.slice(i, i + 64);
+    const a = await rh('region', q({ v: 1, ids: part.join(',') }));
+    for (const reg of a.json.regions) got.set(reg.id, reg.self);
+    for (const id of a.json.more) got.set(id, (await rh('region', q({ v: 1, ids: String(id) }))).json.regions[0].self);
+  }
+  const bad = [];
+  nodes.forEach((n, i) => {
+    const D = got.get(ids[i]);
+    const want = [n.s, n.fc, n.dc, n.h, n.mm, n.c.length, n.e || 0, ...n.ks];
+    const have = D && [D[C.D_S], D[C.D_FC], D[C.D_DC], D[C.D_H], D[C.D_MM], D[C.D_CN], D[C.D_ERR], ...D.slice(C.D_KS, C.D_KS + 9)];
+    let ok = !!D && JSON.stringify(want) === JSON.stringify(have) && D[C.D_MD] === ages.medianStep(n);
+    for (let k = 0; ok && k < STEPS; k++) ok = D[C.D_AB + k] === ages.changedBytes(n, k) && D[C.D_AF + k] === ages.changedFiles(n, k);
+    if (!ok) bad.push(relPath(n) || '(root)');
+  });
+  check(`every folder's record equals the browser model's node and its age row (${nodes.length} folders)`, bad.length === 0, bad.slice(0, 3).join(', '));
+  r = await rh('region', q({ v: 1, path: 'Projects/harbor-api/README.md', skip: 1 }));
+  check('a path\'s chain with skip leaves out the root and ends at the file\'s folder', r.status === 200 && r.json.regions.length === 2
+    && r.json.regions[0].self[C.D_NAME] === 'Projects' && r.json.regions[1].f.includes('README.md') && r.json.target.name === 'README.md' && r.json.target.dir === false);
+  const dcBefore = local.encodeD(local.idOf('Documents'))[C.D_DC];
+  await rs.handle('POST', 'op', {}, { type: 'mkdir', parent: 'Documents', name: 'Plans' });
+  r = await rh('region', q({ v: 1, fresh: 1, paths: JSON.stringify(['Documents']) }));
+  check('a fresh read after a new folder shows it', r.status === 200 && r.json.regions[0].d.some((d) => d[C.D_NAME] === 'Plans') && r.json.regions[0].self[C.D_DC] === dcBefore + 1);
+  check('and up carries the parent\'s new count', r.json.up.length === 1 && r.json.up[0][C.D_DC] === tree.root[C.D_DC] + 1);
+  rs.arrive();
+  r = await rh('region', q({ v: 1, fresh: 1, paths: JSON.stringify(['Downloads', 'Gone/away']) }));
+  check('an arrival is read in, and a path not in the tree is reported gone', r.json.regions[0].f.includes('tide-tables-2027.pdf') && JSON.stringify(r.json.gone) === '["Gone/away"]');
+  r = await rh('region', q({ v: 2, ids: '0' }));
+  check('a stale generation is ESTALE 409 in the service\'s words', r.status === 409 && r.json.code === 'ESTALE' && r.json.message === 'The directory was surveyed again; its regions are read afresh.');
+  r = await rh('region', q({ v: 1, ids: Array.from({ length: 65 }, (_, i) => i).join(',') }));
+  check('more than 64 ids are ETOOMANY 413', r.status === 413 && r.json.code === 'ETOOMANY');
+  r = await rh('region', q({ v: 1, path: 'Projects/nope' }));
+  check('a path not in the tree is ENOENT 404, naming the deepest folder found', r.status === 404 && r.json.code === 'ENOENT' && r.json.deepest === 'Projects');
+  r = await rh('region', q([['v', '1'], ['ids', '0'], ['with', '0:a/b']]));
+  check('a name with a slash is EBADREQ 400', r.status === 400 && r.json.code === 'EBADREQ');
+}
 
 console.log(`\n${passed} passed, ${failed} failed\n`);
 process.exit(failed ? 1 : 0);

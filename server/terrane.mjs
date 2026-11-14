@@ -2,18 +2,35 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Terrane Service (Terrane Edition - v1.6)
+ *     - Title: Terrane Service (Terrane Edition - v1.7)
  *     - File Name: terrane.mjs
  *     - Relative Path: server/terrane.mjs
  *     - Artifact Type: CLI
- *     - Version: 1.6.0
- *     - Date: 11/13/2026
- *     - Update: Friday, November 13, 2026
+ *     - Version: 1.7.0
+ *     - Date: 11/14/2026
+ *     - Update: Saturday, November 14, 2026
  *     - Author: Dennis 'dendogg' Smaltz
  *     - A.I. Acknowledgement: Anthropic - Claude Opus 5.5
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
  *
  * ✒ Changelog:
+ *     - 1.7.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
+ *       service keeps the tree and answers regions (server/regions.mjs,
+ *       over web/js/columns.js). GET /api/tree[?build=1] says the tree's
+ *       state, generation, counts, root record, progress, load time and
+ *       the process's memory, and with build=1 walks the root again (live)
+ *       or reads the newest snapshot again; GET /api/region answers a
+ *       folder's children by ids, the chain to a path, or a fresh read of
+ *       folders from disk (live mode, through guard.resolve and
+ *       assertDirInside; snapshot mode reads nothing). Both have the token
+ *       and Host checks, are answered in read-only and snapshot mode, and
+ *       are no-store. GET /api/info carries regions: { threshold, entries,
+ *       v, state }, entries from the snapshot's meta or the warm cache's.
+ *       --region-threshold <n> (else TERRANE_REGION_THRESHOLD, else
+ *       400,000; 0 for every tree) must be a whole number, or the usage is
+ *       printed; a snapshot above it is read into the tree once the service
+ *       listens. Ctrl+C stops a build that is running. The page does not
+ *       ask for regions yet.
  *     - 1.6.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] —
  *       Reports version 1.4.0 in GET /api/info: Wave 3 is merged.
  *     - 1.5.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — GET
@@ -144,6 +161,9 @@
  *       served by GET /api/warm, so the next launch draws at once while
  *       the page surveys the directory again; --no-warm turns it off,
  *       and it is off while the dataset home is inside the directory
+ *     - Regions: the whole tree kept in typed columns, from a snapshot or a
+ *       walk of the root, and served a folder at a time (GET /api/tree,
+ *       GET /api/region) to a page that holds only what is near it
  *     - Zero npm dependencies; three.js and the fonts are vendored in web/
  *
  * ✒ Usage Instructions:
@@ -159,6 +179,8 @@
  *     node server/terrane.mjs . --no-watch
  *     node server/terrane.mjs . --no-warm
  *     node server/terrane.mjs --snapshot "%LOCALAPPDATA%\terrane\datasets\projects"
+ *     node --max-old-space-size=4096 server/terrane.mjs --snapshot <synthetic> --no-open
+ *     node server/terrane.mjs . --region-threshold 0
  *
  * ✒ Command-Line Arguments:
  *     Input:
@@ -176,12 +198,17 @@
  *         --no-watch      Do not watch for outside changes (manual refresh).
  *         --no-warm       Keep no tree of the last survey and serve none: every
  *                         launch surveys the directory before it draws.
+ *         --region-threshold <n>
+ *                         Above n entries (folders and files) the tree is
+ *                         kept here and served in regions (default 400000;
+ *                         0 for every tree; or TERRANE_REGION_THRESHOLD).
  *     Output:
  *         --port <n>      Preferred port (default 4173; next free is used).
  *         --no-open       Do not open the browser automatically.
  *
  * ✒ Other Important Information:
- *     - Dependencies: Node.js built-ins only (node:sqlite for datasets)
+ *     - Dependencies: Node.js built-ins only (node:sqlite for datasets);
+ *       web/js/columns.js, model.js and timeline.js, which hold no DOM
  *     - Compatible platforms: Node.js 22.5+ on Windows, macOS, Linux
  *     - Security: the token defends against other web pages, not against
  *       other programs running as the same user, which already have the
@@ -215,6 +242,8 @@ import { openSnapshots, listSnapshots, datasetHome, slugOf } from './snapshot.mj
 import { openThumbs } from './thumbs.mjs';
 import { inspect } from './archive.mjs';
 import { warmWriter, readWarm, warmPaths, warmInside } from './warm.mjs';
+import { makeRegions } from './regions.mjs';
+import { REGION_THRESHOLD } from '../web/js/columns.js';
 
 const VERSION = '1.4.0';
 const WEB = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'web');
@@ -225,23 +254,36 @@ const option = (name, fallback) => {
   const i = args.indexOf(name);
   return i >= 0 && args[i + 1] ? args[i + 1] : fallback;
 };
-const VALUED = ['--port', '--snapshot', '--thumbs'];
+const VALUED = ['--port', '--snapshot', '--thumbs', '--region-threshold'];
 const positional = args.filter((a, i) => !a.startsWith('--') && !VALUED.includes(args[i - 1]));
 const snapshotArg = option('--snapshot', null);
-const usageOk = snapshotArg ? positional.length === 0 : positional.length === 1;
+// Above this many entries (folders and files, the root counted) the tree
+// is kept here and the page asks for regions of it: --region-threshold,
+// else TERRANE_REGION_THRESHOLD, else REGION_THRESHOLD; 0 means always.
+const thresholdText = String(args.includes('--region-threshold')
+  ? option('--region-threshold', '')
+  : process.env.TERRANE_REGION_THRESHOLD || REGION_THRESHOLD).trim();
+const thresholdOk = /^\d{1,10}$/.test(thresholdText);
+const regionThreshold = thresholdOk ? Number(thresholdText) : REGION_THRESHOLD;
+const usageOk = (snapshotArg ? positional.length === 0 : positional.length === 1) && thresholdOk;
 
 if (!usageOk || flag('--help')) {
   console.error([
     '',
     '  Terrane ' + VERSION,
     '  Usage: node server/terrane.mjs <directory> [--read-only] [--port n] [--no-open] [--no-watch] [--no-warm]',
-    '         node server/terrane.mjs --snapshot <folder or .db> [--port n] [--no-open]',
+    '                                 [--region-threshold n]',
+    '         node server/terrane.mjs --snapshot <folder or .db> [--port n] [--no-open] [--region-threshold n]',
     '',
     '  Terrane only works inside the directory you name here. With --snapshot it',
     '  shows a recorded structure instead and touches no real files at all.',
     '  --read-only refuses every change to the directory. The tree of the last',
     '  survey is still kept in the dataset home outside it (TERRANE_DATA moves it;',
     '  --no-warm keeps none), and never when that home is inside the directory.',
+    '  --region-threshold n: above n entries the service keeps the tree and serves',
+    `  it a folder at a time (default ${REGION_THRESHOLD.toLocaleString('en-US')}; 0 for every tree; also`,
+    '  TERRANE_REGION_THRESHOLD).',
+    ...(thresholdOk ? [] : ['', `  The region threshold "${thresholdText}" is not a whole number of entries, 0 or more.`]),
     '',
   ].join('\n'));
   process.exit(usageOk ? 0 : 1);
@@ -403,6 +445,11 @@ const broadcast = (obj) => {
 
 const ops = snap ? null : makeOps(guard, { readOnly, onJob: (job) => broadcast({ type: 'job', ...job }) });
 
+// The tree kept here for a page that draws in regions (server/regions.mjs).
+const regions = makeRegions({
+  guard, snap, meta: () => snapMeta, threshold: regionThreshold, warmOn, version: VERSION, warmWriter,
+});
+
 /* ---------- snapshot mode ---------- */
 
 const SNAP_REFUSAL = 'Snapshot mode: Terrane is showing a recorded copy of the directory structure, so nothing on disk is read or changed. Start Terrane on the real directory to do this.';
@@ -426,6 +473,7 @@ const snapInfo = () => ({
   readOnly: true, watch: 'snapshot',
   snapshot: { takenAt: snapMeta.takenAt, folders: snapMeta.folders, files: snapMeta.files, bytes: snapMeta.bytes },
   warm: null,
+  regions: regions.info(),
 });
 
 async function snapshotApi(req, res, route, q) {
@@ -434,6 +482,9 @@ async function snapshotApi(req, res, route, q) {
     throw new GuardError('ESNAPSHOT', SNAP_REFUSAL, 403);
   }
   if (route === 'info') return json(res, 200, snapInfo());
+  // The tree and its regions come from the snapshot, never the disk.
+  if (route === 'tree') return regions.handleTree(req, res, q);
+  if (route === 'region') return regions.handleRegion(req, res, q);
   if (route === 'scan') {
     const rel = relParts(q.get('path') || '').join('/');
     const depth = q.get('depth') ? Math.max(1, Number(q.get('depth'))) : Infinity;
@@ -661,12 +712,18 @@ async function api(req, res, url) {
 
   if (req.method === 'GET') {
     if (route === 'info') {
+      const kept = warmOn ? await readWarm(guard.root) : null;
       return json(res, 200, {
         version: VERSION, root: guard.root, name: path.basename(guard.root) || guard.root, sep: path.sep,
         platform: process.platform, readOnly, watch: watchState,
-        warm: warmOn ? warmInfo(await readWarm(guard.root)) : null,
+        warm: warmInfo(kept),
+        regions: regions.info({ warm: kept }),
       });
     }
+    // Answered in read-only mode too: both read the service's tree, and a
+    // fresh read lists folders through the guard as a scan does.
+    if (route === 'tree') return regions.handleTree(req, res, q);
+    if (route === 'region') return regions.handleRegion(req, res, q);
     if (route === 'scan') {
       const rel = q.get('path') || '';
       const abs = guard.resolve(rel);
@@ -905,6 +962,10 @@ const listen = (attempt = 0) => {
       '  Ctrl+C to stop.',
       '',
     ].join('\n'));
+    // A snapshot above the threshold is read into the service's tree at
+    // once, so its regions are ready by the time the page asks for them.
+    const entries = regions.info().entries;
+    if (snap && entries !== null && (regionThreshold === 0 || entries > regionThreshold)) regions.startLoad();
     if (!flag('--no-open')) {
       const [cmd, a] = process.platform === 'win32' ? ['explorer.exe', [address]]
         : process.platform === 'darwin' ? ['open', [address]] : ['xdg-open', [address]];
@@ -920,6 +981,7 @@ let stopping = false;
 const stop = async () => {
   if (stopping) process.exit(1);
   stopping = true;
+  regions.shutdown();
   watcher?.close();
   server.close();
   if (ops?.jobs().length) {
