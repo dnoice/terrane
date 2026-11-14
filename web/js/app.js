@@ -1,11 +1,11 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Terrane Application (Terrane Edition - v1.13)
+ *     - Title: Terrane Application (Terrane Edition - v1.14)
  *     - File Name: app.js
  *     - Relative Path: web/js/app.js
  *     - Artifact Type: javascript
- *     - Version: 1.13.0
+ *     - Version: 1.14.0
  *     - Date: 11/14/2026
  *     - Update: Saturday, November 14, 2026
  *     - Author: Dennis 'dendogg' Smaltz
@@ -13,6 +13,10 @@
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
  *
  * ✒ Changelog:
+ *     - 1.14.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] —
+ *       The Guide is one window in four tabs: Keys, Mouse, Reading the
+ *       world and Settings, the last one opened kept. Reading the world
+ *       leaves the inspector for it, so the inspector's space is free.
  *     - 1.13.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] —
  *       Flavors: the guide's Mouse section chooses how drags
  *       steer the world (Terrane, Blender, AutoCAD and eight more), lists
@@ -22,11 +26,6 @@
  *       The guide lists Blender's controls the world now takes: the
  *       middle button (orbit; Shift grabs and moves the ground; Ctrl
  *       flies in and out) and the numpad views.
- *     - 1.11.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] —
- *       Paint gives each file its kind's colour in a tone of its own
- *       extension, a closed mass a richer tint and, on its sides, strata
- *       of what it holds (strataOf, as bands and shares for the viewport);
- *       Reading the world says so.
  *     Earlier entries: see CHANGELOG.md
  *
  * ✒ Description:
@@ -353,8 +352,8 @@ const TIP_LINES = registry('TIP_LINES', needs('TIP_LINES', 'lines'));
  * build(node, ctx) -> Element | Element[] | null }; ctx carries ro (why
  * changes are unavailable, or null) and, for node, lockRoot and visible.
  * Node orders: title 0, path 5, facts 10, composition 20, copies 30,
- * actions 50, preview 60. Focus orders: title 0, facts 10, composition 20,
- * Reading the world 90. INSPECTOR.many: sections after the Actions grid of
+ * actions 50, preview 60. Focus orders: title 0, facts 10, composition 20
+ * (Reading the world is the Guide's tab now). INSPECTOR.many: sections after the Actions grid of
  * a selection of several, { id, owner, order, build(nodes, ctx) }, where
  * ctx is { ro, off } (off: why changes are unavailable for this
  * selection, an archive's lock included, or null).
@@ -2843,7 +2842,15 @@ function clearQuery() {
 /* guide                                                                  */
 /* ====================================================================== */
 
-async function showGuide() {
+/**
+ * The Guide's tabs, in order. The last one opened is kept in this browser
+ * and opens next time, unless a caller names one.
+ */
+const GUIDE_TABS = [['keys', 'Keys'], ['mouse', 'Mouse'], ['reading', 'Reading the world'], ['settings', 'Settings']];
+const GUIDE_TAB_KEY = 'terrane.guide-tab';
+
+/** The Guide: the keys, the mouse and its flavor, how to read the world, and settings. */
+async function showGuide(tab) {
   const keys = (title, rows) => el('div', {}, el('h3', { text: title }), el('dl', {}, rows.flatMap(([k, d]) => [el('dt', { text: k }), el('dd', { text: d })])));
   const dlg = $('dialog');
   dlg.classList.add('is-wide');
@@ -2862,8 +2869,7 @@ async function showGuide() {
     drawFlavor(flavorById(flavorSelect.value));
   });
   drawFlavor(flavor);
-  const mouse = el('section', { class: 'guide-flavor', 'aria-label': 'Mouse' },
-    el('h3', { text: 'Mouse' }),
+  const mouse = el('section', { class: 'guide-flavor' },
     el('label', { class: 'guide-flavor-pick', for: 'pref-flavor' }, el('span', { text: 'Flavor' }), flavorSelect),
     flavorRows, flavorNote);
   // The setting for single-key shortcuts, under the keys it governs.
@@ -2872,11 +2878,55 @@ async function showGuide() {
     prefs.singleKeys = box.checked;
     say(box.checked ? 'Single-key shortcuts act wherever focus is.' : 'Single-key shortcuts act only in the world and the ledger list. Ctrl and Alt shortcuts act everywhere.');
   });
+  const content = {
+    keys: el('div', { class: 'guide' }, [...KEYS.guide()].map(([title, rows]) => keys(title, rows))),
+    mouse,
+    reading: el('ul', { class: 'reading' }, [...READING].map(readingRow)),
+    settings: el('label', { class: 'guide-pref', for: 'pref-single-keys' }, box,
+      el('span', { text: 'Single-key shortcuts act wherever focus is. Off, letters, digits and signs act only in the world and the ledger list; Ctrl and Alt shortcuts always act.' })),
+  };
+  // A tab strip of its own, drawn like the ledger's (whose .tabs class
+  // other code reads as the ledger's): arrows, Home and End move between
+  // tabs, and the panel shown follows the tab chosen.
+  let kept = null;
+  try {
+    kept = localStorage.getItem(GUIDE_TAB_KEY);
+  } catch { /* nothing kept */ }
+  const ids = GUIDE_TABS.map(([id]) => id);
+  let current = ids.includes(tab) ? tab : ids.includes(kept) ? kept : 'keys';
+  const strip = el('div', { class: 'guide-tabs', role: 'tablist', 'aria-label': 'Guide' });
+  const buttons = {};
+  const panels = {};
+  for (const [id, label] of GUIDE_TABS) {
+    buttons[id] = el('button', { type: 'button', role: 'tab', id: `guide-tab-${id}`, 'aria-controls': `guide-panel-${id}`, text: label });
+    buttons[id].addEventListener('click', () => choose(id));
+    strip.append(buttons[id]);
+    panels[id] = el('div', { class: 'guide-panel', role: 'tabpanel', id: `guide-panel-${id}`, 'aria-labelledby': `guide-tab-${id}`, tabindex: '0' }, content[id]);
+  }
+  function choose(id, focus = false) {
+    current = id;
+    for (const x of ids) {
+      buttons[x].setAttribute('aria-selected', String(x === id));
+      buttons[x].tabIndex = x === id ? 0 : -1;
+      panels[x].hidden = x !== id;
+    }
+    try {
+      localStorage.setItem(GUIDE_TAB_KEY, id);
+    } catch { /* not kept */ }
+    if (focus) buttons[id].focus();
+  }
+  strip.addEventListener('keydown', (e) => {
+    const i = ids.indexOf(current);
+    const next = { ArrowRight: ids[(i + 1) % ids.length], ArrowLeft: ids[(i - 1 + ids.length) % ids.length], Home: ids[0], End: ids.at(-1) }[e.key];
+    if (!next) return;
+    e.preventDefault();
+    e.stopPropagation();
+    choose(next, true);
+  });
+  choose(current);
   await ask({
     title: 'Guide', confirm: 'Close', cancel: false, focusConfirm: true,
-    body: el('div', {}, el('div', { class: 'guide' }, [...KEYS.guide()].map(([title, rows]) => keys(title, rows))), mouse,
-      el('label', { class: 'guide-pref', for: 'pref-single-keys' }, box,
-        el('span', { text: 'Single-key shortcuts act wherever focus is. Off, letters, digits and signs act only in the world and the ledger list; Ctrl and Alt shortcuts always act.' }))),
+    body: el('div', { class: 'guide-window' }, strip, ...ids.map((id) => panels[id])),
   });
   dlg.classList.remove('is-wide');
 }
@@ -3323,7 +3373,6 @@ function wireKeys() {
     build: (f) => el('dl', { class: 'facts' }, fact('Size', el('b', { text: fmtBytes(f.s) })), fact('Contains', `${fmtCount(f.fc)} files · ${fmtCount(f.dc)} folders`), fact('Depth below', `${f.h} level${f.h === 1 ? '' : 's'}`)),
   });
   INSPECTOR.focus.add({ id: 'composition', order: 20, build: (f) => composition(f) });
-  INSPECTOR.focus.add({ id: 'reading', order: 90, build: () => [el('div', { class: 'section-title', text: 'Reading the world' }), el('ul', { class: 'reading' }, [...READING].map(readingRow))] });
 
   INSPECTOR.node.add({ id: 'title', order: 0, build: nodeTitle });
   INSPECTOR.node.add({ id: 'path', order: 5, build: (node) => el('div', { class: 'insp-path' }, el('code', { text: absPath(node) }), el('button', { class: 'btn btn-small', type: 'button', title: 'Copy path (Ctrl+C)', onclick: () => copyPaths([node]) }, icon('copyPath'), 'Copy')) });

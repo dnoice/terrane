@@ -144,16 +144,21 @@ const strata = {
 
     // The "You are in" summary at the root.
     const root = await t.app(readSection);
-    t.check('with nothing selected the inspector shows Bytes by last change between Composition and Reading the world',
-      root.box && root.titles.indexOf('Bytes by last change') === root.titles.indexOf('Composition') + 1 && root.titles.at(-1) === 'Reading the world', JSON.stringify(root.titles));
+    t.check('with nothing selected the inspector shows Bytes by last change right after Composition',
+      root.box && root.titles.indexOf('Bytes by last change') === root.titles.indexOf('Composition') + 1, JSON.stringify(root.titles));
     same(t, 'at the root', root);
 
     // The Reading row and the legend, under lens 2.
+    await t.key('?');
+    await t.waitFor(() => document.getElementById('dialog').open && !!document.getElementById('guide-tab-reading'), { what: 'the Guide' });
     const reading = await t.eval(() => {
-      const li = [...document.querySelectorAll('#inspector-body .reading li')].find((x) => x.querySelector('b')?.textContent === 'Typical age');
+      document.getElementById('guide-tab-reading').click();
+      const li = [...document.querySelectorAll('#dialog .reading li')].find((x) => x.querySelector('b')?.textContent === 'Typical age');
       const g = li?.querySelector('.glyph');
       return li && { glyph: g.className, bg: getComputedStyle(g).backgroundImage, text: li.lastChild.lastChild.textContent };
     });
+    await t.key('Escape');
+    await t.waitFor(() => !document.getElementById('dialog').open);
     t.check('a Reading row says a closed mass shows its typical age under the Age lens, with its glyph',
       reading && reading.glyph === 'glyph g-strata' && /gradient/.test(reading.bg) && reading.text.startsWith('Under the Age lens a closed mass shows its typical age: half its bytes have not changed since then.') && !WORDS.test(reading.text),
       JSON.stringify(reading));
