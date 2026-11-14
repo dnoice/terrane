@@ -28,6 +28,14 @@
  *       model.js's IMAGE_EXT and TEXT_EXT. Contents sorts Untouched too,
  *       by typical age; Ctrl with an arrow moves the list's cursor and
  *       leaves the selection, so Space can gather several rows.
+ *       Acting on many: RENAME_MANY (F2 with several selected runs the
+ *       first entry; with one, the single rename), MENU entries' many()
+ *       after Copy paths, INSPECTOR.many after the Actions grid of
+ *       several, DUP_GROUP under each group of copies, and api.relLabel.
+ *       A verified group keeps its hash, a survey after a refresh keeps
+ *       what Verify proved of files unchanged since, and Verify first
+ *       runs a survey still queued. The inspector of several no longer
+ *       prints "null" where no reason is due.
  *     - 1.8.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] —
  *       Single-key shortcuts are off unless turned on in the guide:
  *       letters, digits and signs act while the world or the ledger
@@ -76,6 +84,10 @@
  *     - Real operations through the service: open, reveal, copy path, new
  *       folder, rename, move, copy, duplicate, remove to holding, restore,
  *       undo; every result or refusal is reported in words
+ *     - Verify by content splits duplicate candidates by their hash; what
+ *       it proved survives a refresh while each file keeps its size and
+ *       last change, and a verified group keeps its hash for the features
+ *       that act on it
  *     - Placing mode and drag-and-drop for choosing a destination either
  *       in the world, in the ledger, or on a breadcrumb
  *     - After every change only the affected folders are re-read
@@ -91,8 +103,9 @@
  *       the one lock in runOp know the graft, and nothing inside is ever
  *       fetched, changed, opened or revealed
  *     - Seams for features: ordered registries (KEYS, ESCAPE, PIN_SOURCES,
- *       TIP_LINES, INSPECTOR, READING, TABS, SURVEY, LAYOUT_OPTS, MENU,
- *       COMMANDS, LEDGER_SUB, TAB_SECTIONS) and hook lists
+ *       TIP_LINES, INSPECTOR focus, node and many, READING, TABS, SURVEY,
+ *       LAYOUT_OPTS, MENU, COMMANDS, LEDGER_SUB, TAB_SECTIONS,
+ *       RENAME_MANY, DUP_GROUP) and hook lists
  *       (AFTER_LAYOUT, AFTER_REFRESH, AFTER_SURVEY, AFTER_OP, AFTER_QUERY,
  *       AFTER_FOCUS, AFTER_SELECT), so a feature adds entries from its own
  *       file instead of editing these functions
@@ -122,6 +135,9 @@
  *         api.LEDGER_SUB.add({ id: 'save', tab: 'findings', build: (ctx) => button });
  *         api.TAB_SECTIONS.add({ id: 'saved', tab: 'places', build: () => details });
  *         api.AFTER_FOCUS.add({ id: 'hash', run: (dir) => {} });
+ *         api.RENAME_MANY.add({ id: 'batch', run: (nodes) => openSheet(nodes) });
+ *         api.MENU.add({ id: 'copyas', many: (nodes, ctx) => [{ label, run }] });
+ *         api.DUP_GROUP.add({ id: 'dupes', build: (group, ctx) => el(...) });
  *     Every entry has a unique id; order (default 50) places it.
  *
  * ✒ Other Important Information:
@@ -333,11 +349,15 @@ const TIP_LINES = registry('TIP_LINES', needs('TIP_LINES', 'lines'));
  * changes are unavailable, or null) and, for node, lockRoot and visible.
  * Node orders: title 0, path 5, facts 10, composition 20, copies 30,
  * actions 50, preview 60. Focus orders: title 0, facts 10, composition 20,
- * Reading the world 90.
+ * Reading the world 90. INSPECTOR.many: sections after the Actions grid of
+ * a selection of several, { id, owner, order, build(nodes, ctx) }, where
+ * ctx is { ro, off } (off: why changes are unavailable for this
+ * selection, an archive's lock included, or null).
  */
 const INSPECTOR = Object.freeze({
   focus: registry('INSPECTOR.focus', needs('INSPECTOR.focus', 'build')),
   node: registry('INSPECTOR.node', needs('INSPECTOR.node', 'build')),
+  many: registry('INSPECTOR.many', needs('INSPECTOR.many', 'build')),
 });
 
 /** READING: the "Reading the world" rows: { id, order, glyph, title, text }. */
@@ -374,10 +394,11 @@ const AFTER_REFRESH = registry('AFTER_REFRESH', needs('AFTER_REFRESH', 'run'));
 const AFTER_SURVEY = registry('AFTER_SURVEY', needs('AFTER_SURVEY', 'run'));
 /**
  * AFTER_OP run(body, res) once the service has carried out a change: body
- * is what was asked ({ type: 'rename', path, name }, { type: 'move',
- * paths, dest }, ...; { type: 'undo' } for Undo) and res its answer
- * (renamed, results, label; for an Undo, moved: the [from, to] paths it
- * carried back). A change that stopped part way runs it too, with res
+ * is what was asked ({ type: 'rename', path, name }, { type: 'renames',
+ * items: [{ path, name }] }, { type: 'move', paths, dest }, ...; { type:
+ * 'undo' } for Undo) and res its answer (renamed: a path, or for renames
+ * the [from, to] pairs; results, label; for an Undo, moved: the [from, to]
+ * paths it carried back). A change that stopped part way runs it too, with res
  * { partial: true, results, label }: what it finished. It runs before the
  * affected folders are re-read, so a feature that names places by path
  * can follow Terrane's own renames and moves (and their undo) before the
@@ -387,12 +408,33 @@ const AFTER_OP = registry('AFTER_OP', needs('AFTER_OP', 'run'));
 
 /**
  * MENU: context menu items from features: { id, order, items(node, ctx)
- * -> item[] | null }, where node is the item the menu is for (null for
- * the folder you are in) and ctx is { ro }. Items take openMenu's shape
- * and appear as a group after the first one (Open, Reveal, Copy path) or,
- * for the folder you are in, at the end. A selection of many has none.
+ * -> item[] | null, many(nodes, ctx) -> item[] | null }, at least one of
+ * the two. items: node is the item the menu is for (null for the folder
+ * you are in) and ctx is { ro }; they appear as a group after the first
+ * one (Open, Reveal, Copy path) or, for the folder you are in, at the
+ * end. many: the selection of several, ctx { ro, off }; they follow
+ * Copy paths.
  */
-const MENU = registry('MENU', needs('MENU', 'items'));
+const MENU = registry('MENU', (x) => {
+  if (typeof x.items !== 'function' && typeof x.many !== 'function') throw new TypeError(`MENU: "${x.id}" needs items() or many().`);
+});
+
+/**
+ * RENAME_MANY: what F2 does with more than one item selected: { id, owner,
+ * run(nodes) }; the first entry wins. With one item, or none registered,
+ * F2 renames the one item as it always has.
+ */
+const RENAME_MANY = registry('RENAME_MANY', needs('RENAME_MANY', 'run'));
+
+/**
+ * DUP_GROUP: what a feature adds under a group of duplicate candidates:
+ * { id, owner, order, build(group, ctx) -> Element | Element[] | null }.
+ * group is one of S.survey.dupGroups ({ size, files, waste, verified,
+ * mode, hash }); ctx is { node, where, ro }: the inspected file and
+ * 'inspector' in the inspector's copies, null and 'survey' after each
+ * group's rows in the Survey tab.
+ */
+const DUP_GROUP = registry('DUP_GROUP', needs('DUP_GROUP', 'build'));
 
 /** QUERY: search tokens for parseQuery: is.<word>(node) and prefix.<name>(value, raw) -> predicate. */
 const QUERY = Object.freeze({ is: {}, prefix: {} });
@@ -455,8 +497,8 @@ const TAB_SECTIONS = registry('TAB_SECTIONS', (x) => {
   needs('TAB_SECTIONS', 'build')(x);
 });
 
-for (const reg of [KEYS, ESCAPE, PIN_SOURCES, TIP_LINES, INSPECTOR.focus, INSPECTOR.node, READING, TABS, LAYOUT_OPTS, AFTER_LAYOUT, AFTER_REFRESH, AFTER_SURVEY, AFTER_OP, MENU, AFTER_QUERY, SURVEY,
-  COMMANDS, LEDGER_SUB, AFTER_FOCUS, AFTER_SELECT, TAB_SECTIONS]) Object.freeze(reg);
+for (const reg of [KEYS, ESCAPE, PIN_SOURCES, TIP_LINES, INSPECTOR.focus, INSPECTOR.node, INSPECTOR.many, READING, TABS, LAYOUT_OPTS, AFTER_LAYOUT, AFTER_REFRESH, AFTER_SURVEY, AFTER_OP, MENU, AFTER_QUERY, SURVEY,
+  COMMANDS, LEDGER_SUB, AFTER_FOCUS, AFTER_SELECT, TAB_SECTIONS, RENAME_MANY, DUP_GROUP]) Object.freeze(reg);
 
 /* ====================================================================== */
 /* service                                                                */
@@ -529,6 +571,23 @@ const absPath = (node) => {
   }
   const rel = relPath(node);
   return rel ? S.info.root + S.info.sep + rel.split('/').join(S.info.sep) : S.info.root;
+};
+
+/**
+ * A node's path as a person reads it inside the directory: absPath without
+ * the root and its separator, joined with '/'; the root itself is '.',
+ * and inside an open archive it reads dir/x.zip!/inner/file.
+ */
+const relLabel = (node) => {
+  const I = S.interior;
+  if (I) {
+    const inner = [];
+    for (let a = node; a; a = a.p) {
+      if (a === I.root) return `${relLabel(I.host)}!/${inner.reverse().join('/')}`;
+      inner.push(a.n);
+    }
+  }
+  return relPath(node) || '.';
 };
 
 /* ====================================================================== */
@@ -624,18 +683,20 @@ function refreshDirs(rels) {
 
 function queueSurvey() {
   clearTimeout(S.surveyTimer);
-  S.surveyTimer = setTimeout(() => {
-    const verified = new Map((S.model.dupGroups || []).filter((g) => g.verified).map((g) => [g.files.map(relPath).sort().join('|'), g]));
-    S.survey = S.model.survey();
-    for (const g of S.survey.dupGroups) {
-      const v = verified.get(g.files.map(relPath).sort().join('|'));
-      if (v) { g.verified = true; g.mode = v.mode; }
-    }
-    runHooks(AFTER_SURVEY, S.survey, { full: false });
-    repaint();
-    if (S.tab === 'survey') drawLedger();
-    drawLegend();
-  }, 500);
+  S.surveyTimer = setTimeout(surveyNow, 500);
+}
+
+/** Compiles the survey of the tree as it is now; a queued one runs here instead. */
+function surveyNow() {
+  clearTimeout(S.surveyTimer);
+  S.surveyTimer = 0;
+  S.survey = S.model.survey();
+  S.survey.dupGroups = keepVerified(S.survey.dupGroups);
+  S.model.dupGroups = S.survey.dupGroups;
+  runHooks(AFTER_SURVEY, S.survey, { full: false });
+  repaint();
+  if (S.tab === 'survey') drawLedger();
+  drawLegend();
 }
 
 function connectEvents() {
@@ -1501,7 +1562,44 @@ async function copyPaths(nodes = [...S.sel]) {
     'The path is shown in the inspector.');
 }
 
+/**
+ * What Verify by content proved, per file node: { hash, mode, s, m } as
+ * read. A survey after a refresh rebuilds the candidates by size; a group
+ * whose every file was read and has kept its size and last change since
+ * is split by content again, as Verify split it, so a refresh elsewhere
+ * no longer forgets a verification (a same-size file that matched none
+ * stays out). Node references only: a Rescan all starts afresh.
+ */
+const proved = new WeakMap();
+
+/** The candidates with what was proved put back: verified groups by content where nothing changed. */
+function keepVerified(groups) {
+  let changed = false;
+  const out = [];
+  for (const g of groups) {
+    const rec = g.files.map((f) => proved.get(f));
+    if (!rec.every((r, i) => r && r.s === g.files[i].s && r.m === g.files[i].m)) {
+      out.push(g);
+      continue;
+    }
+    changed = true;
+    const buckets = new Map();
+    g.files.forEach((f, i) => buckets.set(rec[i].hash, [...(buckets.get(rec[i].hash) || []), f]));
+    for (const f of g.files) f.dup = 0;
+    for (const [hash, list] of buckets) {
+      if (list.length > 1) out.push({ size: g.size, files: list, waste: g.size * (list.length - 1), verified: true, mode: proved.get(list[0]).mode, hash });
+    }
+  }
+  if (!changed) return groups;
+  out.sort((a, b) => b.waste - a.waste);
+  out.forEach((g, i) => g.files.forEach((f) => { f.dup = i + 1; }));
+  return out;
+}
+
 async function verifyDuplicates() {
+  // A survey still queued after a refresh holds the files as they are
+  // now; the one shown may hold nodes a refresh has replaced since.
+  if (S.surveyTimer) surveyNow();
   const groups = S.survey.dupGroups;
   const files = [];
   for (const g of groups) {
@@ -1518,6 +1616,7 @@ async function verifyDuplicates() {
     return;
   }
   const hashOf = new Map(files.map((f, i) => [f, results[i]]));
+  for (const [f, h] of hashOf) if (h && !h.error) proved.set(f, { hash: h.hash, mode: h.mode, s: f.s, m: f.m });
   const out = [];
   for (const g of groups) {
     if (!hashOf.has(g.files[0])) {
@@ -1531,7 +1630,9 @@ async function verifyDuplicates() {
       buckets.set(h.hash, [...(buckets.get(h.hash) || []), f]);
     }
     for (const list of buckets.values()) {
-      if (list.length > 1) out.push({ size: g.size, files: list, waste: g.size * (list.length - 1), verified: true, mode: hashOf.get(list[0]).mode });
+      // The hash is kept with the group, so an action on it can tell a
+      // file that changed since it was verified.
+      if (list.length > 1) out.push({ size: g.size, files: list, waste: g.size * (list.length - 1), verified: true, mode: hashOf.get(list[0]).mode, hash: hashOf.get(list[0]).hash });
     }
     for (const f of g.files) f.dup = 0;
   }
@@ -1555,6 +1656,7 @@ async function verifyDuplicates() {
 function menuExtras(node, ctx) {
   const out = [];
   for (const m of MENU) {
+    if (typeof m.items !== 'function') continue;
     try {
       const got = m.items(node, ctx);
       if (got?.length) out.push(...got.filter(Boolean));
@@ -1563,6 +1665,21 @@ function menuExtras(node, ctx) {
     }
   }
   return out.length ? ['sep', ...out] : [];
+}
+
+/** Menu items the MENU entries add for a selection of several (many()), in order; they follow Copy paths. */
+function menuMany(nodes, ctx) {
+  const out = [];
+  for (const m of MENU) {
+    if (typeof m.many !== 'function') continue;
+    try {
+      const got = m.many(nodes, ctx);
+      if (got?.length) out.push(...got.filter(Boolean));
+    } catch (err) {
+      console.error(`MENU "${m.id}" failed:`, err);
+    }
+  }
+  return out;
 }
 
 function menuFor(node, x, y) {
@@ -1593,6 +1710,7 @@ function menuFor(node, x, y) {
       { label: `Copy ${nodes.length} items to…`, icon: 'copy', run: () => startPlacing('copy'), ...shut(inside) },
       { label: 'Duplicate in place', icon: 'duplicate', hint: 'Ctrl+D', run: () => duplicate(), ...shut(inside) },
       { label: 'Copy paths', icon: 'copyPath', hint: 'Ctrl+C', run: () => copyPaths() },
+      ...menuMany(nodes, { ro, off: inside ? 'inside an archive' : ro }),
       'sep',
       { label: `Remove ${nodes.length} items…`, icon: 'remove', hint: 'Del', danger: true, run: () => remove(), ...shut(inside) },
     ];
@@ -1990,16 +2108,19 @@ function drawSurvey(sub, host) {
 function surveyDuplicates(sv) {
   const verifiedGroups = sv.dupGroups.filter((g) => g.verified);
   const waste = sv.dupGroups.reduce((a, g) => a + g.waste, 0);
+  const reclaimable = verifiedGroups.reduce((a, g) => a + g.waste, 0);
+  const ro = writable();
   const dupBody = [];
   if (sv.dupGroups.length) {
     dupBody.push(el('p', { class: 'note', text: verifiedGroups.length
-      ? `${fmtCount(verifiedGroups.length)} groups confirmed identical by content. Unconfirmed groups share only their size.`
+      ? `${fmtCount(verifiedGroups.length)} group${verifiedGroups.length === 1 ? '' : 's'} confirmed identical by content, ${fmtBytes(reclaimable)} reclaimable. Unconfirmed groups share only their size.`
       : `Files of identical size, up to ${fmtBytes(waste)} if all are true copies. Size alone is only a hint.` }));
     dupBody.push(el('div', { class: 'actions' }, el('button', { class: 'btn btn-small', type: 'button', onclick: verifyDuplicates }, icon('verify'), 'Verify by content'),
       el('button', { class: 'btn btn-small', type: 'button', onclick: () => setLens('dup') }, icon('eye'), 'Show in the world')));
     for (const g of sv.dupGroups.slice(0, 60)) {
       dupBody.push(el('div', { class: 'group-head', text: `${g.files.length} × ${fmtBytes(g.size)} · ${g.verified ? (g.mode === 'sampled' ? 'probable (sampled)' : 'identical') : 'same size'}` }));
       for (const f of g.files.slice(0, 12)) dupBody.push(itemButton(f, ''));
+      dupBody.push(...dupExtras(g, { node: null, where: 'survey', ro }));
     }
   } else dupBody.push(el('p', { class: 'note', text: 'No files of 4 KB or more share a size.' }));
   return section('Duplicate candidates', fmtCount(sv.dupGroups.length), false, dupBody);
@@ -2130,7 +2251,10 @@ function drawInspectorNow() {
       el('div', { class: 'actions-grid' }, actionButton('Move to…', () => startPlacing('move'), { off, icon: 'move' }), actionButton('Copy to…', () => startPlacing('copy'), { off, icon: 'copy' }),
         actionButton('Duplicate', () => duplicate(), { off, icon: 'duplicate' }), actionButton('Copy paths', () => copyPaths(), { icon: 'copyPath' }),
         actionButton('Remove…', () => remove(), { off, danger: true, icon: 'remove' }), actionButton('Clear selection', () => select(null), { icon: 'clear' })),
-      offNote(off),
+      // replaceChildren would print a null argument as the text "null".
+      ...[offNote(off)].filter(Boolean),
+      // Sections features add for a selection of several (INSPECTOR.many).
+      ...buildSections(INSPECTOR.many, nodes, { ro, off }),
     );
     return;
   }
@@ -2204,14 +2328,30 @@ function nodeFacts(node, ctx) {
     !ctx.visible ? fact('In the world', 'inside the framed mass or scree; fly to it to see it') : null);
 }
 
-function nodeCopies(node) {
+function nodeCopies(node, ctx) {
   if (node.d || !node.dup || !S.survey) return null;
   const g = S.survey.dupGroups[node.dup - 1];
   if (!g) return null;
   return [
     el('div', { class: 'section-title', text: g.verified ? (g.mode === 'sampled' ? 'Probable copies' : 'Identical copies') : 'Same-size candidates' }),
     el('div', {}, g.files.filter((f) => f !== node).slice(0, 8).map((f) => itemButton(f, ''))),
+    ...dupExtras(g, { node, where: 'inspector', ro: ctx?.ro ?? writable() }),
   ];
+}
+
+/** What DUP_GROUP entries add under a group of duplicate candidates; one that throws is reported and left out. */
+function dupExtras(group, ctx) {
+  const out = [];
+  for (const x of DUP_GROUP) {
+    try {
+      const r = x.build(group, ctx);
+      if (Array.isArray(r)) out.push(...r.flat(Infinity));
+      else out.push(r);
+    } catch (err) {
+      console.error(`DUP_GROUP "${x.id}" failed:`, err);
+    }
+  }
+  return out.filter(Boolean);
 }
 
 function nodeActions(node, { ro, lockRoot, visible, inside }) {
@@ -2739,7 +2879,15 @@ function wireKeys() {
     run: (c) => { setLens(['kind', 'age', 'size', 'dup'][Number(c.k) - 1]); }, guide: [SEL, '1 – 4', 'Lens'],
   });
   core({ id: 'new-folder', keys: ['n'], run: () => { newFolder(S.primary?.d && S.sel.size === 1 ? S.primary : S.focus); }, guide: [CHG, 'N', 'New folder'] });
-  core({ id: 'rename', keys: ['F2'], run: () => { rename(); }, guide: [CHG, 'F2', 'Rename'] });
+  // With several selected, F2 is the batch rename a feature offers (RENAME_MANY).
+  core({
+    id: 'rename', keys: ['F2'],
+    run: () => {
+      if (S.sel.size > 1 && RENAME_MANY.size) [...RENAME_MANY][0].run([...S.sel]);
+      else rename();
+    },
+    guide: [CHG, 'F2', 'Rename'],
+  });
   core({
     id: 'move', keys: ['m'],
     run: () => {
@@ -2878,8 +3026,8 @@ function wireKeys() {
 const API = Object.freeze({
   S, KEY_OWNERS,
   KEYS, ESCAPE, PIN_SOURCES, TIP_LINES, INSPECTOR, READING, TABS, LAYOUT_OPTS, AFTER_LAYOUT, AFTER_REFRESH, AFTER_SURVEY, AFTER_OP, MENU, QUERY,
-  AFTER_QUERY, SURVEY, COMMANDS, LEDGER_SUB, AFTER_FOCUS, AFTER_SELECT, TAB_SECTIONS,
-  get, post, runOp, refreshDirs, writable, isAttached, hostOf, relPath, absPath,
+  AFTER_QUERY, SURVEY, COMMANDS, LEDGER_SUB, AFTER_FOCUS, AFTER_SELECT, TAB_SECTIONS, RENAME_MANY, DUP_GROUP,
+  get, post, runOp, refreshDirs, writable, isAttached, hostOf, relPath, absPath, relLabel,
   // The address of a file's bytes for a preview: at most max of them
   // without a Range header (0: the service's default, 256 KB).
   rawUrl,

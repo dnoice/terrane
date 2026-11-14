@@ -28,7 +28,20 @@
  *       link that leads outside refused; snapshot mode refuses a range.
  *       The search tokens: ext: and kind: take comma lists, any of them;
  *       a word that names no kind adds nothing, and a list combines with
- *       other tokens.
+ *       other tokens. A batch rename section on the first service:
+ *       renames moves three files across two folders, answers its pairs,
+ *       adds exactly one journal entry, and one Undo restores every name
+ *       by content hash; an existing sibling, two new names alike (and
+ *       alike but for case where case does not matter), a chain, a swap,
+ *       an item inside another, an invalid name, the holding area's name
+ *       in any case, a path twice, more than 5,000 items, no list,
+ *       traversal, the holding area and a missing path are each refused
+ *       with nothing changed and nothing journaled; a case-only rename
+ *       works and is undone; an unchanged batch is answered and not
+ *       journaled. In-process, a batch rename whose second file is in
+ *       use throws with results and affected, is journaled as a partial
+ *       rename, and its Undo carries the finished name back. The
+ *       read-only and snapshot services refuse it.
  *     - 1.5.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
  *       hardening checks. Through the service: the holding area refused
  *       under every other spelling (case, a trailing dot, NTFS stream
@@ -120,8 +133,8 @@
  *     - Planted holding-area records and a holding area that is a link,
  *       in-process; relative links refused where a move or copy would aim
  *       them outside the root; the scan writer when the page goes away
- *     - Every mutation verified on disk: mkdir, rename, move, copy,
- *       duplicate, remove to holding, restore
+ *     - Every mutation verified on disk: mkdir, rename, a batch rename,
+ *       move, copy, duplicate, remove to holding, restore
  *     - Collision checks: nothing is overwritten and nothing moves when a
  *       batch is refused; "keep both" picks a free name
  *     - Persistence: the service is stopped and started again, and the
@@ -142,7 +155,11 @@
  *     - The archive reader, without the service: hand-built zips for
  *       names, dates, flags, escaping names, bounds and damage
  *     - Undo answers and partial changes, in-process: the paths moved
- *       back, and the paths finished before a simulated failure
+ *       back, and the paths finished before a simulated failure, a batch
+ *       rename's included
+ *     - The batch rename: one journal entry undone whole, and every
+ *       refusal (taken names, chains and swaps, nesting, invalid and
+ *       reserved names, the bound, traversal) before anything changes
  *     - Duplicate hashing distinguishes true copies from same-size files
  *     - Previews: one byte range per answer, at most 8 MiB, 416 past the
  *       end, the whole-file answer for anything else, media types, and
@@ -530,6 +547,80 @@ console.log('\nDuplicates');
 r = await s.post('/api/hash', { paths: ['media/x.bin', 'media/y.bin', 'media/z.bin'] });
 check('hashing separates true copies from same-size files', r.body.results[0].hash === r.body.results[1].hash && r.body.results[0].hash !== r.body.results[2].hash);
 
+console.log('\nBatch rename');
+{
+  // Files of its own, removed at the end of the section. Every change it
+  // makes is undone here, so the undo chain further down finds each one
+  // already undone and the tree as it began.
+  const rn = path.join(root, 'rn');
+  fs.mkdirSync(path.join(rn, 'one'), { recursive: true });
+  fs.mkdirSync(path.join(rn, 'two'));
+  for (const [rel, text] of [['one/a.txt', 'alpha'], ['one/b.txt', 'bravo'], ['one/keep.txt', 'keep'], ['two/c.txt', 'charlie']]) fs.writeFileSync(path.join(rn, ...rel.split('/')), text);
+  const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+  const start = snapshot(rn);
+  const entries = async () => (await s.get('/api/journal')).body.journal;
+  const j0 = (await entries()).length;
+  r = await s.op({ type: 'renames', items: [{ path: 'rn/one/a.txt', name: 'A1.txt' }, { path: 'rn/one/b.txt', name: 'B1.txt' }, { path: 'rn/two/c.txt', name: 'C1.txt' }] });
+  check('renames moves three files across two folders to their new names, contents intact',
+    r.status === 200 && read('rn', 'one', 'A1.txt') === 'alpha' && read('rn', 'one', 'B1.txt') === 'bravo' && read('rn', 'two', 'C1.txt') === 'charlie'
+    && same(fs.readdirSync(path.join(rn, 'one')).sort(), ['A1.txt', 'B1.txt', 'keep.txt']) && same(fs.readdirSync(path.join(rn, 'two')), ['C1.txt']), JSON.stringify(r.body));
+  check('it answers renamed, the [from, to] pairs in item order, and the two folders as affected',
+    same(r.body.renamed, [['rn/one/a.txt', 'rn/one/A1.txt'], ['rn/one/b.txt', 'rn/one/B1.txt'], ['rn/two/c.txt', 'rn/two/C1.txt']]) && same([...r.body.affected].sort(), ['rn/one', 'rn/two']) && r.body.undoable,
+    JSON.stringify(r.body));
+  const j1 = await entries();
+  check('the journal gains exactly one entry for the batch', j1.length === j0 + 1 && j1.at(-1).label === 'Renamed 3 items', JSON.stringify(j1.slice(j0)));
+  r = await s.post('/api/undo');
+  check('one Undo restores every name, by content hash, and says what it moved back',
+    r.status === 200 && same(snapshot(rn), start) && r.body.label === 'Undid: Renamed 3 items' && r.body.moved?.length === 3, JSON.stringify(r.body));
+
+  /** The batch is refused with this status and sentence, and nothing under rn changed. */
+  const refused = async (items, status, sentence) => {
+    const res = await s.op({ type: 'renames', items });
+    const ok = res.status === status && sentence.test(res.body.message || '') && same(snapshot(rn), start);
+    return ok || `${res.status} ${JSON.stringify(res.body)}`;
+  };
+  const verdict = (x) => (x === true ? '' : x);
+  let v = await refused([{ path: 'rn/two/c.txt', name: 'c2.txt' }, { path: 'rn/one/a.txt', name: 'keep.txt' }], 409, /^"keep\.txt" already exists in the folder of "a\.txt"\. Nothing was changed\.$/);
+  check('a new name an existing sibling has refuses the whole batch, and nothing changes', v === true, verdict(v));
+  v = await refused([{ path: 'rn/one/a.txt', name: 'same.txt' }, { path: 'rn/one/b.txt', name: 'same.txt' }], 409, /would both be named "same\.txt"/);
+  check('two items given one new name are refused before anything changes', v === true, verdict(v));
+  if (process.platform === 'win32' || process.platform === 'darwin') {
+    v = await refused([{ path: 'rn/one/a.txt', name: 'Same.txt' }, { path: 'rn/one/b.txt', name: 'same.TXT' }], 409, /would both be named/);
+    check('and two new names alike but for case, where case does not matter', v === true, verdict(v));
+  }
+  v = await refused([{ path: 'rn/one/a.txt', name: 'b.txt' }, { path: 'rn/one/b.txt', name: 'c.txt' }], 409, /is the name of another item in this batch now.*two steps/);
+  const swap = await refused([{ path: 'rn/one/a.txt', name: 'b.txt' }, { path: 'rn/one/b.txt', name: 'a.txt' }], 409, /two steps/);
+  check('a chain and a swap are refused: Undo could not reverse them', v === true && swap === true, `${verdict(v)} ${verdict(swap)}`);
+  v = await refused([{ path: 'rn/one', name: 'uno' }, { path: 'rn/one/a.txt', name: 'x.txt' }], 400, /^"a\.txt" is inside "one", which is renamed in the same batch\. Rename them in two steps\./);
+  check('an item inside another item of the batch is refused', v === true, verdict(v));
+  v = await refused([{ path: 'rn/one/a.txt', name: 'x/y.txt' }], 400, /slashes/);
+  const blank = await refused([{ path: 'rn/one/a.txt', name: '' }], 400, /name is required/);
+  check('an invalid name is refused', v === true && blank === true, `${verdict(v)} ${verdict(blank)}`);
+  v = await refused([{ path: 'rn/one/a.txt', name: 'fine.txt' }, { path: 'rn/one/b.txt', name: '.terrane-trash' }], 400, /reserved by Terrane/);
+  const upper = await refused([{ path: 'rn/one/b.txt', name: '.TERRANE-TRASH' }], 400, /reserved by Terrane/);
+  check('the holding area\'s name is refused, in any case, and the good item before it is not renamed', v === true && upper === true, `${verdict(v)} ${verdict(upper)}`);
+  v = await refused([{ path: 'rn/one/a.txt', name: 'x.txt' }, { path: 'rn/one/a.txt', name: 'y.txt' }], 400, /listed twice/);
+  check('the same path twice is refused', v === true, verdict(v));
+  v = await refused(Array.from({ length: 5001 }, (_, i) => ({ path: 'rn/one/a.txt', name: `n${i}.txt` })), 400, /^At most 5,000 items can be renamed at once; 5,001 were sent\.$/);
+  const none = await refused([], 400, /Nothing was selected/);
+  const notList = await refused('rn/one/a.txt', 400, /Nothing was selected/);
+  check('more than 5,000 items, none, or no list are refused', v === true && none === true && notList === true, `${verdict(v)} ${verdict(none)} ${verdict(notList)}`);
+  v = await refused([{ path: '../outside/keep.txt', name: 'x.txt' }], 400, /Relative segments/);
+  const held = await refused([{ path: '.terrane-trash', name: 'x' }], 403, /holding area/i);
+  const gone = await refused([{ path: 'rn/one/nothing.txt', name: 'x.txt' }], 404, /no longer exists/);
+  check('traversal, the holding area and a path that is not there are refused, and nothing outside changes',
+    v === true && held === true && gone === true && fs.readFileSync(path.join(outside, 'keep.txt'), 'utf8') === 'outside', `${verdict(v)} ${verdict(held)} ${verdict(gone)}`);
+  check('none of the refusals reached the journal', (await entries()).length === j0 + 1);
+  r = await s.op({ type: 'renames', items: [{ path: 'rn/one/a.txt', name: 'A.txt' }] });
+  check('a case-only rename works', r.status === 200 && fs.readdirSync(path.join(rn, 'one')).includes('A.txt') && !fs.readdirSync(path.join(rn, 'one')).includes('a.txt'), JSON.stringify(r.body));
+  r = await s.post('/api/undo');
+  check('and its Undo gives the old case back', r.status === 200 && same(snapshot(rn), start), JSON.stringify(r.body));
+  r = await s.op({ type: 'renames', items: [{ path: 'rn/one/a.txt', name: 'a.txt' }] });
+  check('a batch where nothing changes is answered, and not journaled', r.status === 200 && r.body.label === 'Names unchanged' && !r.body.undoable && (await entries()).length === j0 + 2,
+    JSON.stringify(r.body));
+  fs.rmSync(rn, { recursive: true, force: true });
+}
+
 console.log('\nPreviews and byte ranges');
 {
   // Files of known content, removed again at the end of the section.
@@ -821,6 +912,24 @@ console.log('\nUndo answers and changes that stop part way (no service)');
     err?.status === 500 && JSON.stringify(err.results) === JSON.stringify(['three']) && !at('three') && at('four'), JSON.stringify(err && { results: err.results, message: err.message }));
   u = await o.undo();
   check('an undo that moved nothing by path answers without moved', u.moved === undefined && at('three'), JSON.stringify(u));
+  // A batch rename whose second file is in use (EBUSY on Windows).
+  for (const n of ['r1.txt', 'r2.txt', 'r3.txt']) fs.writeFileSync(path.join(opsRoot, 'four', n), n);
+  err = null;
+  failOn('r2.txt');
+  try {
+    await o.run({ type: 'renames', items: [{ path: 'four/r1.txt', name: 's1.txt' }, { path: 'four/r2.txt', name: 's2.txt' }, { path: 'four/r3.txt', name: 's3.txt' }] });
+  } catch (e) {
+    err = e;
+  } finally {
+    fsp.rename = rename;
+  }
+  check('a batch rename that stops part way throws with results, where each item before it now is, and affected; what it finished stays',
+    err?.status === 500 && JSON.stringify(err.results) === JSON.stringify(['four/s1.txt']) && JSON.stringify(err.affected) === JSON.stringify(['four'])
+    && at('four', 's1.txt') && !at('four', 'r1.txt') && at('four', 'r2.txt') && at('four', 'r3.txt') && /^Renaming stopped at "r2\.txt" after 1 of 3 items: /.test(err.message),
+    JSON.stringify(err && { results: err.results, affected: err.affected, message: err.message }));
+  check('and it is journaled as a partial rename', (await o.journal()).at(-1)?.label === 'Partial rename (1 of 3)', JSON.stringify((await o.journal()).at(-1)));
+  u = await o.undo();
+  check('whose Undo carries the one finished name back', JSON.stringify(u.moved) === JSON.stringify([['four/s1.txt', 'four/r1.txt']]) && at('four', 'r1.txt') && !at('four', 's1.txt'), JSON.stringify(u));
 }
 
 console.log('\nHolding-area records, the holding area itself and links that move (no service)');
@@ -983,6 +1092,8 @@ check('the service says which snapshot it is showing', info.snapshot?.takenAt ==
 r = await sm.op({ type: 'mkdir', parent: '', name: 'from-snapshot' });
 const u = await sm.post('/api/undo');
 check('snapshot mode refuses every change', r.status === 403 && u.status === 403 && /snapshot/i.test(r.body.message) && !has('from-snapshot'));
+r = await sm.op({ type: 'renames', items: [{ path: 'docs/b.txt', name: 'z.txt' }] });
+check('a batch rename too', r.status === 403 && r.body.code === 'ESNAPSHOT' && has('docs', 'b.txt') && !has('docs', 'z.txt'), JSON.stringify(r.body));
 check('snapshot mode never reads file contents', (await sm.get('/api/raw?path=docs/b.txt')).status === 403);
 r = await sm.request('GET', '/api/raw?path=docs/b.txt', { token: sm.token, headers: { Range: 'bytes=0-2' } });
 check('nor a byte range of one: ESNAPSHOT, no bytes', r.status === 403 && r.body.code === 'ESNAPSHOT' && !r.headers['content-range'], `${r.status} ${JSON.stringify(r.body)}`);
@@ -997,6 +1108,8 @@ console.log('\nRead-only mode');
 const ro = await boot(['--read-only'], 4395);
 r = await ro.op({ type: 'mkdir', parent: '', name: 'nope' });
 check('read-only refuses mutations with an explanation', r.status === 403 && /read-only/i.test(r.body.message) && !has('nope'));
+r = await ro.op({ type: 'renames', items: [{ path: 'docs/b.txt', name: 'z.txt' }] });
+check('a batch rename too', r.status === 403 && /read-only/i.test(r.body.message) && has('docs', 'b.txt') && !has('docs', 'z.txt'), JSON.stringify(r.body));
 check('read-only still scans', (await ro.get('/api/scan?path=')).status === 200);
 await ro.stop();
 

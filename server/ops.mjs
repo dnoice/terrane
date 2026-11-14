@@ -1,11 +1,11 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Filesystem Operations (Terrane Edition - v1.3)
+ *     - Title: Filesystem Operations (Terrane Edition - v1.4)
  *     - File Name: ops.mjs
  *     - Relative Path: server/ops.mjs
  *     - Artifact Type: javascript
- *     - Version: 1.3.0
+ *     - Version: 1.4.0
  *     - Date: 11/13/2026
  *     - Update: Friday, November 13, 2026
  *     - Author: Dennis 'dendogg' Smaltz
@@ -13,6 +13,16 @@
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
  *
  * ✒ Changelog:
+ *     - 1.4.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
+ *       renames operation: up to 5,000 items, each { path, name }, all
+ *       checked before the first rename (the guard, the name, no path
+ *       twice, no item inside another, no new name taken by anything but
+ *       the item itself, so chains and swaps are refused, and no two new
+ *       names alike in one folder by foldName); unchanged items skipped;
+ *       one journal entry undone as moves, answered with renamed, the
+ *       [from, to] pairs. One that stops part way journals what it
+ *       finished as a partial rename and throws with results, item by
+ *       item, and affected.
  *     - 1.3.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
  *       holding index is untrusted data: a record is kept only when its
  *       id has the shape hold() mints and its name is one entry name
@@ -41,11 +51,12 @@
  *       Initial release.
  *
  * ✒ Description:
- *     Performs the real changes Terrane makes on disk: create folder, rename,
- *     move, copy, remove to the holding area, restore, open and reveal. Each
- *     change is validated through the path guard, never overwrites existing
- *     data, and is written to a persistent journal with the exact inverse
- *     needed to undo it, including after the service restarts.
+ *     Performs the real changes Terrane makes on disk: create folder, rename
+ *     (one item or many), move, copy, remove to the holding area, restore,
+ *     open and reveal. Each change is validated through the path guard,
+ *     never overwrites existing data, and is written to a persistent
+ *     journal with the exact inverse needed to undo it, including after the
+ *     service restarts.
  *
  * ✒ Key Features:
  *     - No overwrite, ever: a name collision is refused with a 409 unless
@@ -67,6 +78,10 @@
  *       items finished before the cancel stay and are journaled, so Undo
  *       returns the directory to where it started
  *     - Batches are validated in full before the first item is touched
+ *     - A batch rename (renames) of up to 5,000 items is one journal
+ *       entry; it refuses, before anything is renamed, a name taken by
+ *       another item (a chain or a swap), two new names that the
+ *       filesystem would take for one, and an item inside another
  *     - Guards against moving a folder into itself or its own descendants
  *     - Case-only renames work on case-insensitive volumes without being
  *       mistaken for a collision
@@ -85,6 +100,7 @@
  *     const ops = makeOps(guard, { readOnly: false, onJob: (view) => {} });
  *     await ops.run({ type: 'mkdir', parent: 'docs', name: 'Drafts' });
  *     await ops.run({ type: 'rename', path: 'docs/a.txt', name: 'b.txt' });
+ *     await ops.run({ type: 'renames', items: [{ path: 'docs/a.txt', name: 'A.txt' }] });
  *     await ops.run({ type: 'move', paths: ['a', 'b'], dest: 'archive' });
  *     await ops.run({ type: 'copy', paths: ['big'], dest: '', job: 'k3x9q2' });
  *     ops.cancel('k3x9q2');
@@ -94,6 +110,7 @@
  *     a cancelled job resolves with cancelled: true and says what was done.
  *     A job that stops part way rejects with an error whose results lists
  *     the paths it finished; undo() of a rename or move also gives moved.
+ *     renames answers renamed, the [from, to] pairs it carried out.
  *
  * ✒ Other Important Information:
  *     - Dependencies: Node.js built-ins only; guard.mjs, transfer.mjs
@@ -116,11 +133,15 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { spawn } from 'node:child_process';
-import { GuardError, HOLD_DIR } from './guard.mjs';
+import { GuardError, HOLD_DIR, foldName } from './guard.mjs';
 import { measure, copyTree, removeCreated, isCancel } from './transfer.mjs';
 
 const JOURNAL_MAX = 500;
 const JOURNAL_FORMAT = 1;
+/** The most items one batch rename may carry (the page's planner keeps the same bound). */
+export const RENAMES_MAX = 5000;
+/** An absolute path as this platform's filesystem compares it, segment by segment. */
+const foldPath = (abs) => abs.split(path.sep).map(foldName).join(path.sep);
 const JOB_ID = /^[A-Za-z0-9_-]{6,64}$/;
 /** The shape of a slot id hold() mints: base-36 time, a dash, base-36 sequence. */
 const HOLD_ID = /^[0-9a-z]{1,16}-[0-9a-z]{1,16}$/;
@@ -460,6 +481,86 @@ export function makeOps(guard, { readOnly = false, onJob } = {}) {
       const res = await record('rename', `Renamed "${path.basename(from)}" to "${name}"`,
         { kind: 'moves', pairs: [[guard.rel(from), guard.rel(to)]] }, [parentRel(from)]);
       return { ...res, renamed: guard.rel(to) };
+    },
+
+    /**
+     * Renames many items at once: items is [{ path, name }], 1 to
+     * RENAMES_MAX of them. Everything is checked before the first rename:
+     * each path through the guard (it must exist), each name, no path
+     * twice, no item inside another, no new name already taken by
+     * anything but the item itself (so a chain or a swap is refused, which
+     * Undo could not reverse), and no two new names alike in one folder.
+     * Unchanged items are skipped. One journal entry undoes it, as moves.
+     */
+    async renames({ items }) {
+      if (!Array.isArray(items) || items.length === 0) throw new GuardError('EARGS', 'Nothing was selected.');
+      if (items.length > RENAMES_MAX) throw new GuardError('EARGS', `At most ${RENAMES_MAX.toLocaleString('en-US')} items can be renamed at once; ${items.length.toLocaleString('en-US')} were sent.`);
+      const all = [];
+      const byKey = new Map();
+      for (const item of items) {
+        if (!item || typeof item !== 'object' || typeof item.path !== 'string') throw new GuardError('EARGS', 'Each item needs a path and a name.');
+        guard.checkName(item.name);
+        const from = await target(item.path);
+        const key = foldPath(from);
+        if (byKey.has(key)) throw new GuardError('EARGS', `"${path.basename(from)}" is listed twice. Nothing was changed.`);
+        const one = { from, to: path.join(path.dirname(from), item.name), name: item.name };
+        byKey.set(key, one);
+        all.push(one);
+      }
+      // An item inside another: its path changes when the outer one is
+      // renamed. Each item's folders are looked up, not every pair compared.
+      for (const one of all) {
+        for (let up = path.dirname(one.from); up !== guard.root && guard.contains(up); up = path.dirname(up)) {
+          const outer = byKey.get(foldPath(up));
+          if (outer) {
+            throw new GuardError('ENEST', `"${path.basename(one.from)}" is inside "${path.basename(outer.from)}", which is renamed in the same batch. Rename them in two steps. Nothing was changed.`);
+          }
+        }
+      }
+      const work = all.filter((one) => one.from !== one.to);
+      const targets = new Map();
+      for (const one of work) {
+        if ((await exists(one.to)) && !(await sameEntry(one.from, one.to))) {
+          // A chain or a swap: the name is another item's of this batch.
+          const other = byKey.get(foldPath(one.to));
+          throw new GuardError('EEXIST', other
+            ? `"${one.name}" is the name of another item in this batch now, so "${path.basename(one.from)}" cannot take it. Rename them in two steps. Nothing was changed.`
+            : `"${one.name}" already exists in the folder of "${path.basename(one.from)}". Nothing was changed.`, 409);
+        }
+        const key = foldPath(one.to);
+        const twin = targets.get(key);
+        if (twin) {
+          throw new GuardError('EEXIST', `"${path.basename(twin.from)}" and "${path.basename(one.from)}" would both be named "${one.name}". Nothing was changed.`, 409);
+        }
+        targets.set(key, one);
+      }
+      if (!work.length) return { ok: true, label: 'Names unchanged', affected: [], undoable: false, renamed: [] };
+
+      const affected = [...new Set(work.map((one) => parentRel(one.from)))];
+      const done = [];
+      let failed = null;
+      for (const one of work) {
+        try {
+          await fs.rename(one.from, one.to);
+        } catch (err) {
+          failed = { one, err };
+          break;
+        }
+        done.push(one);
+      }
+      const pairs = done.map((one) => [guard.rel(one.from), guard.rel(one.to)]);
+      if (failed) {
+        if (done.length) await record('renames', `Partial rename (${done.length} of ${work.length})`, { kind: 'moves', pairs }, affected);
+        const e = new GuardError(failed.err.code || 'EIO', `Renaming stopped at "${path.basename(failed.one.from)}" after ${done.length} of ${plural(work.length, 'item')}: ${failed.err.message}`, 500);
+        e.affected = affected;
+        // In item order, every item before the one that failed, each at
+        // its new path (an unchanged one at its own), so results[k] is
+        // where items[k] now is.
+        if (done.length) e.results = all.slice(0, all.indexOf(failed.one)).map((one) => guard.rel(one.to));
+        throw e;
+      }
+      const res = await record('renames', `Renamed ${plural(work.length, 'item')}`, { kind: 'moves', pairs }, affected);
+      return { ...res, renamed: pairs };
     },
 
     async transfer({ type, paths, dest, onConflict = 'fail' }, job) {

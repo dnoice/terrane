@@ -15,7 +15,8 @@
     - 1.9.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
       test script ends with tools/finding-test.mjs, the Node check of the
       command palette's fuzzy ranking and of the kept view, links, search
-      history and saved searches.
+      history and saved searches, then tools/rename-test.mjs, the Node
+      check of the batch rename's planner.
     - 1.8.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — Raises
       the package version to 1.3.0: every Stage 5 candidate has its
       first increment, and the Audit, Hardening pass, Enhancement and
@@ -72,9 +73,10 @@
       then the places store test (benchmarks and the return point), the
       working sessions test (sessions, session:N, the route), the
       strata test (bytes by last change, typical age), the interior
-      test (the graft, the chamber, twins, the lock) and the finding
+      test (the graft, the chamber, twins, the lock), the finding
       test (fuzzy ranking, the kept view, links, history, saved
-      searches) in Node
+      searches) and the rename test (the batch rename's rules, clashes
+      and name checks) in Node
     - vendor: fetches the pinned third-party browser files into
       web/vendor/ from jsDelivr; --check verifies them offline
     - ui-check: drives the page in headless Edge or Chrome, keyboard

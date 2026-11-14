@@ -1,0 +1,186 @@
+/*
+ * ============================================================================
+ * ✒ Metadata
+ *     - Title: Acting on Many (Terrane Edition - v1.0)
+ *     - File Name: batch.css
+ *     - Relative Path: web/css/components/batch.css
+ *     - Artifact Type: stylesheet
+ *     - Version: 1.0.0
+ *     - Date: 11/13/2026
+ *     - Update: Friday, November 13, 2026
+ *     - Author: Dennis 'dendogg' Smaltz
+ *     - A.I. Acknowledgement: Anthropic - Claude Opus 5.5
+ *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
+ *
+ * ✒ Changelog:
+ *     - 1.0.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] —
+ *       Initial release.
+ *
+ * ✒ Description:
+ *     The parts of acting on many items at once: the batch rename sheet
+ *     with its rules and its preview table, and the duplicate cleanup
+ *     line under a group of copies. They read as the rest of the sheet:
+ *     paper, ink rules, mono for names and figures, garnet only where
+ *     something is refused or destructive.
+ *
+ * ✒ Key Features:
+ *     - dialog.is-rename: about 860 px wide, its form a column whose
+ *       preview takes the height left over
+ *     - The rules in three ruled sets side by side (find and replace,
+ *       case and number, extension), stacked in a narrow window
+ *     - The preview: a table of Now, Becomes and Note in one scroll
+ *       container with a sticky head; a row with a problem on a garnet
+ *       wash, an unchanged one in the third text tone
+ *     - The reason Apply is unavailable, in garnet beside the buttons
+ *       (in the third text tone while nothing changes yet), nudged when
+ *       Apply is pressed anyway
+ *     - The duplicate cleanup under a group: its reclaimable size, its
+ *       sentence and its buttons on one wrapping line
+ *
+ * ✒ Other Important Information:
+ *     - Dependencies: tokens.css, controls.css (.btn, .field),
+ *       floating.css (dialog, .dialog-form, .dialog-actions), motion.css
+ *       (nudge); web/js/batch.js and web/js/dupes.js build what this
+ *       styles
+ *     - Compatible platforms: current evergreen browsers
+ * ----------------------------------------------------------------------------
+ */
+
+/* ---------- the batch rename sheet ---------- */
+
+dialog.is-rename {
+  width: min(860px, 94vw);
+  max-height: 90vh;
+}
+.is-rename .sheet { display: flex; flex-direction: column; max-height: 88vh; }
+.rename-form { display: flex; flex-direction: column; min-height: 0; overflow: auto; }
+.rename-form .dialog-body { margin-bottom: var(--s-2); }
+
+.rename-rules {
+  display: grid;
+  grid-template-columns: 1.3fr 1fr 1fr;
+  gap: var(--s-3);
+}
+@media (max-width: 760px) {
+  .rename-rules { grid-template-columns: 1fr; }
+}
+.rename-set {
+  min-width: 0;
+  margin: 0;
+  padding: var(--s-1) var(--s-3) var(--s-2);
+  border: var(--border-2);
+  border-radius: var(--radius);
+}
+.rename-set legend {
+  padding: 0 var(--s-1);
+  color: var(--text-3);
+  font: 600 var(--fs-xs) / 1.4 var(--sans);
+  letter-spacing: var(--track-caps);
+  text-transform: uppercase;
+}
+.rename-set .field { margin: var(--s-2) 0; }
+.rename-set .field span { margin-bottom: var(--s-1); }
+.rename-set .field input { height: var(--control-h); }
+.rename-set .field input:disabled { background: var(--surface-control); color: var(--text-3); }
+.rename-set select {
+  width: 100%;
+  height: var(--control-h);
+  padding: 0 var(--s-1);
+  border: var(--border);
+  border-radius: var(--radius);
+  background: var(--surface-field);
+  color: var(--text);
+  font: 400 var(--fs-row) / 1 var(--sans);
+}
+.rename-row { display: grid; grid-template-columns: 1fr 0.8fr 1fr; gap: var(--s-2); }
+.rename-checks { display: grid; gap: var(--s-1); margin-top: var(--s-1); }
+.rename-check { display: flex; align-items: flex-start; gap: var(--s-2); color: var(--text-2); font-size: var(--fs-row); }
+.rename-check input { flex: none; margin-top: 2px; accent-color: var(--ink); }
+.rename-hint { margin: var(--s-2) 0 0; color: var(--text-3); font-size: var(--fs-sm); text-wrap: pretty; }
+
+.rename-summary {
+  margin: var(--s-3) 0 var(--s-2);
+  font: 500 var(--fs-sm) / 1.4 var(--mono);
+  font-variant-numeric: tabular-nums;
+}
+
+.rename-preview {
+  flex: 1 1 auto;
+  min-height: 120px;
+  max-height: 34vh;
+  overflow: auto;
+  overscroll-behavior: contain;
+  border: var(--border);
+  background: var(--surface-field);
+}
+.rename-preview:focus-visible { outline-offset: calc(var(--focus-offset) * -1); }
+.rename-preview table { width: 100%; border-collapse: collapse; font-size: var(--fs-row); }
+.rename-preview th {
+  position: sticky;
+  top: 0;
+  padding: var(--s-1) var(--s-2);
+  border-bottom: var(--border);
+  background: var(--surface-panel);
+  color: var(--text-3);
+  font: 600 var(--fs-xs) / 1.4 var(--sans);
+  letter-spacing: var(--track-caps);
+  text-align: left;
+  text-transform: uppercase;
+}
+.rename-preview td {
+  padding: 3px var(--s-2);
+  border-bottom: var(--border-3);
+  vertical-align: top;
+  overflow-wrap: anywhere;
+}
+.rename-preview code { font: 400 var(--fs-sm) / 1.4 var(--mono); }
+.rename-dir, .rename-same { color: var(--text-3); }
+.rename-note { color: var(--text-2); }
+.rename-preview tr.is-clash, .rename-preview tr.is-exists, .rename-preview tr.is-steps, .rename-preview tr.is-invalid { background: var(--garnet-wash); }
+.rename-preview tr.is-clash .rename-note, .rename-preview tr.is-exists .rename-note,
+.rename-preview tr.is-steps .rename-note, .rename-preview tr.is-invalid .rename-note { color: var(--danger); font-weight: 600; }
+.rename-preview tr.is-unchanged { color: var(--text-3); }
+.rename-more { margin: 0; padding: var(--s-1) var(--s-2); color: var(--text-3); font-size: var(--fs-sm); }
+
+.rename-why { min-height: 18px; margin: var(--s-2) 0 0; color: var(--danger); font-size: var(--fs-row); font-weight: 600; text-wrap: pretty; }
+.rename-why.is-idle { color: var(--text-3); font-weight: 400; }
+.rename-why.is-nudged { animation: nudge 260ms var(--ease-out); }
+
+/* ---------- the inspector's Rename… under a selection ---------- */
+
+.batch-action { margin-top: var(--s-2); }
+
+/* ---------- duplicate cleanup under a group ---------- */
+
+.dup-clean {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s-1) var(--s-2);
+  margin: var(--s-1) 0 var(--s-2);
+  padding-left: var(--row-indent);
+}
+.dup-waste {
+  padding: 1px var(--s-1);
+  background: var(--garnet-wash);
+  color: var(--text);
+  font: 500 var(--fs-xs) / 1.4 var(--mono);
+  font-variant-numeric: tabular-nums;
+}
+.dup-note { flex-basis: 100%; margin: 0; color: var(--text-2); font-size: var(--fs-sm); text-wrap: pretty; }
+.dup-why { flex-basis: 100%; margin: 0; color: var(--text-3); font-size: var(--fs-sm); }
+/* In the inspector the line stands under the copies, inset as a section's notes are. */
+.insp-dup { margin: 0; padding: var(--s-1) var(--s-3) var(--s-3); border-bottom: var(--border-2); }
+
+/* The confirmation's list of what moves. */
+.dup-moves {
+  max-height: 180px;
+  margin: 0 0 var(--s-2);
+  padding: var(--s-1) var(--s-2) var(--s-1) var(--s-5);
+  overflow: auto;
+  border: var(--border-3);
+  background: var(--surface-field);
+  color: var(--text-2);
+  font-size: var(--fs-sm);
+}
+.dup-moves code, .dup-confirm .dialog-body code { font: 400 var(--fs-sm) / 1.4 var(--mono); overflow-wrap: anywhere; }

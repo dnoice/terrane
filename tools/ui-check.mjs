@@ -19,6 +19,9 @@
  *       (the localStorage keys starting terrane.view. and
  *       terrane.searches.), once per tab by a sessionStorage marker, so
  *       every scenario starts fresh while t.reload() brings them back.
+ *       t.readOnlyUrl names the read-only service in a write scenario
+ *       too, and t.goto(url) opens it (or any address) and waits as for
+ *       the first load.
  *     - 1.4.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — Every
  *       page opens with single-key shortcuts turned on, as the guide's
  *       setting turns them on, because the page now starts with them
@@ -104,8 +107,10 @@
  *     timeout (ms). The context t offers: pass, gl, data, manifest, root,
  *     abs(rel), baseline, recorded, check, skip, note, key, keys, type,
  *     tabTo, focused, eval, app, waitFor, until, poll, settle, text,
- *     live, notices, mark, requests, shot, drawCalls, sleep, url, and
- *     reload() (waits for the survey and the loading sheet as at the start).
+ *     live, notices, mark, requests, shot, drawCalls, sleep, url,
+ *     readOnlyUrl (the read-only service, also from a write scenario),
+ *     reload() and goto(url) (each waits for the survey and the loading
+ *     sheet as at the start).
  *     t.app(fn) and t.waitFor(fn) call fn(window.__terrane) in the page,
  *     so fn must be self-contained and return plain JSON values.
  *
@@ -543,6 +548,8 @@ function context(page, env) {
     manifest: env.data.manifest,
     root: env.root,
     url: env.url,
+    // The read-only service's address; in a write scenario url is its own writable one.
+    readOnlyUrl: env.readOnlyUrl || env.url,
     baseline: env.baseline,
     recorded: env.recorded,
     page,
@@ -571,6 +578,13 @@ function context(page, env) {
     async reload() {
       await page.send('Runtime.evaluate', { expression: 'window.__oldPage = true', returnByValue: true });
       await page.send('Page.reload', {});
+      await untilReady(page);
+      await t.settle();
+    },
+    /** Opens another address in the same tab and waits as for the first load. */
+    async goto(url) {
+      await page.send('Runtime.evaluate', { expression: 'window.__oldPage = true', returnByValue: true });
+      await page.send('Page.navigate', { url });
       await untilReady(page);
       await t.settle();
     },
@@ -1034,7 +1048,7 @@ async function main() {
         const root = path.join(work, `write-${pass}-${s.name}`);
         const manifest = await makeFixture(root, { files: data.files || FILES, seed: data.seed || SEED });
         const svc = await startService([root], PORT + 1);
-        await runScenario(browser, s, { ...env, scenario: s.name, prefix, root, url: svc.url, data: { ...data, manifest, root } });
+        await runScenario(browser, s, { ...env, scenario: s.name, prefix, root, url: svc.url, readOnlyUrl: env.url, data: { ...data, manifest, root } });
         await svc.stop();
         removeDir(root);
       } else await runScenario(browser, s, { ...env, scenario: s.name, prefix });

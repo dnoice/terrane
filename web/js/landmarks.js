@@ -15,7 +15,9 @@
  * ✒ Changelog:
  *     - 1.3.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
  *       Places tab ends with the sections other features keep there
- *       (api.tabSections('places')), such as Saved searches.
+ *       (api.tabSections('places')), such as Saved searches. A batch
+ *       rename carries benchmarks along by its pairs (res.renamed), or,
+ *       stopped part way, from each item's path to its results entry.
  *     - 1.2.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — A
  *       Find that asks is:benchmark runs again whenever the benchmarks
  *       change, so Findings, its count, the pins and the dimming
@@ -488,7 +490,12 @@ export function install(api) {
   function follow(body, res) {
     let pairs = [];
     if (body.type === 'rename' && res.renamed && typeof body.path === 'string') pairs = [[body.path, res.renamed]];
-    else if (body.type === 'move' && Array.isArray(body.paths) && Array.isArray(res.results)) {
+    else if (body.type === 'renames' && Array.isArray(body.items)) {
+      // A batch rename answers its [from, to] pairs; one that stopped part
+      // way answers results, where each item before the failure now is.
+      if (Array.isArray(res.renamed)) pairs = res.renamed.filter(pathPair);
+      else if (Array.isArray(res.results)) pairs = res.results.map((to, k) => [body.items[k]?.path, to]).filter((x) => pathPair(x) && x[0] !== x[1]);
+    } else if (body.type === 'move' && Array.isArray(body.paths) && Array.isArray(res.results)) {
       pairs = res.results.map((to, k) => [body.paths[k], to]).filter(pathPair);
     } else if (body.type === 'trash' && Array.isArray(body.paths)) {
       // Removed by Terrane to its holding area: when the folder goes

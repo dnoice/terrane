@@ -20,7 +20,10 @@
       web/js/features.js (1.3.0, the palette, the remembered view and searches), whose
       1.0.0 entry left its header with that release. Looking before you act extends
       the same entries of app.js, model.js, terrane.css and features.js: Quick look;
-      the selection's total, the quick searches and the Untouched order.
+      the selection's total, the quick searches and the Untouched order. The seams for
+      acting on many extend those of app.js and landmarks.js, and acting on many itself
+      those of terrane.css and features.js: the batch rename, duplicate cleanup and copy
+      as.
     - 1.4.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — Records app.js 1.8.0:
       single-key shortcuts are off unless turned on in the guide.
     - 1.3.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — Records the hardening
@@ -96,7 +99,29 @@ here unchanged in the same edit.
   in its natural order (dir 1) and reverses like the others; sortToggle takes titles for
   an order that ascending and descending do not describe. In the ledger list, Ctrl with an
   arrow, Page Up or Down, Home or End moves the cursor and leaves the selection alone, so
-  Space can gather several rows by keyboard.
+  Space can gather several rows by keyboard. Acting on many: RENAME_MANY ({ id, owner,
+  run(nodes) }, the first entry wins), which the core F2 now dispatches to when more than
+  one item is selected, while F2 with one item opens the single rename as before and its
+  guide row is unchanged; MENU entries may define many(nodes, ctx), whose items follow
+  Copy paths in the menu of several (ctx { ro, off }, off naming an archive's lock), and
+  an entry needs items() or many(); INSPECTOR.many, sections after the Actions grid of a
+  selection of several, built with ctx { ro, off }; DUP_GROUP ({ id, owner, build(group,
+  ctx) }), what a feature adds under a group of duplicate candidates, in the inspector's
+  copies (ctx { node, where: 'inspector', ro }) and after each group's rows in the Survey
+  (ctx { node: null, where: 'survey', ro }), whose note now also gives the reclaimable size
+  of the confirmed groups; and api.relLabel(node), absPath without the root and its
+  separator, joined with '/', the root as '.' and an archive entry as dir/x.zip!/inner/file.
+  A verified group keeps the hash it was verified by. A survey after a refresh no longer
+  matches the old groups by their exact file lists, which dropped the verification of any
+  group whose size bucket held a file that matched none: what Verify by content proved is
+  kept per file (its hash, mode, size and last change), and a size group whose every file
+  is unchanged since is split by content again, as Verify split it. Verify by content runs
+  a survey still queued after a refresh first (surveyNow): pressed within the survey's
+  500 ms debounce it used to hash the nodes the refresh had just replaced, and the survey
+  that followed forgot the result. The inspector of a
+  selection of several no longer prints the word "null" under its Actions grid when no
+  action is unavailable (a writable service): the missing note was handed to
+  replaceChildren.
 - 1.8.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — Single-key shortcuts are
   off unless turned on in the guide, on Dennis's call after the hardening pass offered the
   setting with shortcuts on: letters, digits and signs act while the world or the ledger
@@ -213,6 +238,12 @@ here unchanged in the same edit.
   a pre, a picture or a player fitted and centred, facts under a sentence; a foot line of
   keys. And components/presets.css: the selection's total on the ledger's count row, in
   mono on a highlighter wash, and the Survey's Quick searches rows with the search icon.
+  Then components/batch.css: the batch rename sheet, about 860 px wide, its rules in three
+  ruled sets side by side (stacked when narrow), a preview table of Now, Becomes and Note
+  under a sticky head with problem rows on a garnet wash, and the reason Apply is
+  unavailable in garnet; and the duplicate cleanup line under a group of copies, its
+  reclaimable size on a garnet wash, its buttons and its sentences, with the
+  confirmation's list of what moves.
 - 2.3.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — Imports components/traverse.css:
   the Findings sub-line in two rows with its sort keys and note, the Working sessions rows and the
   traverse glyph; components/strata.css: the inspector's Bytes by last change and the
@@ -322,7 +353,12 @@ here unchanged in the same edit.
   looking before you act: Quick look, P, the selected file's text, picture, sound or
   film in a large sheet, stepped through the list shown with the arrows (quicklook.js);
   totals and quick searches, the selection's size on the ledger's count row and four
-  common searches counted in the Survey and run with a key (presets.js).
+  common searches counted in the Survey and run with a key (presets.js). Then, acting on
+  many: the batch rename, F2 with several selected, a sheet of rules over a preview that
+  the DOM-free rename.js works out, one change and one Undo (batch.js); duplicate cleanup,
+  keep one verified copy and move the others to the holding area after reading them again
+  (dupes.js); and copy as, names and relative paths from the menus and the palette
+  (copyas.js).
 - 1.2.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — The third: Session
   traverse, working sessions as a search and a route (traverse.js). The fourth: Strata,
   bytes by last change and the Age lens's typical age for closed masses (strata.js). The
@@ -356,7 +392,10 @@ here unchanged in the same edit.
 
 - 1.3.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — The Places tab ends with the
   sections other features keep there (api.tabSections('places')), such as Saved searches,
-  after the return point.
+  after the return point. A batch rename (body type 'renames') carries benchmarks along by
+  the pairs the service answers (res.renamed); one that stopped part way, by each item's
+  path to its entry in res.results, where it now is, leaving out an item that kept its
+  name.
 - 1.2.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — A Find that asks
   is:benchmark runs again whenever the benchmarks change, so Findings, its count, the pins
   and the dimming follow; J opens a folded return point through api.forceOpen, so the

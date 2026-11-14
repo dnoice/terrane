@@ -24,7 +24,14 @@
  *       the list's cursor, a TAB_SECTIONS section is drawn in the Places
  *       tab, copyText says what happened, and the key table carries the
  *       palette's labels, palette: false and gl fields. P is allocated to
- *       Quick look, and quicklook may bind it.
+ *       Quick look, and quicklook may bind it. Acting on many: RENAME_MANY,
+ *       DUP_GROUP and INSPECTOR.many are frozen, hold no controller entry
+ *       and are compared at the end; F2 with two selected runs the first
+ *       RENAME_MANY entry and with one opens the single rename; a MENU
+ *       entry needs items() or many(), and many()'s items follow Copy
+ *       paths; an INSPECTOR.many section follows the Actions grid; a
+ *       DUP_GROUP entry adds to the inspector's copies and to every group
+ *       the Survey lists; each one that throws is left out; relLabel.
  *     - 1.4.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
  *       S.sessions slot may hold what the Session traverse feature fills
  *       it with after the survey (a list of working sessions), as
@@ -74,6 +81,9 @@
  *     - The focus and selection hooks, controls on the ledger's count
  *       row, sections in another feature's tab, selectAll, cursorTo,
  *       copyText and the key table's palette fields
+ *     - F2's dispatch to RENAME_MANY with several selected, the menu of
+ *       several (many()), the inspector's sections for several, DUP_GROUP
+ *       in the inspector and the Survey, and relLabel
  *     - The only hook the controller registers itself is the survey hook
  *       that rebuilds the shared age table
  *     - Feature search tokens through parseQuery's is: and prefix tables
@@ -151,21 +161,21 @@ export default {
     const start = await t.app(async (T) => {
       const a = T.api;
       const regs = ['KEYS', 'ESCAPE', 'PIN_SOURCES', 'TIP_LINES', 'READING', 'TABS', 'LAYOUT_OPTS', 'AFTER_LAYOUT', 'AFTER_REFRESH', 'AFTER_SURVEY', 'AFTER_OP', 'MENU', 'AFTER_QUERY', 'SURVEY',
-        'COMMANDS', 'LEDGER_SUB', 'AFTER_FOCUS', 'AFTER_SELECT', 'TAB_SECTIONS'];
+        'COMMANDS', 'LEDGER_SUB', 'AFTER_FOCUS', 'AFTER_SELECT', 'TAB_SECTIONS', 'RENAME_MANY', 'DUP_GROUP'];
       const mod = await import(new URL('js/features.js', document.baseURI).href);
       // A feature's entries carry its owner; the controller's carry none, or 'core'.
       const own = (reg) => [...reg].filter((x) => !x.owner || x.owner === 'core').map((x) => x.id);
       const byFeature = (reg) => [...reg].filter((x) => x.owner && x.owner !== 'core');
       return {
-        frozen: Object.isFrozen(a) && regs.every((n) => Object.isFrozen(a[n])) && Object.isFrozen(a.INSPECTOR) && Object.isFrozen(a.QUERY),
+        frozen: Object.isFrozen(a) && regs.every((n) => Object.isFrozen(a[n])) && Object.isFrozen(a.INSPECTOR) && ['focus', 'node', 'many'].every((n) => Object.isFrozen(a.INSPECTOR[n])) && Object.isFrozen(a.QUERY),
         // places is null, or the store the Landmarks feature keeps there;
         // sessions is null, or the working sessions the Session traverse found.
         slots: ['time', 'interior', 'places', 'sessions', 'searches'].every((k) => k in T.S) && ['time', 'interior'].every((k) => T.S[k] === null)
           && (T.S.places === null || Array.isArray(T.S.places.benchmarks)) && (T.S.sessions === null || Array.isArray(T.S.sessions.list))
           && (T.S.searches === null || (Array.isArray(T.S.searches.history) && Array.isArray(T.S.searches.saved)))
           && 'ages' in T.S && typeof T.S.ages?.kept === 'function' && T.S.ages.folders === T.S.model.root.dc + 1,
-        ids: Object.fromEntries([...regs.map((n) => [n, own(a[n])]), ['focus', own(a.INSPECTOR.focus)], ['node', own(a.INSPECTOR.node)]]),
-        all: Object.fromEntries([...regs.map((n) => [n, a[n].ids()]), ['focus', a.INSPECTOR.focus.ids()], ['node', a.INSPECTOR.node.ids()]]),
+        ids: Object.fromEntries([...regs.map((n) => [n, own(a[n])]), ['focus', own(a.INSPECTOR.focus)], ['node', own(a.INSPECTOR.node)], ['many', own(a.INSPECTOR.many)]]),
+        all: Object.fromEntries([...regs.map((n) => [n, a[n].ids()]), ['focus', a.INSPECTOR.focus.ids()], ['node', a.INSPECTOR.node.ids()], ['many', a.INSPECTOR.many.ids()]]),
         featureSections: [...new Set(byFeature(a.KEYS).filter((x) => x.guide).map((x) => x.guide[0]))],
         featureReading: byFeature(a.READING).map((x) => x.title),
         // A feature's search words carry its owner, as its entries do.
@@ -197,6 +207,8 @@ export default {
     const g1regs = ['COMMANDS', 'LEDGER_SUB', 'AFTER_FOCUS', 'AFTER_SELECT', 'TAB_SECTIONS'];
     t.check('the palette commands, ledger sub-line controls, focus and selection hooks and tab sections hold no controller entry',
       g1regs.every((n) => ids[n].length === 0), JSON.stringify(g1regs.map((n) => ids[n])));
+    t.check('the batch rename, the inspector\'s sections for several and the duplicate groups\' additions hold no controller entry',
+      !ids.RENAME_MANY.length && !ids.DUP_GROUP.length && !ids.many.length, JSON.stringify([ids.RENAME_MANY, ids.DUP_GROUP, ids.many]));
     t.check('the key allocation is fixed: I Interiors, T , . < > Time, B H J Landmarks, P Quick look, the canvas keeps W A S D Q E R F',
       same(start.owners, OWNERS) && start.ownersFrozen, JSON.stringify(start.owners));
     t.check('the tab buttons are made from TABS, Contents selected', same(start.tabs, ['contents:Contents:true', 'findings:Findings:false', 'survey:Survey:false', 'journal:Journal:false']), JSON.stringify(start.tabs));
@@ -601,6 +613,118 @@ export default {
     });
     await t.settle();
 
+    // The seams acting on many uses: F2 through RENAME_MANY, MENU's
+    // many(), INSPECTOR.many, DUP_GROUP and relLabel.
+    await t.eval(muteErrors, true);
+    const g3 = await t.app((T) => {
+      const a = T.api;
+      window.__seam.renamed = [];
+      let neither = 'ok';
+      try {
+        a.MENU.add({ id: 'seam-neither' });
+        a.MENU.remove('seam-neither');
+      } catch (err) {
+        neither = err.message;
+      }
+      // First, so it wins over a feature's: the first entry runs.
+      a.RENAME_MANY.add({ id: 'seam-rename', order: 1, run: (nodes) => { window.__seam.renamed.push(nodes.map((n) => n.n).sort()); } });
+      a.MENU.add({ id: 'seam-many', order: 1, many: (nodes, ctx) => [{ label: `Seam ${nodes.length} ${ctx.off ?? 'on'}`, run: () => {} }] });
+      a.MENU.add({ id: 'seam-many-broken', order: 2, many: () => { throw new Error('many on purpose'); } });
+      a.INSPECTOR.many.add({ id: 'seam-many', build: (nodes, ctx) => a.el('p', { class: 'seam-many', text: `Seam many ${nodes.length} ${ctx.off ?? 'on'} ${ctx.ro ?? 'on'}` }) });
+      a.INSPECTOR.many.add({ id: 'seam-many-broken', order: 60, build: () => { throw new Error('many section on purpose'); } });
+      a.DUP_GROUP.add({ id: 'seam-dup', order: 1, build: (g, ctx) => a.el('p', { class: 'seam-dup', text: `${ctx.where} ${g.files.length} ${ctx.node ? ctx.node.n : 'none'} ${ctx.ro ?? 'on'}` }) });
+      a.DUP_GROUP.add({ id: 'seam-dup-broken', order: 2, build: () => { throw new Error('dup on purpose'); } });
+      const dir = T.S.model.root.c.find((c) => c.d && !c.e && c.c.filter((x) => !x.d).length >= 2) || T.S.model.root;
+      const files = dir.c.filter((x) => !x.d).slice(0, 2);
+      a.setFocus(dir);
+      const deep = (function find(d) {
+        for (const c of d.c) if (c.d && c.c.length) { const f = c.c.find((x) => !x.d); if (f) return f; }
+        return null;
+      })(T.S.model.root);
+      return {
+        neither, dir: dir.n, files: files.map((f) => f.n).sort(), ro: a.writable(),
+        rel: { root: a.relLabel(T.S.model.root), deep: deep && a.relLabel(deep), want: deep && a.relPath(deep) },
+      };
+    });
+    await t.waitFor((T, n) => T.S.focus.n === n || !T.S.focus.p, { args: [g3.dir], timeout: 8000 });
+    await t.settle();
+    t.check('a MENU entry needs items() or many()', /needs items\(\) or many\(\)/.test(g3.neither), g3.neither);
+    t.check(`relLabel: the root reads ".", and a file its path from the root joined with / (${g3.rel.deep})`, g3.rel.root === '.' && g3.rel.deep === g3.rel.want && !!g3.rel.deep, JSON.stringify(g3.rel));
+    await t.app((T, names) => {
+      const nodes = T.S.focus.c.filter((c) => names.includes(c.n));
+      T.api.selectAll(nodes);
+      document.getElementById('ledger-list').focus();
+      return true;
+    }, g3.files);
+    await t.key('F2');
+    const two = await t.waitFor(() => window.__seam.renamed.length === 1 && { names: window.__seam.renamed[0], dialog: document.getElementById('dialog').open });
+    t.check('F2 with two selected runs the first RENAME_MANY entry with them, and opens no rename of its own', same(two.names, g3.files) && !two.dialog, JSON.stringify(two));
+    await t.key('Shift+F10');
+    await t.waitFor(() => !document.getElementById('menu').hidden && document.querySelectorAll('#menu .menu-item').length > 0, { what: 'the menu of several' });
+    const manyMenu = await t.eval(() => [...document.querySelectorAll('#menu .menu-item .menu-label')].map((l) => l.textContent));
+    await t.key('Escape');
+    await t.waitFor(() => document.getElementById('menu').hidden);
+    const wantSeam = `Seam 2 ${g3.ro ?? 'on'}`;
+    t.check(`a MENU entry's many() items follow Copy paths in the menu of several ("${wantSeam}"); one that throws is left out`,
+      manyMenu[manyMenu.indexOf('Copy paths') + 1] === wantSeam, JSON.stringify(manyMenu));
+    const manyInsp = await t.eval(() => {
+      const body = document.getElementById('inspector-body');
+      const grid = body.querySelector('.actions-grid');
+      const seam = body.querySelector('.seam-many');
+      return { text: seam?.textContent ?? null, after: !!grid && !!seam && !!(grid.compareDocumentPosition(seam) & Node.DOCUMENT_POSITION_FOLLOWING) };
+    });
+    t.check(`an INSPECTOR.many section follows the Actions grid of a selection of several, told why changes are off (${manyInsp.text})`,
+      manyInsp.text === `Seam many 2 ${g3.ro ?? 'on'} ${g3.ro ?? 'on'}` && manyInsp.after, JSON.stringify(manyInsp));
+    await t.app((T, n) => {
+      T.api.select(T.S.focus.c.find((c) => c.n === n));
+      document.getElementById('ledger-list').focus();
+      return true;
+    }, g3.files[0]);
+    await t.key('F2');
+    const one = await t.waitFor(() => document.getElementById('dialog').open && { input: document.activeElement?.name, h2: document.querySelector('#dialog h2')?.textContent });
+    t.check('F2 with one selected is the single rename, and RENAME_MANY is not asked', one.input === 'name' && one.h2 === 'Rename' && (await t.app(() => window.__seam.renamed.length)) === 1, JSON.stringify(one));
+    await t.key('Escape');
+    await t.waitFor(() => !document.getElementById('dialog').open);
+    const dup = await t.app((T) => {
+      const a = T.api;
+      const g = T.S.survey?.dupGroups?.[0];
+      if (!g) return null;
+      const f = g.files[0];
+      a.select(f);
+      const inInspector = document.querySelector('#inspector-body .seam-dup')?.textContent ?? null;
+      T.S.tab = 'survey';
+      a.drawLedger();
+      const inSurvey = [...document.querySelectorAll('#ledger-rich .seam-dup')].map((p) => p.textContent);
+      const first = document.querySelector('#ledger-rich .group-head');
+      const firstDup = document.querySelector('#ledger-rich .seam-dup');
+      T.S.tab = 'contents';
+      a.drawLedger();
+      return {
+        inInspector, want: `inspector ${g.files.length} ${f.n} ${a.writable() ?? 'on'}`, n: inSurvey.length, groups: Math.min(60, T.S.survey.dupGroups.length),
+        first: inSurvey[0], wantFirst: `survey ${g.files.length} none ${a.writable() ?? 'on'}`,
+        order: !!first && !!firstDup && !!(first.compareDocumentPosition(firstDup) & Node.DOCUMENT_POSITION_FOLLOWING),
+      };
+    });
+    if (dup) {
+      t.check(`a DUP_GROUP entry adds to the inspector's copies, told the group, the file and the mode (${dup.inInspector})`, dup.inInspector === dup.want, JSON.stringify(dup));
+      t.check(`and to every group the Survey lists, after its rows (${dup.n} of ${dup.groups})`, dup.n === dup.groups && dup.first === dup.wantFirst && dup.order, JSON.stringify(dup));
+    } else t.skip('a DUP_GROUP entry adds to the inspector and the Survey', 'no duplicate candidates in this data');
+    const g3errs = await t.eval(muteErrors, false);
+    t.check('a many() item, an INSPECTOR.many section and a DUP_GROUP entry that throw are reported and left out',
+      g3errs.some((e) => /MENU "seam-many-broken" failed/.test(e)) && g3errs.some((e) => /INSPECTOR.many "seam-many-broken" failed/.test(e)) && (!dup || g3errs.some((e) => /DUP_GROUP "seam-dup-broken" failed/.test(e))),
+      JSON.stringify(g3errs));
+    await t.app((T) => {
+      const a = T.api;
+      for (const [reg, id] of [['RENAME_MANY', 'seam-rename'], ['MENU', 'seam-many'], ['MENU', 'seam-many-broken'], ['DUP_GROUP', 'seam-dup'], ['DUP_GROUP', 'seam-dup-broken']]) a[reg].remove(id);
+      a.INSPECTOR.many.remove('seam-many');
+      a.INSPECTOR.many.remove('seam-many-broken');
+      a.select(null);
+      a.setFocus(T.S.model.root);
+      a.drawLedger();
+      return true;
+    });
+    await t.settle();
+
     if (t.gl) {
       // Pins add up in source order and stop at the capacity.
       await t.settle();
@@ -673,8 +797,8 @@ export default {
     const end = await t.app((T) => {
       const a = T.api;
       return Object.fromEntries([...['KEYS', 'ESCAPE', 'PIN_SOURCES', 'TIP_LINES', 'READING', 'TABS', 'LAYOUT_OPTS', 'AFTER_LAYOUT', 'AFTER_REFRESH', 'AFTER_SURVEY', 'AFTER_OP', 'MENU', 'AFTER_QUERY', 'SURVEY',
-        'COMMANDS', 'LEDGER_SUB', 'AFTER_FOCUS', 'AFTER_SELECT', 'TAB_SECTIONS'].map((n) => [n, a[n].ids()]),
-        ['focus', a.INSPECTOR.focus.ids()], ['node', a.INSPECTOR.node.ids()]]);
+        'COMMANDS', 'LEDGER_SUB', 'AFTER_FOCUS', 'AFTER_SELECT', 'TAB_SECTIONS', 'RENAME_MANY', 'DUP_GROUP'].map((n) => [n, a[n].ids()]),
+        ['focus', a.INSPECTOR.focus.ids()], ['node', a.INSPECTOR.node.ids()], ['many', a.INSPECTOR.many.ids()]]);
     });
     t.check('every test entry is gone again', same(end, start.all), JSON.stringify(end).slice(0, 300));
   },
