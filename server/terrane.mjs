@@ -34,6 +34,19 @@
  *       { path } opens a terminal in a folder (ops.terminal): the token,
  *       the Host check and the JSON rule as for every POST, refused in
  *       read-only mode, and in snapshot mode with a sentence of its own.
+ *       A warm start (server/warm.mjs): a whole survey of the root (GET
+ *       /api/scan with path '' and no depth) is copied into a gzipped
+ *       cache in the dataset home as it streams, and the copy is made the
+ *       cache only when the survey ran to its end with the page still
+ *       there; a dropped survey leaves nothing. GET /api/info carries
+ *       warm: { takenAt, folders, files, bytes }, or null. GET /api/warm
+ *       answers the cache as the scan's NDJSON (no-store, nosniff): the
+ *       file as it is with Content-Encoding gzip when the page accepts
+ *       it, decompressed otherwise, through pipeline() so it ends when
+ *       the page goes away; ENOWARM 404 when there is none or with
+ *       --no-warm, and ESNAPSHOT in snapshot mode, where no cache is
+ *       kept. --no-warm turns it off. The cache is outside the root, so
+ *       read-only mode keeps it too.
  *     - 1.4.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — POST
  *       /api/hash reads a file only once its real location is proved
  *       inside the root and outside the holding area, as /api/raw and
@@ -77,9 +90,9 @@
  *     The local service behind Terrane. It is given exactly one directory on
  *     the command line, serves the interface on the loopback address, and
  *     exposes that directory (and nothing else) to the browser: progressive
- *     scanning, metadata, previews, archive contents, guarded file
- *     operations, undo, a terminal in a folder, and live change
- *     notifications.
+ *     scanning, the last complete survey kept for a warm start, metadata,
+ *     previews, archive contents, guarded file operations, undo, a
+ *     terminal in a folder, and live change notifications.
  *
  * ✒ Key Features:
  *     - Explicit authorization: no directory argument, no service
@@ -115,6 +128,10 @@
  *     - POST /api/terminal { path }: a terminal whose working directory
  *       is that folder, never an argument; refused in read-only and
  *       snapshot mode, since a terminal can change anything
+ *     - A warm start: the last complete survey of the root is kept in the
+ *       dataset home (names, sizes, dates and flags, never contents) and
+ *       served by GET /api/warm, so the next launch draws at once while
+ *       the page surveys the directory again; --no-warm turns it off
  *     - Zero npm dependencies; three.js and the fonts are vendored in web/
  *
  * ✒ Usage Instructions:
@@ -128,6 +145,7 @@
  *     node server/terrane.mjs ~/Music --read-only
  *     node server/terrane.mjs /srv/share --port 5050 --no-open
  *     node server/terrane.mjs . --no-watch
+ *     node server/terrane.mjs . --no-warm
  *     node server/terrane.mjs --snapshot "%LOCALAPPDATA%\terrane\datasets\projects"
  *
  * ✒ Command-Line Arguments:
@@ -141,6 +159,8 @@
  *         --read-only     Refuse every operation that changes the disk.
  *     Processing:
  *         --no-watch      Do not watch for outside changes (manual refresh).
+ *         --no-warm       Keep no tree of the last survey and serve none: every
+ *                         launch surveys the directory before it draws.
  *     Output:
  *         --port <n>      Preferred port (default 4173; next free is used).
  *         --no-open       Do not open the browser automatically.
@@ -154,6 +174,9 @@
  *       page's meta tag and the X-Terrane-Token header; the cookie, which
  *       the browser sends to every port on this host, carries only the
  *       thumbnail secret
+ *     - Privacy: the warm cache holds real file names, as a snapshot does;
+ *       it is kept in the dataset home, outside the project and outside
+ *       the authorized directory
  *     - Limitations: on Linux the recursive watcher is skipped above 15,000
  *       folders, where its setup cost stops being reasonable; the interface
  *       then offers manual refresh
@@ -167,6 +190,7 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { spawn } from 'node:child_process';
+import zlib from 'node:zlib';
 import { pipeline } from 'node:stream';
 import { makeGuard, GuardError, HOLD_DIR, relParts } from './guard.mjs';
 import { scan, pump } from './scan.mjs';
@@ -174,6 +198,7 @@ import { makeOps } from './ops.mjs';
 import { openSnapshots, listSnapshots, datasetHome, slugOf } from './snapshot.mjs';
 import { openThumbs } from './thumbs.mjs';
 import { inspect } from './archive.mjs';
+import { warmWriter, readWarm, warmPaths } from './warm.mjs';
 
 const VERSION = '1.3.0';
 const WEB = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'web');
@@ -193,7 +218,7 @@ if (!usageOk || flag('--help')) {
   console.error([
     '',
     '  Terrane ' + VERSION,
-    '  Usage: node server/terrane.mjs <directory> [--read-only] [--port n] [--no-open] [--no-watch]',
+    '  Usage: node server/terrane.mjs <directory> [--read-only] [--port n] [--no-open] [--no-watch] [--no-warm]',
     '         node server/terrane.mjs --snapshot <folder or .db> [--port n] [--no-open]',
     '',
     '  Terrane only works inside the directory you name here. With --snapshot it',
@@ -223,6 +248,10 @@ if (snapshotArg) {
   }
 }
 const readOnly = flag('--read-only') || !!snap;
+// The tree of the last complete survey, kept outside the root so the next
+// launch can draw at once. Off in snapshot mode, which is a recorded tree
+// already, and with --no-warm.
+const warmOn = !snap && !flag('--no-warm');
 
 // The thumbnail dataset sits beside the structure snapshots. It is opened
 // lazily so one built after the service started is still picked up.
@@ -365,6 +394,7 @@ const snapInfo = () => ({
   version: VERSION, root: snapMeta.root, name: snapMeta.name, sep: snapMeta.sep, platform: snapMeta.platform,
   readOnly: true, watch: 'snapshot',
   snapshot: { takenAt: snapMeta.takenAt, folders: snapMeta.folders, files: snapMeta.files, bytes: snapMeta.bytes },
+  warm: null,
 });
 
 async function snapshotApi(req, res, route, q) {
@@ -421,7 +451,64 @@ async function snapshotApi(req, res, route, q) {
   if (route === 'journal') return json(res, 200, { journal: [], holding: [], snapshot: true });
   if (route === 'raw') throw new GuardError('ESNAPSHOT', 'Previews of the original file are not available in snapshot mode: a snapshot holds names, sizes and dates, not contents.', 403);
   if (route === 'inside') throw new GuardError('ESNAPSHOT', 'Looking inside an archive is not available in snapshot mode: a snapshot holds names, sizes and dates, not what a file contains. Start Terrane on the real directory to do this.', 403);
+  if (route === 'warm') throw new GuardError('ESNAPSHOT', 'Snapshot mode keeps no tree from an earlier session: the snapshot is itself a recorded tree.', 403);
   throw new GuardError('EROUTE', 'No such endpoint.', 404);
+}
+
+/* ---------- warm start ---------- */
+
+/** What the page is told of the kept tree: when it was taken and what it holds. */
+const warmInfo = (m) => (m ? { takenAt: m.takenAt, folders: m.folders, files: m.files, bytes: m.bytes } : null);
+
+/**
+ * The survey's batches, passed on as they come and copied into the cache.
+ * The copy becomes the cache only when the survey ran to its end with the
+ * page still there; a survey the page dropped part way leaves nothing.
+ */
+async function* teeWarm(source, signal) {
+  const w = warmWriter(guard.root, { version: VERSION });
+  let finished = false;
+  try {
+    for await (const batch of source) {
+      w.push(batch);
+      yield batch;
+    }
+    finished = !signal.aborted;
+  } finally {
+    if (finished) w.commit();
+    else w.abort();
+  }
+}
+
+/**
+ * GET /api/warm: the kept tree as the scan's NDJSON, the file itself when
+ * the page accepts gzip, decompressed otherwise. The file is opened and
+ * its size checked against the meta before anything is answered.
+ */
+async function warmApi(req, res) {
+  const m = warmOn ? await readWarm(guard.root) : null;
+  const none = () => new GuardError('ENOWARM', warmOn
+    ? 'No tree from an earlier session is kept for this directory.'
+    : 'Terrane was started with --no-warm, so it keeps no tree from an earlier session.', 404);
+  if (!m) throw none();
+  let fh;
+  try {
+    fh = await fsp.open(warmPaths(guard.root).data, 'r');
+    if ((await fh.stat()).size !== m.size) throw none();
+  } catch (err) {
+    await fh?.close().catch(() => {});
+    throw err instanceof GuardError ? err : none();
+  }
+  const gz = /\bgzip\b/.test(String(req.headers['accept-encoding'] || ''));
+  res.writeHead(200, {
+    'Content-Type': 'application/x-ndjson', 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff', Vary: 'Accept-Encoding',
+    ...(gz ? { 'Content-Encoding': 'gzip' } : {}),
+  });
+  // pipeline ends every stream when one fails or the page goes away.
+  const src = fh.createReadStream();
+  if (gz) pipeline(src, res, () => {});
+  else pipeline(src, zlib.createGunzip(), res, () => {});
+  return undefined;
 }
 
 function startWatch(dirCount) {
@@ -544,6 +631,7 @@ async function api(req, res, url) {
       return json(res, 200, {
         version: VERSION, root: guard.root, name: path.basename(guard.root) || guard.root, sep: path.sep,
         platform: process.platform, readOnly, watch: watchState,
+        warm: warmOn ? warmInfo(await readWarm(guard.root)) : null,
       });
     }
     if (route === 'scan') {
@@ -554,8 +642,12 @@ async function api(req, res, url) {
       const ac = new AbortController();
       res.on('close', () => ac.abort());
       res.writeHead(200, { 'Content-Type': 'application/x-ndjson', 'Cache-Control': 'no-store' });
-      return pump(res, scan(abs, { depth, signal: ac.signal, isRoot: rel === '' }), ac.signal);
+      const source = scan(abs, { depth, signal: ac.signal, isRoot: rel === '' });
+      // Only a whole survey of the root is kept for the next launch.
+      const whole = rel === '' && !q.get('depth');
+      return pump(res, whole && warmOn ? teeWarm(source, ac.signal) : source, ac.signal);
     }
+    if (route === 'warm') return warmApi(req, res);
     if (route === 'stat') {
       const abs = guard.resolve(q.get('path') || '');
       await guard.assertParentInside(abs);

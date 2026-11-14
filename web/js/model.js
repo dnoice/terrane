@@ -20,6 +20,10 @@
  *       and TEXT_EXT, the extensions a preview shows as a picture or
  *       reads as text, for the inspector and Quick look alike. ext: and
  *       kind: take comma lists, any of them: kind:video,audio,image.
+ *       adopt(fresh) takes on a fresh model of the same directory and
+ *       keeps every node still there (matched by name and kind), with
+ *       fresh's totals and every folder dirty; it returns kept, added,
+ *       removed and changed, for the warm start's catch-up.
  *     - 1.3.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] —
  *       fmtDay (MM/DD/YYYY) and plural are the one date formatter and
  *       count wording every module imports; fmtDate builds on fmtDay.
@@ -45,6 +49,10 @@
  *     - Reconcile: re-reads one folder, preserves the identity of entries
  *       that still exist (selection survives), and reports which new child
  *       folders need a deep scan
+ *     - Adopt: takes on a whole fresh model of the same directory, keeping
+ *       the identity of every entry still there, so a tree drawn from the
+ *       last session can be brought up to date without losing the
+ *       selection, the focus or anything else that holds a node
  *     - Nine content kinds derived from the extension, and the one list
  *       of extensions a preview shows as a picture or reads as text
  *     - Search grammar: free text, glob, ext:, kind:, is:, size and age
@@ -61,6 +69,7 @@
  *     const model = new Model('projects');
  *     model.ingest(records, idMap, model.root);   // streaming scan
  *     const { added } = model.reconcile(dir, records);  // after a change
+ *     const { changed, added: here, removed } = model.adopt(freshModel);
  *     const hits = runSearch(model, parseQuery('ext:psd >50mb older:1y'));
  *     parseQuery('is:benchmark', { is: { benchmark: (n) => marked.has(n) } });
  *     parseQuery('session:2', { prefix: { session: (v) => inWindow(v) } });
@@ -327,6 +336,62 @@ export class Model {
     dir.c = next;
     this.recompute(dir);
     return { added, removed: [...oldDirs.values(), ...oldFiles.values()] };
+  }
+
+  /**
+   * Takes on a fresh model of the same directory and keeps every node
+   * that is still there, so whatever holds one (the selection, the
+   * focus, a benchmark, a box in transition) holds it still. Both trees
+   * are walked from their roots; a folder's children are matched by name
+   * and kind (folder or file). A matched file keeps its node and takes
+   * size, date and flags from fresh; a matched folder keeps its node and
+   * is walked in turn; a new one is fresh's node, hung from the old
+   * folder; one that is gone is dropped. Every old folder takes its
+   * totals from fresh and is marked dirty, so the layout sorts it again.
+   * Returns { kept, added, removed, changed }: entries kept, entries here
+   * now and gone (a folder with all it holds), and files whose size or
+   * date changed. fresh is spent: its new nodes now belong here.
+   */
+  adopt(fresh) {
+    let kept = 0;
+    let added = 0;
+    let removed = 0;
+    let changed = 0;
+    const stack = [this.root, fresh.root];
+    while (stack.length) {
+      const neu = stack.pop();
+      const old = stack.pop();
+      const had = new Map();
+      for (const ch of old.c) had.set(ch.n, ch);
+      const next = new Array(neu.c.length);
+      for (let i = 0; i < neu.c.length; i++) {
+        const nc = neu.c[i];
+        const oc = had.get(nc.n);
+        if (oc && !oc.d === !nc.d) {
+          had.delete(nc.n);
+          kept++;
+          if (nc.d) stack.push(oc, nc);
+          else {
+            if (oc.s !== nc.s || oc.m !== nc.m) changed++;
+            oc.s = nc.s;
+            oc.m = nc.m;
+            oc.f = nc.f;
+          }
+          next[i] = oc;
+        } else {
+          nc.p = old;
+          added += nc.d ? 1 + nc.dc + nc.fc : 1;
+          next[i] = nc;
+        }
+      }
+      // What is left was not matched: gone, or now of the other kind.
+      for (const gone of had.values()) removed += gone.d ? 1 + gone.dc + gone.fc : 1;
+      old.c = next;
+      Object.assign(old, {
+        s: neu.s, m: neu.m, e: neu.e, stub: neu.stub, fc: neu.fc, dc: neu.dc, h: neu.h, mm: neu.mm, ks: neu.ks.slice(), dirty: true,
+      });
+    }
+    return { kept, added, removed, changed };
   }
 
   find(rel) {

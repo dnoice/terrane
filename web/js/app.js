@@ -35,22 +35,18 @@
  *       A verified group keeps its hash, a survey after a refresh keeps
  *       what Verify proved of files unchanged since, and Verify first
  *       runs a survey still queued. The inspector of several no longer
- *       prints "null" where no reason is due.
+ *       prints "null" where no reason is due. Starting fast: a warm
+ *       start draws the tree the service kept (GET /api/warm) at once
+ *       and checks it with a survey in the background (catchUp, then
+ *       Model.adopt, keeping every node); S.warm meanwhile, when changes
+ *       wait with a sentence and writable() names why, while
+ *       readOnlyMode() (in the api) does not; a tree that cannot be read
+ *       whole is set aside, said, and surveyed afresh. scanStream takes
+ *       a route and a signal; window.__terrane gains firstDrawMs and warm.
  *     - 1.8.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] —
  *       Single-key shortcuts are off unless turned on in the guide:
  *       letters, digits and signs act while the world or the ledger
  *       list has focus, and Ctrl and Alt chords act everywhere.
- *     - 1.7.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] —
- *       Hardening: a folder gone from disk no longer stalls every
- *       refresh; Rescan all lets go of the old tree and runs the search
- *       again; the forced unfold ends at the overview or off its
- *       branch; focus survives a redraw or a hidden panel; a narrow
- *       inspector drawer and a single-key setting; a page the service
- *       did not serve asks it nothing. Counts say "1 item" and "1
- *       match"; an empty folder, a search with no match and a legend
- *       with nothing to colour each say so, with no sort keys over an
- *       empty list; Copy, Create and Rename carry icons as their
- *       neighbours do.
  *     Earlier entries: see CHANGELOG.md
  *
  * ✒ Description:
@@ -65,6 +61,11 @@
  *       the first survey batch arrives; it names each stage in words and
  *       hands over once the world has something to show
  *     - Streams the scan into the model and redraws while it is running
+ *     - A warm start: the tree the service kept from the last complete
+ *       survey is drawn at once and checked by a survey in the
+ *       background; the location, the selection and the eye stay where
+ *       they are, changes wait until it is done, and a notice says what
+ *       changed since the last session
  *     - One selection shared by the viewport and the ledger; either can
  *       drive it, by pointer or by keyboard
  *     - Location follows the eye: the folder you are in is derived from
@@ -143,17 +144,22 @@
  * ✒ Other Important Information:
  *     - Dependencies: model.js, layout.js, viewport.js, theme.js, ui.js,
  *       thumbs.js, timeline.js, strata.js (the Age lens's mass colours),
- *       features.js, icons.js, motion.js, hud.js, float.js, splash.js
+ *       places.js (anchorOf, poseRelative, vantage: the eye through a
+ *       warm start's catch-up), features.js, icons.js, motion.js, hud.js,
+ *       float.js, splash.js
  *     - Compatible platforms: current evergreen browsers with WebGL2
  *     - Limitations: when WebGL is unavailable the ledger, inspector,
- *       search and every operation keep working without the 3D world
+ *       search and every operation keep working without the 3D world;
+ *       during a warm start's catch-up the page holds two trees, about
+ *       twice 150 MB per million entries
  * ----------------------------------------------------------------------------
  */
 
 import {
   Model, KINDS, FLAG_LINK, FLAG_HIDDEN, IMAGE_EXT, TEXT_EXT, extOf, fmtBytes, fmtCount, fmtDate, fmtAge, freshness, relPath, depthOf,
-  isAncestor, parseQuery, runSearch,
+  isAncestor, parseQuery, runSearch, plural,
 } from './model.js';
+import { anchorOf, poseRelative, vantage } from './places.js';
 import { buildLayout, BOX, STYLE, AUX } from './layout.js';
 import { Viewport } from './viewport.js';
 import { THEME, mixHex, ramp, cssHex } from './theme.js';
@@ -184,6 +190,11 @@ const S = {
   lens: 'kind', grain: 1, kindFilter: -1, force: null, lastEye: null,
   query: '', search: null,
   survey: null, scanning: false, watch: 'idle',
+  // A warm start: the tree from the last session is drawn while the
+  // directory is surveyed again ({ takenAt, pending: the folders to read
+  // again once it has been, failed }); null otherwise. Changes wait while
+  // it is set.
+  warm: null,
   placing: null, drag: null,
   tab: 'contents', sort: { key: 'size', dir: -1 },
   // The Findings order a person chose; null keeps the search's own default.
@@ -536,24 +547,36 @@ async function post(route, body = {}) {
   return res.json();
 }
 
-async function scanStream(rel, depth, onBatch) {
-  const params = new URLSearchParams({ path: rel });
+/**
+ * Streams scanner records from the service, one batch to onBatch per
+ * line: /api/scan for rel to depth (0: all of it), or another route that
+ * answers the same NDJSON (/api/warm, the tree from the last session).
+ * signal stops it.
+ */
+async function scanStream(rel, depth, onBatch, { route = 'scan', signal } = {}) {
+  const params = new URLSearchParams(route === 'scan' ? { path: rel } : {});
   if (depth) params.set('depth', depth);
-  const res = await fetch(`/api/scan?${params}`, { headers: { 'X-Terrane-Token': TOKEN } });
+  const res = await fetch(`/api/${route}?${params}`, { headers: { 'X-Terrane-Token': TOKEN }, signal });
   if (!res.ok) throw await asError(res);
   const reader = res.body.getReader();
   const dec = new TextDecoder();
   let buf = '';
-  for (;;) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    buf += dec.decode(value, { stream: true });
-    let nl;
-    while ((nl = buf.indexOf('\n')) >= 0) {
-      const line = buf.slice(0, nl);
-      buf = buf.slice(nl + 1);
-      if (line) onBatch(JSON.parse(line));
+  try {
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buf += dec.decode(value, { stream: true });
+      let nl;
+      while ((nl = buf.indexOf('\n')) >= 0) {
+        const line = buf.slice(0, nl);
+        buf = buf.slice(nl + 1);
+        if (line) onBatch(JSON.parse(line));
+      }
     }
+  } catch (err) {
+    // A line that is not JSON (a kept tree cut short) lets the stream go.
+    reader.cancel().catch(() => {});
+    throw err;
   }
 }
 
@@ -630,8 +653,16 @@ function hostOf(node) {
 }
 
 let refreshChain = Promise.resolve();
-/** Re-reads the given folders (root-relative paths) and merges the result. */
+/**
+ * Re-reads the given folders (root-relative paths) and merges the result.
+ * While the tree from the last session is being checked (S.warm) they
+ * are noted and read once it has been; the promise settles then.
+ */
 function refreshDirs(rels) {
+  if (S.warm) {
+    for (const rel of rels) S.warm.pending.add(rel);
+    return S.warm.done;
+  }
   refreshChain = refreshChain.then(async () => {
     const dirs = new Set();
     for (const rel of rels) {
@@ -699,8 +730,12 @@ function surveyNow() {
   drawLegend();
 }
 
+/** The change stream, once connected: after the first survey, or once a warm start has drawn its tree. */
+let events = null;
 function connectEvents() {
+  if (events) return;
   const es = new EventSource(`/api/events?${new URLSearchParams({ t: TOKEN, dirs: S.model.root.dc })}`);
+  events = es;
   es.onmessage = (e) => {
     const msg = JSON.parse(e.data);
     if (msg.type === 'job') return onJob(msg);
@@ -723,6 +758,14 @@ function connectEvents() {
 }
 
 async function fullScan() {
+  // A survey of the whole directory replaces the tree from the last
+  // session too: its own survey stops, and what waited for it is let go.
+  const W = S.warm;
+  if (W) {
+    catching?.abort();
+    S.warm = null;
+    W.release();
+  }
   S.scanning = true;
   stopPlacing();
   const name = S.info.name;
@@ -759,6 +802,154 @@ async function fullScan() {
 }
 
 /* ====================================================================== */
+/* warm start: the tree from the last session, then a survey to catch up  */
+/* ====================================================================== */
+
+/** Why changes wait during a warm start, as a menu or button gives a reason. */
+const WARM_WAIT = 'the tree from the last session is still being checked';
+/** The same as the sentence a refused change says. */
+const WARM_SENTENCE = `Changes wait while ${WARM_WAIT}. They are available again once the directory has been surveyed.`;
+
+/** performance.now() when the first layout that drew a box was made; null before. */
+let firstDrawMs = null;
+/** Whether this page was drawn from the tree from the last session, and when its catch-up ended. */
+const warmRecord = { used: false, settledMs: null };
+/** The catch-up survey's AbortController while it runs. */
+let catching = null;
+
+/** A new S.warm: what the page is waiting for, and a promise that settles once it has caught up. */
+function warmState(takenAt) {
+  let release;
+  const done = new Promise((r) => { release = r; });
+  return { takenAt, pending: new Set(), failed: false, done, release, notice: null };
+}
+
+/**
+ * Says that changes wait, when they do, and returns true. Every change
+ * refuses while the tree from the last session is checked; this says so
+ * before a dialog asks for a name or a destination.
+ */
+function refuseWarm() {
+  if (!S.warm) return false;
+  notice(WARM_SENTENCE, { kind: 'info' });
+  return true;
+}
+
+/**
+ * Draws the tree the service kept from the last complete survey, before
+ * anything is read from disk. Resolves to true once it is drawn; false
+ * when it could not be read whole (a stream that broke, counts that do
+ * not match its meta), and the page then surveys from nothing.
+ */
+async function warmStart(w) {
+  const idMap = [];
+  try {
+    await scanStream('', 0, (records) => S.model.ingest(records, idMap, S.model.root), { route: 'warm' });
+  } catch {
+    return false;
+  }
+  const r = S.model.root;
+  if (r.dc + 1 !== w.folders || r.fc !== w.files) return false;
+  S.scanning = false;
+  warmRecord.used = true;
+  if (!S.noGL) hideVeil();
+  clearTimeout(S.layoutTimer);
+  S.layoutTimer = 0;
+  S.survey = S.model.survey();
+  runHooks(AFTER_SURVEY, S.survey, { full: true, warm: true });
+  relayout();
+  drawAll();
+  endSplash();
+  return true;
+}
+
+/**
+ * Surveys the directory as it is now while the tree from the last
+ * session stays on screen, then takes the new tree on node by node
+ * (Model.adopt), so the selection, the location, benchmarks and anything
+ * else that holds a node keep it. The eye stays where it was relative to
+ * the folder you are in. Changes wait until then; the folders the change
+ * stream or a refresh asked for meanwhile are read afterwards, so what
+ * changed while the survey ran is not lost.
+ */
+async function catchUp() {
+  const W = S.warm;
+  if (!W || catching) return;
+  W.failed = false;
+  drawStatus();
+  const ac = new AbortController();
+  catching = ac;
+  const fresh = new Model(S.info.name);
+  const idMap = [];
+  try {
+    await scanStream('', 0, (records) => fresh.ingest(records, idMap, fresh.root), { signal: ac.signal });
+  } catch (err) {
+    if (ac.signal.aborted || S.warm !== W) return;
+    W.failed = true;
+    drawStatus();
+    notice(`The directory could not be surveyed again (${err.message}). The tree from the last session stays on screen, and changes wait until a survey has checked it.`,
+      { kind: 'error', ms: 30000, action: { label: 'Survey again', run: catchUp } });
+    return;
+  } finally {
+    if (catching === ac) catching = null;
+  }
+  if (ac.signal.aborted || S.warm !== W) return;
+  // Where the eye stands relative to the box of the folder you are in,
+  // unless it is on its way somewhere.
+  let at = null;
+  if (!S.noGL && S.layout && !S.view.flight && !S.view.keys?.size) {
+    const i = S.layout.index.get(S.focus);
+    if (i !== undefined && i < S.view.n) {
+      const a = anchorOf(S.layout, i);
+      at = { dir: S.focus, a, pose: poseRelative(S.view.pose(), a) };
+    }
+  }
+  const counts = S.model.adopt(fresh);
+  for (const n of [...S.sel]) if (!isAttached(n)) S.sel.delete(n);
+  if (S.primary && !isAttached(S.primary)) S.primary = [...S.sel].at(-1) || null;
+  if (!isAttached(S.focus)) S.focus = S.model.root;
+  S.trail = S.trail.filter(isAttached);
+  runHooks(AFTER_REFRESH, null);
+  clearTimeout(S.surveyTimer);
+  S.surveyTimer = 0;
+  S.survey = S.model.survey();
+  S.survey.dupGroups = keepVerified(S.survey.dupGroups);
+  S.model.dupGroups = S.survey.dupGroups;
+  runHooks(AFTER_SURVEY, S.survey, { full: false, settled: true });
+  // The tree is checked: changes, benchmarks and refreshes go ahead again.
+  S.warm = null;
+  W.notice?.();
+  if (S.search) runQuery();
+  clearTimeout(S.layoutTimer);
+  S.layoutTimer = 0;
+  // The location holds through the new layout while the eye stands where
+  // it was; if the folder's box moved as the totals changed, the eye
+  // moves with it and the location holds while it stands there.
+  const held = hold;
+  if (at && isAttached(at.dir)) hold = { dir: at.dir, goal: S.view.pose() };
+  relayout();
+  hold = held;
+  if (at && isAttached(at.dir)) {
+    const i = S.layout.index.get(at.dir);
+    if (i !== undefined && i < S.view.n) {
+      const a = anchorOf(S.layout, i);
+      if (a.x !== at.a.x || a.y !== at.a.y || a.z !== at.a.z || a.w !== at.a.w) {
+        S.view.flyTo(vantage(at.pose, a), 0);
+        hold = { dir: at.dir, goal: S.view.pose() };
+      }
+    }
+  }
+  drawAll();
+  warmRecord.settledMs = Math.round(performance.now());
+  const pending = [...W.pending];
+  (pending.length ? refreshDirs(pending) : Promise.resolve()).then(W.release, W.release);
+  const { changed, added, removed } = counts;
+  notice(changed || added || removed
+    ? `Surveyed again: ${plural(changed, 'file')} changed, ${fmtCount(added)} here now, ${fmtCount(removed)} gone since the last session.`
+    : 'Nothing changed since the last session.', { kind: 'info' });
+}
+
+/* ====================================================================== */
 /* layout and paint                                                       */
 /* ====================================================================== */
 
@@ -784,6 +975,7 @@ function relayout({ animate = true } = {}) {
     }
   }
   S.layout = buildLayout(S.model.root, opts);
+  if (firstDrawMs === null && S.layout.n > 0) firstDrawMs = Math.round(performance.now());
   S.view.setLayout(S.layout, paint(), { animate });
   syncViewSelection();
   drawPins();
@@ -1278,7 +1470,14 @@ function stepSelection(key) {
 /* operations                                                             */
 /* ====================================================================== */
 
-const writable = () => (S.info.snapshot ? 'snapshot mode' : S.info.readOnly ? 'read-only mode' : null);
+/** Why the service refuses every change for as long as it runs: 'snapshot mode', 'read-only mode', or null. */
+const readOnlyMode = () => (S.info.snapshot ? 'snapshot mode' : S.info.readOnly ? 'read-only mode' : null);
+/**
+ * Why nothing can be changed now, as a menu or a button gives a reason,
+ * or null: the service's mode, or a warm start whose tree is still being
+ * checked against the disk.
+ */
+const writable = () => readOnlyMode() || (S.warm ? WARM_WAIT : null);
 
 /* ---------- long operations: progress and cancel ---------- */
 
@@ -1388,6 +1587,9 @@ async function runOp(body, { silent = false } = {}) {
     notice(locked, { kind: 'info' });
     return null;
   }
+  // While the tree from the last session is checked, changes wait;
+  // opening and revealing what is on disk do not.
+  if (body.type !== 'open' && body.type !== 'reveal' && refuseWarm()) return null;
   let id = null;
   if (LONG_OPS.has(body.type)) {
     id = newJobId();
@@ -1419,6 +1621,7 @@ async function runOp(body, { silent = false } = {}) {
 }
 
 async function undo() {
+  if (refuseWarm()) return;
   try {
     const res = await post('undo');
     runHooks(AFTER_OP, { type: 'undo' }, res);
@@ -1450,7 +1653,7 @@ const nameProblem = (v) => {
 };
 
 async function newFolder(dir = S.focus) {
-  if (refuseInside([dir])) return;
+  if (refuseInside([dir]) || refuseWarm()) return;
   const v = await ask({
     title: 'New folder', body: `Inside ${relPath(dir) || S.info.name}`, confirm: 'Create', confirmIcon: 'newFolder',
     fields: [{ name: 'name', label: 'Folder name', value: 'New folder' }], validate: nameProblem,
@@ -1464,7 +1667,7 @@ async function newFolder(dir = S.focus) {
 }
 
 async function rename(node = S.primary) {
-  if (!node || !node.p || refuseInside([node])) return;
+  if (!node || !node.p || refuseInside([node]) || refuseWarm()) return;
   const v = await ask({
     title: 'Rename', confirm: 'Rename', confirmIcon: 'rename', validate: nameProblem,
     fields: [{ name: 'name', label: node.d ? 'Folder name' : 'File name', value: node.n, selectStem: !node.d }],
@@ -1482,7 +1685,7 @@ const tops = (nodes) => nodes.filter((n) => !nodes.some((o) => o !== n && isAnce
 
 function startPlacing(type, nodes = [...S.sel]) {
   nodes = tops(movable(nodes));
-  if (!nodes.length || refuseInside(nodes)) return;
+  if (!nodes.length || refuseInside(nodes) || refuseWarm()) return;
   closeFloating();
   S.placing = { type, nodes };
   $('placing').hidden = false;
@@ -1522,7 +1725,7 @@ async function transfer(type, nodes, dest) {
 
 async function duplicate(nodes = [...S.sel]) {
   nodes = tops(movable(nodes));
-  if (refuseInside(nodes)) return;
+  if (refuseInside(nodes) || refuseWarm()) return;
   const byParent = new Map();
   for (const n of nodes) byParent.set(n.p, [...(byParent.get(n.p) || []), n]);
   for (const [parent, list] of byParent) await runOp({ type: 'copy', paths: list.map(relPath), dest: relPath(parent) });
@@ -1530,7 +1733,7 @@ async function duplicate(nodes = [...S.sel]) {
 
 async function remove(nodes = [...S.sel]) {
   nodes = tops(movable(nodes));
-  if (!nodes.length || refuseInside(nodes)) return;
+  if (!nodes.length || refuseInside(nodes) || refuseWarm()) return;
   const size = nodes.reduce((a, n) => a + n.s, 0);
   const what = nodes.length === 1 ? `"${nodes[0].n}"` : `${nodes.length} items`;
   const ok = await ask({
@@ -1747,9 +1950,12 @@ function drawAll() {
   drawLegend();
   drawStatus();
   $('b-up').toggleAttribute('disabled', !S.focus?.p);
+  const off = writable();
   for (const id of ['b-new', 'b-undo']) {
-    $(id).toggleAttribute('disabled', !!S.info.readOnly);
-    if (S.info.readOnly) $(id).title = `Unavailable: Terrane is in ${S.info.snapshot ? 'snapshot' : 'read-only'} mode`;
+    const b = $(id);
+    b.dataset.title ??= b.title;
+    b.toggleAttribute('disabled', !!off);
+    b.title = !off ? b.dataset.title : off === WARM_WAIT ? `Unavailable: ${WARM_WAIT}` : `Unavailable: Terrane is in ${off}`;
   }
 }
 
@@ -1796,7 +2002,7 @@ function rowFor(node, { showPath = false, total } = {}) {
   const mark = S.interior?.rowMark(node);
   const cls = (node.d ? (node.e ? 'swatch is-sealed' : node.c.length ? 'swatch is-dir' : 'swatch is-empty') : 'swatch') + (crossed ? ' is-crossed' : '') + (mark ? ` ${mark.cls}` : '');
   const share = total ? Math.max(0, Math.min(1, node.s / total)) : 0;
-  const row = el('div', { class: `row${S.sel.has(node) ? ' is-selected' : ''}`, draggable: node.p && !S.info.readOnly && !hostOf(node) ? 'true' : null, 'aria-selected': S.sel.has(node) ? 'true' : 'false', title: showPath ? relPath(node) : node.n },
+  const row = el('div', { class: `row${S.sel.has(node) ? ' is-selected' : ''}`, draggable: node.p && !writable() && !hostOf(node) ? 'true' : null, 'aria-selected': S.sel.has(node) ? 'true' : 'false', title: showPath ? relPath(node) : node.n },
     el('span', { class: cls, style: node.d ? null : { background: cssHex(KINDS[node.k].color) } }),
     el('span', { class: 'row-name' }, node.n, node.d ? el('small', { text: node.e ? node.e : fmtCount(node.fc) }) : showPath ? el('small', { text: relPath(node.p) || '/' }) : null,
       crossed ? el('span', { class: 'sr', text: `, changed since ${S.time.date}` }) : null, mark ? el('span', { class: 'sr', text: mark.sr }) : null),
@@ -2144,6 +2350,7 @@ async function drawJournal(sub, host) {
   const entries = [...data.journal].reverse();
   host.replaceChildren(
     el('details', { open: true }, el('summary', {}, 'Changes', el('span', { class: 'n', text: fmtCount(entries.length) })),
+      !ro && S.warm ? el('p', { class: 'note', text: WARM_SENTENCE }) : null,
       entries.length ? null : el('p', { class: 'note', text: ro ? 'Read-only mode: nothing can be changed.' : 'Nothing has been changed yet.' }),
       entries.length ? el('p', { class: 'note', text: 'Kept in .terrane-trash with the holding area, so Undo still works after Terrane restarts.' }) : null,
       entries.some((e) => !e.undone) && !ro ? el('div', { class: 'actions' }, el('button', { class: 'btn btn-small', type: 'button', onclick: undo }, icon('undo'), 'Undo latest')) : null,
@@ -2155,6 +2362,7 @@ async function drawJournal(sub, host) {
       data.holding.map((h) => el('div', { class: 'item is-static' }, el('span', { class: 'swatch' }),
         el('span', {}, el('span', { class: 'nm', text: h.name }), el('span', { class: 'path', text: `from ${h.origin} · ${fmtDate(h.at)}` })),
         ro ? el('span') : el('button', { class: 'btn btn-small', type: 'button', onclick: async () => {
+          if (refuseWarm()) return;
           try {
             const res = await post('restore', { ids: [h.id] });
             notice(res.label);
@@ -2165,6 +2373,7 @@ async function drawJournal(sub, host) {
           drawLedger();
         } }, icon('restore'), 'Restore'))),
       data.holding.length && !ro ? el('div', { class: 'actions' }, el('button', { class: 'btn btn-small btn-danger', type: 'button', onclick: async () => {
+        if (refuseWarm()) return;
         const ok = await ask({ title: 'Purge the holding area?', danger: true, confirm: 'Delete permanently',
           body: `${data.holding.length} held item${data.holding.length === 1 ? '' : 's'} will be deleted from disk. This is the one action in Terrane that cannot be undone.` });
         if (!ok) return;
@@ -2477,7 +2686,10 @@ function drawStatus() {
   const r = S.model.root;
   let cls = 'pulse';
   let label;
-  if (S.scanning) { cls += ' is-busy'; label = 'Surveying'; }
+  if (S.warm) {
+    cls += S.warm.failed ? ' is-off' : ' is-busy';
+    label = S.warm.failed ? 'Last session · not surveyed' : 'Last session · surveying';
+  } else if (S.scanning) { cls += ' is-busy'; label = 'Surveying'; }
   else if (S.watch === 'snapshot') { cls += ' is-off'; label = `Snapshot · ${fmtDate(S.info.snapshot.takenAt)}`; }
   else if (S.watch === 'live') label = 'Live';
   else if (S.watch === 'lost') { cls += ' is-off'; label = 'Service stopped'; }
@@ -2891,13 +3103,13 @@ function wireKeys() {
   core({
     id: 'move', keys: ['m'],
     run: () => {
-      if (refuseInside([...S.sel])) return;
+      if (refuseInside([...S.sel]) || refuseWarm()) return;
       if (!writable()) startPlacing('move');
       else notice('Read-only mode: nothing can be moved.', { kind: 'info' });
     },
     guide: [CHG, 'M', 'Move to…'],
   });
-  core({ id: 'duplicate', mod: 'ctrl', keys: ['d'], run: () => { if (!refuseInside([...S.sel]) && !writable()) duplicate(); }, guide: [CHG, 'Ctrl+D', 'Duplicate'] });
+  core({ id: 'duplicate', mod: 'ctrl', keys: ['d'], run: () => { if (!refuseInside([...S.sel]) && !refuseWarm() && !writable()) duplicate(); }, guide: [CHG, 'Ctrl+D', 'Duplicate'] });
   core({ id: 'remove', keys: ['Delete'], run: () => { remove(); }, guide: [CHG, 'Del', 'Remove to holding area'] });
   core({ id: 'undo', mod: 'ctrl', keys: ['z'], run: () => { undo(); }, guide: [CHG, 'Ctrl+Z', 'Undo'] });
   core({
@@ -3028,6 +3240,9 @@ const API = Object.freeze({
   KEYS, ESCAPE, PIN_SOURCES, TIP_LINES, INSPECTOR, READING, TABS, LAYOUT_OPTS, AFTER_LAYOUT, AFTER_REFRESH, AFTER_SURVEY, AFTER_OP, MENU, QUERY,
   AFTER_QUERY, SURVEY, COMMANDS, LEDGER_SUB, AFTER_FOCUS, AFTER_SELECT, TAB_SECTIONS, RENAME_MANY, DUP_GROUP,
   get, post, runOp, refreshDirs, writable, isAttached, hostOf, relPath, absPath, relLabel,
+  // The service's own mode, without the wait of a warm start: what refuses
+  // something that is not a change Terrane makes, such as a terminal.
+  readOnlyMode,
   // The address of a file's bytes for a preview: at most max of them
   // without a Range header (0: the service's default, 256 KB).
   rawUrl,
@@ -3148,12 +3363,39 @@ async function start() {
   wireViewport();
   wireControls();
   wireKeys();
-  if (!S.noGL) fatal(S.info.snapshot ? 'Reading the snapshot' : 'Surveying', S.info.root, 'busy');
-  splash?.stage(S.info.snapshot ? `Reading the snapshot of ${S.info.name}` : `Surveying ${S.info.name}`);
+  // The tree the service kept from the last complete survey, when there is
+  // one: drawn first, then checked against the disk (catchUp).
+  const warm = S.info.warm && !S.info.snapshot ? S.info.warm : null;
+  if (!S.noGL) fatal(S.info.snapshot ? 'Reading the snapshot' : warm ? 'Drawing the last session\'s tree' : 'Surveying', S.info.root, 'busy');
+  splash?.stage(S.info.snapshot ? `Reading the snapshot of ${S.info.name}` : warm ? `Drawing ${S.info.name} as it was on ${fmtDate(warm.takenAt)}` : `Surveying ${S.info.name}`);
   S.scanning = true;
+  if (warm) S.warm = warmState(warm.takenAt);
   thumbs.load(TOKEN);
   drawAll();
   const t0 = performance.now();
+  if (warm) {
+    if (await warmStart(warm)) {
+      expose(t0);
+      S.warm.notice = notice(`Showing ${S.info.name} as it was when the last session surveyed it, ${fmtDate(warm.takenAt)}. Surveying it as it is now; changes wait until then.`, { kind: 'info', ms: 12000 });
+      if (S.model.root.e) notice(`The root could not be read: ${S.model.root.e}`, { kind: 'error' });
+      // The change stream connects now, so a change on disk while the
+      // catch-up runs is noted (refreshDirs keeps it for afterwards) and
+      // not lost between the survey's pass over its folder and the end.
+      connectEvents();
+      catchUp();
+      return;
+    }
+    // Read part way, or not at all: the page surveys from nothing.
+    const W = S.warm;
+    S.warm = null;
+    W.release();
+    S.model = new Model(S.info.name);
+    S.focus = S.model.root;
+    if (!S.noGL) fatal('Surveying', S.info.root, 'busy');
+    splash?.stage(`Surveying ${S.info.name}`);
+    notice('The tree from the last session could not be read, so Terrane surveyed the directory afresh.', { kind: 'info', ms: 12000 });
+    drawAll();
+  }
   try {
     await scanInto(S.model.root);
   } catch (err) {
@@ -3169,10 +3411,24 @@ async function start() {
   runHooks(AFTER_SURVEY, S.survey, { full: true });
   relayout();
   drawAll();
-  // places: the landmarks store (S.places), when that feature is installed.
-  window.__terrane = { S, list, scanMs: Math.round(performance.now() - t0), api: API, install: installFeatures, get places() { return S.places; } };
+  expose(t0);
   if (S.model.root.e) notice(`The root could not be read: ${S.model.root.e}`, { kind: 'error' });
   connectEvents();
+}
+
+/**
+ * window.__terrane, for checks and the console: the session state, the
+ * list, the api; scanMs, from the start of the first survey (or of the
+ * last session's tree) until it was in; firstDrawMs, when the first box
+ * was laid out; warm, whether the tree from the last session was used
+ * and when its catch-up ended; places, the landmarks store.
+ */
+function expose(t0) {
+  window.__terrane = {
+    S, list, scanMs: Math.round(performance.now() - t0), api: API, install: installFeatures, warm: warmRecord,
+    get firstDrawMs() { return firstDrawMs; },
+    get places() { return S.places; },
+  };
 }
 
 start();

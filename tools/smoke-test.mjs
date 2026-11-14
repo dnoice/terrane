@@ -54,7 +54,10 @@
  *       terminal is tried after ENOENT, the 501 when none is there, and a
  *       stop on any other error. A source check: no exec( (a RegExp's
  *       .exec( aside), no shell: true and nothing but spawn imported from
- *       child_process in ops.mjs or terrane.mjs.
+ *       child_process in ops.mjs or terrane.mjs. Every service it boots is
+ *       given TERRANE_DATA, a temporary folder of its own removed at the
+ *       end, so the warm start's cache of its surveys never reaches the
+ *       real dataset home.
  *     - 1.5.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
  *       hardening checks. Through the service: the holding area refused
  *       under every other spelling (case, a trailing dot, NTFS stream
@@ -226,6 +229,9 @@ import { fileURLToPath } from 'node:url';
 const SERVER = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'server', 'terrane.mjs');
 const BIG = 24 * 1024 * 1024;
 const work = fs.mkdtempSync(path.join(os.tmpdir(), 'terrane-smoke-'));
+// The dataset home every service here is given (TERRANE_DATA): a warm
+// start's cache and any thumbnail lookup land here, never in the real one.
+const dataHome = fs.mkdtempSync(path.join(os.tmpdir(), 'terrane-smoke-data-'));
 const root = path.join(work, 'root');
 const outside = path.join(work, 'outside');
 fs.mkdirSync(path.join(root, 'docs', 'drafts'), { recursive: true });
@@ -409,7 +415,7 @@ function recordPaths(records) {
 
 async function boot(extra, port, env = {}, { withRoot = true } = {}) {
   const child = spawn(process.execPath, [SERVER, ...(withRoot ? [root] : []), '--no-open', '--no-watch', '--port', String(port), ...extra], {
-    stdio: ['ignore', 'pipe', 'inherit'], env: { ...process.env, ...env },
+    stdio: ['ignore', 'pipe', 'inherit'], env: { ...process.env, TERRANE_DATA: dataHome, ...env },
   });
   const actual = await new Promise((resolve, reject) => {
     let buf = '';
@@ -2055,5 +2061,6 @@ console.log('\nSource (no service)');
 }
 
 fs.rmSync(work, { recursive: true, force: true });
+fs.rmSync(dataHome, { recursive: true, force: true });
 console.log(`\n${passed} passed, ${failed} failed\n`);
 process.exit(failed ? 1 : 0);

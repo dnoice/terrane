@@ -25,7 +25,9 @@
       those of terrane.css and features.js: the batch rename, duplicate cleanup and copy
       as. Getting things in and out extends those of ui.js and features.js: download()
       and the lists saved as CSV; then that of landmarks.js: places export and import;
-      then that of features.js again: a terminal opened in a folder.
+      then that of features.js again: a terminal opened in a folder. Starting fast extends
+      those of app.js, model.js, landmarks.js and ui.js: the warm start; app.js's header
+      rolls its 1.7.0 entry out to this file's copy.
     - 1.4.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — Records app.js 1.8.0:
       single-key shortcuts are off unless turned on in the guide.
     - 1.3.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — Records the hardening
@@ -123,7 +125,44 @@ here unchanged in the same edit.
   that followed forgot the result. The inspector of a
   selection of several no longer prints the word "null" under its Actions grid when no
   action is unavailable (a writable service): the missing note was handed to
-  replaceChildren.
+  replaceChildren. Starting fast, a warm start: when GET /api/info names a kept tree
+  (warm) and this is not snapshot mode, start() sets S.warm ({ takenAt, pending,
+  failed }), says "Drawing <name> as it was on MM/DD/YYYY HH:MM" on the loading sheet,
+  reads GET /api/warm into the model and checks it against the meta's counts (root.dc + 1
+  folders, root.fc files). A tree that reads whole is surveyed (AFTER_SURVEY with { full:
+  true, warm: true }), laid out, drawn and handed over from the sheet at once, with a
+  12-second notice ("Showing <name> as it was when the last session surveyed it, <date>.
+  Surveying it as it is now; changes wait until then."), and the change stream connects
+  then, so a change on disk during the catch-up is noted; one that does not is set aside
+  with the notice "The tree from the last session could not be read, so Terrane surveyed
+  the directory afresh." and the page surveys from nothing. catchUp() then streams GET
+  /api/scan into a model of its own, touching nothing in S; notes the eye relative to the
+  box of the folder you are in (places.js anchorOf and poseRelative); takes the new tree
+  on with Model.adopt, so every node still there is kept; prunes the selection, focus and
+  trail; runs AFTER_REFRESH (null), the survey and AFTER_SURVEY with { full: false,
+  settled: true }; clears S.warm and withdraws its notice; runs the search again; lays the
+  world out with its boxes travelling and the location held through it, and, when the
+  folder's box moved, puts the eye back where it stood relative to it (flyTo, then hold);
+  reads again the folders the change stream or a refresh asked for meanwhile; and says
+  "Surveyed again: N files changed, M here now, K gone since the last session." or
+  "Nothing changed since the last session." A catch-up that fails keeps
+  the tree from the last session, with an error notice whose action is Survey again, and
+  the status reads "Last session · not surveyed". While S.warm is set, writable() returns
+  "the tree from the last session is still being checked", so every change control shows
+  unavailable with that reason (the menu, the inspector, the toolbar's New folder and
+  Undo, a row's drag); runOp (Open and Reveal aside), Undo, Restore and Purge, and N, F2,
+  M, Ctrl+D, Delete and placing refuse with "Changes wait while the tree from the last
+  session is still being checked. They are available again once the directory has been
+  surveyed." before a dialog asks or anything is sent; refreshDirs notes its folders and
+  returns a promise that settles once they have been read; the status reads "Last session
+  · surveying" with the busy lamp; and the Journal tab says that changes wait.
+  readOnlyMode(), new in the api, gives the service's own mode without that wait, for
+  what Terrane does not change itself (a terminal). A Rescan all begun meanwhile stops
+  the catch-up and lets go of what waited for it. scanStream(rel, depth, onBatch,
+  { route, signal }) reads any route that answers the scan's NDJSON. window.__terrane
+  gains firstDrawMs (performance.now() at the first layout that drew a box, rounded) and
+  warm: { used, settledMs }, and is set once the first tree is drawn, warm or not. The
+  header's 1.7.0 entry rolled out to keep it within 40 lines.
 - 1.8.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — Single-key shortcuts are
   off unless turned on in the guide, on Dennis's call after the hardening pass offered the
   setting with shortcuts on: letters, digits and signs act while the world or the ledger
@@ -331,7 +370,9 @@ here unchanged in the same edit.
   download(filename, text, type): text handed to the browser as a file to save, through a
   Blob, its object URL and a hidden a[download] that is clicked and removed, the URL
   revoked a tick later. Nothing goes through the service, so it works in snapshot and
-  read-only mode alike; the CSV export is the first to use it.
+  read-only mode alike; the CSV export is the first to use it. notice() returns a
+  function that withdraws the notice early, for a sentence that stops being true: a warm
+  start's "changes wait until then" once its catch-up is in.
 - 1.3.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — Unavailable menu items are reached
   by the arrows and carry their reason as their description; the menu stops the browser's own
   context menu the Menu key would open over it. The virtual list keeps its cursor on its item
@@ -394,7 +435,17 @@ here unchanged in the same edit.
   and read exactly as before. IMAGE_EXT and TEXT_EXT: the extensions a preview shows as a
   picture or reads as text, one list for the inspector's preview and Quick look, moved
   here from app.js. ext: and kind: take a comma list, any of them: ext:jpg,png and
-  kind:video,audio,image; a listed word that names no kind adds nothing.
+  kind:video,audio,image; a listed word that names no kind adds nothing. adopt(fresh)
+  takes on a fresh model of the same directory, walking both trees from their roots with a
+  stack: a folder's children are matched by name and kind (folder or file); a matched file
+  keeps its node and takes size, date and flags from fresh; a matched folder keeps its
+  node and is walked in turn; a new entry is fresh's node, its parent set to the old
+  folder; a gone one is dropped. Every old folder takes its size, date, error, stub flag,
+  file and folder counts, height, newest change and a copy of its bytes by kind from
+  fresh, and is marked dirty, so the layout sorts it again. It returns { kept, added,
+  removed, changed }: entries kept, entries here now and gone (a folder with all it
+  holds), and files whose size or date changed. 200,000 files are adopted in about 23 ms
+  in Node; the warm start's catch-up uses it.
 - 1.3.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — fmtDay (MM/DD/YYYY) and
   plural are the one date formatter and count wording every module imports; fmtDate builds
   on fmtDay. isDir, which nothing used, is gone.
@@ -424,7 +475,13 @@ here unchanged in the same edit.
   and nothing changes. Otherwise the store's importData() takes the benchmarks and the
   return point, the searches store's mergeSaved() the saved searches, the benchmarks are
   found in the tree, and the notice says "Imported from <file>: 3 added, 1 updated, 2
-  skipped." (and how many did not fit in 64), with an Undo that puts back both.
+  skipped." (and how many did not fit in 64), with an Undo that puts back both. With a
+  warm start, ready() also waits for S.warm to clear, so B and the Places, inspector and
+  menu actions wait for the survey that checks the tree from the last session (the menu's
+  Set benchmark is unavailable "once the survey has finished" then too). AFTER_SURVEY
+  finds the benchmarks on a full survey and on the catch-up's settled one; the notice of
+  benchmarks that changed is given on a full survey that is not warm, or on the settled
+  one, never of the tree from the last session itself.
 - 1.2.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — A Find that asks
   is:benchmark runs again whenever the benchmarks change, so Findings, its count, the pins
   and the dimming follow; J opens a folded return point through api.forceOpen, so the

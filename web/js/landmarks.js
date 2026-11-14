@@ -21,7 +21,9 @@
  *       Export and import follows the return point: a places file of
  *       the benchmarks, the return point and the saved searches, and Import
  *       places… to take one in for this directory and source, with Undo;
- *       both are in the palette.
+ *       both are in the palette. With a warm start, benchmarks are found
+ *       in the tree from the last session and again once it is checked;
+ *       B waits for that check, and the changed ones are said only then.
  *     - 1.2.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — A
  *       Find that asks is:benchmark runs again whenever the benchmarks
  *       change, so Findings, its count, the pins and the dimming
@@ -46,9 +48,10 @@
  * ✒ Key Features:
  *     - B measures the selection's folder, or the folder you are in, after
  *       re-reading it from disk; B on a benchmark measures it again; both
- *       are said in a notice with Undo. While a survey runs (the first, or
- *       a Rescan all) B is refused in words, and the Places, inspector and
- *       menu actions wait for it
+ *       are said in a notice with Undo. While a survey runs (the first, a
+ *       Rescan all, or the one that checks a warm start's tree) B is
+ *       refused in words, and the Places, inspector and menu actions wait
+ *       for it
  *     - Verdigris survey marks standing upright on the peak of the box that
  *       shows the folder, or on the mass or scree hiding it, in the shared
  *       pin mesh; up to 12 name-and-change tags outrank every other label
@@ -58,7 +61,9 @@
  *       sections other features add to the tab follow (TAB_SECTIONS)
  *     - An inspector Benchmark section for a folder (or Set benchmark),
  *       menu items, hover lines and an is:benchmark search word
- *     - One notice after the first scan names the benchmarks that changed
+ *     - One notice after the first scan names the benchmarks that changed;
+ *       after a warm start, once the tree from the last session has been
+ *       checked against the disk, never of that tree itself
  *     - H marks a return point relative to the box of the folder you are
  *       in (inside an open archive, the folder that holds it); J flies
  *       back to where that box is now, and swaps the two points so J
@@ -179,7 +184,8 @@ export function install(api) {
   const target = () => (S.primary ? (S.primary.d ? S.primary : S.primary.p) : S.focus);
   // Benchmarks are found in the tree only once a survey has finished: the
   // first, and every Rescan all, which streams a new tree in place of the old.
-  const ready = () => store.resolved && !S.scanning;
+  // A warm start's tree from the last session counts once it is checked.
+  const ready = () => store.resolved && !S.scanning && !S.warm;
   const WAIT = 'Benchmarks can be set once the survey has finished.';
   // When a measurement is of: a snapshot's is when it was taken.
   const when = (at) => (snapshot ? `in the snapshot taken ${fmtDate(at)}` : `at ${fmtDate(at)}`);
@@ -871,8 +877,9 @@ export function install(api) {
     items: (node) => {
       const dir = node ? (node.d ? node : null) : S.focus;
       const out = [];
-      if (dir && store.resolved && S.scanning) {
-        // A Rescan all: benchmarks are found again once it has finished.
+      if (dir && store.resolved && (S.scanning || S.warm)) {
+        // A Rescan all, or a warm start's survey: benchmarks are found
+        // again once it has finished.
         out.push({ label: node ? 'Set benchmark' : 'Set benchmark on this folder', icon: 'bench', hint: 'B', run: () => bench(dir), disabled: true, reason: 'once the survey has finished' });
       } else if (dir && store.resolved) {
         const b = store.find(dir);
@@ -932,12 +939,16 @@ export function install(api) {
   });
 
   // Every full survey is a new model: every benchmark is found again by
-  // its path. The first one also says which benchmarks changed.
+  // its path. The first one also says which benchmarks changed. A warm
+  // start draws the tree from the last session first (warm) and settles
+  // once the survey that checks it is in (settled): benchmarks are found
+  // in both, and what changed is said only of the checked tree.
   api.AFTER_SURVEY.add({
     id: 'places', order: 30, owner: OWNER,
-    run: (_sv, { full }) => {
-      if (!full) return;
+    run: (_sv, { full, warm, settled } = {}) => {
+      if (!full && !settled) return;
       store.resolve(S.model);
+      if (warm) return;
       if (!announced) {
         announced = true;
         announce();

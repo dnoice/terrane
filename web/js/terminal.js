@@ -14,7 +14,9 @@
  *
  * ✒ Changelog:
  *     - 1.0.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] —
- *       Initial release.
+ *       Initial release. Its reason for being unavailable comes from the
+ *       service's mode (api.readOnlyMode), not writable(), so a terminal
+ *       still opens while a warm start's tree is checked against the disk.
  *
  * ✒ Description:
  *     Opens the system's terminal in a folder Terrane shows: the one you
@@ -32,7 +34,8 @@
  *       selection's folder or the folder you are in
  *     - Unavailable, with the reason, in snapshot or read-only mode (a
  *       terminal can change anything), inside an open archive (there is no
- *       folder on disk) and in a folder that cannot be read
+ *       folder on disk) and in a folder that cannot be read; available
+ *       while a warm start's tree is still being checked
  *     - One sentence either way: "Opened a terminal in "docs"." or the
  *       service's reason, such as "No terminal was found: tried ..."
  *
@@ -48,7 +51,7 @@
  *
  * ✒ Other Important Information:
  *     - Dependencies: app.js's api: S, MENU, INSPECTOR, COMMANDS, post,
- *       writable, hostOf, relPath, notice, el, actionButton; the service's
+ *       readOnlyMode, hostOf, relPath, notice, el, actionButton; the service's
  *       POST /api/terminal
  *     - Compatible platforms: any browser; the terminal itself is
  *       Windows Terminal or cmd.exe on Windows, Terminal on macOS,
@@ -70,7 +73,9 @@ export function install(api) {
 
   /** Why no terminal opens in dir (a short reason, for a menu or a button), or null. */
   function offFor(dir) {
-    const ro = api.writable();
+    // The service's mode, not writable(): a terminal is not a change
+    // Terrane makes, so it stays while a warm start's tree is checked.
+    const ro = api.readOnlyMode();
     if (ro) return ro;
     if (api.hostOf(dir)) return 'inside an archive';
     if (dir.e) return 'cannot be read';

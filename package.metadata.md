@@ -17,7 +17,9 @@
       command palette's fuzzy ranking and of the kept view, links, search
       history and saved searches, then tools/rename-test.mjs, the Node
       check of the batch rename's planner, then tools/export-test.mjs,
-      the Node check of the CSV a list is exported as.
+      the Node check of the CSV a list is exported as, then
+      tools/warm-test.mjs, the check of the warm start's cache through
+      the service and of Model.adopt in Node.
     - 1.8.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — Raises
       the package version to 1.3.0: every Stage 5 candidate has its
       first increment, and the Audit, Hardening pass, Enhancement and
@@ -77,8 +79,10 @@
       test (the graft, the chamber, twins, the lock), the finding
       test (fuzzy ranking, the kept view, links, history, saved
       searches), the rename test (the batch rename's rules, clashes
-      and name checks) and the export test (CSV quoting, the byte order
-      mark, CRLF and the columns, over a fresh fixture) in Node
+      and name checks), the export test (CSV quoting, the byte order
+      mark, CRLF and the columns, over a fresh fixture) and the warm
+      test (the cache of the last survey, GET /api/warm, --no-warm and
+      Model.adopt), each in Node
     - vendor: fetches the pinned third-party browser files into
       web/vendor/ from jsDelivr; --check verifies them offline
     - ui-check: drives the page in headless Edge or Chrome, keyboard

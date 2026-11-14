@@ -25,7 +25,12 @@
  *       TERRANE_LAUNCH_LOG, a launch-<port>.log in its work folder, so no
  *       check ever starts a program, Open and Reveal included; a scenario
  *       reads it through t.launchLog (and t.readOnlyLaunchLog) and
- *       t.launches().
+ *       t.launches(). Every service is given TERRANE_DATA, a data folder
+ *       in the work folder (t.dataDir), so no check writes to the real
+ *       dataset home, and --no-warm, so every page surveys as before; a
+ *       scenario with warm: true gets a fresh writable fixture service
+ *       without it, which keeps the tree of its last survey. A page is
+ *       ready once a warm start's tree has been checked (S.warm cleared).
  *     - 1.4.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — Every
  *       page opens with single-key shortcuts turned on, as the guide's
  *       setting turns them on, because the page now starts with them
@@ -94,6 +99,9 @@
  *       including a browser its launcher handed off to another process
  *     - Launches nothing on the machine: each service writes what it would
  *       launch (Open, Reveal, a terminal) to a log the scenario can read
+ *     - Writes nothing to the real dataset home: each service keeps its
+ *       data (a warm start's tree) in the work folder, and only a scenario
+ *       marked warm has one kept at all
  *
  * ✒ Usage Instructions:
  *     node tools/ui-check.mjs [scenario...] [options]
@@ -109,8 +117,9 @@
  *           },
  *         };
  *     Fields: name, title, data ('any' or 'fixture'), write (true for a
- *     writable service on a fresh fixture), passes (['webgl', 'nogl']),
- *     timeout (ms). The context t offers: pass, gl, data, manifest, root,
+ *     writable service on a fresh fixture), warm (true for the same, with
+ *     the warm start on), passes (['webgl', 'nogl']), timeout (ms). The
+ *     context t offers: pass, gl, data, manifest, root, dataDir,
  *     abs(rel), baseline, recorded, check, skip, note, key, keys, type,
  *     tabTo, focused, eval, app, waitFor, until, poll, settle, text,
  *     live, notices, mark, requests, shot, drawCalls, sleep, url,
@@ -162,8 +171,9 @@
  *       Google Chrome; server/terrane.mjs, tools/make-fixture.mjs
  *     - Compatible platforms: Windows, macOS, Linux
  *     - Safety: the services it starts are read-only, except for scenarios
- *       marked write, which get a throwaway fixture of their own; none of
- *       them launches a program (TERRANE_LAUNCH_LOG)
+ *       marked write or warm, which get a throwaway fixture of their own;
+ *       none of them launches a program (TERRANE_LAUNCH_LOG), and all of
+ *       them keep their data in the work folder (TERRANE_DATA)
  *     - Exit code 0 means every check passed
  * ----------------------------------------------------------------------------
  */
@@ -236,14 +246,20 @@ function removeDir(dir) {
   }
 }
 
+/** The dataset home every service is given (TERRANE_DATA), inside the work folder; set by main(). */
+let DATA = null;
+
 /**
  * Starts the service on args at port. Every launch it would make (Open,
  * Reveal, a terminal) is written to launchLog instead (TERRANE_LAUNCH_LOG),
- * so no check ever starts a program on the machine.
+ * so no check ever starts a program on the machine. Its dataset home is
+ * DATA (TERRANE_DATA), so no check writes to the real one; and it keeps
+ * no tree for a warm start (--no-warm) unless warm is true, or every page
+ * after the first would start from the last one's tree.
  */
-async function startService(args, port, launchLog) {
-  const child = spawn(process.execPath, [SERVER, ...args, '--no-open', '--port', String(port)], {
-    stdio: ['ignore', 'pipe', 'pipe'], env: { ...process.env, TERRANE_LAUNCH_LOG: launchLog },
+async function startService(args, port, launchLog, { warm = false } = {}) {
+  const child = spawn(process.execPath, [SERVER, ...args, ...(warm ? [] : ['--no-warm']), '--no-open', '--port', String(port)], {
+    stdio: ['ignore', 'pipe', 'pipe'], env: { ...process.env, TERRANE_LAUNCH_LOG: launchLog, TERRANE_DATA: DATA },
   });
   let out = '';
   const actual = await new Promise((resolve, reject) => {
@@ -570,6 +586,9 @@ function context(page, env) {
     // the read-only service's, which a write scenario reaches through readOnlyUrl.
     launchLog: env.launchLog,
     readOnlyLaunchLog: env.readOnlyLaunchLog || env.launchLog,
+    // The dataset home every service was given (TERRANE_DATA): where a warm
+    // scenario's service keeps the tree of its last survey.
+    dataDir: DATA,
     /** The launches written to a log so far: [{ cmd, args, cwd }]. */
     launches(file = env.launchLog) {
       try {
@@ -761,11 +780,12 @@ function context(page, env) {
 // Ready means the survey is done and the loading sheet has gone. A sheet
 // still in its intro is skipped as a click on it would. A page that is
 // marked with window.__oldPage is the one before a reload, never ready.
+// A warm start is ready once the tree from the last session is checked.
 const READY = `(() => {
   if (window.__oldPage) return "";
   const T = window.__terrane;
   const s = document.getElementById("splash");
-  if (T && !T.S.scanning) {
+  if (T && !T.S.scanning && !T.S.warm) {
     if (!s || s.hidden) return "ready";
     if (s.dataset.phase === "intro") s.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true }));
     return "the loading sheet is leaving";
@@ -992,7 +1012,7 @@ async function loadScenarios() {
 async function main() {
   const all = await loadScenarios();
   if (opt.list) {
-    for (const s of all) print(`  ${s.name.padEnd(16)} ${s.file.padEnd(16)} ${s.data === 'fixture' ? 'fixture' : 'any data'}${s.write ? ', writes' : ''}, ${s.passes.join(' + ')}  ${s.title || ''}`);
+    for (const s of all) print(`  ${s.name.padEnd(16)} ${s.file.padEnd(16)} ${s.data === 'fixture' ? 'fixture' : 'any data'}${s.write ? ', writes' : ''}${s.warm ? ', warm' : ''}, ${s.passes.join(' + ')}  ${s.title || ''}`);
     return 0;
   }
   const chosen = names.length ? all.filter((s) => names.includes(s.name) || names.includes(s.file) || names.includes(s.file.replace(/\.mjs$/, ''))) : all;
@@ -1008,6 +1028,8 @@ async function main() {
 
   const work = fs.mkdtempSync(path.join(os.tmpdir(), 'terrane-ui-'));
   cleanups.push(async () => (opt.keep ? print(`  note  kept ${work}`) : removeDir(work)));
+  DATA = path.join(work, 'data');
+  fs.mkdirSync(DATA);
   let shots = null;
   if (!opt['no-shots']) {
     shots = opt.shots ? path.resolve(opt.shots) : path.join(os.tmpdir(), 'terrane-ui-check', `shots-${new Date().toISOString().replace(/[:.]/g, '-')}`);
@@ -1067,7 +1089,7 @@ async function main() {
         print(`\n[${prefix}] ${s.title || s.name}\n  skip  needs the fixture`);
         continue;
       }
-      if (s.write) {
+      if (s.write || s.warm) {
         if (data.kind !== 'fixture') {
           skipped++;
           print(`\n[${prefix}] ${s.title || s.name}\n  skip  changes files, so it needs a fixture`);
@@ -1075,7 +1097,7 @@ async function main() {
         }
         const root = path.join(work, `write-${pass}-${s.name}`);
         const manifest = await makeFixture(root, { files: data.files || FILES, seed: data.seed || SEED });
-        const svc = await startService([root], PORT + 1, path.join(work, `launch-${PORT + 1}.log`));
+        const svc = await startService([root], PORT + 1, path.join(work, `launch-${PORT + 1}.log`), { warm: !!s.warm });
         await runScenario(browser, s, {
           ...env, scenario: s.name, prefix, root, url: svc.url, readOnlyUrl: env.url, launchLog: svc.launchLog, readOnlyLaunchLog: env.launchLog, data: { ...data, manifest, root },
         });

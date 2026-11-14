@@ -19,6 +19,8 @@
  *       floating slot as ask() does and giving focus back on close; an
  *       action chosen in it runs in the frame after the close event.
  *       download(filename, text, type): a file to save, from a Blob.
+ *       notice() returns a function that withdraws the notice early, for
+ *       a sentence that stops being true (a warm start's "changes wait").
  *     - 1.3.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] —
  *       Unavailable menu items are reached by the arrows and carry
  *       their reason as their description; the menu stops the browser's
@@ -289,6 +291,11 @@ export function openSheet(build, { className = '', label = '', onKey } = {}) {
 
 const NOTICE_ICON = { ok: 'ok', error: 'error', info: 'info' };
 
+/**
+ * Shows a notice for ms (by kind: 4.5 s, 9 s with an action, 12 s for an
+ * error), with an optional action button. Returns a function that
+ * withdraws it early, for a notice whose sentence stops being true.
+ */
 export function notice(message, { kind = 'ok', action, ms } = {}) {
   const host = document.getElementById('notices');
   const life = ms ?? (kind === 'error' ? 12000 : action ? 9000 : 4500);
@@ -324,6 +331,7 @@ export function notice(message, { kind = 'ok', action, ms } = {}) {
     started = performance.now();
     timer = setTimeout(drop, Math.max(600, left));
   });
+  return drop;
 }
 
 /* ---------- files to save ---------- */
