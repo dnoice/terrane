@@ -1,11 +1,11 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Hardening Scenarios (Terrane Edition - v1.4)
+ *     - Title: Hardening Scenarios (Terrane Edition - v1.5)
  *     - File Name: hardening.mjs
  *     - Relative Path: tools/ui-scenarios/hardening.mjs
  *     - Artifact Type: test
- *     - Version: 1.4.0
+ *     - Version: 1.5.0
  *     - Date: 11/14/2026
  *     - Update: Saturday, November 14, 2026
  *     - Author: Dennis 'dendogg' Smaltz
@@ -13,6 +13,10 @@
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
  *
  * ✒ Changelog:
+ *     - 1.5.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — A
+ *       whole tree's sessions are now found in a quiet moment after its
+ *       survey: after Rescan all the check asks that they are the new
+ *       tree's (made after the rescan began), found or not yet.
  *     - 1.4.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] —
  *       Names are printed on the boxes: at the overview the check asks
  *       that some are, each on a box that is drawn, and that no file or
@@ -58,7 +62,7 @@
  *       and the address and the kept view leave it, after a reload too;
  *       the time view's Since section follows the table a change rebuilt,
  *       the cursor follows its item, Rescan all leaves no old node behind
- *       and the sessions are found only when read
+ *       and the sessions are the new tree's
  *
  * ✒ Usage Instructions:
  *     node tools/ui-check.mjs hardening hardening-disk [--pass webgl|nogl]
@@ -559,6 +563,7 @@ const disk = {
     await t.waitFor(() => [...document.querySelectorAll('#notices .notice')].some((x) => /folders changed on disk/.test(x.textContent)));
     await t.app(() => { [...document.querySelectorAll('#notices .notice')].find((x) => /folders changed on disk/.test(x.textContent))?.setAttribute('data-check', 'rescan'); return true; });
     await t.tabTo('[data-check="rescan"] .btn', { max: 200 });
+    await t.app((T) => { T.__rescanAt = Date.now(); return true; });
     await t.key('Enter');
     await t.waitFor((T) => T.S.scanning, { what: 'Rescan all to begin' });
     await t.waitFor((T) => !T.S.scanning && !!T.S.survey, { timeout: 30000, what: 'Rescan all to finish' });
@@ -572,12 +577,14 @@ const disk = {
         rowsAttached: T.list.items.filter((x) => T.api.isAttached(x)).length,
         q: document.getElementById('q-count').textContent,
         force: S.force,
-        sessions: !!S.sessions && S.sessions.found === false,
+        // The new tree's sessions, made after the rescan began: found in a
+        // quiet moment after its survey, or not yet.
+        sessions: !!S.sessions && S.sessions.built >= T.__rescanAt,
       };
     });
     t.check(`after Rescan all the search is of the new tree: ${r.found} found, all attached, as Findings and the count say (${r.q})`,
       r.found === n && r.attached === n && r.rows === n && r.rowsAttached === n && r.q === `${n} found`, JSON.stringify(r));
-    t.check('and nothing else holds the old tree: no forced unfold, sessions found only when read', r.force === null && r.sessions, JSON.stringify(r));
+    t.check('and nothing else holds the old tree: no forced unfold, the sessions the new tree\'s', r.force === null && r.sessions, JSON.stringify(r));
   },
 };
 
