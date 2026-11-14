@@ -1,11 +1,11 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: 3D Viewport (Terrane Edition - v1.7)
+ *     - Title: 3D Viewport (Terrane Edition - v1.9)
  *     - File Name: viewport.js
  *     - Relative Path: web/js/viewport.js
  *     - Artifact Type: javascript
- *     - Version: 1.7.0
+ *     - Version: 1.9.0
  *     - Date: 11/14/2026
  *     - Update: Saturday, November 14, 2026
  *     - Author: Dennis 'dendogg' Smaltz
@@ -13,6 +13,17 @@
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
  *
  * ✒ Changelog:
+ *     - 1.9.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] —
+ *       Drags follow a flavor (flavors.js, setFlavor):
+ *       Terrane's, Blender's, AutoCAD's and eight more; a walk motion for
+ *       Unreal's left drag, and a middle double click that rises to the
+ *       overview where a flavor asks for it.
+ *     - 1.8.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] —
+ *       Hatching, stipple and bands stay put: drawn from each box's own
+ *       centre with one period for the whole box, blended between octaves,
+ *       so the floating origin, a turn or a zoom no longer breaks them.
+ *       Blender's controls: the middle button orbits, Shift grabs and
+ *       moves, Ctrl flies in and out; numpad views (viewAbout).
  *     - 1.7.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] —
  *       Names are part of the boxes: the box shader prints a file's name
  *       on its lid and a folder's in capitals, on a closed mass's lid or
@@ -20,20 +31,6 @@
  *       lettering.js's distance-field atlas. They are lit, shadowed and
  *       hazed with their surface and read upright from the eye; the HTML
  *       file and folder tags are gone, and only mark tags stay in HTML.
- *     - 1.6.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] —
- *       Boxes look made, not drawn: a satin finish whose shader rounds
- *       every edge, shades each side toward its foot, gives a closed mass
- *       strata of what it holds and a riser two courses, and keeps ink for
- *       the conventions; a soft contact shadow under every box; the sun
- *       at a three-quarter angle to the view, so shadows fall in sight.
- *     - 1.5.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] —
- *       The relation layer is drawn only while it holds a line
- *       (three.js draws an empty range), and labels are placed again
- *       only when the eye, the layout, the marks or the canvas change,
- *       not on a frame redrawn for a hover. A label's overlap test
- *       measures the tag as drawn (LABEL_BOX: a folder's expanded
- *       capitals and its leader line, a mark's pin), so no tag stands
- *       across another or over another's line.
  *     Earlier entries: see CHANGELOG.md
  *
  * ✒ Description:
@@ -51,14 +48,23 @@
  *     - Rounded edges, a satin finish, contact shade, a closed mass's
  *       strata, hatching, stipple, banding and the crossed footprint
  *       are computed in the fragment shader from each box's own
- *       dimensions, so drawing conventions cost no extra geometry
+ *       dimensions, so drawing conventions cost no extra geometry; the
+ *       patterns take one period per box, from the eye's distance to
+ *       it, blended between octaves, so they never slide or break
  *     - A place, not a diagram: perspective camera inside the scene, with
  *       sky, horizon, haze, a surveyed ground plane and sun shadows at a
  *       three-quarter angle to the view that
  *       follow the eye down to any scale
  *     - Travel by pointer: the wheel flies toward whatever is under the
- *       cursor, drag slides the ground, right-drag orbits the point you
- *       grabbed, Alt-drag looks around
+ *       cursor; each drag means what the flavor says (slide,
+ *       orbit, look, dolly or walk). Terrane's own: drag and middle-drag
+ *       grab the ground and move it, right-drag and Shift+middle orbit
+ *       the point you grabbed, Ctrl+middle flies in and out, Alt with any
+ *       button looks around; Blender's, AutoCAD's, Maya's and eight more
+ *       come from flavors.js
+ *     - Blender's numpad views about the middle of the view: 7 top, 1
+ *       front, 3 right (Ctrl the far side), 2 4 6 8 orbit in steps, 9
+ *       turns about, . frames the selection
  *     - Travel by keys: W A S D to move, Q E to turn, R F to rise and
  *       descend; speed is proportional to height above the surface, so
  *       the same keys cross the whole world or step between two files
@@ -100,10 +106,13 @@
  *     view.letterCount;                    // names printed on boxes now
  *     view.frame(index);  view.overview();  view.eye;  view.look();
  *     view.flyTo(view.pose());             // the eye and heading, and back
+ *     view.viewAbout('top');               // 'front', 'back', 'right', 'left',
+ *     view.viewAbout({ yaw, pitch });      // or a step of orbit
+ *     view.setFlavor(flavorById('blender'));  // what each drag does
  *
  * ✒ Other Important Information:
  *     - Dependencies: three.js r187 (vendored at web/vendor/three),
- *       layout.js, lettering.js, theme.js
+ *       layout.js, lettering.js, flavors.js, theme.js
  *     - Compatible platforms: browsers with WebGL2
  *     - Performance: 70,000 boxes is the layout budget; transitions write
  *       matrices directly into the instance buffer, and every buffer
@@ -121,6 +130,7 @@
 import * as THREE from '../vendor/three/three.module.js';
 import { BOX, STYLE, WORLD } from './layout.js';
 import { Lettering, FACE, SLOT, ATLAS, PAD } from './lettering.js';
+import { motionFor, flavorById } from './flavors.js';
 
 const FOV = 44;
 const HORIZON = 0xe9eeea;
@@ -362,6 +372,9 @@ function boxMaterial(letters) {
   mat.userData.letterAxes = { value: new THREE.Vector4(1, 0, 0, -1) };
   // Toward the sun, in world axes, so a cut letter's walls take its light.
   mat.userData.sunDir = { value: new THREE.Vector3(0.6, 0.7, 0.3).normalize() };
+  // Device pixels per world unit at a distance of one, for the period of
+  // the drawing conventions (resize keeps it current).
+  mat.userData.pxScale = { value: 800 };
   const lin = (hex) => new THREE.Vector3(...linear(hex));
   mat.onBeforeCompile = (shader) => {
     shader.uniforms.uInk = { value: srgb(THEME.ink) };
@@ -371,10 +384,13 @@ function boxMaterial(letters) {
     shader.uniforms.uLetters = { value: letters.texture };
     shader.uniforms.uLetterAxes = mat.userData.letterAxes;
     shader.uniforms.uSunDir = mat.userData.sunDir;
+    shader.uniforms.uPxScale = mat.userData.pxScale;
     shader.vertexShader = shader.vertexShader
       .replace('#include <common>', `#include <common>
         attribute vec4 aLetter;
         flat varying vec4 vLetter;
+        uniform float uPxScale;
+        flat varying vec2 vStripe;
         attribute float aStyle;
         attribute float aDim;
         attribute float aRole;
@@ -397,6 +413,17 @@ function boxMaterial(letters) {
         vLetter = aLetter;
         vBoxScale = vec3(length(instanceMatrix[0].xyz), length(instanceMatrix[1].xyz), length(instanceMatrix[2].xyz));
         vWorldP = (instanceMatrix * vec4(position, 1.0)).xyz;
+        // The conventions' period, one for the whole box: from how far the
+        // eye is from the box's nearest point, in view space, where the
+        // numbers stay small at any depth. vStripe is the octave and how
+        // far the eye is toward the next, so a period never jumps.
+        {
+          vec3 cv = (modelViewMatrix * instanceMatrix * vec4(0.0, 0.0, 0.0, 1.0)).xyz;
+          vec3 eye = transpose(mat3(viewMatrix)) * (-cv);
+          float nearD = max(length(max(abs(eye) - vBoxScale * 0.5, 0.0)), 1e-30);
+          float lod = log2(nearD / uPxScale * 12.0);
+          vStripe = vec2(exp2(floor(lod)), fract(lod));
+        }
         vStyle = aStyle;
         vDim = aDim;
         vRole = aRole;
@@ -414,6 +441,7 @@ function boxMaterial(letters) {
         uniform vec4 uLetterAxes;
         uniform vec3 uSunDir;
         flat varying vec4 vLetter;
+        flat varying vec2 vStripe;
         varying vec3 vBoxLocal;
         varying vec3 vBoxScale;
         varying vec3 vWorldP;
@@ -424,6 +452,35 @@ function boxMaterial(letters) {
         varying vec3 vBandB;
         varying vec3 vBandC;
         varying vec2 vShare;
+        // The drawing conventions at one period, in the box's own
+        // coordinates: lines, bands and dots stand on whole multiples of the
+        // period, so the next octave keeps every other one and the two can
+        // be blended. Where a period falls under about two pixels each
+        // fades to its average, so a far face never shimmers. c is the
+        // coordinate, w its change per pixel.
+        float near0(float x) {
+          return abs(fract(x + 0.5) - 0.5);
+        }
+        float hatchAt(float c, float per, float w) {
+          float line = 1.0 - smoothstep(0.09, 0.09 + w / per, near0(c / per));
+          return mix(line, 0.2, smoothstep(0.25, 0.5, w / per));
+        }
+        float bandsAt(float c, float per, float w) {
+          float p = per * 2.0;
+          float band = 1.0 - smoothstep(0.12, 0.12 + w / p, near0(c / p));
+          return mix(band, 0.26, smoothstep(0.25, 0.5, w / p));
+        }
+        float halfAt(float c, float per, float w) {
+          float p = per * 2.0;
+          float t = fract(c / p);
+          float band = smoothstep(0.5 - w / p, 0.5, t) * (1.0 - smoothstep(1.0 - w / p, 1.0, t));
+          return mix(band, 0.5, smoothstep(0.25, 0.5, w / p));
+        }
+        float dotsAt(vec2 c, float per, float w) {
+          vec2 cell = fract(c / per + 0.5) - 0.5;
+          float spot = 1.0 - smoothstep(0.14, 0.14 + w / per, length(cell));
+          return mix(spot, 0.06, smoothstep(0.25, 0.5, w / per));
+        }
         // The face a fragment lies on, as an outward axis in box space.
         vec3 boxFace() {
           vec3 a = abs(vBoxLocal);
@@ -583,15 +640,20 @@ function boxMaterial(letters) {
           float smx = max(vBoxScale.x, max(vBoxScale.y, vBoxScale.z));
           float smid = vBoxScale.x + vBoxScale.y + vBoxScale.z - smn - smx;
           vec3 col = gl_FragColor.rgb;
-          float hc = vWorldP.x + vWorldP.z + vWorldP.y;
-          float hw = max(fwidth(hc), 1e-5);
-          float per = exp2(ceil(log2(hw * 7.0)));
+          // The conventions are measured from the box's centre, so neither
+          // the floating origin nor the eye can slide them, and one period
+          // serves every face, so they run unbroken over the edges.
+          vec3 bq = vBoxLocal * vBoxScale;
+          float hc = bq.x + bq.y + bq.z;
+          float hw = max(fwidth(hc), 1e-30);
+          float p0 = vStripe.x;
+          float p1 = p0 * 2.0;
+          float ob = vStripe.y;
           float edgeW = 1.0;
           float inked = 0.0;
           float crossInk = 0.0;
           if ${styleIs(STYLE.HATCH)} {
-            float t = abs(fract(hc / per) - 0.5);
-            col = mix(col, uInk, (1.0 - smoothstep(0.09, 0.09 + hw / per, t)) * 0.7 * (1.0 - letterCov));
+            col = mix(col, uInk, mix(hatchAt(hc, p0, hw), hatchAt(hc, p1, hw), ob) * 0.7 * (1.0 - letterCov));
             inked = 1.0;
           } else if ${styleIs(STYLE.HOLLOW)} {
             col = mix(uPaper, col, 0.1);
@@ -599,15 +661,14 @@ function boxMaterial(letters) {
             edgeW = 2.0;
             inked = 1.0;
           } else if ${styleIs(STYLE.STIPPLE)} {
-            vec2 cell = fract(vWorldP.xz / per) - 0.5;
-            col = mix(col, uInk, (1.0 - smoothstep(0.14, 0.14 + hw / per, length(cell))) * 0.5 * (1.0 - letterCov));
+            float dw = max(length(fwidth(bq.xz)), 1e-30);
+            col = mix(col, uInk, mix(dotsAt(bq.xz, p0, dw), dotsAt(bq.xz, p1, dw), ob) * 0.5 * (1.0 - letterCov));
           } else if ${styleIs(STYLE.BANDS)} {
-            float h2 = vWorldP.x - vWorldP.z + vWorldP.y;
-            float t = abs(fract(h2 / (per * 2.0)) - 0.5);
-            col = mix(col, uPaper, (1.0 - smoothstep(0.12, 0.12 + hw / per, t)) * 0.85 * (1.0 - letterCov));
+            float h2 = bq.x - bq.z + bq.y;
+            float bw = max(fwidth(h2), 1e-30);
+            col = mix(col, uPaper, mix(bandsAt(h2, p0, bw), bandsAt(h2, p1, bw), ob) * 0.85 * (1.0 - letterCov));
           } else if ${styleIs(STYLE.HALF_BANDS)} {
-            float t = fract(hc / (per * 2.0));
-            col = mix(col, uPaper, smoothstep(0.5 - hw / per, 0.5, t) * (1.0 - smoothstep(1.0 - hw / per, 1.0, t)) * 0.6 * (1.0 - letterCov));
+            col = mix(col, uPaper, mix(halfAt(hc, p0, hw), halfAt(hc, p1, hw), ob) * 0.6 * (1.0 - letterCov));
           } else if ${styleIs(STYLE.CROSSED)} {
             // The footprint's two diagonals on the top and bottom faces, in
             // the box's own coordinates: the floating origin never moves
@@ -932,6 +993,9 @@ export class Viewport {
     this.raf = 0;
     this.raycaster = new THREE.Raycaster();
     this.labelPool = [];
+    // What each drag does: Terrane's own until the page chooses a flavor.
+    this.flavor = flavorById('terrane');
+    this.lastMiddle = null;
     // Boxes that carry a printed name now, and the frames drawn so far
     // (the lettering's slots are kept by the frame they were last used in).
     this.lettered = new Map();
@@ -1107,6 +1171,43 @@ export class Viewport {
     this.flyTo({ yaw: this.cam.yaw + delta }, 260);
   }
 
+  /** What each drag does from now on: a flavor from flavors.js. */
+  setFlavor(flavor) {
+    this.flavor = flavor || flavorById('terrane');
+  }
+
+  /**
+   * Blender's views, about the point at the middle of the view (or one
+   * ahead of the eye when the middle is sky), at the same distance: 'top',
+   * 'front' (facing north), 'back', 'right' (facing west, as from the east
+   * side), 'left', or a step of orbit { yaw, pitch } in radians.
+   */
+  viewAbout(which) {
+    const r = this.canvas.getBoundingClientRect();
+    const p = this.probe(r.left + r.width / 2, r.top + r.height / 2);
+    const c = this.cam;
+    let pivot = p.point;
+    if (!pivot) {
+      const f = Viewport.forward(c.yaw, c.pitch);
+      const d = Math.max(this.alt * 2, 1e-6);
+      pivot = new THREE.Vector3(c.x + f[0] * d, c.y + f[1] * d, c.z + f[2] * d);
+    }
+    const dist = Math.hypot(c.x - pivot.x, c.y - pivot.y, c.z - pivot.z);
+    let yaw = c.yaw;
+    let pitch = c.pitch;
+    const LEVEL = -0.18;
+    const VIEWS = { top: [null, -1.52], front: [0, LEVEL], back: [Math.PI, LEVEL], right: [-Math.PI / 2, LEVEL], left: [Math.PI / 2, LEVEL] };
+    if (typeof which === 'string') {
+      const [y, pt] = VIEWS[which] || [null, pitch];
+      if (y !== null) yaw = y;
+      pitch = pt;
+    } else {
+      yaw += which?.yaw || 0;
+      pitch = Math.max(-1.52, Math.min(0.1, pitch + (which?.pitch || 0)));
+    }
+    this.flyTo(Viewport.vantage(pivot.x, pivot.y, pivot.z, dist, yaw, pitch), 420);
+  }
+
   /** Flies to a vantage in front of a box, keeping the current heading. */
   frame(index) {
     // Bounded by what is drawn: a clamped layout holds boxes that are not on screen.
@@ -1249,6 +1350,7 @@ export class Viewport {
    * own colour.
    */
   setPaint({ color, style, dim, bands, shares }) {
+    this.paintNow = { color, style, dim, bands, shares };
     const n = this.n;
     const col = this.mesh.instanceColor.array;
     const A = this.aBandA.array;
@@ -1454,10 +1556,14 @@ export class Viewport {
     const el = this.canvas;
     let down = null;
     el.addEventListener('contextmenu', (e) => e.preventDefault());
+    // The middle button belongs to the world: no autoscroll, no paste.
+    el.addEventListener('mousedown', (e) => { if (e.button === 1) e.preventDefault(); });
+    el.addEventListener('auxclick', (e) => { if (e.button === 1) e.preventDefault(); });
     el.addEventListener('pointerdown', (e) => {
       el.setPointerCapture(e.pointerId);
       el.focus({ preventScroll: true });
-      const mode = e.altKey || e.button === 1 ? 'look' : e.button === 2 ? 'orbit' : 'slide';
+      // The flavor says what this drag does.
+      const mode = motionFor(this.flavor, e.button, { shift: e.shiftKey, ctrl: e.ctrlKey || e.metaKey, alt: e.altKey });
       const p = this.probe(e.clientX, e.clientY);
       down = { x: e.clientX, y: e.clientY, lx: e.clientX, ly: e.clientY, button: e.button, moved: false, mode, anchor: p.point };
     });
@@ -1478,7 +1584,25 @@ export class Viewport {
       down.lx = e.clientX;
       down.ly = e.clientY;
       const c = this.cam;
-      if (down.mode === 'look' || !down.anchor) {
+      if (down.mode === 'dolly') {
+        // Toward the grabbed point, or straight ahead without one.
+        const f = Math.exp(Math.max(-60, Math.min(60, dy)) * 0.008);
+        const a = down.anchor;
+        if (a) {
+          c.x = a.x + (c.x - a.x) * f;
+          c.y = a.y + (c.y - a.y) * f;
+          c.z = a.z + (c.z - a.z) * f;
+        } else this.zoomAt(f, down.x, down.y);
+      } else if (down.mode === 'walk') {
+        // Unreal's left drag: up and down walk along the heading on the
+        // level, left and right turn.
+        const h = Viewport.forward(c.yaw, 0);
+        const hl = Math.hypot(h[0], h[2]) || 1;
+        const step = -dy * Math.max(this.alt, 1e-6) * 0.006;
+        c.x += (h[0] / hl) * step;
+        c.z += (h[2] / hl) * step;
+        c.yaw += dx * 0.004;
+      } else if (down.mode === 'look' || !down.anchor) {
         c.yaw += dx * 0.004;
         c.pitch -= dy * 0.004;
       } else if (down.mode === 'orbit') {
@@ -1520,6 +1644,18 @@ export class Viewport {
       down = null;
       el.classList.remove('is-dragging');
       if (d.moved) return;
+      // A middle double click rises to the overview where the flavor says
+      // so (zoom extents, in AutoCAD and SketchUp).
+      if (d.button === 1) {
+        const now = performance.now();
+        const last = this.lastMiddle;
+        this.lastMiddle = { t: now, x: e.clientX, y: e.clientY };
+        if (this.flavor.overview === 'middle' && last && now - last.t < 450 && Math.hypot(e.clientX - last.x, e.clientY - last.y) < 8) {
+          this.lastMiddle = null;
+          this.overview();
+        }
+        return;
+      }
       const i = this.pick(e.clientX, e.clientY);
       if (d.button === 2) this.on.context?.(i, e);
       else if (d.button === 0) this.on.click?.(i, e);
@@ -1538,7 +1674,29 @@ export class Viewport {
   #bindKeys() {
     const el = this.canvas;
     const MOVE = new Set(['w', 'a', 's', 'd', 'q', 'e', 'r', 'f']);
+    // Blender's numpad views, about the point at the middle of the view.
+    // Ctrl takes the opposite side. Numpad 0, + and - reach the page's own
+    // keys (the overview, closer, farther).
+    const STEP = Math.PI / 12;
+    const NUMPAD = {
+      Numpad7: () => 'top',
+      Numpad1: (ctrl) => (ctrl ? 'back' : 'front'),
+      Numpad3: (ctrl) => (ctrl ? 'left' : 'right'),
+      Numpad9: () => ({ yaw: Math.PI }),
+      Numpad4: () => ({ yaw: -STEP }),
+      Numpad6: () => ({ yaw: STEP }),
+      Numpad8: () => ({ pitch: -STEP }),
+      Numpad2: () => ({ pitch: STEP }),
+    };
     el.addEventListener('keydown', (e) => {
+      if (!e.altKey && (NUMPAD[e.code] || e.code === 'NumpadDecimal')) {
+        e.preventDefault();
+        e.stopPropagation();
+        if (e.code === 'NumpadDecimal') {
+          if (this.selIndex >= 0) this.frame(this.selIndex);
+        } else this.viewAbout(NUMPAD[e.code](e.ctrlKey || e.metaKey));
+        return;
+      }
       const k = e.key.toLowerCase();
       if (e.ctrlKey || e.metaKey || e.altKey || !MOVE.has(k)) return;
       e.preventDefault();
@@ -1824,6 +1982,7 @@ export class Viewport {
     this.w = Math.max(50, p.clientWidth);
     this.h = Math.max(50, p.clientHeight);
     this.renderer.setSize(this.w, this.h, false);
+    this.mesh.material.userData.pxScale.value = (this.h * this.renderer.getPixelRatio()) / (2 * Math.tan((FOV * Math.PI) / 360));
     this.invalidate();
   }
 

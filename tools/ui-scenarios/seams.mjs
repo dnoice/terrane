@@ -1,11 +1,11 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Controller Seams Scenario (Terrane Edition - v1.7)
+ *     - Title: Controller Seams Scenario (Terrane Edition - v1.10)
  *     - File Name: seams.mjs
  *     - Relative Path: tools/ui-scenarios/seams.mjs
  *     - Artifact Type: test
- *     - Version: 1.7.0
+ *     - Version: 1.10.0
  *     - Date: 11/14/2026
  *     - Update: Saturday, November 14, 2026
  *     - Author: Dennis 'dendogg' Smaltz
@@ -13,11 +13,20 @@
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
  *
  * ✒ Changelog:
- *     - 1.7.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — A
+ *     - 1.10.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — A
  *       LEDGER_SUB control stands on the count row after the count, where the
  *       polished head puts a feature's tools.
  *       Duplicate candidates are opened before the DUP_GROUP rows are
  *       counted: the section builds its rows the first time it is open.
+ *     - 1.9.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — Reading the
+ *       world is read from the Guide's tab, where it moved; the inspector's
+ *       own sections end with Composition.
+ *     - 1.8.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — The drags
+ *       leave the key table for the guide's Mouse section, which lists
+ *       the flavor in use; the Travelling rows keep the wheel
+ *       and the keys.
+ *     - 1.7.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — The guide's
+ *       Travelling rows add Blender's middle-button drags and numpad views.
  *     - 1.6.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — The core's
  *       Closed mass row says that a mass's sides show its strata.
  *     - 1.5.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
@@ -107,7 +116,7 @@
 
 /** The guide as the hard-coded showGuide drew it before the key table. */
 const GUIDE = [
-  ['Travelling', [['Wheel', 'Fly toward what is under the cursor'], ['Drag', 'Slide the ground'], ['Right-drag', 'Orbit the point you grabbed'], ['Alt+drag', 'Look around'], ['W A S D', 'Move (Shift: faster)'], ['Q  E', 'Turn'], ['R  F', 'Rise / descend'], ['V', 'Drop to eye level'], ['0', 'Rise to the overview'], ['G', 'Fly to the selection'], ['Double-click', 'Fly to folder / open file']]],
+  ['Travelling', [['Wheel', 'Fly toward what is under the cursor'], ['W A S D', 'Move (Shift: faster)'], ['Q  E', 'Turn'], ['R  F', 'Rise / descend'], ['Numpad 1 3 7', 'Front, right, top (Ctrl: the far side)'], ['Numpad 2 4 6 8', 'Orbit in steps'], ['Numpad .', 'Frame the selection'], ['V', 'Drop to eye level'], ['0', 'Rise to the overview'], ['G', 'Fly to the selection'], ['Double-click', 'Fly to folder / open file']]],
   ['Selecting and going places', [['Click', 'Select'], ['Ctrl+click', 'Add to selection'], ['← →', 'Previous / next sibling'], ['↑ ↓', 'Parent / first child'], ['Enter', 'Go to folder / open file'], ['Backspace', 'Up one level'], ['Alt+←', 'Back'], ['/', 'Find'], ['Esc', 'Cancel, clear'], ['[  ]', 'Hide ledger / inspector'], ['1 – 4', 'Lens']]],
   ['Changing things', [['N', 'New folder'], ['F2', 'Rename'], ['M', 'Move to…'], ['Ctrl+D', 'Duplicate'], ['Del', 'Remove to holding area'], ['Ctrl+Z', 'Undo'], ['Ctrl+C', 'Copy path'], ['Drag a row', 'Drop on a folder, breadcrumb or plateau'], ['Menu key', 'Context menu'], ['F5', 'Re-read folder']]],
 ];
@@ -204,7 +213,7 @@ export default {
       same(ids.ESCAPE, ['floating', 'placing', 'kind-filter', 'search', 'selection']) && same(ids.PIN_SOURCES, ['search', 'heavy'])
       && same(ids.TIP_LINES, ['levels', 'matches', 'placing', 'copies', 'pixels']), JSON.stringify([ids.ESCAPE, ids.PIN_SOURCES, ids.TIP_LINES]));
     t.check('the inspector, Reading and tab registries hold the controller entries in order',
-      same(ids.focus, ['title', 'facts', 'composition', 'reading']) && same(ids.node, ['title', 'path', 'facts', 'composition', 'copies', 'actions', 'preview'])
+      same(ids.focus, ['title', 'facts', 'composition']) && same(ids.node, ['title', 'path', 'facts', 'composition', 'copies', 'actions', 'preview'])
       && ids.READING.length === 8 && same(ids.TABS, ['contents', 'findings', 'survey', 'journal']), JSON.stringify([ids.focus, ids.node, ids.TABS]));
     t.check('layout options, hooks, menu items and search tokens start empty, apart from the age table\'s survey hook',
       !ids.LAYOUT_OPTS.length && !ids.AFTER_LAYOUT.length && !ids.AFTER_REFRESH.length && !ids.AFTER_OP.length && !ids.MENU.length && !ids.AFTER_QUERY.length
@@ -364,15 +373,23 @@ export default {
       a.select(null);
       const titles = () => [...document.querySelectorAll('#inspector-body .section-title')].map((x) => x.textContent);
       const focus = titles();
-      const rows = [...document.querySelectorAll('#inspector-body .reading li')].map((li) => [li.firstChild.className, li.querySelector('b').textContent, li.lastChild.lastChild.textContent]);
       const file = (function find(d) {
         for (const c of d.c) if (!c.d && c.s > 0) return c;
         for (const c of d.c) if (c.d) { const f = find(c); if (f) return f; }
         return null;
       })(T.S.model.root);
       a.select(file);
-      return { focus, rows, node: titles(), nested: !!document.querySelector('#inspector-body .seam-p'), name: file.n };
+      return { focus, node: titles(), nested: !!document.querySelector('#inspector-body .seam-p'), name: file.n };
     });
+    // Reading the world lives in the Guide's tab of that name.
+    await t.key('?');
+    await t.waitFor(() => document.getElementById('dialog').open && !!document.getElementById('guide-tab-reading'), { what: 'the Guide' });
+    insp.rows = await t.eval(() => {
+      document.getElementById('guide-tab-reading').click();
+      return [...document.querySelectorAll('#dialog .reading li')].map((li) => [li.firstChild.className, li.querySelector('b').textContent, li.lastChild.lastChild.textContent]);
+    });
+    await t.key('Escape');
+    await t.waitFor(() => !document.getElementById('dialog').open);
     const created = await t.waitFor(() => {
       const dt = [...document.querySelectorAll('#inspector-body dt')].find((x) => x.textContent === 'Created');
       const v = dt?.nextElementSibling?.textContent;
@@ -380,10 +397,11 @@ export default {
     });
     const ierrs = await t.eval(muteErrors, false);
     const ownRows = insp.rows.filter((r) => !start.featureReading.includes(r[1]));
-    t.check('the Reading rows are the ones the inspector listed before, then registered rows in order',
+    t.check('the Reading rows in the Guide are the ones the inspector listed before, then registered rows in order',
       same(ownRows.slice(0, 8), READING) && same(ownRows.slice(8).map((r) => r[1]), ['Seam', 'Installed']), JSON.stringify(insp.rows.slice(6)));
-    t.check('a focus section takes its place between Composition and Reading the world',
-      insp.focus.at(-2) === `Seam focus ${(await t.app((T) => T.S.focus.n))}` && insp.focus.at(-1) === 'Reading the world', JSON.stringify(insp.focus));
+    t.check('a focus section takes its place after Composition and the features\' sections, and Reading the world is no longer in the inspector',
+      insp.focus.at(-1) === `Seam focus ${(await t.app((T) => T.S.focus.n))}` && insp.focus.indexOf('Composition') >= 0 && insp.focus.indexOf('Composition') < insp.focus.length - 1
+      && !insp.focus.includes('Reading the world'), JSON.stringify(insp.focus));
     t.check('a node section takes its place before Actions, nested arrays flattened', insp.node.indexOf('Seam node') === insp.node.indexOf('Actions') - 1 && insp.nested, JSON.stringify(insp.node));
     t.check('a section that throws is reported and the rest of the inspector is drawn', ierrs.some((e) => /INSPECTOR.node "seam-broken" failed/.test(e)) && insp.node.includes('Actions'), JSON.stringify(ierrs));
     t.check(`the Created fact is still filled in from the service (${created})`, !!created);

@@ -1,10 +1,10 @@
 <!--
 ✒ Metadata
-    - Title: Terrane Readme (Terrane Edition - v1.14)
+    - Title: Terrane Readme (Terrane Edition - v1.17)
     - File Name: README.md
     - Relative Path: README.md
     - Artifact Type: docs
-    - Version: 1.14.0
+    - Version: 1.17.0
     - Date: 11/14/2026
     - Update: Saturday, November 14, 2026
     - Author: Dennis 'dendogg' Smaltz
@@ -12,7 +12,7 @@
     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
 
 ✒ Changelog:
-    - 1.14.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] —
+    - 1.17.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] —
       Wave 4's polish of the sheet: the project map lists polish.mjs,
       and What was verified records its runs and those of every
       scenario whose checks read what the polish changed. Wave 4's
@@ -27,6 +27,20 @@
       records the Stage 4 exit test at five sizes and the final sweep of
       Wave 4; Not verified adds what Scale could not see; the project
       map lists the new modules and checks.
+    - 1.16.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] —
+      Reading the world: the conventions are listed in the Guide's tab
+      of that name, no longer in the inspector. What was verified
+      records the runs.
+    - 1.15.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] —
+      Travelling: flavors, so the mouse steers the world as Blender,
+      AutoCAD, SketchUp, Maya, 3ds Max, Rhino, SolidWorks, Unity,
+      Unreal Engine or Google Earth do. The commands name flavors-test;
+      the project map lists flavors.js; What was verified records the
+      runs.
+    - 1.14.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] —
+      Travelling: Blender's middle-button drags and numpad views.
+      Reading the world: hatching and bands stay put as you travel.
+      What was verified records the runs.
     - 1.13.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] —
       Reading the world: names are printed on the blocks themselves,
       and the scree's tile says how many it holds. The project map
@@ -463,24 +477,54 @@ along an open plateau's rim, or cut into the riser that faces you. They
 read upright from where you stand and come into view as they grow large
 enough to read.
 
-The inspector's Reading the world section lists the same conventions,
-the features' rows included.
+The Guide (`?`, or the Guide button) lists the same conventions in its
+Reading the world tab, the features' rows included, beside its Keys,
+Mouse and Settings tabs. It opens on the tab you used last.
 
 ## Travelling
 
 | Input | Effect |
 | ----- | ------ |
 | Wheel | Fly toward whatever is under the cursor |
-| Drag | Slide the ground |
-| Right-drag | Orbit the point you grabbed |
+| Drag, middle-drag | Grab the ground and move it (Terrane's flavor; see below) |
+| Right-drag, Shift+middle-drag | Orbit the point you grabbed |
+| Ctrl+middle-drag | Fly in and out |
 | Alt+drag | Look around in place |
 | W A S D | Move. Shift moves faster. Speed scales with your height above the surface |
 | Q E, R F | Turn, rise and descend |
+| Numpad 7, 1, 3 | Top, front (facing north) and right views about the middle of the view; Ctrl takes the far side |
+| Numpad 4 6, 8 2, 9, . | Orbit and tilt in 15 degree steps; turn about; frame the selection |
 | V | Drop to eye level where you are looking |
 | 0 | Rise to the overview |
 | G | Fly to the selection |
 | Double-click | Fly to a folder; open a file |
 | Backspace, Alt+Left | Up one level; back |
+
+The drags in the table are Terrane's own flavor. If your hands already
+know another tool, choose its flavor under Flavor in the guide (`?`) or
+from the palette (Ctrl+K, "flavor"), and the mouse steers the world as
+it does there:
+
+| Flavor | Orbit | Grab and move | Fly in and out |
+| ------ | ----- | ------------- | -------------- |
+| Blender | Middle-drag, or Alt+drag | Shift+middle-drag | Ctrl+middle-drag |
+| AutoCAD, Fusion 360, Revit | Shift+middle-drag | Middle-drag | Ctrl+middle-drag |
+| SketchUp | Middle-drag | Shift+middle-drag | Ctrl+middle-drag |
+| Maya, Cinema 4D | Alt+drag | Alt+middle-drag | Alt+right-drag |
+| 3ds Max | Alt+middle-drag | Middle-drag | Ctrl+Alt+middle-drag |
+| Rhino | Right-drag | Shift+right-drag | Ctrl+right-drag |
+| SolidWorks | Middle-drag | Ctrl+middle-drag | Shift+middle-drag |
+| Unity | Alt+drag | Middle-drag | Alt+right-drag |
+| Unreal Engine | Alt+drag | Middle-drag | Alt+right-drag |
+| Google Earth | Shift+drag | Drag | Right-drag |
+
+In Unity and Unreal Engine the right button looks around, and holding
+it while you press W A S D flies; Unreal's left drag walks forward and
+back and turns. In AutoCAD and SketchUp a middle double-click rises to
+the overview. A drag a flavor leaves alone keeps Terrane's meaning,
+right-click without moving opens the menu in every flavor, and the
+keys are the same in all of them. The choice is kept in this browser
+for every directory.
 
 The breadcrumbs and the Contents tab follow the folder you are in. Clicking
 a breadcrumb, a ledger row, a search result or a survey entry flies you
@@ -842,6 +886,12 @@ time.
 | The Stage 4 exit test on Windows 11 (11/14/2026), 16 cores and 31.6 GB, Edge 157 on an RTX 5050 laptop GPU: `node tools/scale.mjs`, then the same with `--nogl`, on the final tree of Wave 4, over synthetic snapshots of seed 11 at five sizes, one point at a time with the service given an explicit heap; the tour from the overview eight levels down by keyboard, two searches, the Survey, and in regions the budget halved and a walk down again | @@README-EXIT@@ |
 | The final sweep of Wave 4 on Windows 11 (11/14/2026): `node --check` on every script outside `web/vendor/`, `npm test`, `npm run vendor -- --check`, the header of every file the branch touched, Markdown line lengths, and `node tools/ui-check.mjs --no-shots --port 5270` in both passes with Edge 157 on an RTX 5050 laptop GPU and the default fixture of 3,126 files: 45 scenarios, the earlier ones plus `polish`, `regions`, `regions-warm`, `regions-outside`, `regions-switch`, `demo-regions` and `scale` | No syntax error in 101 scripts; 1,065 passed, none failed; every vendored file matches the manifest; 78 headers in rule; no Markdown line over 100 columns; 2539 passed, 0 failed, 8 skipped (1,332 and 3 with WebGL, 1,207 and 5 without: what needs `--snapshot`, what needs a synthetic snapshot, the `splash` check for a sheet gone before the first look, and without WebGL two checks of the world); draw calls at the baseline. Not yet merged into `main` |
 
+| Steady conventions and Blender's view controls on Windows 11 (11/14/2026), Edge 157 on an RTX 5050 laptop GPU: `npm test`, and `node tools/ui-check.mjs --no-shots`, both passes, on the default fixture, with the new `views` scenario (hatching and bands drawn with the floating origin moved and moved back under the same eye; the middle button's orbit, grab and fly; the numpad views). With the old origin-relative coordinates put back, the same check finds 6,045 and 11,984 pixels moved | `npm test`: 797 passed, 0 failed. The interface check: 1424 passed, 0 failed, 6 skipped; 7 of 840,160 pixels differ with the fix |
+
+| Flavors on Windows 11 (11/14/2026), Edge 157 on an RTX 5050 laptop GPU: `npm test` with the new `flavors-test`, and `node tools/ui-check.mjs --no-shots`, both passes, on the default fixture, with `views` making every drag of every flavor with the mouse and judging what the eye did | `npm test`: 874 passed, 0 failed (77 in `flavors-test`). The interface check: 1438 passed, 1 failed, 6 skipped; the failure was the full-upload picture in `transitions`, one byte of one pixel a level apart, which the check now ignores while still counting anything over two levels (`transitions` again: 33 passed, 0 failed) |
+
+| The Guide window on Windows 11 (11/14/2026), Edge 157 on an RTX 5050 laptop GPU: `npm test`, and `node tools/ui-check.mjs --no-shots`, both passes, on the default fixture, with `seams`, `strata`, `time` and `interiors` reading Reading the world from the Guide's tab and `hardening` reaching the single-key setting in its Settings tab | `npm test`: 874 passed, 0 failed. The interface check: 1439 passed, 0 failed, 6 skipped |
+
 Not verified: running on macOS; frame rate at street level in the largest
 trees on a hardware GPU; Open and Reveal reaching a desktop application on
 Windows; the progress panel driven in a browser (its service side is
@@ -923,6 +973,7 @@ web/js/layout.js     the spatial language and level of detail; BOX, STYLE, AUX;
                      the regions it wants opened
 web/js/viewport.js   3D world, camera, picking, transitions, relation lines
 web/js/lettering.js  the names on the blocks: a distance-field atlas
+web/js/flavors.js    the flavors: what each drag does, DOM-free
 web/js/theme.js      colours shared with the stylesheet
 web/js/thumbs.js     the only way the page shows an image
 web/js/ui.js         menu, dialog, sheets, notices, tip, indicators, virtual
@@ -992,7 +1043,9 @@ tools/ui-check.mjs   headless browser check; scenarios in tools/ui-scenarios/,
                      demo.mjs, polish.mjs (alignment, wrapping and clipping
                      in the demo world at three window sizes), regions.mjs
                      (regions, regions-warm, regions-outside,
-                     regions-switch) and scale.mjs (synthetic snapshots only)
+                     regions-switch), scale.mjs (synthetic snapshots only)
+                     and views.mjs (steady conventions, Blender's controls)
+tools/flavors-test.mjs  every flavor in Node (in npm test)
 tools/make-fixture.mjs  the synthetic tree the checks run on (npm run fixture)
 tools/make-synthetic.mjs  synthetic structure snapshots, 1,000 to 10,000,000
                      entries, written without a file

@@ -237,7 +237,6 @@ function inspector() {
       b.disabled || b.getAttribute('aria-disabled') === 'true' ? b.title : 'on'])),
     names: [...body.querySelectorAll('.interior-names li')].map((x) => x.textContent),
     twins: [...body.querySelectorAll('.interior-twins .nm')].map((x) => x.textContent),
-    reading: [...body.querySelectorAll('.reading b')].map((x) => x.textContent),
     created: [...body.querySelectorAll('.facts dt')].find((d) => d.textContent === 'Created')?.nextSibling?.textContent ?? null,
   };
 }
@@ -562,7 +561,15 @@ const chamber = {
     await t.key('Escape');
     await t.waitFor((T) => !T.S.primary);
     const root = await t.app(inspector);
-    t.check('with nothing selected inside it, the inspector sums the archive and Reading the world has the walled floor',
+    await t.key('?');
+    await t.waitFor(() => document.getElementById('dialog').open && !!document.getElementById('guide-tab-reading'), { what: 'the Guide' });
+    root.reading = await t.eval(() => {
+      document.getElementById('guide-tab-reading').click();
+      return [...document.querySelectorAll('#dialog .reading b')].map((x) => x.textContent);
+    });
+    await t.key('Escape');
+    await t.waitFor(() => !document.getElementById('dialog').open);
+    t.check('with nothing selected inside it, the inspector sums the archive and the Guide\'s Reading the world has the walled floor',
       root.titles.includes('Inside site.zip') && root.reading.includes('Walled floor'), JSON.stringify(root.titles));
     await t.key('Escape');
     await t.waitFor((T) => !T.S.interior, { what: 'Escape to close the archive' });

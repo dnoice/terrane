@@ -1,11 +1,11 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Hardening Scenarios (Terrane Edition - v1.5)
+ *     - Title: Hardening Scenarios (Terrane Edition - v1.6)
  *     - File Name: hardening.mjs
  *     - Relative Path: tools/ui-scenarios/hardening.mjs
  *     - Artifact Type: test
- *     - Version: 1.5.0
+ *     - Version: 1.6.0
  *     - Date: 11/14/2026
  *     - Update: Saturday, November 14, 2026
  *     - Author: Dennis 'dendogg' Smaltz
@@ -13,10 +13,12 @@
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
  *
  * ✒ Changelog:
- *     - 1.5.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — A
+ *     - 1.6.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — A
  *       whole tree's sessions are now found in a quiet moment after its
  *       survey: after Rescan all the check asks that they are the new
  *       tree's (made after the rescan began), found or not yet.
+ *     - 1.5.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] —
+ *       The single-key setting is reached in the Guide's Settings tab.
  *     - 1.4.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] —
  *       Names are printed on the boxes: at the overview the check asks
  *       that some are, each on a box that is drawn, and that no file or
@@ -235,6 +237,8 @@ const hardening = {
       return { box: !!box, checked: !!box?.checked, focus: document.activeElement?.textContent?.trim() };
     });
     t.check('the guide opens on its Close button and offers the setting for single-key shortcuts, off', g.box && !g.checked && g.focus === 'Close', JSON.stringify(g));
+    // The setting is in the Settings tab; from Close, Shift+Tab reaches it.
+    await t.eval(() => { document.getElementById('guide-tab-settings').click(); document.querySelector('#dialog .btn-primary, #dialog button[value=ok], #dialog footer button')?.focus(); return true; });
     await t.tabTo('#pref-single-keys', { back: true, max: 4 });
     await t.key('Space');
     await t.key('Escape');

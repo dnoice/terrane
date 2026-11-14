@@ -339,8 +339,15 @@ export default {
       s1.titles.includes(`Since ${d.date}`) && s1.facts[0]?.startsWith('Changed') && s1.facts[0].includes(s1.cb) && s1.facts[0].includes(`${s1.cf} file`)
       && s1.facts[1]?.startsWith('Not changed') && s1.bars === 2, JSON.stringify(s1).slice(0, 400));
     t.check(`Where the change is lists the ${Math.min(8, s1.whereCount)} entries holding the most changed bytes`, s1.titles.some((x) => x.startsWith('Where the change is')) && JSON.stringify(s1.rows) === JSON.stringify(s1.want), JSON.stringify([s1.rows, s1.want]));
-    t.check('the Reading rows name the convention: Crossed', await t.eval(() => [...document.querySelectorAll('#inspector-body .reading li')].some((li) => li.querySelector('.glyph.g-crossed') && li.querySelector('b').textContent === 'Crossed')));
-    t.check('nothing the inspector says for the time view uses "created", "arrived" or "added"', !WORDS.test(s1.text.slice(s1.text.indexOf('Since'), s1.text.indexOf('Reading the world'))));
+    t.check('nothing the inspector says for the time view uses "created", "arrived" or "added"', !WORDS.test(s1.text.slice(s1.text.indexOf('Since'))));
+    await t.key('?');
+    await t.waitFor(() => document.getElementById('dialog').open && !!document.getElementById('guide-tab-reading'), { what: 'the Guide' });
+    t.check('the Guide\'s Reading the world names the convention: Crossed', await t.eval(() => {
+      document.getElementById('guide-tab-reading').click();
+      return [...document.querySelectorAll('#dialog .reading li')].some((li) => li.querySelector('.glyph.g-crossed') && li.querySelector('b').textContent === 'Crossed');
+    }));
+    await t.key('Escape');
+    await t.waitFor(() => !document.getElementById('dialog').open);
 
     // Crossed swatches in Contents, by the layout's rules.
     const rows = await t.app((T) => {
