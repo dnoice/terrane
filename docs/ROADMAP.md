@@ -1,10 +1,10 @@
 <!--
 ✒ Metadata
-    - Title: Terrane Roadmap (Terrane Edition - v1.10)
+    - Title: Terrane Roadmap (Terrane Edition - v1.11)
     - File Name: ROADMAP.md
     - Relative Path: docs/ROADMAP.md
     - Artifact Type: docs
-    - Version: 1.10.0
+    - Version: 1.11.0
     - Date: 11/14/2026
     - Update: Saturday, November 14, 2026
     - Author: Dennis 'dendogg' Smaltz
@@ -12,6 +12,10 @@
     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
 
 ✒ Changelog:
+    - 1.11.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — Where
+      things stand and the build waves record Wave 4's polish of the
+      sheet, under way on branch `wave-4`, with its commits and its
+      check lines; Next is the rest of the wave.
     - 1.10.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — Build
       waves record the names on the blocks; where things stand says so.
     - 1.9.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — Build
@@ -75,8 +79,8 @@
     The plan behind Terrane: the exploration loop the world is designed
     around, the minimum viable filesystem scope, the practical filesystem
     interaction requirements, a staged implementation roadmap, the build
-    waves that carry it out (what is complete on `main`, what is
-    complete on a branch and waits to be merged, and what comes next),
+    waves that carry it out (what is complete on `main`, what is under
+    way on a branch, and what comes next),
     and the datasets that let development run against real data
     without touching it.
 
@@ -89,8 +93,8 @@
       and stages 4 to 6 are under way
     - Stage 5's first increment: what was delivered, by which wave,
       what was deferred, and the question each feature answers
-    - Build waves: complete on `main` and next, with commits and
-      checks
+    - Build waves: complete on `main`, under way on a branch, and next,
+      with commits and checks
     - Development datasets: how to build against real data safely
 
 ✒ Other Important Information:
@@ -133,7 +137,12 @@ As of 11/14/2026:
 - **Complete, on `main`:** the names on the blocks. A name is
   printed on its box by the box's own shader, lit and shadowed with it,
   instead of standing over it as a tag.
-- **Next:** no wave is planned yet; the open ground is the rest of
+- **Under way, on branch `wave-4`:** Wave 4, the polish of the sheet
+  around the world: its text on one grid of columns and heights, three
+  uppercase voices, labels and heads on one line, values that break only
+  at their separators, nothing cut off without an ellipsis, and the
+  `polish` check that measures all of it.
+- **Next:** the rest of Wave 4; after it, the open ground is the rest of
   Stage 4, the rest of Stage 6, and the Stage 5 deferrals in section 4.
 
 Section 5 has the detail for every wave.
@@ -637,10 +646,68 @@ failed"; `node tools/ui-check.mjs --no-shots`, both passes, "1412
 passed, 0 failed, 6 skipped". It was merged into `main` in the commit
 titled "Merge labels: the names on the blocks".
 
-### Next
+### Under way: Wave 4, the polish
 
-No wave is planned yet. The open ground is the rest of Stage 4, the
-rest of Stage 6, and the Stage 5 deferrals in section 4.
+Wave 4 runs on its own branch, `wave-4`, made from `main` at the names
+on the blocks (`d6d6601`), in a separate worktree. Its polish step began
+from an audit of the interface in the demo world: 232 screenshots at
+1600 by 1000, 1280 by 800, 1920 by 1080 and 800 by 500 (200% zoom), with
+and without WebGL, measured in the page for wrapped labels, baselines,
+clipping, control heights, uppercase styles and left edges. It made
+32 findings, among them a ledger head that took three lines at every
+size, fact labels that wrapped beside one-line values, values that
+broke between a figure and its unit, and ten uppercase styles where
+three would do. The polish fixed them as alignment, rhythm and type,
+not a redesign, and added no draw call:
+
+1. **The panels** (`9ea7b3d`): tokens for a grid of three text columns
+   (A at 12 px, B at 32, C at 52) and three uppercase voices defined
+   once in `base.css`; the ledger head in two 30 px rows (the count with
+   its icon tools, then the sort keys over the list's columns); rows,
+   disclosures and nested items on the columns, names and figures on
+   one baseline; the inspector's facts in a 116 px label column with
+   values built from parts (`api.parts`), 34 px section heads with a
+   figure at the right (`api.sectionTitle`), a path that breaks only
+   after a slash, and actions in one column in a narrow inspector.
+   Four Lucide icons joined the sprite: download, list-checks,
+   swatch-book and activity.
+2. **The title block, the bar and the instruments** (`61b5e0a`): every
+   cell a label row over a control row at one height; the first cell at
+   the ledger's width and the status label on the inspector's column;
+   the legend's whole chips behind "+N"; a readout of fixed width; the
+   breadcrumbs over the world; a 34 px storage scale; the placing
+   banner's buttons on a line of their own; the veil's error on a line
+   of its own.
+3. **The menus, sheets, guide and notices** (`651caca`): menu rows of
+   one height, a guide with one key column and its long keys split,
+   the batch rename's columns by the sheet's width, palette options on
+   their label's line, notices with an action and close of one size.
+4. **The polish check** (`abdfc1d`): `tools/ui-scenarios/polish.mjs`,
+   twelve invariants measured in eighteen poses of the demo world at
+   three window sizes, in both passes.
+5. **The Since head** (`56102b8`): the `time` scenario found the
+   inspector's Since head reading "Since · MM/DD/YYYY" once its date
+   became the head's figure; `sectionTitle` takes a separator, and the
+   head reads "Since MM/DD/YYYY" again.
+6. **Docs**, in the commit titled "Docs for the polish": this roadmap,
+   the README's project map and verification table, and the visual
+   identity's grid and alignment in ARCHITECTURE.
+
+Checks, on Windows 11 with Edge 157 on an RTX 5050 laptop GPU:
+
+- `npm test`: "797 passed, 0 failed" across its ten suites;
+- the `polish` scenario: "497 passed, 0 failed" with WebGL and
+  "491 passed, 0 failed" without;
+- every scenario whose checks read text or layout the polish changed,
+  one at a time in both passes: `hardening`, `finding`, `looking`,
+  `many`, `exchange`, `time`, `landmarks`, `traverse`, `strata`,
+  `interiors`, `demo`, `core`, `focus`, `seams`, `layout` and `warm`,
+  with the `polish` scenario 2,317 passed, 0 failed and 4 skipped
+  (1,222 with WebGL, 1,095 without; the skips need `--snapshot` or
+  are drawn only in the world), the `time` scenario as rerun after the
+  Since head's fix;
+- draw calls at the baseline (overview 7, selected 9, search 8,
+  duplicate ties 10).
 
 ## 6. Development datasets
 

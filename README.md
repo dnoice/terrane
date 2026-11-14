@@ -1,10 +1,10 @@
 <!--
 ✒ Metadata
-    - Title: Terrane Readme (Terrane Edition - v1.13)
+    - Title: Terrane Readme (Terrane Edition - v1.14)
     - File Name: README.md
     - Relative Path: README.md
     - Artifact Type: docs
-    - Version: 1.13.0
+    - Version: 1.14.0
     - Date: 11/14/2026
     - Update: Saturday, November 14, 2026
     - Author: Dennis 'dendogg' Smaltz
@@ -12,6 +12,10 @@
     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
 
 ✒ Changelog:
+    - 1.14.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] —
+      Wave 4's polish of the sheet: the project map lists polish.mjs,
+      and What was verified records its runs and those of every
+      scenario whose checks read what the polish changed.
     - 1.13.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] —
       Reading the world: names are printed on the blocks themselves,
       and the scree's tile says how many it holds. The project map
@@ -673,6 +677,7 @@ browser holds two copies of it, about 300 MB per million entries.
 | The final sweep of Wave 3 on Windows 11 (11/13/2026): `node --check` on every script outside `web/vendor/`, `npm test`, `npm run vendor -- --check`, and `node tools/ui-check.mjs --no-shots --port 5080` in both passes with Edge 157 on an RTX 5050 laptop GPU and the default fixture of 3,126 files: 37 scenarios, the earlier ones plus `palette`, `resume`, `searches`, `quicklook`, `presets`, `changed-with`, `batch-rename`, `dupes`, `copy-as`, `export`, `places-file`, `terminal` and `warm` | No syntax error in 81 scripts; 704 passed, none failed; every vendored file matches the manifest; 1369 passed, 0 failed, 6 skipped (744 and 2 with WebGL, 625 and 4 without: what needs `--snapshot`, the `splash` check for a sheet gone before the first look, and without WebGL two checks of the world); draw calls at the baseline. Not yet merged into `main` |
 | Terrane 1.4.0 on `main` (11/13/2026), Wave 3, the demo world and the blocks' look merged, on Windows 11 with Edge 157 on an RTX 5050 laptop GPU: `npm test` (ten suites, the demo test last), `npm run vendor -- --check`, and `node tools/ui-check.mjs --record-baseline`, both passes, on the default fixture; then the seven scenarios it failed (`baseline`, `interior`, `landmarks`, `relations`, `strata`, `time`, `transitions`, `seams`) again after three checks were brought in line with the new look | `npm test`: 797 passed, 0 failed. Vendored files match. The full run: 1400 passed, 11 failed, 6 skipped: seven draw-call checks still held the old baseline, which the run re-recorded one call higher (overview 7, selected 9, search 8, duplicate ties 10, the contact shadows), and the Closed mass reading row, a crossed file's colour (now its extension's tone) and the full-upload picture (the contact shadows' soft edges blend a hair differently from draw to draw, so the check sets them aside) had to follow the new look. The rerun: 525 passed, 0 failed, 2 skipped |
 | The names on the blocks on Windows 11 (11/14/2026), Edge 157 on an RTX 5050 laptop GPU: `npm test`, and `node tools/ui-check.mjs --no-shots`, both passes, on the default fixture, with `hardening` now checking that names are printed at the overview, each on a box that is drawn, and that no file or folder tag stands over the world | `npm test`: 797 passed, 0 failed. The interface check: 1412 passed, 0 failed, 6 skipped; draw calls at the baseline, since the names are drawn by the boxes' own shader |
+| Wave 4's polish on branch `wave-4`, Windows 11 (11/14/2026), Edge 157 on an RTX 5050 laptop GPU: `npm test`; the new `polish` scenario, which measures the sheet in the demo world in eighteen poses at 1600 by 1000, 1280 by 800 and 800 by 500 (one-line heads and labels, shared baselines, figure columns, clipping, control heights, the panels' columns, the three uppercase voices, icon centring, cells that keep their place, values that break only at their separators); and, one at a time in both passes, every scenario whose checks read text or layout the polish changed | `npm test`: 797 passed, 0 failed. `polish`: 497 passed with WebGL and 491 without, none failed, about 100 and 65 seconds a pass. With `hardening`, `finding`, `looking`, `many`, `exchange`, `time`, `landmarks`, `traverse`, `strata`, `interiors`, `demo`, `core`, `focus`, `seams`, `layout` and `warm`: 2,317 passed, 0 failed, 4 skipped; the first `time` run found the Since head reading "Since · MM/DD/YYYY", fixed and rerun. Draw calls at the baseline |
 
 Not verified: running on macOS; frame rate at street level in the largest
 trees on a hardware GPU; Open and Reveal reaching a desktop application on
@@ -691,7 +696,10 @@ the checks prove the requests and the fallback sentences); duplicate
 cleanup of a sampled group on real data (the fixture has no identical
 files over 16 MB); a places file carried between two browsers; the
 warm start beyond 15,126 files; the palette, Quick look and the batch
-rename with a screen reader.
+rename with a screen reader. From Wave 4: the sheet's alignment was
+measured in Edge only, in the demo world, at three window sizes; another
+browser's font metrics, the widths between those sizes and a real
+directory's names were not measured.
 
 ## Continuing development
 
@@ -788,7 +796,8 @@ tools/ui-check.mjs   headless browser check; scenarios in tools/ui-scenarios/,
                      searches), looking.mjs (quicklook, presets,
                      changed-with), many.mjs (batch-rename, dupes, copy-as),
                      exchange.mjs (export, places-file, terminal), warm.mjs,
-                     demo.mjs
+                     demo.mjs, polish.mjs (alignment, wrapping and clipping
+                     in the demo world at three window sizes)
 tools/make-fixture.mjs  the synthetic tree the checks run on (npm run fixture)
 tools/vendor.mjs     fetch and verify the vendored browser libraries
 docs/                ARCHITECTURE.md, ROADMAP.md

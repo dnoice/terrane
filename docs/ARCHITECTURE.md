@@ -1,10 +1,10 @@
 <!--
 ✒ Metadata
-    - Title: Terrane Architecture (Terrane Edition - v1.10)
+    - Title: Terrane Architecture (Terrane Edition - v1.11)
     - File Name: ARCHITECTURE.md
     - Relative Path: docs/ARCHITECTURE.md
     - Artifact Type: docs
-    - Version: 1.10.0
+    - Version: 1.11.0
     - Date: 11/14/2026
     - Update: Saturday, November 14, 2026
     - Author: Dennis 'dendogg' Smaltz
@@ -12,6 +12,13 @@
     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
 
 ✒ Changelog:
+    - 1.11.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — Visual
+      identity: the grid and alignment the sheet's text stands on (the
+      columns A, B and C, the rhythm of control heights, the three
+      uppercase voices, and the rules for wrapping and truncation), and
+      the stylesheet structure names the tokens that hold them. Section
+      7 names api.parts, api.sectionTitle and actionButton's named, and
+      a count row's tool as a 24 px icon button.
     - 1.10.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — Visual
       identity: names are printed on the boxes by their own shader from
       a distance-field atlas (lettering.js), and the measured table says
@@ -106,7 +113,8 @@
     - Service design and data flow, archive listing included
     - The warm start: the cache, its checks and the catch-up
     - Datasets for development against real data, and the warm cache
-    - The visual identity and every drawing convention
+    - The visual identity and every drawing convention, and the grid,
+      voices and wrapping rules the sheet's text keeps
     - Feature modules and their seams: registries, the api, sheets,
       browser storage, key allocation, relation sets, code tables, the
       shared age table
@@ -775,6 +783,38 @@ direction is a survey sheet around a plaster world.
   (expanded capitals for reference labels and folder names in the
   world, normal for reading, condensed for dense rows), with DM Mono for
   paths, figures in tabular numbers and file names in the world.
+- **Grid and alignment**: the sheet's text stands on a grid, as a
+  drawing sheet's lettering does.
+  - Columns: a side panel has three, measured from its inner edge. A
+    (12 px, the gutter) takes marks and text that has no mark; B (32 px,
+    past a 14 px mark slot and a 6 px gap) takes the text after a mark;
+    C (52 px) takes a nested row's text. Figures end a gutter inside the
+    scroll gutter, and a head outside the scroller keeps the same
+    gutter, so its keys stand over the figures. The title block's first
+    cell is the ledger's width and its status label stands on the
+    inspector's A.
+  - Rhythm: heights come from tokens on a 4 px grid: 30 px for buttons,
+    fields, list and menu rows, 26 px for compact controls and every
+    control in the title block, 24 px for a head's icon tools, 34 px for
+    every section head and for the instruments over the world. Controls
+    that stand in one row share a height, a top and a bottom.
+  - Three uppercase voices and no others, defined once in `base.css`:
+    the label voice (bold, 10 px, expanded, widely tracked) names a
+    thing; the key voice (semibold, 10 px, wide) is pressed, with one
+    tighter variant for four sort keys in a narrow ledger; the tight
+    voice (bold, 9.5 px, normal width) stands where room is short, in
+    tabs, table heads and badges. An icon beside capitals sits on their
+    cap height.
+  - A label and its value, a name and its figure, share a baseline; a
+    mark is centred on the first line, never on the row; a column of
+    figures ends on one edge, in mono or tabular figures.
+  - Labels, keys, keycaps, tabs, head rows, fixed button labels and a
+    figure with its unit never wrap. Names, paths, the count, the status,
+    the readout and head captions end in an ellipsis, drawn on a block
+    box with the full text in a title or the name. Prose wraps pretty, a
+    value only at its " · " separators and a path only after a "/". The
+    `polish` scenario of `npm run ui-check` measures every one of these
+    rules.
 - **Layout motifs** from drawing sheets: lettered panel references, a
   title block along the bottom edge carrying lens, legend, the As of
   date, grain, altitude and status, and instruments around the world:
@@ -827,7 +867,13 @@ direction is a survey sheet around a plaster world.
   presets, batch). Components read their colours
   from `tokens.css`, never a raw colour (the loading sheet's artwork
   palette is scoped to the sheet); most sizes are tokens too, while
-  component-local paddings and gaps are written in place; the
+  component-local paddings and gaps are written in place. The grid is
+  in tokens: `--gutter`, `--mark-w` and `--mark-gap`, and the columns
+  they make, `--row-indent` (B) and `--row-indent-2` (C); so are the
+  sizes that keep text in place, `--facts-label-w`, `--guide-key-w`,
+  `--readout-w` and `--cell-label-h`, and the voices' widths and
+  tracking, which `base.css` reads to define the three voices; a
+  component sets a label's colour and spacing, never its type. The
   instruments over the world stand on two rows set by tokens
   (`--hud-inset`, `--hud-lift`), so the storage scale, the view tools,
   operations in progress and notices never cover one another. Utilities
@@ -877,7 +923,7 @@ and the rest still run.
 | `TABS` | `{ label, draw, list, count, enter, key }`: a ledger tab | the controller, Landmarks (Places) |
 | `TAB_SECTIONS` | `{ tab, build() }`: a section a feature adds to a tab another one draws; the tab's draw appends `api.tabSections(tab)` after its own | Search history (Saved searches in Places, 30) |
 | `SURVEY` | `{ build(survey) }`: a Survey tab section: Working sessions 5, Quick searches 7, the controller's lists 10 to 50, Export as CSV 95 | the controller, Session traverse, Totals and quick searches, Export |
-| `LEDGER_SUB` | `{ tab, build(ctx) }`, ctx `{ items, search, focus }`: controls on the Contents or Findings count row, in a `span.sub-tools` after the sort keys, each with a `data-k` so a redraw keeps focus on it: the selection's total 10, Save search… 50, Export CSV 60 | Totals, Search history, Export |
+| `LEDGER_SUB` | `{ tab, build(ctx) }`, ctx `{ items, search, focus }`: controls on the Contents or Findings count row, in a `span.sub-tools` after the count, each with a `data-k` so a redraw keeps focus on it; a tool is a 24 px icon button (`btn btn-icon sub-tool`) at the row's end: the selection's total 10, Save search… 50, Export CSV 60 | Totals, Search history, Export |
 | `LAYOUT_OPTS` | `{ options(opts) }`, merged into the layout's one options object | Time (`asOf`), Interiors (`inside`, `aliases`) |
 | `MENU` | `{ items(node, ctx), many(nodes, ctx) }`, at least one: `items` is a group after Open, Reveal and Copy path, or at the end for the folder you are in; `many` follows Copy paths in the menu of several, ctx `{ ro, off }` | Landmarks, Interiors, Session traverse, Remembered view (Copy link), Batch rename, Copy as, Terminal |
 | `COMMANDS` | `{ section, items() }`, each item `{ label, detail, hint, run(), off }`: the palette's actions that have no key, asked each time it opens; `off` is the reason an item cannot run | Landmarks, Session traverse, Palette, Remembered view, Search history, Totals and quick searches, Batch rename, Duplicate cleanup, Copy as, Export, Terminal |
@@ -912,6 +958,11 @@ root as `.` and an archive entry as `dir/x.zip!/inner/file`; and
 `readOnlyMode()`, the service's own mode without a warm start's wait.
 `S.searches` is the searches store. In the ledger list, Ctrl with an
 arrow, Page Up or Down, Home or End moves the cursor without selecting.
+The polish added `parts(...items)`, a value as `span.part` nodes joined
+by " · ", so it breaks only at a separator, and `sectionTitle(text,
+figure)`, a section's head with its figure at the right whose text
+still reads "Title · figure"; `actionButton` takes `named` for a label
+that carries a name, the one kind of button label that may wrap.
 
 `ui.js` gains `openSheet(build, { className, label, onKey })`, a sheet
 in the shared dialog for what is richer than `ask()`: the palette,
