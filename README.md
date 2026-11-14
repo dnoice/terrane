@@ -1,10 +1,10 @@
 <!--
 ✒ Metadata
-    - Title: Terrane Readme (Terrane Edition - v1.10)
+    - Title: Terrane Readme (Terrane Edition - v1.11)
     - File Name: README.md
     - Relative Path: README.md
     - Artifact Type: docs
-    - Version: 1.10.0
+    - Version: 1.11.0
     - Date: 11/13/2026
     - Update: Friday, November 13, 2026
     - Author: Dennis 'dendogg' Smaltz
@@ -12,6 +12,9 @@
     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
 
 ✒ Changelog:
+    - 1.11.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] —
+      Reading the world: a file's tone within its kind follows its
+      extension, and a closed mass's sides show its strata.
     - 1.10.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — Try
       it: the demo world on GitHub Pages and through npm run demo, and
       the same world written to disk for the real service. A page from
@@ -240,8 +243,8 @@ tree.
 | Ground area of a plateau or block | Its share of the parent folder's bytes |
 | Elevation | Nesting. Each level stands one step up, one tone lighter, one scale smaller |
 | Height of a file block | Recency. Fresh files stand tall; untouched ones wear down over ten years |
-| Colour of a file block | The lens: kind, age (last change), size, or duplicates |
-| Tinted closed mass | A folder seen from too far to read. Taller means more levels inside. It opens as you approach. Under the Age lens its colour is its typical age: half its bytes have not changed since then |
+| Colour of a file block | The lens: kind, age (last change), size, or duplicates. Under the Kind lens each extension takes a tone of its kind's colour, so .tsx and .css read as two families of code |
+| Tinted closed mass | A folder seen from too far to read. Its sides show its strata, what it holds by kind with the largest at the foot. Taller means more levels inside. It opens as you approach. Under the Age lens its colour is its typical age: half its bytes have not changed since then |
 | Stippled tile (scree) | Items too small to see from here, with their count and size |
 | Hatched mass | Sealed: the folder could not be read |
 | Hollow tile | An empty folder |

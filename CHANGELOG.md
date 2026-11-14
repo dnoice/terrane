@@ -1,10 +1,10 @@
 <!--
 ✒ Metadata
-    - Title: Shipped File Changelogs (Terrane Edition - v1.5)
+    - Title: Shipped File Changelogs (Terrane Edition - v1.6)
     - File Name: CHANGELOG.md
     - Relative Path: CHANGELOG.md
     - Artifact Type: docs
-    - Version: 1.5.0
+    - Version: 1.6.0
     - Date: 11/13/2026
     - Update: Friday, November 13, 2026
     - Author: Dennis 'dendogg' Smaltz
@@ -12,6 +12,9 @@
     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
 
 ✒ Changelog:
+    - 1.6.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — Records the blocks'
+      new look: viewport.js 1.6.0, app.js 1.10.0 and model.js 1.4.0, and adds the section
+      for web/js/model.js, whose 1.0.0 entry left its header with this release.
     - 1.5.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — Records app.js 1.9.0:
       the demo world on a page no service served. app.js's header rolls its 1.6.0 entry
       out; this file already holds it.
@@ -58,6 +61,16 @@ keeps all of them. When a header rolls an entry out, the entry is copied
 here unchanged in the same edit.
 
 ## web/js/app.js
+
+- 1.10.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — Paint gives each file its
+  kind's colour in a tone of its own extension (extTone): five steps from 22 % darker to 24 %
+  lighter, with common neighbours set apart (.ts and .tsx, .tsx and .css, .jpg and .png, .mov
+  and .mp4) and every other extension stepped by its hash. A closed mass takes 56 % of its
+  dominant kind over clay where it took 42 %, and its strata (strataOf): the three largest
+  kinds it holds, as 70 % tints over clay, largest at the foot, the third band taking every
+  kind after the second, passed to the viewport as bands and shares. Only under the Kind lens,
+  and not on a selected, sealed or conventionally drawn mass. Reading the world says that a
+  closed mass's sides show its strata.
 
 - 1.9.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — A page no service served,
   opened over http or https (GitHub Pages, `npm run demo`), runs the demo world: DEMO is
@@ -213,6 +226,23 @@ here unchanged in the same edit.
 
 ## web/js/viewport.js
 
+- 1.6.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — Boxes look made, not drawn.
+  The box material is a MeshStandardMaterial (roughness 0.46) whose shader, from each box's
+  own dimensions: rounds every edge, the normal leaning toward the edge within a bevel of 16 %
+  of the short side or 6 % of the footprint, never under about a pixel and a half nor over a
+  third of the short side; shades each side toward its foot (to 66 %) over the lesser of 45 %
+  of its height and 30 % of its footprint; gives a closed mass's sides strata in three bands
+  with a fine seam (aRole, aBandA to aBandC, aShare); lays two courses on a plateau's riser;
+  adds a fine grain stepped by octaves of three pixels; and darkens a top 5 % toward its rim.
+  Every edge is a soft crease in the box's own tone, at half strength; ink stays for hatch and
+  hollow. Contact shadows: a second instanced mesh shares the boxes' matrix buffer and draws one
+  flat shade per box on the surface below it, its soft edge scaling with the box, slid away
+  from the sun, faded by dimming and haze; screes and walls cast none. That is one draw call
+  more. The sun keeps a three-quarter angle to the view, from the left and a little behind, in
+  steps of about ten degrees of turn: it had stood behind the default view, where every shadow
+  fell behind the box that cast it and none could be seen. Neutral tone mapping; a cool sky
+  over a warm bounce (1.35) and a warm sun (2.9), with stronger, softer shadows.
+
 - 1.5.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — The relation layer is drawn only
   while it holds a line (three.js draws an empty range), and labels are placed again only when
   the eye, the layout, the marks or the canvas change, not on a frame redrawn for a hover. The
@@ -285,3 +315,19 @@ here unchanged in the same edit.
 - 1.0.0 (11/12/2026) [dendogg + Anthropic - Claude Opus 5.5] — Initial release.
 
 <!-- ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once! -->
+
+## web/js/model.js
+
+- 1.4.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — Camera RAW files are images:
+  cr3, nrw, srf, sr2, raf, rw2, orf, pef, srw, 3fr, erf, kdc, mrw, x3f and iiq join cr2, nef,
+  arw and dng. Canon's CR3 had counted as Other, so a photo library shot in it read as grey.
+
+- 1.3.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — fmtDay (MM/DD/YYYY) and plural
+  are the one date formatter and count wording every module imports; fmtDate builds on fmtDay.
+  isDir, which nothing used, is gone.
+
+- 1.2.0 (11/12/2026) [dendogg + Anthropic - Claude Opus 5.5] — The search grammar takes is:
+  words and name:value tokens from the caller, so a feature can make itself searchable; is:
+  looks up only real words, so is:constructor no longer matches everything.
+
+- 1.0.0 (11/09/2026) [dendogg + Anthropic - Claude Fable 5.2] — Initial release.

@@ -1,10 +1,10 @@
 <!--
 ✒ Metadata
-    - Title: Terrane Roadmap (Terrane Edition - v1.6)
+    - Title: Terrane Roadmap (Terrane Edition - v1.7)
     - File Name: ROADMAP.md
     - Relative Path: docs/ROADMAP.md
     - Artifact Type: docs
-    - Version: 1.6.0
+    - Version: 1.7.0
     - Date: 11/13/2026
     - Update: Friday, November 13, 2026
     - Author: Dennis 'dendogg' Smaltz
@@ -12,6 +12,8 @@
     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
 
 ✒ Changelog:
+    - 1.7.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — Build
+      waves record the blocks' new look, complete on its branch.
     - 1.6.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — Build
       waves record the demo world, complete on its branch: the page runs
       on a generated studio drive where no service served it.
@@ -482,6 +484,19 @@ command puts the same world on disk for the real service; and
 Checks on the branch: `node tools/demo-test.mjs`, "93 passed, 0
 failed"; `node tools/ui-check.mjs demo`, both passes, "38 passed, 0
 failed". It waits to be merged after Wave 3.
+
+### Complete on branch `look`: the blocks' look
+
+The boxes looked like placeholders: flat colour, a black outline on every
+edge, no sense of material or light. They now read as a model's pieces:
+rounded edges that catch the sun, a satin finish, shade toward each
+side's foot, a soft contact shadow under every box, and a closed mass's
+sides in strata of what it holds. Each extension takes a tone of its
+kind's colour. The sun had stood behind the default view, so every cast
+shadow fell behind its box; it now keeps a three-quarter angle to the
+view. Camera RAW files (Canon's CR3 among them) count as images. One
+draw call more, for the contact shadows. It waits to be merged after
+the demo world.
 
 ### Next
 

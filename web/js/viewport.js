@@ -1,11 +1,11 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: 3D Viewport (Terrane Edition - v1.5)
+ *     - Title: 3D Viewport (Terrane Edition - v1.6)
  *     - File Name: viewport.js
  *     - Relative Path: web/js/viewport.js
  *     - Artifact Type: javascript
- *     - Version: 1.5.0
+ *     - Version: 1.6.0
  *     - Date: 11/13/2026
  *     - Update: Friday, November 13, 2026
  *     - Author: Dennis 'dendogg' Smaltz
@@ -13,6 +13,12 @@
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
  *
  * ✒ Changelog:
+ *     - 1.6.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] —
+ *       Boxes look made, not drawn: a satin finish whose shader rounds
+ *       every edge, shades each side toward its foot, gives a closed mass
+ *       strata of what it holds and a riser two courses, and keeps ink for
+ *       the conventions; a soft contact shadow under every box; the sun
+ *       at a three-quarter angle to the view, so shadows fall in sight.
  *     - 1.5.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] —
  *       The relation layer is drawn only while it holds a line
  *       (three.js draws an empty range), and labels are placed again
@@ -26,16 +32,6 @@
  *       floor is labelled with the archive's name, as a folder is. The
  *       header no longer calls the labels readable by assistive
  *       technology: their layer is hidden from it.
- *     - 1.3.0 (11/12/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
- *       crossed convention (STYLE.CROSSED, the time view): the two
- *       diagonals of a box's footprint in ink on its top and bottom faces,
- *       measured in the box's own coordinates so a re-based origin cannot
- *       move them, thin at any distance, and faded with the haze and as
- *       the box shrinks on screen. The colour is washed once, by paint.
- *       A pin can stand on the peak of everything on its box and point up
- *       (benchmarks' survey marks, in the same pin mesh); up to 12 mark
- *       tags are placed before every other label (setMarks); pose()
- *       returns the eye and its heading.
  *     Earlier entries: see CHANGELOG.md
  *
  * ✒ Description:
@@ -46,13 +42,16 @@
  *     reports pointer events as box indices.
  *
  * ✒ Key Features:
- *     - One instanced mesh for every box: a single draw call regardless of
+ *     - One instanced mesh for every box, and one for their contact
+ *       shadows: two draw calls regardless of
  *       how many thousand entries are in view
- *     - Ink edges, hatching, stipple, banding and the crossed footprint
+ *     - Rounded edges, a satin finish, contact shade, a closed mass's
+ *       strata, hatching, stipple, banding and the crossed footprint
  *       are computed in the fragment shader from each box's own
  *       dimensions, so drawing conventions cost no extra geometry
  *     - A place, not a diagram: perspective camera inside the scene, with
- *       sky, horizon, haze, a surveyed ground plane and sun shadows that
+ *       sky, horizon, haze, a surveyed ground plane and sun shadows at a
+ *       three-quarter angle to the view that
  *       follow the eye down to any scale
  *     - Travel by pointer: the wheel flies toward whatever is under the
  *       cursor, drag slides the ground, right-drag orbits the point you
@@ -317,8 +316,25 @@ function linear(hex) {
   return v;
 }
 
+/**
+ * The boxes' material: a satin finish (MeshStandardMaterial) whose shader
+ * gives every box the look of a made object instead of a diagram's cell,
+ * from its own dimensions and with no extra geometry:
+ * - rounded edges: within a bevel the normal leans toward the edge, so a
+ *   rim catches the sun and the far side falls into shade; the bevel is a
+ *   share of the box's short side, never under about a pixel and a half
+ * - contact shade: a side darkens toward the foot of its box, where it
+ *   meets the ground or the plateau it stands on
+ * - strata: a closed mass shows, on its sides, bands of what it holds,
+ *   from aBandA at the foot to aBandC at the top in the shares aShare;
+ *   a plateau's riser shows two fine courses
+ * - a soft crease at each edge in the box's own darker tone, so two blocks
+ *   of one colour still part; ink only where it means something (an
+ *   empty folder's outline, hatching, stipple, bands, the crossed
+ *   footprint)
+ */
 function boxMaterial() {
-  const mat = new THREE.MeshLambertMaterial({ color: 0xffffff });
+  const mat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.46, metalness: 0 });
   mat.onBeforeCompile = (shader) => {
     shader.uniforms.uInk = { value: srgb(THEME.ink) };
     shader.uniforms.uPaper = { value: srgb(THEME.chalk) };
@@ -326,17 +342,32 @@ function boxMaterial() {
       .replace('#include <common>', `#include <common>
         attribute float aStyle;
         attribute float aDim;
+        attribute float aRole;
+        attribute vec3 aBandA;
+        attribute vec3 aBandB;
+        attribute vec3 aBandC;
+        attribute vec2 aShare;
         varying vec3 vBoxLocal;
         varying vec3 vBoxScale;
         varying vec3 vWorldP;
         varying float vStyle;
-        varying float vDim;`)
+        varying float vDim;
+        varying float vRole;
+        varying vec3 vBandA;
+        varying vec3 vBandB;
+        varying vec3 vBandC;
+        varying vec2 vShare;`)
       .replace('#include <begin_vertex>', `#include <begin_vertex>
         vBoxLocal = position;
         vBoxScale = vec3(length(instanceMatrix[0].xyz), length(instanceMatrix[1].xyz), length(instanceMatrix[2].xyz));
         vWorldP = (instanceMatrix * vec4(position, 1.0)).xyz;
         vStyle = aStyle;
-        vDim = aDim;`);
+        vDim = aDim;
+        vRole = aRole;
+        vBandA = aBandA;
+        vBandB = aBandB;
+        vBandC = aBandC;
+        vShare = aShare;`);
     shader.fragmentShader = shader.fragmentShader
       .replace('#include <common>', `#include <common>
         uniform vec3 uInk;
@@ -345,7 +376,94 @@ function boxMaterial() {
         varying vec3 vBoxScale;
         varying vec3 vWorldP;
         varying float vStyle;
-        varying float vDim;`)
+        varying float vDim;
+        varying float vRole;
+        varying vec3 vBandA;
+        varying vec3 vBandB;
+        varying vec3 vBandC;
+        varying vec2 vShare;
+        // The face a fragment lies on, as an outward axis in box space.
+        vec3 boxFace() {
+          vec3 a = abs(vBoxLocal);
+          vec3 s = sign(vBoxLocal);
+          if (a.x >= a.y && a.x >= a.z) return vec3(s.x, 0.0, 0.0);
+          if (a.y >= a.z) return vec3(0.0, s.y, 0.0);
+          return vec3(0.0, 0.0, s.z);
+        }
+        float smn0() {
+          return min(vBoxScale.x, min(vBoxScale.y, vBoxScale.z));
+        }
+        // World units covered by one pixel here.
+        float boxPixel() {
+          return max(length(fwidth(vWorldP)) * 0.7071, 1e-6);
+        }
+        // The bevel's width: a share of the short side, at least about a
+        // pixel and a half, at most a third of the short side.
+        float boxBevel(float px) {
+          float smn = min(vBoxScale.x, min(vBoxScale.y, vBoxScale.z));
+          float foot = min(vBoxScale.x, vBoxScale.z);
+          return min(max(min(smn * 0.16, foot * 0.06), px * 1.6), smn * 0.34);
+        }`)
+      .replace('#include <color_fragment>', `#include <color_fragment>
+        {
+          vec3 face = boxFace();
+          float side = 1.0 - abs(face.y);
+          float h = vBoxLocal.y + 0.5;
+          float px = boxPixel();
+          // Strata: a closed mass's sides in bands of what it holds.
+          if (vRole > ${BOX.CAP - 0.5} && vRole < ${BOX.CAP + 0.5} && side > 0.5) {
+            vec3 band = h < vShare.x ? vBandA : (h < vShare.y ? vBandB : vBandC);
+            diffuseColor.rgb = band;
+            // A fine seam where one band meets the next.
+            float lw = px / max(vBoxScale.y, 1e-6);
+            float seam = max(1.0 - smoothstep(0.0, lw * 1.2, abs(h - vShare.x)), 1.0 - smoothstep(0.0, lw * 1.2, abs(h - vShare.y)));
+            seam *= step(0.004, vShare.x) * step(vShare.x, 0.996);
+            diffuseColor.rgb *= 1.0 - 0.22 * seam;
+          }
+          // A plateau's riser: two fine courses, as laid stone.
+          if (vRole < 0.5 && side > 0.5) {
+            float lw = px / max(vBoxScale.y, 1e-6);
+            float c3 = abs(fract(h * 3.0 + 0.5) - 0.5) / 3.0;
+            float course = (1.0 - smoothstep(0.0, lw * 1.1, c3)) * step(0.1, h) * step(h, 0.9);
+            diffuseColor.rgb *= 1.0 - 0.07 * course * smoothstep(2.0, 6.0, vBoxScale.y / px);
+          }
+          // A fine grain, as fired clay or cast plaster has, in the box's
+          // own coordinates so it never swims, gone before it could shimmer.
+          {
+            vec3 q = vBoxLocal * vBoxScale;
+            vec2 g = abs(face.y) > 0.5 ? q.xz : (abs(face.x) > 0.5 ? q.zy : q.xy);
+            // Cells by octaves of three pixels, so the grain steps instead of crawling.
+            float cell = exp2(ceil(log2(max(px * 3.0, 1e-9))));
+            vec2 gi = floor(g / cell);
+            float n = fract(sin(dot(gi, vec2(12.9898, 78.233))) * 43758.5453);
+            diffuseColor.rgb *= 1.0 + (n - 0.5) * 0.03 * (1.0 - smoothstep(0.0, 0.06, px / max(smn0(), 1e-6)));
+          }
+          // Tops are faintly pillowed: a breath darker toward their rims.
+          if (face.y > 0.5) {
+            vec2 rim = (0.5 - abs(vBoxLocal.xz)) * vBoxScale.xz;
+            float m = min(rim.x, rim.y) / max(min(vBoxScale.x, vBoxScale.z) * 0.5, 1e-6);
+            diffuseColor.rgb *= mix(0.95, 1.0, smoothstep(0.0, 0.6, m));
+          }
+          // Contact shade toward the foot of every side.
+          float foot = min(vBoxScale.x, vBoxScale.z);
+          float reach = max(min(vBoxScale.y * 0.45, foot * 0.3), px * 2.0);
+          float ao = mix(0.66, 1.0, smoothstep(0.0, reach, h * vBoxScale.y));
+          diffuseColor.rgb *= mix(1.0, ao, side);
+        }`)
+      .replace('#include <normal_fragment_maps>', `#include <normal_fragment_maps>
+        {
+          // Rounded edges: within the bevel the normal leans toward the
+          // edge it nears. Boxes are axis-aligned, so box axes are world axes.
+          vec3 face = boxFace();
+          vec3 a = abs(vBoxLocal);
+          vec3 s = sign(vBoxLocal);
+          float r = boxBevel(boxPixel());
+          vec3 e = (0.5 - a) * vBoxScale;
+          vec3 t = clamp(1.0 - e / r, 0.0, 1.0) * (vec3(1.0) - abs(face));
+          t = t * t * (3.0 - 2.0 * t);
+          vec3 bent = normalize(face + s * t * 1.15);
+          normal = normalize((viewMatrix * vec4(bent, 0.0)).xyz);
+        }`)
       .replace('#include <dithering_fragment>', `#include <dithering_fragment>
         {
           vec3 dd = (0.5 - abs(vBoxLocal)) * vBoxScale;
@@ -361,13 +479,16 @@ function boxMaterial() {
           float hw = max(fwidth(hc), 1e-5);
           float per = exp2(ceil(log2(hw * 7.0)));
           float edgeW = 1.0;
+          float inked = 0.0;
           float crossInk = 0.0;
           if ${styleIs(STYLE.HATCH)} {
             float t = abs(fract(hc / per) - 0.5);
             col = mix(col, uInk, (1.0 - smoothstep(0.09, 0.09 + hw / per, t)) * 0.7);
+            inked = 1.0;
           } else if ${styleIs(STYLE.HOLLOW)} {
             col = mix(uPaper, col, 0.1);
             edgeW = 2.0;
+            inked = 1.0;
           } else if ${styleIs(STYLE.STIPPLE)} {
             vec2 cell = fract(vWorldP.xz / per) - 0.5;
             col = mix(col, uInk, (1.0 - smoothstep(0.14, 0.14 + hw / per, length(cell))) * 0.5);
@@ -403,11 +524,95 @@ function boxMaterial() {
           col = mix(col, uInk, crossInk * 0.85);
           float edge = 1.0 - smoothstep(fw * 0.7 * edgeW, fw * (0.7 * edgeW + 1.0), mid);
           edge *= smoothstep(3.0, 16.0, smid / fw) * 0.74 + 0.06;
-          col = mix(col, uInk, edge * (1.0 - 0.8 * vDim) * (1.0 - haze));
+          // Ink for the conventions that need an outline; a soft crease in
+          // the box's own tone for every other edge.
+          vec3 crease = col * 0.62;
+          col = mix(col, mix(crease, uInk, inked), edge * mix(0.5, 1.0, inked) * (1.0 - 0.8 * vDim) * (1.0 - haze));
           gl_FragColor.rgb = col;
         }`);
   };
   return mat;
+}
+
+/**
+ * Contact shadows: one soft, flat shade under every box, drawn on the
+ * surface the box stands on. Each is a quad built in the vertex shader from
+ * the box's own instance matrix (the boxes' buffer is shared, so it moves
+ * with them in a transition): the footprint, grown by a soft edge that
+ * scales with the box, and slid a little toward the side away from the sun
+ * (uSun). Inside, the box itself hides it; around it, it reads as the
+ * occlusion and drop shadow that seat a block on its plateau. Dimmed boxes
+ * cast less, the haze fades it, and the screes and an archive's walls cast
+ * none.
+ */
+function contactMaterial() {
+  return new THREE.ShaderMaterial({
+    transparent: true,
+    depthWrite: false,
+    fog: true,
+    uniforms: {
+      ...THREE.UniformsUtils.clone(THREE.UniformsLib.fog),
+      uSun: { value: new THREE.Vector2(0.7, -0.7) },
+      uShade: { value: new THREE.Color(THEME.ink) },
+      uStrength: { value: 0.5 },
+    },
+    vertexShader: `
+      #include <common>
+      #include <fog_pars_vertex>
+      #include <logdepthbuf_pars_vertex>
+      attribute float aRole;
+      attribute float aDim;
+      uniform vec2 uSun;
+      varying vec2 vP;
+      varying vec2 vHalf;
+      varying float vSoft;
+      varying float vKeep;
+      void main() {
+        vec3 c = instanceMatrix[3].xyz;
+        vec3 s = vec3(length(instanceMatrix[0].xyz), length(instanceMatrix[1].xyz), length(instanceMatrix[2].xyz));
+        float foot = min(s.x, s.z);
+        // The soft edge: wider for a taller box, never past half its footprint.
+        float soft = max(min(foot * 0.5, s.y * 1.1 + foot * 0.08), foot * 0.05);
+        vec2 off = uSun * min(s.y * 0.5, foot * 0.5);
+        vec2 halfSize = s.xz * 0.5;
+        vec2 ext = halfSize + vec2(soft) + abs(off);
+        vec2 local = position.xz * 2.0 * ext;
+        vP = local - off;
+        vHalf = halfSize;
+        vSoft = soft;
+        bool none = (aRole > ${BOX.SCREE - 0.5} && aRole < ${BOX.SCREE + 0.5}) || aRole > ${BOX.WALL - 0.5};
+        vKeep = none ? 0.0 : 1.0 - 0.85 * aDim;
+        // A hair above the surface below the box, so it never fights it.
+        float base = c.y - s.y * 0.5 + max(foot * 0.0012, s.y * 0.004);
+        vec4 mvPosition = viewMatrix * modelMatrix * vec4(c.x + local.x, base, c.z + local.y, 1.0);
+        gl_Position = projectionMatrix * mvPosition;
+        if (none) gl_Position = vec4(2.0, 2.0, 2.0, 1.0);
+        #include <logdepthbuf_vertex>
+        #include <fog_vertex>
+      }`,
+    fragmentShader: `
+      #include <common>
+      #include <fog_pars_fragment>
+      #include <logdepthbuf_pars_fragment>
+      uniform vec3 uShade;
+      uniform float uStrength;
+      varying vec2 vP;
+      varying vec2 vHalf;
+      varying float vSoft;
+      varying float vKeep;
+      void main() {
+        #include <logdepthbuf_fragment>
+        vec2 d = abs(vP) - vHalf;
+        float dist = length(max(d, 0.0)) + min(max(d.x, d.y), 0.0);
+        float a = 1.0 - smoothstep(-vSoft * 0.15, vSoft, dist);
+        a *= a;
+        float haze = 0.0;
+        #ifdef USE_FOG
+          haze = smoothstep(fogNear, fogFar, vFogDepth);
+        #endif
+        gl_FragColor = vec4(uShade, a * uStrength * vKeep * (1.0 - haze));
+      }`,
+  });
 }
 
 export class Viewport {
@@ -424,6 +629,10 @@ export class Viewport {
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFShadowMap;
     renderer.shadowMap.autoUpdate = false;
+    // Highlights on the rounded edges roll off instead of clipping; the
+    // neutral curve leaves the kind colours below them as they are.
+    renderer.toneMapping = THREE.NeutralToneMapping;
+    renderer.toneMappingExposure = 1.0;
     this.renderer = renderer;
 
     const scene = new THREE.Scene();
@@ -443,15 +652,18 @@ export class Viewport {
     scene.add(sky);
     this.sky = sky;
 
-    scene.add(new THREE.HemisphereLight(0xffffff, 0xdfe6e2, 1.95));
-    const sun = new THREE.DirectionalLight(0xffffff, 1.75);
+    // A cool sky over a warm bounce, and a warm sun: tops read light and
+    // warm, sides cooler, so every box shows its form.
+    scene.add(new THREE.HemisphereLight(0xeef3fa, 0xd6ccba, 1.35));
+    const sun = new THREE.DirectionalLight(0xfff1dc, 2.9);
     sun.castShadow = true;
     sun.shadow.mapSize.set(4096, 4096);
-    sun.shadow.intensity = 0.45;
-    sun.shadow.radius = 2.5;
+    sun.shadow.intensity = 0.62;
+    sun.shadow.radius = 4;
     scene.add(sun);
     scene.add(sun.target);
     this.sun = sun;
+
 
     const ground = new THREE.Mesh(new THREE.PlaneGeometry(40000, 40000), new THREE.MeshBasicMaterial({ color: THEME.chalk }));
     ground.rotation.x = -Math.PI / 2;
@@ -489,8 +701,20 @@ export class Viewport {
     const geo = new THREE.BoxGeometry(1, 1, 1);
     this.aStyle = new THREE.InstancedBufferAttribute(new Float32Array(CAPACITY), 1);
     this.aDim = new THREE.InstancedBufferAttribute(new Float32Array(CAPACITY), 1);
+    // The box's type (BOX), and a closed mass's strata: three colours from
+    // the foot up and where the first two end.
+    this.aRole = new THREE.InstancedBufferAttribute(new Float32Array(CAPACITY), 1);
+    this.aBandA = new THREE.InstancedBufferAttribute(new Float32Array(CAPACITY * 3), 3);
+    this.aBandB = new THREE.InstancedBufferAttribute(new Float32Array(CAPACITY * 3), 3);
+    this.aBandC = new THREE.InstancedBufferAttribute(new Float32Array(CAPACITY * 3), 3);
+    this.aShare = new THREE.InstancedBufferAttribute(new Float32Array(CAPACITY * 2), 2);
     geo.setAttribute('aStyle', this.aStyle);
     geo.setAttribute('aDim', this.aDim);
+    geo.setAttribute('aRole', this.aRole);
+    geo.setAttribute('aBandA', this.aBandA);
+    geo.setAttribute('aBandB', this.aBandB);
+    geo.setAttribute('aBandC', this.aBandC);
+    geo.setAttribute('aShare', this.aShare);
     const mesh = new THREE.InstancedMesh(geo, boxMaterial(), CAPACITY);
     mesh.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(CAPACITY * 3).fill(1), 3);
     mesh.count = 0;
@@ -499,6 +723,19 @@ export class Viewport {
     mesh.receiveShadow = true;
     scene.add(mesh);
     this.mesh = mesh;
+    // Contact shadows: one flat shade per box, built from the boxes' own
+    // matrices (the buffer is shared) and drawn after them.
+    const contactGeo = new THREE.PlaneGeometry(1, 1);
+    contactGeo.rotateX(-Math.PI / 2);
+    contactGeo.setAttribute('aRole', this.aRole);
+    contactGeo.setAttribute('aDim', this.aDim);
+    const contact = new THREE.InstancedMesh(contactGeo, contactMaterial(), CAPACITY);
+    contact.instanceMatrix = mesh.instanceMatrix;
+    contact.count = 0;
+    contact.frustumCulled = false;
+    contact.renderOrder = 1;
+    scene.add(contact);
+    this.contact = contact;
     this.cur = new Float64Array(CAPACITY * 6);
     this.from = new Float64Array(CAPACITY * 6);
     // Floating origin: instance positions are stored relative to this
@@ -524,7 +761,7 @@ export class Viewport {
     // three.js makes each buffer from the whole array on first use but
     // leaves a range marked before then in place; clearing it there keeps
     // the next upload to what changed since.
-    for (const a of [mesh.instanceMatrix, mesh.instanceColor, this.aStyle, this.aDim, pins.instanceMatrix, pins.instanceColor]) {
+    for (const a of [mesh.instanceMatrix, mesh.instanceColor, this.aStyle, this.aDim, this.aRole, this.aBandA, this.aBandB, this.aBandC, this.aShare, pins.instanceMatrix, pins.instanceColor]) {
       a.onUpload(() => a.clearUpdateRanges());
     }
 
@@ -849,6 +1086,9 @@ export class Viewport {
     this.layout = layout;
     this.n = n;
     this.mesh.count = n;
+    this.contact.count = n;
+    this.aRole.array.set(layout.type.subarray(0, n));
+    upload(this.aRole, n);
     this.selIndex = -1;
     this.hoverIndex = -1;
     this.setPaint(paint);
@@ -873,21 +1113,52 @@ export class Viewport {
     }
     this.mesh.position.set(ox, oy, oz);
     this.mesh.updateMatrixWorld();
+    this.contact.position.set(ox, oy, oz);
+    this.contact.updateMatrixWorld();
     upload(this.mesh.instanceMatrix, n * 16);
   }
 
-  setPaint({ color, style, dim }) {
+  /**
+   * Colours, styles and dims, one per box; bands (three colours per box,
+   * from the foot up) and shares (where the first two bands end, 0 to 1)
+   * give a closed mass its strata. Without them every band is the box's
+   * own colour.
+   */
+  setPaint({ color, style, dim, bands, shares }) {
     const n = this.n;
     const col = this.mesh.instanceColor.array;
+    const A = this.aBandA.array;
+    const B = this.aBandB.array;
+    const C = this.aBandC.array;
+    const sh = this.aShare.array;
     for (let i = 0; i < n; i++) {
       const v = linear(color[i]);
-      col[i * 3] = v[0]; col[i * 3 + 1] = v[1]; col[i * 3 + 2] = v[2];
+      const o = i * 3;
+      col[o] = v[0]; col[o + 1] = v[1]; col[o + 2] = v[2];
+      if (bands && shares) {
+        const a = linear(bands[o]);
+        const b = linear(bands[o + 1]);
+        const c = linear(bands[o + 2]);
+        A[o] = a[0]; A[o + 1] = a[1]; A[o + 2] = a[2];
+        B[o] = b[0]; B[o + 1] = b[1]; B[o + 2] = b[2];
+        C[o] = c[0]; C[o + 1] = c[1]; C[o + 2] = c[2];
+        sh[i * 2] = shares[i * 2];
+        sh[i * 2 + 1] = shares[i * 2 + 1];
+      } else {
+        A[o] = B[o] = C[o] = v[0];
+        A[o + 1] = B[o + 1] = C[o + 1] = v[1];
+        A[o + 2] = B[o + 2] = C[o + 2] = v[2];
+        sh[i * 2] = 1;
+        sh[i * 2 + 1] = 1;
+      }
     }
     this.aStyle.array.set(style.subarray(0, n));
     this.aDim.array.set(dim.subarray(0, n));
     upload(this.mesh.instanceColor, n * 3);
     upload(this.aStyle, n);
     upload(this.aDim, n);
+    for (const a of [this.aBandA, this.aBandB, this.aBandC]) upload(a, n * 3);
+    upload(this.aShare, n * 2);
     this.invalidate();
   }
 
@@ -1303,7 +1574,12 @@ export class Viewport {
     const reach = Math.max(1e-6, Math.min(820, this.alt * 2.6));
     const tx = Math.max(-500, Math.min(500, c.x + f[0] * reach * 0.6));
     const tz = Math.max(-500, Math.min(500, c.z + f[2] * reach * 0.6));
-    const key = `${Math.round(tx / (reach * 0.15))}|${Math.round(tz / (reach * 0.15))}|${Math.round(Math.log2(reach) * 3)}`;
+    // The sun keeps a three-quarter angle to the view: from the left and a
+    // little behind, so shadows fall across the ground in sight instead of
+    // hiding behind the boxes that cast them. It moves in steps of about
+    // ten degrees of turn, each a redraw of the shadow map.
+    const yawStep = Math.round(c.yaw / 0.17);
+    const key = `${Math.round(tx / (reach * 0.15))}|${Math.round(tz / (reach * 0.15))}|${Math.round(Math.log2(reach) * 3)}|${yawStep}`;
     if (key === this.sunKey && !this.shadowStale) return;
     // While boxes travel, the sun and its shadow map wait their turn. The
     // frame they arrive on has no transition left, so it always redraws.
@@ -1314,7 +1590,12 @@ export class Viewport {
     const sun = this.sun;
     const half = reach * 1.25;
     sun.target.position.set(tx, c.y - this.alt, tz);
-    sun.position.set(tx - half * 0.62, c.y - this.alt + half * 1.1, tz + half * 0.46);
+    const h = Viewport.forward(yawStep * 0.17, 0);
+    const hl = Math.hypot(h[0], h[2]) || 1;
+    const fx = h[0] / hl, fz = h[2] / hl;
+    // left of the view is (fz, -fx); the sun stands left and a little back.
+    const sx = fz * 0.88 - fx * 0.42, sz = -fx * 0.88 - fz * 0.42;
+    sun.position.set(tx + sx * half, c.y - this.alt + half * 0.86, tz + sz * half);
     const sc = sun.shadow.camera;
     sc.left = -half; sc.right = half; sc.top = half; sc.bottom = -half;
     sc.near = half * 0.05; sc.far = half * 4;
@@ -1322,6 +1603,9 @@ export class Viewport {
     sun.shadow.bias = -0.0004;
     sun.shadow.normalBias = half * 0.0009;
     sun.target.updateMatrixWorld();
+    // Contact shadows slide away from the sun.
+    const sl = Math.hypot(sx, sz) || 1;
+    this.contact.material.uniforms.uSun.value.set(-sx / sl, -sz / sl);
     this.renderer.shadowMap.needsUpdate = true;
   }
 
