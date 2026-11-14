@@ -1,11 +1,11 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Tree Model (Terrane Edition - v1.4)
+ *     - Title: Tree Model (Terrane Edition - v1.5)
  *     - File Name: model.js
  *     - Relative Path: web/js/model.js
  *     - Artifact Type: javascript
- *     - Version: 1.4.0
+ *     - Version: 1.5.0
  *     - Date: 11/13/2026
  *     - Update: Friday, November 13, 2026
  *     - Author: Dennis 'dendogg' Smaltz
@@ -13,6 +13,10 @@
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
  *
  * ✒ Changelog:
+ *     - 1.5.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] —
+ *       Camera RAW files are images: cr3, nrw, srf, sr2, raf, rw2, orf,
+ *       pef, srw, 3fr, erf, kdc, mrw, x3f and iiq join cr2, nef, arw and
+ *       dng. Canon's CR3 had counted as Other.
  *     - 1.4.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] —
  *       Double quotes keep spaces in one search token and are dropped:
  *       "two words" is one name term, and in:"My Folder" reaches its
@@ -28,10 +32,6 @@
  *       fmtDay (MM/DD/YYYY) and plural are the one date formatter and
  *       count wording every module imports; fmtDate builds on fmtDay.
  *       isDir, which nothing used, is gone.
- *     - 1.2.0 (11/12/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
- *       search grammar takes is: words and name:value tokens from the
- *       caller, so a feature can make itself searchable; is: looks up
- *       only real words, so is:constructor no longer matches everything.
  *     Earlier entries: see CHANGELOG.md
  *
  * ✒ Description:
@@ -115,7 +115,7 @@ const EXT = {};
 const reg = (kind, list) => list.split(' ').forEach((e) => { EXT[e] = kind; });
 reg(0, 'js mjs cjs ts tsx jsx py rb go rs c h cpp hpp cc cs java kt kts swift php pl lua sh bash zsh fish ps1 bat cmd html htm css scss sass less vue svelte sql r m mm dart ex exs erl hs clj scala groovy gradle cmake make mk asm s vb fs zig nim pyscript glsl wgsl vert frag ipynb');
 reg(1, 'txt md markdown rst pdf doc docx odt rtf tex pages epub mobi ppt pptx key odp xls xlsx ods numbers log nfo readme license');
-reg(2, 'png jpg jpeg gif webp svg bmp tif tiff ico avif heic heif psd ai xcf kra raw cr2 nef arw dng eps indd sketch fig blend obj fbx stl glb gltf 3ds dae usd usdz');
+reg(2, 'png jpg jpeg gif webp svg bmp tif tiff ico avif heic heif psd ai xcf kra raw cr2 cr3 nef nrw arw srf sr2 dng raf rw2 orf pef srw 3fr erf kdc mrw x3f iiq eps indd sketch fig blend obj fbx stl glb gltf 3ds dae usd usdz');
 reg(3, 'mp4 mkv mov avi webm wmv flv m4v mpg mpeg 3gp vob prproj aep');
 reg(4, 'mp3 wav flac ogg oga m4a aac wma aiff aif opus mid midi flp als ptx sf2');
 reg(5, 'zip tar gz tgz bz2 xz 7z rar zst lz lz4 cab iso dmg img jar war apk aab deb rpm pkg msi whl');

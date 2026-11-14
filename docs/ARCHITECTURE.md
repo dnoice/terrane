@@ -1,10 +1,10 @@
 <!--
 ✒ Metadata
-    - Title: Terrane Architecture (Terrane Edition - v1.8)
+    - Title: Terrane Architecture (Terrane Edition - v1.9)
     - File Name: ARCHITECTURE.md
     - Relative Path: docs/ARCHITECTURE.md
     - Artifact Type: docs
-    - Version: 1.8.0
+    - Version: 1.9.0
     - Date: 11/13/2026
     - Update: Friday, November 13, 2026
     - Author: Dennis 'dendogg' Smaltz
@@ -12,6 +12,10 @@
     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
 
 ✒ Changelog:
+    - 1.9.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — Visual
+      identity: boxes read as made objects (rounded edges, a satin
+      finish, contact shade and shadows, strata), and ink in the world
+      is kept for the drawing conventions.
     - 1.8.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
       demo world: a page no service served runs the service's API in
       the page over a generated tree, and the datasets section adds the
@@ -453,7 +457,7 @@ page draws it before it reads anything from disk.
 | Breadth-first progressive scan, bounded concurrency | `scan.mjs` |
 | Incremental roll-up of size, counts, kinds, recency, height | `model.js` `ingest` |
 | Layout cost proportional to boxes drawn, not tree size; a 70,000-box budget checked before every box | `layout.js` |
-| One instanced mesh, one draw call; drawing conventions in the fragment shader | `viewport.js` |
+| One instanced mesh, one draw call, and the contact shadows one more over the same matrices; drawing conventions and the boxes' finish in the fragment shader | `viewport.js` |
 | Buffer uploads cover only the boxes, pins and line vertices drawn; while boxes travel the shadow map is redrawn on every fourth frame at most | `viewport.js` |
 | Every relation set in one preallocated line buffer and one draw call, drawn only while it holds a line | `viewport.js` |
 | Labels placed again only when the eye, the layout, the marks or the canvas change | `viewport.js` |
@@ -676,8 +680,18 @@ direction is a survey sheet around a plaster world.
   no neon, no glass, no blur. Gradients only for the two data ramps and
   the drawing textures (stipple, hatch, grid, a faint paper grain).
 - **Line**: 1px ink rules, square corners, hard offset shadows on what
-  floats. The same ink draws box edges in the 3D world through the
-  fragment shader, which is what ties the two halves together.
+  floats, on the sheet around the world. In the world the same ink draws
+  the conventions (hatch, hollow, the crossed footprint), the selection
+  and the labels, which is what ties the two halves together.
+- **Material**: the boxes are a model's pieces, not a diagram's cells.
+  Their fragment shader rounds every edge (the normal leans into a bevel
+  that never falls under about a pixel and a half), shades each side
+  toward its foot, softens each edge to a crease in the box's own tone,
+  and gives a closed mass strata on its sides: what it holds by kind,
+  largest at the foot. A second instanced mesh, sharing the boxes'
+  matrices, lays a soft contact shadow under each, and the sun keeps a
+  three-quarter angle to the view so its shadows fall in sight. Within a
+  kind, each extension takes a tone of the kind's colour.
 - **Colour is semantic only**: highlighter yellow is selection and hover
   everywhere; vermilion is search; garnet is duplicates and destructive
   actions; verdigris is destinations, live state and benchmarks; nine

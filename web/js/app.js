@@ -1,11 +1,11 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Terrane Application (Terrane Edition - v1.10)
+ *     - Title: Terrane Application (Terrane Edition - v1.11)
  *     - File Name: app.js
  *     - Relative Path: web/js/app.js
  *     - Artifact Type: javascript
- *     - Version: 1.10.0
+ *     - Version: 1.11.0
  *     - Date: 11/13/2026
  *     - Update: Friday, November 13, 2026
  *     - Author: Dennis 'dendogg' Smaltz
@@ -13,6 +13,11 @@
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
  *
  * ✒ Changelog:
+ *     - 1.11.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] —
+ *       Paint gives each file its kind's colour in a tone of its own
+ *       extension, a closed mass a richer tint and, on its sides, strata
+ *       of what it holds (strataOf, as bands and shares for the viewport);
+ *       Reading the world says so.
  *     - 1.10.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] —
  *       A page no service served, opened over http or https (GitHub
  *       Pages), runs the demo world (demo.js): /api/ is answered in the
@@ -25,10 +30,6 @@
  *       presets; RENAME_MANY, MENU many(), INSPECTOR.many and DUP_GROUP
  *       for acting on many; the warm start (GET /api/warm, catch-up and
  *       Model.adopt). In full in CHANGELOG.md.
- *     - 1.8.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] —
- *       Single-key shortcuts are off unless turned on in the guide:
- *       letters, digits and signs act while the world or the ledger
- *       list has focus, and Ctrl and Alt chords act everywhere.
  *     Earlier entries: see CHANGELOG.md
  *
  * ✒ Description:
@@ -1131,12 +1132,67 @@ function screeHasMatch(i) {
   return false;
 }
 
+/**
+ * A kind's colour in a tone of its own for each extension: one of five
+ * steps from 22 % darker to 24 % lighter, the same for every file of that
+ * extension, so a folder of .tsx and .css reads as two families of one
+ * kind.
+ */
+const extTones = new Map();
+const TONE_STEPS = [-0.22, -0.11, 0, 0.12, 0.24];
+// Common neighbours get steps apart (.ts and .tsx, .tsx and .css, .jpg
+// and .png, .mov and .mp4); any other extension takes a step by its hash.
+const TONE_OF = {
+  ts: 0, tsx: 2, js: 1, jsx: 3, mjs: 1, cjs: 1, css: 4, scss: 4, html: 3, py: 1, lua: 0, sh: 3, ipynb: 4,
+  md: 2, txt: 3, pdf: 0, docx: 1, xlsx: 4, pptx: 3,
+  jpg: 2, jpeg: 2, png: 3, psd: 0, svg: 4, cr3: 1, cr2: 1, dng: 1, nef: 1, arw: 1, tif: 0, tiff: 0, fig: 4, ai: 0, gif: 3, webp: 3,
+  mp4: 2, mov: 1, mkv: 3, prproj: 4,
+  wav: 1, flac: 2, mp3: 3, ogg: 4, als: 0,
+  zip: 2, gz: 1, '7z': 0, rar: 3, iso: 4, dmg: 4,
+  json: 2, csv: 3, parquet: 1, yml: 4, yaml: 4, toml: 4, pkl: 0,
+};
+function extTone(node) {
+  const key = `${node.k}:${extOf(node.n)}`;
+  let c = extTones.get(key);
+  if (c === undefined) {
+    const ext = extOf(node.n);
+    let h = 2166136261;
+    for (let i = 0; i < ext.length; i++) h = Math.imul(h ^ ext.charCodeAt(i), 16777619) >>> 0;
+    const t = ext ? TONE_STEPS[TONE_OF[ext] ?? h % TONE_STEPS.length] : 0;
+    c = mixHex(KINDS[node.k].color, t > 0 ? 0xffffff : 0x000000, Math.abs(t));
+    extTones.set(key, c);
+  }
+  return c;
+}
+
+/**
+ * A closed mass's strata: what it holds by kind, largest at the foot,
+ * as three band colours and where the first two end. The third band
+ * takes every kind after the second.
+ */
+function strataOf(node) {
+  const order = [];
+  for (let k = 0; k < 9; k++) if (node.ks[k] > 0) order.push(k);
+  order.sort((a, b) => node.ks[b] - node.ks[a]);
+  const total = node.s || 1;
+  const tone = (k) => mixHex(THEME.clay, KINDS[k].color, 0.7);
+  if (!order.length) return null;
+  const a = order[0];
+  const b = order[1] ?? a;
+  const c = order[2] ?? b;
+  const s1 = node.ks[a] / total;
+  const s2 = order[1] === undefined ? 1 : s1 + node.ks[b] / total;
+  return { a: tone(a), b: tone(b), c: tone(c), s1: Math.min(1, s1), s2: Math.min(1, order[2] === undefined ? 1 : s2) };
+}
+
 function paint() {
   const L = S.layout;
   const n = L.n;
   const color = new Uint32Array(n);
   const style = new Float32Array(n);
   const dim = new Float32Array(n);
+  const bands = new Uint32Array(n * 3);
+  const shares = new Float32Array(n * 2);
   const now = S.model.now;
   const maxLog = Math.log2((S.survey?.largest[0]?.s || S.model.root.s || 1) + 2);
   const search = S.search;
@@ -1171,14 +1227,14 @@ function paint() {
     } else if (type === BOX.CAP) {
       if (node.e) { c = THEME.clay; s = STYLE.HATCH; }
       else if (node.c.length === 0) { c = THEME.paper; s = STYLE.HOLLOW; }
-      else if (S.lens === 'kind') c = mixHex(THEME.clay, KINDS[dominantKind(node)].color, 0.42);
+      else if (S.lens === 'kind') c = mixHex(THEME.clay, KINDS[dominantKind(node)].color, 0.56);
       else if (S.lens === 'age') {
         const k = ages && !inRoom ? ages.medianStep(node) : -1;
         c = k >= 0 ? tones[k] : mixHex(THEME.clay, ramp(THEME.ageRamp, freshness(node.mm, now)), 0.7);
       } else if (S.lens === 'size') c = mixHex(THEME.clay, ramp(THEME.sizeRamp, Math.log2(node.s + 2) / maxLog), 0.7);
       else c = THEME.clay;
     } else {
-      if (S.lens === 'kind') c = KINDS[node.k].color;
+      if (S.lens === 'kind') c = extTone(node);
       else if (S.lens === 'age') c = ramp(THEME.ageRamp, freshness(node.m, now));
       else if (S.lens === 'size') c = ramp(THEME.sizeRamp, Math.log2(node.s + 2) / maxLog);
       else if (node.dup) {
@@ -1217,15 +1273,26 @@ function paint() {
       if (inRoom || type === BOX.FILE || type === BOX.SCREE) d = 0.75;
       else if (placing.nodes.some((x) => isAncestor(x, node))) d = 1;
     }
-    if (S.sel.has(node) && type !== BOX.SCREE) {
+    const picked = S.sel.has(node) && type !== BOX.SCREE;
+    if (picked) {
       c = THEME.mark;
       d = 0;
     }
     color[i] = c;
     style[i] = s;
     dim[i] = d;
+    // Strata on a closed mass's sides, under the Kind lens; every other
+    // box keeps one colour all round.
+    const st = type === BOX.CAP && S.lens === 'kind' && !picked && !node.e && s === STYLE.PLAIN ? strataOf(node) : null;
+    if (st) {
+      bands[i * 3] = st.a; bands[i * 3 + 1] = st.b; bands[i * 3 + 2] = st.c;
+      shares[i * 2] = st.s1; shares[i * 2 + 1] = st.s2;
+    } else {
+      bands[i * 3] = bands[i * 3 + 1] = bands[i * 3 + 2] = c;
+      shares[i * 2] = shares[i * 2 + 1] = 1;
+    }
   }
-  return { color, style, dim };
+  return { color, style, dim, bands, shares };
 }
 
 /** Index of the box that shows a node, or of the mass or scree hiding it. */
@@ -3217,7 +3284,7 @@ function wireKeys() {
   READING.add({ id: 'footprint', order: 10, glyph: 'g-foot', title: 'Footprint is storage', text: 'Ground area is share of the parent folder.' });
   READING.add({ id: 'elevation', order: 20, glyph: 'g-elev', title: 'Elevation is nesting', text: 'Each level stands one step up, one tone lighter, and one scale smaller.' });
   READING.add({ id: 'height', order: 30, glyph: 'g-height', title: 'Height is recency', text: 'Fresh files stand tall; untouched ones wear down flat.' });
-  READING.add({ id: 'mass', order: 40, glyph: 'g-mass', title: 'Closed mass', text: 'A folder seen from afar. Taller means more levels inside. Approach and it opens.' });
+  READING.add({ id: 'mass', order: 40, glyph: 'g-mass', title: 'Closed mass', text: 'A folder seen from afar. Its sides show its strata: what it holds by kind, the largest at the foot. Taller means more levels inside. Approach and it opens.' });
   READING.add({ id: 'scree', order: 50, glyph: 'g-scree', title: 'Scree', text: 'Items too small to see from here, gathered into one tile. Go closer.' });
   READING.add({ id: 'sealed', order: 60, glyph: 'g-seal', title: 'Hatched', text: 'Sealed: the folder could not be read.' });
   READING.add({ id: 'empty', order: 70, glyph: 'g-empty', title: 'Hollow', text: 'An empty folder.' });
@@ -3265,6 +3332,8 @@ const API = Object.freeze({
   // The service's own mode, without the wait of a warm start: what refuses
   // something that is not a change Terrane makes, such as a terminal.
   readOnlyMode,
+  // A file's colour under the Kind lens: its kind's, in its extension's tone.
+  kindTone: extTone,
   // The address of a file's bytes for a preview: at most max of them
   // without a Range header (0: the service's default, 256 KB).
   rawUrl,

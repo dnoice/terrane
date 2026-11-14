@@ -1,16 +1,24 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Transition Cost Scenario (Terrane Edition - v1.0)
+ *     - Title: Transition Cost Scenario (Terrane Edition - v1.1)
  *     - File Name: transitions.mjs
  *     - Relative Path: tools/ui-scenarios/transitions.mjs
  *     - Artifact Type: test
- *     - Version: 1.0.0
- *     - Date: 11/11/2026
- *     - Update: Wednesday, November 11, 2026
+ *     - Version: 1.1.0
+ *     - Date: 11/13/2026
+ *     - Update: Friday, November 13, 2026
  *     - Author: Dennis 'dendogg' Smaltz
  *     - A.I. Acknowledgement: Anthropic - Claude Opus 5.5
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
+ *
+ * ✒ Changelog:
+ *     - 1.1.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
+ *       full-upload picture sets the contact shadows aside, whose soft
+ *       edges blend a hair differently from draw to draw; they share the
+ *       boxes' matrix buffer, which the boxes still prove.
+ *     - 1.0.0 (11/11/2026) [dendogg + Anthropic - Claude Opus 5.5] —
+ *       Initial release.
  *
  * ✒ Description:
  *     Measures what a layout transition costs the GPU in the real page.
@@ -156,12 +164,18 @@ function samePicture(T) {
     gl.readPixels(0, 0, w, h, gl.RGBA, gl.UNSIGNED_BYTE, px);
     return px;
   };
+  // The contact shadows' soft, overlapping edges blend a hair differently
+  // from one draw to the next, so they are set aside: they share the boxes'
+  // matrix buffer, and a stale matrix still shows in the boxes themselves.
+  const contact = v.contact;
+  if (contact) contact.visible = false;
   const a = grab();
   for (const attr of [v.mesh.instanceMatrix, v.mesh.instanceColor, v.aStyle, v.aDim, v.pins.instanceMatrix, v.pins.instanceColor]) {
     attr.clearUpdateRanges();
     attr.needsUpdate = true;
   }
   const b = grab();
+  if (contact) contact.visible = true;
   let diff = 0;
   let ink = 0;
   for (let i = 0; i < a.length; i++) {

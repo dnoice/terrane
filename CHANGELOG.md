@@ -1,10 +1,10 @@
 <!--
 ✒ Metadata
-    - Title: Shipped File Changelogs (Terrane Edition - v1.6)
+    - Title: Shipped File Changelogs (Terrane Edition - v1.7)
     - File Name: CHANGELOG.md
     - Relative Path: CHANGELOG.md
     - Artifact Type: docs
-    - Version: 1.6.0
+    - Version: 1.7.0
     - Date: 11/13/2026
     - Update: Friday, November 13, 2026
     - Author: Dennis 'dendogg' Smaltz
@@ -12,6 +12,10 @@
     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
 
 ✒ Changelog:
+    - 1.7.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — Records the blocks'
+      new look: viewport.js 1.6.0, app.js 1.11.0 and model.js 1.5.0. viewport.js's header
+      rolls its 1.3.0 entry out, app.js's its 1.8.0 and model.js's its 1.2.0; this file
+      already holds them.
     - 1.6.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — Records app.js 1.10.0:
       the demo world on a page no service served. app.js's header gives its 1.9.0 entry a
       short form; the long form stays here.
@@ -80,6 +84,16 @@ entry's long form, the header's words are copied in to open it, so the
 short form is kept too.
 
 ## web/js/app.js
+
+- 1.11.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — Paint gives each file its
+  kind's colour in a tone of its own extension (extTone): five steps from 22 % darker to 24 %
+  lighter, with common neighbours set apart (.ts and .tsx, .tsx and .css, .jpg and .png, .mov
+  and .mp4) and every other extension stepped by its hash. A closed mass takes 56 % of its
+  dominant kind over clay where it took 42 %, and its strata (strataOf): the three largest
+  kinds it holds, as 70 % tints over clay, largest at the foot, the third band taking every
+  kind after the second, passed to the viewport as bands and shares. Only under the Kind lens,
+  and not on a selected, sealed or conventionally drawn mass. Reading the world says that a
+  closed mass's sides show its strata.
 
 - 1.10.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — A page no service served,
   opened over http or https (GitHub Pages, `npm run demo`), runs the demo world: DEMO is
@@ -193,9 +207,9 @@ short form is kept too.
   affected }, reads the affected folders again and redraws the Journal tab before its
   error notice, which now carries the service's own sentence.
 - 1.8.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — Single-key shortcuts are
-  off unless turned on in the guide, on Dennis's call after the hardening pass offered the
-  setting with shortcuts on: letters, digits and signs act while the world or the ledger
-  list has focus, and Ctrl and Alt chords act everywhere. A first key pressed before
+  off unless turned on in the guide: letters, digits and signs act while the world or the
+  ledger list has focus, and Ctrl and Alt chords act everywhere. This was Dennis's call after
+  the hardening pass offered the setting with shortcuts on. A first key pressed before
   anything has focus therefore does nothing until the world is clicked or tabbed to; the
   page still leaves focus alone on load, so the skip link stays the first stop for Tab.
 
@@ -356,6 +370,23 @@ short form is kept too.
 
 ## web/js/viewport.js
 
+- 1.6.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — Boxes look made, not drawn.
+  The box material is a MeshStandardMaterial (roughness 0.46) whose shader, from each box's
+  own dimensions: rounds every edge, the normal leaning toward the edge within a bevel of 16 %
+  of the short side or 6 % of the footprint, never under about a pixel and a half nor over a
+  third of the short side; shades each side toward its foot (to 66 %) over the lesser of 45 %
+  of its height and 30 % of its footprint; gives a closed mass's sides strata in three bands
+  with a fine seam (aRole, aBandA to aBandC, aShare); lays two courses on a plateau's riser;
+  adds a fine grain stepped by octaves of three pixels; and darkens a top 5 % toward its rim.
+  Every edge is a soft crease in the box's own tone, at half strength; ink stays for hatch and
+  hollow. Contact shadows: a second instanced mesh shares the boxes' matrix buffer and draws one
+  flat shade per box on the surface below it, its soft edge scaling with the box, slid away
+  from the sun, faded by dimming and haze; screes and walls cast none. That is one draw call
+  more. The sun keeps a three-quarter angle to the view, from the left and a little behind, in
+  steps of about ten degrees of turn: it had stood behind the default view, where every shadow
+  fell behind the box that cast it and none could be seen. Neutral tone mapping; a cool sky
+  over a warm bounce (1.35) and a warm sun (2.9), with stronger, softer shadows.
+
 - 1.5.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — The relation layer is drawn only
   while it holds a line (three.js draws an empty range), and labels are placed again only when
   the eye, the layout, the marks or the canvas change, not on a frame redrawn for a hover. The
@@ -458,6 +489,10 @@ short form is kept too.
 - 1.0.0 (11/12/2026) [dendogg + Anthropic - Claude Opus 5.5] — Initial release.
 
 ## web/js/model.js
+
+- 1.5.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — Camera RAW files are images:
+  cr3, nrw, srf, sr2, raf, rw2, orf, pef, srw, 3fr, erf, kdc, mrw, x3f and iiq join cr2, nef,
+  arw and dng. Canon's CR3 had counted as Other, so a photo library shot in it read as grey.
 
 - 1.4.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — Double quotes keep spaces in
   one search token and are dropped: "two words" is one name term, and in:"My Folder"

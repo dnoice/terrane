@@ -1,11 +1,11 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Controller Seams Scenario (Terrane Edition - v1.5)
+ *     - Title: Controller Seams Scenario (Terrane Edition - v1.6)
  *     - File Name: seams.mjs
  *     - Relative Path: tools/ui-scenarios/seams.mjs
  *     - Artifact Type: test
- *     - Version: 1.5.0
+ *     - Version: 1.6.0
  *     - Date: 11/13/2026
  *     - Update: Friday, November 13, 2026
  *     - Author: Dennis 'dendogg' Smaltz
@@ -13,6 +13,8 @@
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
  *
  * ✒ Changelog:
+ *     - 1.6.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — The core's
+ *       Closed mass row says that a mass's sides show its strata.
  *     - 1.5.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
  *       registries the palette, the remembered view and saved searches
  *       use (COMMANDS, LEDGER_SUB, AFTER_FOCUS, AFTER_SELECT,
@@ -110,7 +112,7 @@ const READING = [
   ['glyph g-foot', 'Footprint is storage', 'Ground area is share of the parent folder.'],
   ['glyph g-elev', 'Elevation is nesting', 'Each level stands one step up, one tone lighter, and one scale smaller.'],
   ['glyph g-height', 'Height is recency', 'Fresh files stand tall; untouched ones wear down flat.'],
-  ['glyph g-mass', 'Closed mass', 'A folder seen from afar. Taller means more levels inside. Approach and it opens.'],
+  ['glyph g-mass', 'Closed mass', 'A folder seen from afar. Its sides show its strata: what it holds by kind, the largest at the foot. Taller means more levels inside. Approach and it opens.'],
   ['glyph g-scree', 'Scree', 'Items too small to see from here, gathered into one tile. Go closer.'],
   ['glyph g-seal', 'Hatched', 'Sealed: the folder could not be read.'],
   ['glyph g-empty', 'Hollow', 'An empty folder.'],

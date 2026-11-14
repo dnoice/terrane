@@ -1,10 +1,10 @@
 <!--
 ✒ Metadata
-    - Title: Terrane Roadmap (Terrane Edition - v1.8)
+    - Title: Terrane Roadmap (Terrane Edition - v1.9)
     - File Name: ROADMAP.md
     - Relative Path: docs/ROADMAP.md
     - Artifact Type: docs
-    - Version: 1.8.0
+    - Version: 1.9.0
     - Date: 11/13/2026
     - Update: Friday, November 13, 2026
     - Author: Dennis 'dendogg' Smaltz
@@ -12,6 +12,9 @@
     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
 
 ✒ Changelog:
+    - 1.9.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — Build
+      waves record the blocks' new look, merged into `main`; where things
+      stand says so.
     - 1.8.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — Build
       waves record the demo world, merged into `main`: the page runs on a
       generated studio drive where no service served it. Where things
@@ -121,6 +124,10 @@ As of 11/13/2026:
   about 12,000 files, with every route and operation answered in the
   page; `npm run demo` serves it locally, and `npm run export` writes a
   snapshot out as CSV and JSON.
+- **Complete, on `main`:** the blocks' look. Rounded edges, a satin
+  finish, contact shadows and a sun at a three-quarter angle to the
+  view; a closed mass's sides show its strata, and each extension takes
+  a tone of its kind's colour.
 - **Next:** no wave is planned yet; the open ground is the rest of
   Stage 4, the rest of Stage 6, and the Stage 5 deferrals in section 4.
 
@@ -594,6 +601,20 @@ Checks on the branch: `node tools/demo-test.mjs`, "93 passed, 0
 failed"; `node tools/ui-check.mjs demo`, both passes, "38 passed, 0
 failed". It was merged into `main` after Wave 3, in the commit titled
 "Merge demo: the demo world".
+
+### Complete: the blocks' look
+
+The boxes looked like placeholders: flat colour, a black outline on every
+edge, no sense of material or light. They now read as a model's pieces:
+rounded edges that catch the sun, a satin finish, shade toward each
+side's foot, a soft contact shadow under every box, and a closed mass's
+sides in strata of what it holds. Each extension takes a tone of its
+kind's colour. The sun had stood behind the default view, so every cast
+shadow fell behind its box; it now keeps a three-quarter angle to the
+view. Camera RAW files (Canon's CR3 among them) count as images. One
+draw call more, for the contact shadows. It was merged into `main`
+after the demo world, in the commit titled "Merge look: the blocks'
+look"; the draw-call baseline was recorded again with it.
 
 ### Next
 

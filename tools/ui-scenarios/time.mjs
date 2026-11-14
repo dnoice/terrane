@@ -1,16 +1,23 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Time Scenario (Terrane Edition - v1.0)
+ *     - Title: Time Scenario (Terrane Edition - v1.1)
  *     - File Name: time.mjs
  *     - Relative Path: tools/ui-scenarios/time.mjs
  *     - Artifact Type: test
- *     - Version: 1.0.0
- *     - Date: 11/12/2026
- *     - Update: Thursday, November 12, 2026
+ *     - Version: 1.1.0
+ *     - Date: 11/13/2026
+ *     - Update: Friday, November 13, 2026
  *     - Author: Dennis 'dendogg' Smaltz
  *     - A.I. Acknowledgement: Anthropic - Claude Opus 5.5
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
+ *
+ * ✒ Changelog:
+ *     - 1.1.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — A crossed
+ *       file's colour is its kind's in its extension's tone
+ *       (api.kindTone), washed once.
+ *     - 1.0.0 (11/12/2026) [dendogg + Anthropic - Claude Opus 5.5] —
+ *       Initial release.
  *
  * ✒ Description:
  *     Checks the date scrub in the real page, by keyboard: T from the
@@ -99,11 +106,12 @@ async function audit(T) {
     out.washOk = true;
     for (let i = 0; i < Math.min(L.n, v.n); i++) {
       if ((style[i] === 6) !== (L.aux[i] === 2)) out.styleOk = false;
-      // A crossed file under the Kind lens: its kind colour, washed once.
+      // A crossed file under the Kind lens: its kind colour in its
+      // extension's tone (api.kindTone), washed once.
       const node = L.node[i];
       if (L.aux[i] === 2 && L.type[i] === 1 && S.lens === 'kind' && !(node.f & (FLAG_HIDDEN | FLAG_LINK)) && !S.sel.has(node) && out.washed < 40) {
         out.washed++;
-        const want = lin(mixHex(KINDS[node.k].color, 0xf6f8f4, 0.6));
+        const want = lin(mixHex(T.api.kindTone ? T.api.kindTone(node) : KINDS[node.k].color, 0xf6f8f4, 0.6));
         if (want.some((x, c) => Math.abs(x - col[i * 3 + c]) > 1e-6)) out.washOk = false;
       }
     }
