@@ -1,11 +1,11 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Terrane Application (Terrane Edition - v1.8)
+ *     - Title: Terrane Application (Terrane Edition - v1.9)
  *     - File Name: app.js
  *     - Relative Path: web/js/app.js
  *     - Artifact Type: javascript
- *     - Version: 1.8.0
+ *     - Version: 1.9.0
  *     - Date: 11/13/2026
  *     - Update: Friday, November 13, 2026
  *     - Author: Dennis 'dendogg' Smaltz
@@ -13,6 +13,11 @@
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
  *
  * ✒ Changelog:
+ *     - 1.9.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — A
+ *       page no service served, opened over http or https (GitHub Pages),
+ *       runs the demo world (demo.js): /api/ is answered in the page, the
+ *       status says Demo world, pictures and sounds come from the world,
+ *       and a notice says what the visitor is looking at.
  *     - 1.8.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] —
  *       Single-key shortcuts are off unless turned on in the guide:
  *       letters, digits and signs act while the world or the ledger
@@ -28,26 +33,6 @@
  *       with nothing to colour each say so, with no sort keys over an
  *       empty list; Copy, Create and Rename carry icons as their
  *       neighbours do.
- *     - 1.6.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] —
- *       Findings sorts by Size or Changed; a search opens in the order it
- *       asks for and keeps the one chosen until the query changes, and
- *       Select all follows the order shown. The Survey tab's sections are
- *       a registry (SURVEY), AFTER_QUERY hooks hear every run of the
- *       search and may give Findings its order and a note, and setQuery
- *       puts a query in Find and runs it at once. Under the Age lens a
- *       closed mass shows its typical age, the median step of its bytes
- *       in the age table (strata.js), instead of its newest change; the
- *       legend says so. Inside an open archive, which the table does not
- *       hold, a closed mass keeps its newest change, and while one is
- *       open the legend's title says that too. An archive opened with I
- *       (interior.js) hangs from its file: isAttached, updateWhere,
- *       stepSelection, goUp, refreshDirs, the crumbs and absPath
- *       (x.zip!/inner/file) follow the graft, and a flight into it lands
- *       where it was going. runOp refuses any change under it before
- *       anything is sent; the keys, menu and inspector say why. Paint
- *       walls it in the file's colour, hatches locked entries and
- *       half-bands twins, tied as the relation set 'twins'. The api gains
- *       hostOf and listCursor.
  *     Earlier entries: see CHANGELOG.md
  *
  * ✒ Description:
@@ -155,9 +140,22 @@ const TOKEN = document.querySelector('meta[name="terrane-token"]').content;
 /**
  * True on a page the service did not serve (opened from disk, from another
  * server or from GitHub Pages): it still holds the placeholder the service
- * fills in. elsewhere.js says why; nothing here may ask the service.
+ * fills in. Nothing here may ask a service: over http or https the demo
+ * world answers instead, and from disk elsewhere.js says how to start one.
  */
 const ELSEWHERE = TOKEN === ['__TERRANE', 'TOKEN__'].join('_');
+/**
+ * The demo world (demo.js), on a page no service served that was opened
+ * over http or https: it answers /api/ in the page, so every request
+ * below stays in the page. null when a service served the page, or when
+ * the demo could not start.
+ */
+const DEMO = ELSEWHERE && /^https?:$/.test(location.protocol)
+  ? await import('./demo.js').then((m) => m.startDemo({ thumbs })).catch((err) => {
+    console.error('The demo world could not start:', err);
+    return null;
+  })
+  : null;
 const GRAINS = [{ label: 'Coarse', v: 0.0105 }, { label: 'Medium', v: 0.0062 }, { label: 'Fine', v: 0.0038 }, { label: 'Finest', v: 0.0024 }];
 
 const S = {
@@ -465,7 +463,9 @@ async function scanStream(rel, depth, onBatch) {
   }
 }
 
-const rawUrl = (node, max) => `/api/raw?${new URLSearchParams({ path: relPath(node), max, t: TOKEN })}`;
+// The demo world draws pictures and sounds itself; text still comes
+// through /api/raw, which it answers in the page.
+const rawUrl = (node, max) => DEMO?.rawUrl(relPath(node), max) || `/api/raw?${new URLSearchParams({ path: relPath(node), max, t: TOKEN })}`;
 const absPath = (node) => {
   // Inside an open archive: the archive's own path, '!', then the entry's
   // path inside it, x.zip!/inner/file.
@@ -2201,6 +2201,7 @@ function drawStatus() {
   if (S.scanning) { cls += ' is-busy'; label = 'Surveying'; }
   else if (S.watch === 'snapshot') { cls += ' is-off'; label = `Snapshot · ${fmtDate(S.info.snapshot.takenAt)}`; }
   else if (S.watch === 'live') label = 'Live';
+  else if (S.watch === 'demo') label = 'Demo world';
   else if (S.watch === 'lost') { cls += ' is-off'; label = 'Service stopped'; }
   else { cls += ' is-off'; label = 'Manual refresh'; }
   const fit = S.layout?.over ? ' · grain raised, some blocks left out' : S.layout?.coarsened ? ' · grain raised to fit' : '';
@@ -2767,9 +2768,10 @@ function endSplash() {
 }
 
 async function start() {
-  // Not served by the service: elsewhere.js has said so and sent the
-  // loading sheet away. Should it not have run, the veil says it here.
-  if (ELSEWHERE) {
+  // Not served by the service, and no demo world: elsewhere.js has said
+  // so and sent the loading sheet away. Should it not have run, the veil
+  // says it here.
+  if (ELSEWHERE && !DEMO) {
     if (!document.documentElement.hasAttribute('data-elsewhere')) {
       $('splash').hidden = true;
       fatal('Terrane runs from its local service', 'Open the address npm start prints. Terrane, and how to start it: https://github.com/dnoice/terrane');
@@ -2780,7 +2782,7 @@ async function start() {
     splash = startSplash({
       cover: [document.querySelector('.skip'), $('bar'), document.querySelector('main'), $('block')],
     });
-    splash.stage('Connecting to the local service');
+    splash.stage(DEMO ? 'Building the demo world' : 'Connecting to the local service');
   } catch {
     splash = null;        // no #splash host in the page: start without the sheet
   }
@@ -2859,9 +2861,10 @@ async function start() {
   relayout();
   drawAll();
   // places: the landmarks store (S.places), when that feature is installed.
-  window.__terrane = { S, list, scanMs: Math.round(performance.now() - t0), api: API, install: installFeatures, get places() { return S.places; } };
+  window.__terrane = { S, list, scanMs: Math.round(performance.now() - t0), api: API, install: installFeatures, demo: DEMO, get places() { return S.places; } };
   if (S.model.root.e) notice(`The root could not be read: ${S.model.root.e}`, { kind: 'error' });
   connectEvents();
+  DEMO?.welcome(API);
 }
 
 start();

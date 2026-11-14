@@ -1,10 +1,10 @@
 <!--
 ✒ Metadata
-    - Title: Package Manifest (Terrane Edition - v1.8)
+    - Title: Package Manifest (Terrane Edition - v1.9)
     - File Name: package.json
     - Relative Path: package.json
     - Artifact Type: config
-    - Version: 1.8.0
+    - Version: 1.9.0
     - Date: 11/13/2026
     - Update: Friday, November 13, 2026
     - Author: Dennis 'dendogg' Smaltz
@@ -12,6 +12,12 @@
     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
 
 ✒ Changelog:
+    - 1.9.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — Adds
+      the demo script (tools/demo.mjs: the repository served as GitHub
+      Pages serves it, or the demo world written to disk) and the export
+      script (tools/snapshot-export.mjs: a snapshot as CSV and JSON), and
+      the test script ends with tools/demo-test.mjs, the Node check of the
+      demo world and the demo service.
     - 1.8.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — Raises
       the package version to 1.3.0: every Stage 5 candidate has its
       first increment, and the Audit, Hardening pass, Enhancement and
@@ -58,6 +64,10 @@
     - dev: development against a snapshot of a real directory; refreshes
       the snapshot and thumbnails and touches no real file
     - snapshot: records a directory's structure into a dataset
+    - export: writes a snapshot out as a CSV table and a JSON tree
+    - demo: serves the repository as GitHub Pages does, so the page runs
+      the demo world with nothing installed; demo -- write <folder> puts
+      the same world on disk for the real service
     - thumbs: builds or updates the thumbnail dataset (Python and Pillow)
     - wordmark: builds web/assets/logos/TERRANE-wordmark-framed.svg from
       Dennis's TER.svg and R-N.svg (Python with svgelements and shapely)
@@ -67,8 +77,9 @@
     - test: runs the service smoke test against a throwaway directory,
       then the places store test (benchmarks and the return point), the
       working sessions test (sessions, session:N, the route), the
-      strata test (bytes by last change, typical age) and the interior
-      test (the graft, the chamber, twins, the lock) in Node
+      strata test (bytes by last change, typical age), the interior
+      test (the graft, the chamber, twins, the lock) and the demo test
+      (the demo world and the demo service) in Node
     - vendor: fetches the pinned third-party browser files into
       web/vendor/ from jsDelivr; --check verifies them offline
     - ui-check: drives the page in headless Edge or Chrome, keyboard
@@ -82,6 +93,9 @@
     npm start -- "C:\path\to\directory" --read-only
     npm run dev -- --target "C:\path\to\directory"
     npm run snapshot -- "C:\path\to\directory"
+    npm run export
+    npm run demo
+    npm run demo -- write C:\temp\terrane-demo
     npm run thumbs -- --heavy-svg
     npm run wordmark
     npm run mark

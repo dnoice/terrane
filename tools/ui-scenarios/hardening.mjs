@@ -1,11 +1,11 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Hardening Scenarios (Terrane Edition - v1.1)
+ *     - Title: Hardening Scenarios (Terrane Edition - v1.2)
  *     - File Name: hardening.mjs
  *     - Relative Path: tools/ui-scenarios/hardening.mjs
  *     - Artifact Type: test
- *     - Version: 1.1.0
+ *     - Version: 1.2.0
  *     - Date: 11/13/2026
  *     - Update: Friday, November 13, 2026
  *     - Author: Dennis 'dendogg' Smaltz
@@ -13,6 +13,10 @@
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
  *
  * ✒ Changelog:
+ *     - 1.2.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — A
+ *       page opened from another server now runs the demo world: the
+ *       check asks that it surveys the world and sends nothing to /api/,
+ *       and the message about starting the service is checked from disk.
  *     - 1.1.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
  *       single-key check follows the new default: cleared to what a
  *       first visit gets, T on a toolbar button starts nothing while T
@@ -36,8 +40,9 @@
  *       inspector opens as a drawer, the title block and the tabs fit
  *     - The forced unfold that J leaves ends at the overview and when the
  *       location settles off its branch (WebGL pass)
- *     - The page opened from disk and from another server says how to
- *       start the service, and asks the service for nothing
+ *     - The page opened from disk says how to start the service; opened
+ *       from another server it runs the demo world; neither asks a
+ *       service for anything
  *     - Frames redrawn only for a hover place no labels (WebGL pass)
  *     - On disk: the refresh chain survives a folder deleted from outside,
  *       the time view's Since section follows the table a change rebuilt,
@@ -374,7 +379,21 @@ const hardening = {
     });
     await new Promise((r) => server.listen(port, '127.0.0.1', r));
     try {
-      for (const [what, url] of [['another server', `http://127.0.0.1:${port}/`], ['a file on disk', pathToFileURL(path.join(WEB, 'index.html')).href]]) {
+      {
+        const mark = t.mark();
+        await t.page.send('Page.navigate', { url: `http://127.0.0.1:${port}/?still` });
+        const demo = await t.until(() => {
+          const T = window.__terrane;
+          return !!T && !T.S.scanning && !!T.S.info?.demo && document.getElementById('splash').hidden && {
+            files: T.S.model.root.fc, want: T.S.info.demo.files, status: document.getElementById('status-label')?.textContent,
+          };
+        }, { timeout: 20000 });
+        const asked = t.requests(mark).filter((r) => /\/api\//.test(r.url));
+        t.check(`opened from another server, the page runs the demo world (${demo?.files} files) and says so`,
+          !!demo && demo.files === demo.want && /Demo world/.test(demo.status), JSON.stringify(demo));
+        t.check(`and sends nothing to /api/ (${asked.length} requests)`, asked.length === 0, JSON.stringify(asked));
+      }
+      for (const [what, url] of [['a file on disk', pathToFileURL(path.join(WEB, 'index.html')).href]]) {
         const mark = t.mark();
         await t.page.send('Page.navigate', { url });
         const shown = await t.until(() => {

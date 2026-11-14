@@ -1,10 +1,10 @@
 <!--
 ✒ Metadata
-    - Title: Terrane Readme (Terrane Edition - v1.9)
+    - Title: Terrane Readme (Terrane Edition - v1.10)
     - File Name: README.md
     - Relative Path: README.md
     - Artifact Type: docs
-    - Version: 1.9.0
+    - Version: 1.10.0
     - Date: 11/13/2026
     - Update: Friday, November 13, 2026
     - Author: Dennis 'dendogg' Smaltz
@@ -12,6 +12,13 @@
     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
 
 ✒ Changelog:
+    - 1.10.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — Try
+      it: the demo world on GitHub Pages and through npm run demo, and
+      the same world written to disk for the real service. A page from
+      another server or Pages runs the demo; one from disk says how to
+      start the service. The datasets section adds npm run export, the
+      commands table the demo and export scripts and the demo test, and
+      the project map the demo modules and tools.
     - 1.9.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — Single-key
       shortcuts are off unless turned on in the guide, and the key
       section says how to reach them. What was verified records the
@@ -114,6 +121,30 @@ rename, move, copy and remove real files, with undo.
 It is two parts: a small local service that is given exactly one directory,
 and a browser interface that talks only to that service.
 
+## Try it
+
+Open <https://dnoice.github.io/terrane/> and Terrane starts on its demo
+world: a made-up studio drive of about twelve thousand files in code
+projects, photos, film footage, music, design work, documents, an old
+laptop's archive and downloads, built in the page from one seed. Every
+feature works on it, changes and undo included, and nothing leaves the
+page; a reload starts the world again.
+
+The same page runs locally with nothing but Node.js:
+
+```bash
+npm run demo
+```
+
+It prints an address to open. To try the real service, and every
+operation on real files, somewhere that does not matter, write the same
+world to disk and point Terrane at it:
+
+```bash
+npm run demo -- write C:\temp\terrane-demo
+npm start -- C:\temp\terrane-demo
+```
+
 ## Launch
 
 Requires Node.js 22.5 or newer. Nothing to install.
@@ -126,9 +157,10 @@ The service prints its address (`http://127.0.0.1:4173/`) and opens it in
 the default browser. Stop it with Ctrl+C. The directory can be a whole
 drive, such as `D:\`.
 
-Open the page only at that address. Opened from disk, from another
-server or from GitHub Pages it has no service behind it, and says so:
-it names the command that starts Terrane and links to this repository.
+Open the page only at that address to see your own directory. Opened
+from another server or from GitHub Pages, the page has no service behind
+it and runs the demo world instead; opened from disk, it says how to
+start Terrane and links to this repository.
 
 The page opens on a loading sheet: the T is surveyed and laid down
 stratum by stratum while the service connects and the first survey
@@ -177,11 +209,14 @@ It does four things:
 | Command | Does |
 | ------- | ---- |
 | `npm run snapshot -- <dir>` | One snapshot now |
+| `npm run export` | The newest snapshot as a CSV table and a JSON tree, in an `exports` folder beside it; name a dataset folder or a `.db` file when there is more than one |
+| `npm run demo` | Serve the repository as GitHub Pages does, so the page runs the demo world |
+| `npm run demo -- write <folder>` | Write the demo world to disk: text files with their contents, large files sparse at their sizes |
 | `npm run thumbs` | Update thumbnails; `--stats` shows what is stored |
 | `npm run thumbs -- --huge` | Also thumbnail images over 80 megapixels, one at a time |
 | `npm run thumbs -- --heavy-svg` | Also render SVGs over 512 KB through Inkscape |
 | `node server/terrane.mjs --snapshot <folder>` | Serve a snapshot without the dev runner |
-| `npm test` | The service smoke test on a throwaway directory, then the Node checks of landmarks (`places-test`), working sessions (`relations-test`), strata (`strata-test`) and archive interiors (`interior-test`) |
+| `npm test` | The service smoke test on a throwaway directory, then the Node checks of landmarks (`places-test`), working sessions (`relations-test`), strata (`strata-test`), archive interiors (`interior-test`) and the demo world and its service (`demo-test`) |
 | `npm run ui-check` | Drive the page in headless Edge or Chrome, keyboard only, with and without WebGL, on a fresh fixture in the OS temp folder; compares draw calls with the recorded baseline |
 | `npm run ui-check -- time --pass nogl` | One scenario in one pass; `npm run ui-check -- --list` names every scenario |
 | `npm run vendor -- --check` | Verify the vendored browser libraries against their recorded digests |
@@ -193,6 +228,10 @@ systems `~/.cache/terrane/datasets`), outside the project and outside
 OneDrive. They hold real file names, so they stay local. Both are SQLite
 files and can be queried directly, for example
 `SELECT folder, name, size FROM entries ORDER BY size DESC LIMIT 20`.
+`npm run export` writes a snapshot out for anything else: one CSV row
+per folder and file (kind, path, size, files and folders beneath,
+modified time in UTC, flags), and the same entries as a nested JSON
+tree.
 
 ## Reading the world
 
@@ -401,8 +440,8 @@ trees on a hardware GPU; Open and Reveal reaching a desktop application on
 Windows; the progress panel driven in a browser (its service side is
 covered by `npm test`); the loading sheet in Firefox and Safari; an
 archive interior, the traverse and the time view in the largest trees,
-and on the 2-core software rasterizer; the page on GitHub Pages itself
-(its message was checked opened from disk and from a stand-in server);
+and on the 2-core software rasterizer; the demo world on GitHub Pages
+itself (it was checked through a stand-in Pages server in both passes);
 the inspector drawer and the menu's reasons with a screen reader.
 
 ## Continuing development
@@ -428,7 +467,11 @@ web/css/components/  controls, bar, ledger, stage, inspector, block, floating,
 web/css/*.css        also: fonts, base, layout, utilities, motion, print
 web/js/app.js        controller: state, service calls, panels, progress, and
                      the registries feature modules fill
-web/js/elsewhere.js  a page the service did not serve says how to start it
+web/js/elsewhere.js  a page opened from disk says how to start the service
+web/js/demo.js       the demo world in the page: answers /api/ and the event
+                     stream, draws pictures and sounds (no service behind it)
+web/js/demo-service.js  the service's routes and operations over the world
+web/js/demo-world.js the demo world: one seed, about 12,000 files, contents
 web/js/model.js      tree model, aggregation, search, survey
 web/js/layout.js     the spatial language and level of detail; BOX, STYLE, AUX
 web/js/viewport.js   3D world, camera, picking, transitions, relation lines
@@ -457,6 +500,9 @@ web/assets/logos/    TERRANE-wordmark-framed.svg (the loading sheet's),
 web/vendor/          three.js, Floating UI, Motion, Lucide; see VENDORED.md
 tools/dev.mjs        development runner (snapshot mode, kept current)
 tools/snapshot.mjs   take a structure snapshot
+tools/snapshot-export.mjs  a snapshot as CSV and JSON (npm run export)
+tools/demo.mjs       serve the repository as Pages does, or write the demo
+                     world to disk (npm run demo)
 tools/thumbs.py      build and update the thumbnail dataset
 tools/build_terrane_wordmark.py  generate the framed wordmark (npm run wordmark)
 tools/build_terrane_mark.py  generate web/js/terrane-mark.js (npm run mark)
@@ -464,8 +510,10 @@ tools/smoke-test.mjs the service, the layout, the age table and the archive
                      reader, in Node (first in npm test)
 tools/places-test.mjs, relations-test.mjs, strata-test.mjs, interior-test.mjs
                      the features' DOM-free modules in Node (npm test)
+tools/demo-test.mjs  the demo world and service in Node, against the real
+                     scanner and model (last in npm test)
 tools/ui-check.mjs   headless browser check; scenarios in tools/ui-scenarios/,
-                     hardening.mjs among them
+                     hardening.mjs and demo.mjs among them
 tools/make-fixture.mjs  the synthetic tree the checks run on (npm run fixture)
 tools/vendor.mjs     fetch and verify the vendored browser libraries
 docs/                ARCHITECTURE.md, ROADMAP.md
@@ -480,8 +528,10 @@ the exploration loop are in `docs/ROADMAP.md`.
 
 For GitHub Pages (deploy from the `main` branch, root folder), the root
 `index.html` forwards visitors to `web/`, so the interface keeps a
-single page. Pages can show the interface but cannot run it: the page
-needs the local service, so there it says how to start Terrane instead.
+single page. Pages has no service, so there the page runs the demo
+world: `web/js/demo.js` answers every request to `/api/` in the page
+from `web/js/demo-service.js`, over the tree `web/js/demo-world.js`
+builds. Nothing a visitor does is sent anywhere.
 
 ## License
 

@@ -1,10 +1,10 @@
 <!--
 ✒ Metadata
-    - Title: Shipped File Changelogs (Terrane Edition - v1.4)
+    - Title: Shipped File Changelogs (Terrane Edition - v1.5)
     - File Name: CHANGELOG.md
     - Relative Path: CHANGELOG.md
     - Artifact Type: docs
-    - Version: 1.4.0
+    - Version: 1.5.0
     - Date: 11/13/2026
     - Update: Friday, November 13, 2026
     - Author: Dennis 'dendogg' Smaltz
@@ -12,6 +12,9 @@
     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
 
 ✒ Changelog:
+    - 1.5.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — Records app.js 1.9.0:
+      the demo world on a page no service served. app.js's header rolls its 1.6.0 entry
+      out; this file already holds it.
     - 1.4.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — Records app.js 1.8.0:
       single-key shortcuts are off unless turned on in the guide.
     - 1.3.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — Records the hardening
@@ -55,6 +58,16 @@ keeps all of them. When a header rolls an entry out, the entry is copied
 here unchanged in the same edit.
 
 ## web/js/app.js
+
+- 1.9.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — A page no service served,
+  opened over http or https (GitHub Pages, `npm run demo`), runs the demo world: DEMO is
+  demo.js's startDemo(), imported with a top-level await before anything asks for /api/, so
+  every request the page makes is answered in the page by demo-service.js. rawUrl takes the
+  world's picture for an image and a synthesized tone for audio, and /api/raw otherwise; the
+  status line says "Demo world"; the loading sheet says it is
+  building the demo world; and a notice after the survey says what the visitor is looking at,
+  with a link to the repository. A page opened from disk still says how to start the
+  service, and so does one whose demo could not start.
 
 - 1.8.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — Single-key shortcuts are
   off unless turned on in the guide, on Dennis's call after the hardening pass offered the

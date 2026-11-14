@@ -1,16 +1,25 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Thumbnails (Terrane Edition - v1.0)
+ *     - Title: Thumbnails (Terrane Edition - v1.1)
  *     - File Name: thumbs.js
  *     - Relative Path: web/js/thumbs.js
  *     - Artifact Type: javascript
- *     - Version: 1.0.0
- *     - Date: 11/11/2026
- *     - Update: Wednesday, November 11, 2026
+ *     - Version: 1.1.0
+ *     - Date: 11/13/2026
+ *     - Update: Friday, November 13, 2026
  *     - Author: Dennis 'dendogg' Smaltz
  *     - A.I. Acknowledgement: Anthropic - Claude Opus 5.5
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
+ *
+ * ✒ Changelog:
+ *     - 1.1.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — Two
+ *       hooks for the demo world: lookup answers info() from the live tree
+ *       instead of the index, so a renamed or moved picture keeps its
+ *       thumbnail, and source hands out the picture URL for a rung.
+ *       fit() and img() read through info().
+ *     - 1.0.0 (11/11/2026) [dendogg + Anthropic - Claude Opus 5.5] —
+ *       Initial release.
  *
  * ✒ Description:
  *     The browser's single way to show an image from the directory. It
@@ -55,6 +64,10 @@ class Thumbs {
     this.map = new Map();
     this.pending = null;
     this.available = false;
+    // The demo world's hooks (demo.js): facts from the live tree, and
+    // drawn pictures in place of /api/thumb URLs.
+    this.lookup = null;
+    this.source = null;
   }
 
   /** Fetches the index; later calls reuse it until reload() is called. */
@@ -80,14 +93,16 @@ class Thumbs {
   }
 
   info(rel) {
-    return this.map.get(rel) || null;
+    return (this.lookup ? this.lookup(rel) : this.map.get(rel)) || null;
   }
 
   /** Best URL for an image shown at about `px` pixels on its long side. */
   url(rel, px = 160) {
-    const t = this.map.get(rel);
+    const t = this.info(rel);
     if (!t || t.status !== 'ok') return null;
-    const q = (w) => `/api/thumb?${new URLSearchParams({ path: rel, w, v: t.v })}`;
+    const q = this.source
+      ? (w) => this.source(rel, w === 'svg' || w === '480' ? 480 : 160)
+      : (w) => `/api/thumb?${new URLSearchParams({ path: rel, w, v: t.v })}`;
     if (t.rungs & RSVG) return q('svg');
     if (px > 200 && t.rungs & R480) return q('480');
     if (t.rungs & R160) return q('160');
@@ -96,7 +111,7 @@ class Thumbs {
 
   /** The box an image occupies when fitted inside px by px. */
   fit(rel, px) {
-    const t = this.map.get(rel);
+    const t = this.info(rel);
     if (!t?.w || !t?.h) return { width: px, height: px };
     const s = Math.min(1, px / Math.max(t.w, t.h));
     return { width: Math.max(1, Math.round(t.w * s)), height: Math.max(1, Math.round(t.h * s)) };
@@ -107,7 +122,7 @@ class Thumbs {
     const src = this.url(rel, px);
     if (!src) return null;
     const { width, height } = this.fit(rel, px);
-    const t = this.map.get(rel);
+    const t = this.info(rel);
     return el('img', {
       src, alt, width, height, loading: 'lazy', decoding: 'async', draggable: 'false',
       style: t.color ? { backgroundColor: t.color } : null,

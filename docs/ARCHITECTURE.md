@@ -1,10 +1,10 @@
 <!--
 ✒ Metadata
-    - Title: Terrane Architecture (Terrane Edition - v1.6)
+    - Title: Terrane Architecture (Terrane Edition - v1.7)
     - File Name: ARCHITECTURE.md
     - Relative Path: docs/ARCHITECTURE.md
     - Artifact Type: docs
-    - Version: 1.6.0
+    - Version: 1.7.0
     - Date: 11/13/2026
     - Update: Friday, November 13, 2026
     - Author: Dennis 'dendogg' Smaltz
@@ -12,6 +12,10 @@
     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
 
 ✒ Changelog:
+    - 1.7.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
+      demo world: a page no service served runs the service's API in
+      the page over a generated tree, and the datasets section adds the
+      CSV and JSON export of a snapshot.
     - 1.6.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
       single-key setting is off unless turned on in the guide, and
       the interface check turns it on for every page it opens.
@@ -245,14 +249,16 @@ snapshot mode (--snapshot):  info, scan, stat, events, an empty journal  ->  sna
   with `Cache-Control: no-cache`, and answers 304 while it is unchanged,
   so the modules and the icon sprite are not downloaded again on every
   use. A malformed or null-byte path, or a folder, is a 404.
-- **A page the service did not serve says so.** The service writes the
-  token into the page as it serves it. Opened from disk, from another
-  server or from GitHub Pages, the page still holds the placeholder, and
-  `elsewhere.js`, a classic script that runs from disk too, sees it
-  before any request: it sends the loading sheet away, says that
-  Terrane runs from its local service and how to start it, and links to
-  the repository. `app.js` reads the same placeholder and asks the
-  service nothing.
+- **A page the service did not serve runs the demo world, or says
+  so.** The service writes the token into the page as it serves it.
+  Opened from another server or from GitHub Pages, the page still holds
+  the placeholder, and `app.js` imports `demo.js` before its first
+  request, which answers every `/api/` request in the page (section 5,
+  The demo world). Opened from disk, where the browser will not load
+  modules, `elsewhere.js`, a classic script, sees the placeholder: it
+  sends the loading sheet away, says that Terrane runs from its local
+  service and how to start it, and links to the repository. Should the
+  demo fail to start, `app.js` says the same.
 - **State lives in one place per kind**: the disk is the truth; the model
   is a cache of it; the layout is a function of model and eye; paint is a
   function of layout and session state. Nothing is patched in place
@@ -405,6 +411,44 @@ Choices and their reasons:
   scans it in full on open, even for an 8 KB header read. The builder
   therefore records heavy SVGs without opening them, and renders them
   only on request.
+- **A snapshot exports to CSV and JSON** (`tools/snapshot-export.mjs`),
+  read from the database only: one CSV row per folder and file with its
+  kind, path, size, totals beneath a folder, UTC time and flags, and the
+  same entries as a nested JSON tree. Both are streamed to disk, so a
+  quarter of a million entries export in a few seconds.
+
+### The demo world
+
+A page with no service behind it, over http or https, runs on a
+generated directory instead of none. Three modules do it, all in
+`web/js/` and loaded only on such a page:
+
+| Module | Does |
+| ------ | ---- |
+| `demo-world.js` | Builds the tree from one seed: about 12,000 files and 1,700 folders of a made-up studio drive, every date relative to the moment of building. Writes a file's text on demand, to its exact size, and lists a zip's entries. No DOM. |
+| `demo-service.js` | The service's API over that tree: the same routes, parameters, records, answers and refusals, operations and undo journal, jobs with progress and cancel. Changes live in memory. No DOM. |
+| `demo.js` | Answers `fetch` and `EventSource` for `/api/` in the page, draws thumbnails on a canvas from each image's style and colour, synthesizes a tone for audio, and shows the welcome notice. |
+
+Choices and their reasons:
+
+- **The interface does not know.** The only changes to `app.js` are the
+  import, the status line, `rawUrl` taking a drawn picture or a sound,
+  and the welcome notice; `thumbs.js` takes two hooks. Every feature
+  therefore runs on the demo exactly as on a real directory, and a new
+  feature works there as soon as the demo service answers its route.
+- **Generated, not shipped.** The tree costs no download and no files in
+  the repository, and it never shows a real name. `tools/demo.mjs write`
+  puts the same world on disk for the real service, with text files at
+  their sizes and large files sparse.
+- **Parity is tested, not assumed.** `tools/demo-test.mjs` reads a
+  written part of the world with the real scanner and compares the
+  records, feeds the demo's records to the browser's own model, and runs
+  every operation and refusal; the `demo` interface check drives the
+  page through a stand-in Pages server with WebGL on and off and counts
+  the requests to `/api/` that leave it: none.
+- **Limits.** A reload starts the world again; Open and Reveal refuse
+  with a sentence, since there is no file to hand to another program;
+  zip interiors exist only in the page, not in a world written to disk.
 
 ### Known limitations
 

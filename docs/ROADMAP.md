@@ -1,10 +1,10 @@
 <!--
 ✒ Metadata
-    - Title: Terrane Roadmap (Terrane Edition - v1.5)
+    - Title: Terrane Roadmap (Terrane Edition - v1.6)
     - File Name: ROADMAP.md
     - Relative Path: docs/ROADMAP.md
     - Artifact Type: docs
-    - Version: 1.5.0
+    - Version: 1.6.0
     - Date: 11/13/2026
     - Update: Friday, November 13, 2026
     - Author: Dennis 'dendogg' Smaltz
@@ -466,6 +466,19 @@ look and the check waited for a sheet that never returned. The check now
 installs a recorder for the new page that notes the sheet from its first
 frame, and reads that record when the sheet has already gone. Checks:
 `node tools/ui-check.mjs --no-shots`, both passes: "879 passed, 0 failed, 5 skipped".
+
+### Complete on branch `demo`: the demo world
+
+The GitHub Pages address said only how to start the service, so nobody
+could try Terrane without installing it. The page now runs on a
+generated studio drive when no service served it: about 12,000 files,
+every route and operation answered in the page, nothing sent anywhere.
+`npm run demo` serves the repository as Pages does; its `write`
+command puts the same world on disk for the real service; and
+`npm run export` writes a structure snapshot out as CSV and JSON.
+Checks on the branch: `node tools/demo-test.mjs`, "85 passed, 0
+failed"; `node tools/ui-check.mjs demo`, both passes, "38 passed, 0
+failed". It waits to be merged after Wave 3.
 
 ### Next
 
