@@ -1,11 +1,11 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Terrane Application (Terrane Edition - v1.9)
+ *     - Title: Terrane Application (Terrane Edition - v1.10)
  *     - File Name: app.js
  *     - Relative Path: web/js/app.js
  *     - Artifact Type: javascript
- *     - Version: 1.9.0
+ *     - Version: 1.10.0
  *     - Date: 11/13/2026
  *     - Update: Friday, November 13, 2026
  *     - Author: Dennis 'dendogg' Smaltz
@@ -13,39 +13,18 @@
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
  *
  * ✒ Changelog:
+ *     - 1.10.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] —
+ *       A page no service served, opened over http or https (GitHub
+ *       Pages), runs the demo world (demo.js): /api/ is answered in the
+ *       page, the status says Demo world, pictures, sounds and film come
+ *       from the world, and a notice says what the visitor is looking at.
  *     - 1.9.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] —
- *       Seams for the command palette, the remembered view and saved
- *       searches: COMMANDS (palette actions with no key), LEDGER_SUB
- *       (controls on the ledger's count row), AFTER_FOCUS and
- *       AFTER_SELECT hooks, and TAB_SECTIONS with api.tabSections. The
- *       key table takes labels, palette: false and gl: true for the
- *       palette. The api gains setLens, selectAll (Findings' Select all
- *       uses it), copyText (copyPaths uses it), listItems, cursorTo,
- *       rescan and tabSections; S gains the searches slot. Find's own
- *       keys give way to a feature's listener that claimed one first.
- *       Looking before you act: P is Quick look's in KEY_OWNERS, the api
- *       gains rawUrl, and the preview's picture and text extensions are
- *       model.js's IMAGE_EXT and TEXT_EXT. Contents sorts Untouched too,
- *       by typical age; Ctrl with an arrow moves the list's cursor and
- *       leaves the selection, so Space can gather several rows.
- *       Acting on many: RENAME_MANY (F2 with several selected runs the
- *       first entry; with one, the single rename), MENU entries' many()
- *       after Copy paths, INSPECTOR.many after the Actions grid of
- *       several, DUP_GROUP under each group of copies, and api.relLabel.
- *       A verified group keeps its hash, a survey after a refresh keeps
- *       what Verify proved of files unchanged since, and Verify first
- *       runs a survey still queued. The inspector of several no longer
- *       prints "null" where no reason is due. Starting fast: a warm
- *       start draws the tree the service kept (GET /api/warm) at once
- *       and checks it with a survey in the background (catchUp, then
- *       Model.adopt, keeping every node); S.warm meanwhile, when changes
- *       wait with a sentence and writable() names why, while
- *       readOnlyMode() (in the api) does not; a tree that cannot be read
- *       whole is set aside, said, and surveyed afresh. scanStream takes
- *       a route and a signal; window.__terrane gains firstDrawMs and warm.
- *       A refresh, the catch-up or Rescan all that moves the folder you
- *       are in runs AFTER_FOCUS (focusMoved); an Undo that stopped part
- *       way runs AFTER_OP with moved and reads its folders again.
+ *       Wave 3's seams and features: COMMANDS, LEDGER_SUB, AFTER_FOCUS,
+ *       AFTER_SELECT and TAB_SECTIONS for the palette, the kept view and
+ *       saved searches; rawUrl and the Untouched order for Quick look and
+ *       presets; RENAME_MANY, MENU many(), INSPECTOR.many and DUP_GROUP
+ *       for acting on many; the warm start (GET /api/warm, catch-up and
+ *       Model.adopt). In full in CHANGELOG.md.
  *     - 1.8.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] —
  *       Single-key shortcuts are off unless turned on in the guide:
  *       letters, digits and signs act while the world or the ledger
@@ -182,9 +161,22 @@ const TOKEN = document.querySelector('meta[name="terrane-token"]').content;
 /**
  * True on a page the service did not serve (opened from disk, from another
  * server or from GitHub Pages): it still holds the placeholder the service
- * fills in. elsewhere.js says why; nothing here may ask the service.
+ * fills in. Nothing here may ask a service: over http or https the demo
+ * world answers instead, and from disk elsewhere.js says how to start one.
  */
 const ELSEWHERE = TOKEN === ['__TERRANE', 'TOKEN__'].join('_');
+/**
+ * The demo world (demo.js), on a page no service served that was opened
+ * over http or https: it answers /api/ in the page, so every request
+ * below stays in the page. null when a service served the page, or when
+ * the demo could not start.
+ */
+const DEMO = ELSEWHERE && /^https?:$/.test(location.protocol)
+  ? await import('./demo.js').then((m) => m.startDemo({ thumbs })).catch((err) => {
+    console.error('The demo world could not start:', err);
+    return null;
+  })
+  : null;
 const GRAINS = [{ label: 'Coarse', v: 0.0105 }, { label: 'Medium', v: 0.0062 }, { label: 'Fine', v: 0.0038 }, { label: 'Finest', v: 0.0024 }];
 
 const S = {
@@ -586,7 +578,9 @@ async function scanStream(rel, depth, onBatch, { route = 'scan', signal } = {}) 
   }
 }
 
-const rawUrl = (node, max) => `/api/raw?${new URLSearchParams({ path: relPath(node), max, t: TOKEN })}`;
+// The demo world draws pictures and sounds itself; text still comes
+// through /api/raw, which it answers in the page.
+const rawUrl = (node, max) => DEMO?.rawUrl(relPath(node), max) || `/api/raw?${new URLSearchParams({ path: relPath(node), max, t: TOKEN })}`;
 const absPath = (node) => {
   // Inside an open archive: the archive's own path, '!', then the entry's
   // path inside it, x.zip!/inner/file.
@@ -2719,6 +2713,7 @@ function drawStatus() {
   } else if (S.scanning) { cls += ' is-busy'; label = 'Surveying'; }
   else if (S.watch === 'snapshot') { cls += ' is-off'; label = `Snapshot · ${fmtDate(S.info.snapshot.takenAt)}`; }
   else if (S.watch === 'live') label = 'Live';
+  else if (S.watch === 'demo') label = 'Demo world';
   else if (S.watch === 'lost') { cls += ' is-off'; label = 'Service stopped'; }
   else { cls += ' is-off'; label = 'Manual refresh'; }
   const fit = S.layout?.over ? ' · grain raised, some blocks left out' : S.layout?.coarsened ? ' · grain raised to fit' : '';
@@ -3317,9 +3312,10 @@ function endSplash() {
 }
 
 async function start() {
-  // Not served by the service: elsewhere.js has said so and sent the
-  // loading sheet away. Should it not have run, the veil says it here.
-  if (ELSEWHERE) {
+  // Not served by the service, and no demo world: elsewhere.js has said
+  // so and sent the loading sheet away. Should it not have run, the veil
+  // says it here.
+  if (ELSEWHERE && !DEMO) {
     if (!document.documentElement.hasAttribute('data-elsewhere')) {
       $('splash').hidden = true;
       fatal('Terrane runs from its local service', 'Open the address npm start prints. Terrane, and how to start it: https://github.com/dnoice/terrane');
@@ -3330,7 +3326,7 @@ async function start() {
     splash = startSplash({
       cover: [document.querySelector('.skip'), $('bar'), document.querySelector('main'), $('block')],
     });
-    splash.stage('Connecting to the local service');
+    splash.stage(DEMO ? 'Building the demo world' : 'Connecting to the local service');
   } catch {
     splash = null;        // no #splash host in the page: start without the sheet
   }
@@ -3441,6 +3437,7 @@ async function start() {
   expose(t0);
   if (S.model.root.e) notice(`The root could not be read: ${S.model.root.e}`, { kind: 'error' });
   connectEvents();
+  DEMO?.welcome(API);
 }
 
 /**
@@ -3452,7 +3449,7 @@ async function start() {
  */
 function expose(t0) {
   window.__terrane = {
-    S, list, scanMs: Math.round(performance.now() - t0), api: API, install: installFeatures, warm: warmRecord,
+    S, list, scanMs: Math.round(performance.now() - t0), api: API, install: installFeatures, warm: warmRecord, demo: DEMO,
     get firstDrawMs() { return firstDrawMs; },
     get places() { return S.places; },
   };

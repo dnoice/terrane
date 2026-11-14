@@ -1,10 +1,10 @@
 <!--
 ✒ Metadata
-    - Title: Shipped File Changelogs (Terrane Edition - v1.5)
+    - Title: Shipped File Changelogs (Terrane Edition - v1.6)
     - File Name: CHANGELOG.md
     - Relative Path: CHANGELOG.md
     - Artifact Type: docs
-    - Version: 1.5.0
+    - Version: 1.6.0
     - Date: 11/13/2026
     - Update: Friday, November 13, 2026
     - Author: Dennis 'dendogg' Smaltz
@@ -12,6 +12,9 @@
     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
 
 ✒ Changelog:
+    - 1.6.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — Records app.js 1.10.0:
+      the demo world on a page no service served. app.js's header gives its 1.9.0 entry a
+      short form; the long form stays here.
     - 1.5.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — Records the seams for
       finding your way: app.js 1.9.0, ui.js 1.4.0, and the first sections for web/js/model.js
       (1.4.0, double quotes in search) and web/js/landmarks.js (1.3.0, the Places tab's
@@ -77,6 +80,17 @@ entry's long form, the header's words are copied in to open it, so the
 short form is kept too.
 
 ## web/js/app.js
+
+- 1.10.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — A page no service served,
+  opened over http or https (GitHub Pages, `npm run demo`), runs the demo world: DEMO is
+  demo.js's startDemo(), imported with a top-level await before anything asks for /api/, so
+  every request the page makes is answered in the page by demo-service.js. rawUrl takes the
+  world's picture for an image, a synthesized tone for audio and a few seconds of film recorded
+  in the page for video, and /api/raw otherwise, so Quick look plays them too; the status line
+  says "Demo world"; the loading sheet says it is building the demo world; window.__terrane
+  carries demo; and a notice after the survey says what the visitor is looking at, with a link
+  to the repository. A page opened from disk still says how to start the service, and so does
+  one whose demo could not start. The header's 1.9.0 entry takes a short form.
 
 - 1.9.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — Seams for Wave 3's first
   group, finding your way (the command palette, the remembered view and links, search

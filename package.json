@@ -13,10 +13,12 @@
     "start": "node server/terrane.mjs",
     "dev": "node tools/dev.mjs",
     "snapshot": "node tools/snapshot.mjs",
+    "export": "node tools/snapshot-export.mjs",
+    "demo": "node tools/demo.mjs",
     "thumbs": "python tools/thumbs.py",
     "wordmark": "python tools/build_terrane_wordmark.py",
     "mark": "python tools/build_terrane_mark.py",
-    "test": "node tools/smoke-test.mjs && node tools/places-test.mjs && node tools/relations-test.mjs && node tools/strata-test.mjs && node tools/interior-test.mjs && node tools/finding-test.mjs && node tools/rename-test.mjs && node tools/export-test.mjs && node tools/warm-test.mjs",
+    "test": "node tools/smoke-test.mjs && node tools/places-test.mjs && node tools/relations-test.mjs && node tools/strata-test.mjs && node tools/interior-test.mjs && node tools/finding-test.mjs && node tools/rename-test.mjs && node tools/export-test.mjs && node tools/warm-test.mjs && node tools/demo-test.mjs",
     "ui-check": "node tools/ui-check.mjs",
     "vendor": "node tools/vendor.mjs",
     "fixture": "node tools/make-fixture.mjs"

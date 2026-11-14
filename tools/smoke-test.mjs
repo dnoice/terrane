@@ -2,11 +2,11 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Service Smoke Test (Terrane Edition - v1.6)
+ *     - Title: Service Smoke Test (Terrane Edition - v1.7)
  *     - File Name: smoke-test.mjs
  *     - Relative Path: tools/smoke-test.mjs
  *     - Artifact Type: test
- *     - Version: 1.6.0
+ *     - Version: 1.7.0
  *     - Date: 11/13/2026
  *     - Update: Friday, November 13, 2026
  *     - Author: Dennis 'dendogg' Smaltz
@@ -14,6 +14,10 @@
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
  *
  * ✒ Changelog:
+ *     - 1.7.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
+ *       one-date-formatter check sets demo-world.js aside: it writes ISO
+ *       dates only into the demo world's made-up file names, which the
+ *       house rule leaves in ISO.
  *     - 1.6.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
  *       search-token section checks double quotes: a quoted term keeps
  *       its space, a quoted prefix value reaches its maker whole (in:"My
@@ -2086,8 +2090,11 @@ console.log('\nSource (no service)');
   const WEBDIR = path.join(TOOLS, '..', 'web');
   const js = (f) => fs.readFileSync(path.join(WEBDIR, 'js', f), 'utf8');
   const mods = fs.readdirSync(path.join(WEBDIR, 'js')).filter((f) => f.endsWith('.js'));
-  const writers = mods.filter((f) => js(f).includes('getMonth() + 1'));
-  check(`the house date (MM/DD/YYYY) is written by one formatter, model.js's (${writers.join(', ')})`, JSON.stringify(writers) === '["model.js"]', writers.join(', '));
+  // demo-world.js writes dates only into the made-up world's file names
+  // ("2025-06 Coast trip", "Screenshot 2025-01-02 at 09.14.03.png"),
+  // which the house rule leaves in ISO; nothing it writes is shown as a date.
+  const writers = mods.filter((f) => f !== 'demo-world.js' && js(f).includes('getMonth() + 1'));
+  check(`the house date (MM/DD/YYYY) is written by one formatter, model.js's (${writers.join(', ')}); the demo world's ISO file names aside`, JSON.stringify(writers) === '["model.js"]', writers.join(', '));
   // Every export of the shared modules icons.js and model.js is used,
   // by another file or by its own; a constant in capitals documents a
   // format (the scanner's flag bits) and is left out.

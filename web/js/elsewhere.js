@@ -1,11 +1,11 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Not Served Here (Terrane Edition - v1.0)
+ *     - Title: Not Served Here (Terrane Edition - v1.1)
  *     - File Name: elsewhere.js
  *     - Relative Path: web/js/elsewhere.js
  *     - Artifact Type: javascript
- *     - Version: 1.0.0
+ *     - Version: 1.1.0
  *     - Date: 11/13/2026
  *     - Update: Friday, November 13, 2026
  *     - Author: Dennis 'dendogg' Smaltz
@@ -13,18 +13,22 @@
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
  *
  * ✒ Changelog:
+ *     - 1.1.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — A
+ *       page opened over http or https without the service, as on GitHub
+ *       Pages, runs the demo world (demo.js) instead, so this script now
+ *       speaks only for a page opened from disk.
  *     - 1.0.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] —
  *       Initial release: a page the service did not serve says that
  *       Terrane runs from its local service and how to start it, instead
  *       of "The service answered 404.", and the loading sheet leaves.
  *
  * ✒ Description:
- *     Tells a page that was not served by the Terrane service what it is
- *     looking at. Opened from disk, from another server (a code editor's
- *     live server) or from GitHub Pages, the page still holds the token
- *     placeholder the service fills in, so nothing it asks for can answer.
- *     This script sees the placeholder before any request is made and
- *     says plainly how to start Terrane.
+ *     Tells a page opened from disk what it is looking at. Such a page
+ *     still holds the token placeholder the service fills in, and the
+ *     browser will not load its modules, so nothing can run; this script
+ *     sees the placeholder before anything else and says plainly how to
+ *     start Terrane. Over http or https (GitHub Pages, another server)
+ *     the page runs the demo world instead and this script stands aside.
  *
  * ✒ Key Features:
  *     - A classic script, so it runs from disk too, where browsers refuse
@@ -34,11 +38,13 @@
  *       service, the address it prints, and the repository
  *     - Marks the page (html[data-elsewhere]) so app.js makes no request
  *     - Leaves only the explanation in the tab order
- *     - Does nothing at all on a page the service served
+ *     - Does nothing at all on a page the service served, or on one
+ *       opened over http or https, where the demo world runs
  *
  * ✒ Usage Instructions:
  *     Loaded by web/index.html with defer, before js/app.js. app.js reads
- *     the same placeholder and stops before its first request.
+ *     the same placeholder: over http or https it starts the demo world,
+ *     and should the demo fail to start it says the same thing here.
  *
  * ✒ Other Important Information:
  *     - Dependencies: none; reads #splash, #veil and the terrane-token meta
@@ -52,6 +58,8 @@
   // Split, so the service's one replacement in the page can never land here.
   const PLACEHOLDER = ['__TERRANE', 'TOKEN__'].join('_');
   if (!meta || meta.content !== PLACEHOLDER) return;
+  // Over http or https the demo world runs in the page (app.js, demo.js).
+  if (location.protocol === 'http:' || location.protocol === 'https:') return;
   const doc = document.documentElement;
   doc.dataset.elsewhere = '';
   document.title = 'Terrane · start the local service';

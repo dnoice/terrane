@@ -1,10 +1,10 @@
 <!--
 ✒ Metadata
-    - Title: Package Manifest (Terrane Edition - v1.10)
+    - Title: Package Manifest (Terrane Edition - v1.11)
     - File Name: package.json
     - Relative Path: package.json
     - Artifact Type: config
-    - Version: 1.10.0
+    - Version: 1.11.0
     - Date: 11/13/2026
     - Update: Friday, November 13, 2026
     - Author: Dennis 'dendogg' Smaltz
@@ -12,6 +12,12 @@
     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
 
 ✒ Changelog:
+    - 1.11.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — Adds
+      the demo script (tools/demo.mjs: the repository served as GitHub
+      Pages serves it, or the demo world written to disk) and the export
+      script (tools/snapshot-export.mjs: a snapshot as CSV and JSON), and
+      the test script ends with tools/demo-test.mjs, the Node check of the
+      demo world and the demo service.
     - 1.10.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] —
       Raises the package version to 1.4.0: Wave 3, quality of life, is
       merged.
@@ -69,6 +75,10 @@
     - dev: development against a snapshot of a real directory; refreshes
       the snapshot and thumbnails and touches no real file
     - snapshot: records a directory's structure into a dataset
+    - export: writes a snapshot out as a CSV table and a JSON tree
+    - demo: serves the repository as GitHub Pages does, so the page runs
+      the demo world with nothing installed; demo -- write <folder> puts
+      the same world on disk for the real service
     - thumbs: builds or updates the thumbnail dataset (Python and Pillow)
     - wordmark: builds web/assets/logos/TERRANE-wordmark-framed.svg from
       Dennis's TER.svg and R-N.svg (Python with svgelements and shapely)
@@ -85,7 +95,8 @@
       and name checks), the export test (CSV quoting, the byte order
       mark, CRLF and the columns, over a fresh fixture) and the warm
       test (the cache of the last survey, GET /api/warm, --no-warm and
-      Model.adopt), each in Node
+      Model.adopt) and the demo test (the demo world and the demo
+      service), each in Node
     - vendor: fetches the pinned third-party browser files into
       web/vendor/ from jsDelivr; --check verifies them offline
     - ui-check: drives the page in headless Edge or Chrome, keyboard
@@ -99,6 +110,9 @@
     npm start -- "C:\path\to\directory" --read-only
     npm run dev -- --target "C:\path\to\directory"
     npm run snapshot -- "C:\path\to\directory"
+    npm run export
+    npm run demo
+    npm run demo -- write C:\temp\terrane-demo
     npm run thumbs -- --heavy-svg
     npm run wordmark
     npm run mark

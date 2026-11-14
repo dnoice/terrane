@@ -1,10 +1,10 @@
 <!--
 ✒ Metadata
-    - Title: Terrane Roadmap (Terrane Edition - v1.7)
+    - Title: Terrane Roadmap (Terrane Edition - v1.8)
     - File Name: ROADMAP.md
     - Relative Path: docs/ROADMAP.md
     - Artifact Type: docs
-    - Version: 1.7.0
+    - Version: 1.8.0
     - Date: 11/13/2026
     - Update: Friday, November 13, 2026
     - Author: Dennis 'dendogg' Smaltz
@@ -12,6 +12,10 @@
     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
 
 ✒ Changelog:
+    - 1.8.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — Build
+      waves record the demo world, merged into `main`: the page runs on a
+      generated studio drive where no service served it. Where things
+      stand says so.
     - 1.7.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — Wave
       3 is merged into `main` as Terrane 1.4.0: where things stand,
       the requirements, the stages and section 5 say so.
@@ -112,6 +116,11 @@ As of 11/13/2026:
   copy as), getting things in and out (lists as CSV, places files, a
   terminal opened in a folder) and starting fast (the warm start), with
   its review fixes and its docs and sweep.
+- **Complete, on `main`:** the demo world. The page on GitHub Pages, or
+  any server without the service, runs on a generated studio drive of
+  about 12,000 files, with every route and operation answered in the
+  page; `npm run demo` serves it locally, and `npm run export` writes a
+  snapshot out as CSV and JSON.
 - **Next:** no wave is planned yet; the open ground is the rest of
   Stage 4, the rest of Stage 6, and the Stage 5 deferrals in section 4.
 
@@ -571,6 +580,20 @@ titled "Merge qol: Wave 3, quality of life".
      gone before the first look, and without WebGL two checks of what
      is drawn in the world. Draw calls at the baseline (overview 6,
      selected 8, search 7, duplicate ties 9).
+
+### Complete: the demo world
+
+The GitHub Pages address said only how to start the service, so nobody
+could try Terrane without installing it. The page now runs on a
+generated studio drive when no service served it: about 12,000 files,
+every route and operation answered in the page, nothing sent anywhere.
+`npm run demo` serves the repository as Pages does; its `write`
+command puts the same world on disk for the real service; and
+`npm run export` writes a structure snapshot out as CSV and JSON.
+Checks on the branch: `node tools/demo-test.mjs`, "93 passed, 0
+failed"; `node tools/ui-check.mjs demo`, both passes, "38 passed, 0
+failed". It was merged into `main` after Wave 3, in the commit titled
+"Merge demo: the demo world".
 
 ### Next
 
