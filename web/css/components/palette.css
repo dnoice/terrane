@@ -1,18 +1,21 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Command Palette (Terrane Edition - v1.0)
+ *     - Title: Command Palette (Terrane Edition - v1.1)
  *     - File Name: palette.css
  *     - Relative Path: web/css/components/palette.css
  *     - Artifact Type: stylesheet
- *     - Version: 1.0.0
- *     - Date: 11/13/2026
- *     - Update: Friday, November 13, 2026
+ *     - Version: 1.1.0
+ *     - Date: 11/14/2026
+ *     - Update: Saturday, November 14, 2026
  *     - Author: Dennis 'dendogg' Smaltz
  *     - A.I. Acknowledgement: Anthropic - Claude Opus 5.5
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
  *
  * ✒ Changelog:
+ *     - 1.1.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — An
+ *       option's icon or swatch, keycap and figure stand on its label's line,
+ *       not the option's middle; the group labels take the label voice.
  *     - 1.0.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] —
  *       Initial release.
  *
@@ -25,8 +28,9 @@
  * ✒ Key Features:
  *     - dialog.is-palette: wider than a question, opened near the top
  *     - A field with a search icon, ruled off from the list beneath
- *     - Group labels in spaced capitals; rows of icon or swatch, name with
- *       a muted detail beneath, and a key cap or a figure at the right
+ *     - Group labels in the label voice; rows of icon or swatch, name with
+ *       a muted detail beneath, and a key cap or a figure at the right,
+ *       each on the name's line
  *     - The active row carries the highlighter and an ink bar at its left
  *       edge, so it is not told by colour alone
  *     - An unavailable action is muted, with its reason under its name
@@ -80,18 +84,13 @@ dialog.is-palette {
   overflow: auto;
   overscroll-behavior: contain;
 }
-.palette-group {
-  padding: var(--s-2) var(--s-3) var(--s-1);
-  color: var(--text-3);
-  font: 600 var(--fs-3xs) / 1 var(--sans);
-  font-stretch: var(--wdth-wide);
-  letter-spacing: var(--track-caps);
-  text-transform: uppercase;
-}
+/* The label voice (base.css). */
+.palette-group { padding: var(--s-2) var(--s-3) var(--s-1); color: var(--text-3); }
+/* The icon, keycap and figure stand on the label's line, not the option's middle. */
 .palette-option {
   display: grid;
   grid-template-columns: var(--icon-sm) minmax(0, 1fr) auto;
-  align-items: center;
+  align-items: baseline;
   gap: var(--s-3);
   padding: 5px var(--s-3);
   box-shadow: inset 0 0 0 transparent;
@@ -99,8 +98,8 @@ dialog.is-palette {
   cursor: default;
   transition: background-color var(--dur-instant) linear;
 }
-.palette-option > .icon { width: var(--icon-sm); height: var(--icon-sm); color: var(--text-2); }
-.palette-option > .swatch { justify-self: center; }
+.palette-option > .icon { align-self: start; width: var(--icon-sm); height: var(--icon-sm); margin-top: 1px; color: var(--text-2); }
+.palette-option > .swatch { align-self: start; justify-self: center; margin-top: calc((1.25em - 10px) / 2); }
 .palette-option:hover { background: var(--select-hover); }
 .palette-option[aria-selected='true'] { background: var(--select); box-shadow: inset 3px 0 0 var(--line); }
 .palette-option[aria-disabled='true'] { color: var(--text-3); }

@@ -1,18 +1,21 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Quick Look (Terrane Edition - v1.0)
+ *     - Title: Quick Look (Terrane Edition - v1.1)
  *     - File Name: quicklook.js
  *     - Relative Path: web/js/quicklook.js
  *     - Artifact Type: javascript
- *     - Version: 1.0.0
- *     - Date: 11/13/2026
- *     - Update: Friday, November 13, 2026
+ *     - Version: 1.1.0
+ *     - Date: 11/14/2026
+ *     - Update: Saturday, November 14, 2026
  *     - Author: Dennis 'dendogg' Smaltz
  *     - A.I. Acknowledgement: Anthropic - Claude Opus 5.5
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
  *
  * ✒ Changelog:
+ *     - 1.1.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — The foot
+ *       line's hints are groups that never break (span.hint), each keycap
+ *       with its words.
  *     - 1.0.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] —
  *       Initial release.
  *
@@ -332,6 +335,7 @@ export function install(api) {
     const pane = el('div', { class: 'look-body', tabindex: '0', role: 'region' });
     const kbd = (text) => el('kbd', { text });
     look = { node: null, pane, parts, abort: null, media: null, sheet: null };
+    const hint = (...xs) => el('span', { class: 'hint' }, ...xs);
     look.sheet = openSheet((body) => {
       body.append(
         el('header', { class: 'look-head' },
@@ -339,8 +343,11 @@ export function install(api) {
           el('button', { class: 'btn btn-small', type: 'button', title: 'Close (P or Esc)', onclick: close }, icon('close'), 'Close'),
           el('div', { class: 'look-meta' }, parts.facts, parts.where, parts.cut)),
         pane,
-        el('p', { class: 'look-foot', 'aria-hidden': 'true' }, kbd('←'), kbd('→'), ' previous / next file · ', kbd('Home'), kbd('End'), ' first / last · ',
-          kbd('P'), ' or ', kbd('Esc'), ' closes · a long text scrolls to its edge first; a player keeps its keys'));
+        // Each keycap with its words is one group that never breaks; the
+        // line breaks between groups.
+        el('p', { class: 'look-foot', 'aria-hidden': 'true' }, hint(kbd('←'), kbd('→'), ' previous / next file'), ' · ',
+          hint(kbd('Home'), kbd('End'), ' first / last'), ' · ', hint(kbd('P'), ' or ', kbd('Esc'), ' closes'), ' · ',
+          'a long text scrolls to its edge first; a player keeps its keys'));
     }, {
       className: 'is-look', label: `Quick look: ${node.n}`,
       onKey: (e) => {

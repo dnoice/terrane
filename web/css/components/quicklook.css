@@ -1,18 +1,21 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Quick Look (Terrane Edition - v1.0)
+ *     - Title: Quick Look (Terrane Edition - v1.1)
  *     - File Name: quicklook.css
  *     - Relative Path: web/css/components/quicklook.css
  *     - Artifact Type: stylesheet
- *     - Version: 1.0.0
- *     - Date: 11/13/2026
- *     - Update: Friday, November 13, 2026
+ *     - Version: 1.1.0
+ *     - Date: 11/14/2026
+ *     - Update: Saturday, November 14, 2026
  *     - Author: Dennis 'dendogg' Smaltz
  *     - A.I. Acknowledgement: Anthropic - Claude Opus 5.5
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
  *
  * ✒ Changelog:
+ *     - 1.1.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
+ *       foot's hints keep each keycap with its words, so the line breaks only
+ *       between them.
  *     - 1.0.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] —
  *       Initial release.
  *
@@ -153,6 +156,7 @@ dialog.is-look {
   font: 500 var(--fs-xs) / 1.6 var(--mono);
 }
 .look-foot kbd { margin-right: 2px; }
+.look-foot .hint { white-space: nowrap; }
 
 /* The inspector's Quick look button stands under the preview. */
 .look-action { margin-top: var(--s-2); }

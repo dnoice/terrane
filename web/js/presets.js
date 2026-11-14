@@ -1,18 +1,22 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Totals and Quick Searches (Terrane Edition - v1.0)
+ *     - Title: Totals and Quick Searches (Terrane Edition - v1.1)
  *     - File Name: presets.js
  *     - Relative Path: web/js/presets.js
  *     - Artifact Type: javascript
- *     - Version: 1.0.0
- *     - Date: 11/13/2026
- *     - Update: Friday, November 13, 2026
+ *     - Version: 1.1.0
+ *     - Date: 11/14/2026
+ *     - Update: Saturday, November 14, 2026
  *     - Author: Dennis 'dendogg' Smaltz
  *     - A.I. Acknowledgement: Anthropic - Claude Opus 5.5
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
  *
  * ✒ Changelog:
+ *     - 1.1.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
+ *       guide's row for gathering a selection becomes two, each a key and its
+ *       words: Ctrl+↑ ↓ moves in the list without selecting, Space adds or
+ *       drops the row.
  *     - 1.0.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] —
  *       Initial release.
  *
@@ -127,7 +131,8 @@ export function install(api) {
   api.LEDGER_SUB.add({ id: 'presets-total-findings', owner: OWNER, order: 10, tab: 'findings', build: total });
   // The list's own keys for building a selection (app.js): the guide row
   // stands here, beside the total it feeds, so the core guide is unchanged.
-  api.KEYS.add({ id: 'list-gather', owner: OWNER, guide: ['Acting on many', 'Ctrl+↑ ↓, Space', 'In the list: move without selecting; Space adds or drops the row'] });
+  api.KEYS.add({ id: 'list-gather', owner: OWNER, guide: ['Acting on many', 'Ctrl+↑ ↓', 'Move in the list without selecting'] });
+  api.KEYS.add({ id: 'list-gather-space', owner: OWNER, guide: ['Acting on many', 'Space', 'Add or drop the row'] });
 
   /* ---------- quick searches ---------- */
 

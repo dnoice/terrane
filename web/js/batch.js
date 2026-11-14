@@ -1,18 +1,21 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Batch Rename (Terrane Edition - v1.0)
+ *     - Title: Batch Rename (Terrane Edition - v1.1)
  *     - File Name: batch.js
  *     - Relative Path: web/js/batch.js
  *     - Artifact Type: javascript
- *     - Version: 1.0.0
- *     - Date: 11/13/2026
- *     - Update: Friday, November 13, 2026
+ *     - Version: 1.1.0
+ *     - Date: 11/14/2026
+ *     - Update: Saturday, November 14, 2026
  *     - Author: Dennis 'dendogg' Smaltz
  *     - A.I. Acknowledgement: Anthropic - Claude Opus 5.5
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
  *
  * ✒ Changelog:
+ *     - 1.1.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
+ *       guide's row is the key F2 and its words: with several selected,
+ *       rename them together, with a preview.
  *     - 1.0.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] —
  *       Initial release.
  *
@@ -315,7 +318,7 @@ export function install(api) {
   api.RENAME_MANY.add({ id: 'batch', owner: OWNER, run: (nodes) => open(nodes) });
 
   // F2 itself is the controller's key; this row says what it does with several.
-  api.KEYS.add({ id: 'batch-guide', owner: OWNER, guide: [SECTION, 'F2 (several selected)', 'Rename them together, with a preview'] });
+  api.KEYS.add({ id: 'batch-guide', owner: OWNER, guide: [SECTION, 'F2', 'With several selected: rename them together, with a preview'] });
 
   api.MENU.add({
     id: 'batch', owner: OWNER, order: 60,

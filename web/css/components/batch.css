@@ -1,18 +1,23 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Acting on Many (Terrane Edition - v1.0)
+ *     - Title: Acting on Many (Terrane Edition - v1.1)
  *     - File Name: batch.css
  *     - Relative Path: web/css/components/batch.css
  *     - Artifact Type: stylesheet
- *     - Version: 1.0.0
- *     - Date: 11/13/2026
- *     - Update: Friday, November 13, 2026
+ *     - Version: 1.1.0
+ *     - Date: 11/14/2026
+ *     - Update: Saturday, November 14, 2026
  *     - Author: Dennis 'dendogg' Smaltz
  *     - A.I. Acknowledgement: Anthropic - Claude Opus 5.5
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
  *
  * ✒ Changelog:
+ *     - 1.1.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
+ *       rules' columns follow the sheet's width, not the window's; the number
+ *       row's fields shrink and step under one another before a label is cut;
+ *       the legends and the preview's column heads take the label and tight
+ *       voices.
  *     - 1.0.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] —
  *       Initial release.
  *
@@ -27,7 +32,7 @@
  *     - dialog.is-rename: about 860 px wide, its form a column whose
  *       preview takes the height left over
  *     - The rules in three ruled sets side by side (find and replace,
- *       case and number, extension), stacked in a narrow window
+ *       case and number, extension), stepping down by the sheet's width
  *     - The preview: a table of Now, Becomes and Note in one scroll
  *       container with a sticky head; a row with a problem on a garnet
  *       wash, an unchanged one in the third text tone
@@ -56,13 +61,11 @@ dialog.is-rename {
 .rename-form { display: flex; flex-direction: column; min-height: 0; overflow: auto; }
 .rename-form .dialog-body { margin-bottom: var(--s-2); }
 
+/* The rules' columns follow the sheet's width, not the window's. */
 .rename-rules {
   display: grid;
-  grid-template-columns: 1.3fr 1fr 1fr;
+  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
   gap: var(--s-3);
-}
-@media (max-width: 760px) {
-  .rename-rules { grid-template-columns: 1fr; }
 }
 .rename-set {
   min-width: 0;
@@ -71,13 +74,8 @@ dialog.is-rename {
   border: var(--border-2);
   border-radius: var(--radius);
 }
-.rename-set legend {
-  padding: 0 var(--s-1);
-  color: var(--text-3);
-  font: 600 var(--fs-xs) / 1.4 var(--sans);
-  letter-spacing: var(--track-caps);
-  text-transform: uppercase;
-}
+/* The label voice (base.css). */
+.rename-set legend { padding: 0 var(--s-1); color: var(--text-3); line-height: 1.4; }
 .rename-set .field { margin: var(--s-2) 0; }
 .rename-set .field span { margin-bottom: var(--s-1); }
 .rename-set .field input { height: var(--control-h); }
@@ -92,7 +90,8 @@ dialog.is-rename {
   color: var(--text);
   font: 400 var(--fs-row) / 1 var(--sans);
 }
-.rename-row { display: grid; grid-template-columns: 1fr 0.8fr 1fr; gap: var(--s-2); }
+.rename-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(6rem, 1fr)); gap: 0 var(--s-2); }
+.rename-row > *, .rename-row input, .rename-row select { min-width: 0; }
 .rename-checks { display: grid; gap: var(--s-1); margin-top: var(--s-1); }
 .rename-check { display: flex; align-items: flex-start; gap: var(--s-2); color: var(--text-2); font-size: var(--fs-row); }
 .rename-check input { flex: none; margin-top: 2px; accent-color: var(--ink); }
@@ -115,6 +114,7 @@ dialog.is-rename {
 }
 .rename-preview:focus-visible { outline-offset: calc(var(--focus-offset) * -1); }
 .rename-preview table { width: 100%; border-collapse: collapse; font-size: var(--fs-row); }
+/* Column heads in the tight voice (base.css). */
 .rename-preview th {
   position: sticky;
   top: 0;
@@ -122,10 +122,8 @@ dialog.is-rename {
   border-bottom: var(--border);
   background: var(--surface-panel);
   color: var(--text-3);
-  font: 600 var(--fs-xs) / 1.4 var(--sans);
-  letter-spacing: var(--track-caps);
+  line-height: 1.4;
   text-align: left;
-  text-transform: uppercase;
 }
 .rename-preview td {
   padding: 3px var(--s-2);

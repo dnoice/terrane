@@ -1,18 +1,24 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Floating Surfaces (Terrane Edition - v1.1)
+ *     - Title: Floating Surfaces (Terrane Edition - v1.2)
  *     - File Name: floating.css
  *     - Relative Path: web/css/components/floating.css
  *     - Artifact Type: stylesheet
- *     - Version: 1.1.0
- *     - Date: 11/13/2026
- *     - Update: Friday, November 13, 2026
+ *     - Version: 1.2.0
+ *     - Date: 11/14/2026
+ *     - Update: Saturday, November 14, 2026
  *     - Author: Dennis 'dendogg' Smaltz
  *     - A.I. Acknowledgement: Anthropic - Claude Opus 5.5
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
  *
  * ✒ Changelog:
+ *     - 1.2.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — Every
+ *       menu row is --control-h tall, its label and keycap or reason on one
+ *       baseline; dialog fields stand at the buttons' height; the guide
+ *       shares one key column, its sections as many columns as the dialog
+ *       holds; notice words wrap pretty and the close is the action's size;
+ *       the job title takes the label voice.
  *     - 1.1.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] —
  *       The keyboard's menu item is edged in ink, not marked by the
  *       highlighter alone; the guide's setting for single-key
@@ -40,7 +46,9 @@
  *       the bottom edge and pauses while the pointer rests on it
  *     - Operations panel: a live hatch runs along the progress rule while
  *       bytes move; stipple while the total is still being counted
- *     - The guide as a three-column key sheet with keycaps
+ *     - The guide as a key sheet with keycaps: its sections in as many
+ *       columns as the dialog holds, one key column shared by all
+ *     - Menu rows of one height, each label on its keycap's baseline
  *
  * ✒ Other Important Information:
  *     - Dependencies: tokens.css, base.css, controls.css; web/js/ui.js
@@ -88,20 +96,23 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+/* Every row --control-h tall, whether or not it carries a keycap or a
+   reason; the label and its keycap or reason share a baseline. */
 .menu-item {
   appearance: none;
   display: flex;
-  align-items: center;
+  align-items: baseline;
   gap: 10px;
   width: 100%;
-  padding: 6px 12px;
+  min-height: var(--control-h);
+  padding: 0 12px;
   border: 0;
   background-color: transparent;
   color: var(--text);
   text-align: left;
   font: 500 var(--fs-md) / 1.2 var(--sans);
 }
-.menu-item .icon { width: var(--icon-sm); height: var(--icon-sm); color: var(--text-2); }
+.menu-item .icon { align-self: center; width: var(--icon-sm); height: var(--icon-sm); color: var(--text-2); }
 .menu-item:hover, .menu-item:focus { --sweep: 100%; outline: none; }
 /* The keyboard's item is edged in ink, not marked by the highlighter alone. */
 .menu-item:focus-visible { outline: var(--focus-ring); outline-offset: calc(var(--focus-offset) * -1); }
@@ -110,9 +121,9 @@
 .menu-item.is-danger:hover, .menu-item.is-danger:focus { color: var(--on-ink); }
 .menu-item[aria-disabled='true'] { --sweep: 0% !important; color: var(--text-3); }
 .menu-item[aria-disabled='true'] .icon { color: var(--line-2); }
-.menu-label { flex: 1; }
-.menu-why { max-width: 150px; font: 400 var(--fs-xs) / 1.2 var(--mono); color: var(--text-3); text-align: right; }
-.menu-item kbd { border-color: var(--line-3); background: transparent; }
+.menu-label { flex: 1; min-width: 0; overflow: hidden; line-height: var(--control-h); text-overflow: ellipsis; white-space: nowrap; }
+.menu-why { max-width: 150px; font: 400 var(--fs-xs) / 16px var(--mono); color: var(--text-3); text-align: right; }
+.menu-item kbd { padding-block: 0; border-color: var(--line-3); background: transparent; line-height: 16px; }
 .menu-item:hover kbd, .menu-item:focus kbd { border-color: currentColor; color: inherit; }
 .menu-sep { height: 1px; margin: 4px 0; background: var(--line-2); }
 
@@ -179,14 +190,16 @@ dialog[open]::backdrop { opacity: 1; }
 dialog.is-wide { width: min(880px, 94vw); }
 .dialog-form { padding: 20px; }
 .dialog-form h2 { margin: 0 0 10px; font: 700 var(--fs-xl) / 1.2 var(--sans); font-stretch: 104%; }
-.dialog-body { margin: 0 0 12px; color: var(--text-2); overflow-wrap: anywhere; text-wrap: pretty; }
+.dialog-body { margin: 0 0 12px; color: var(--text-2); overflow-wrap: anywhere; text-wrap: balance; text-wrap: pretty; }
 .dialog-error { min-height: 18px; margin: 4px 0 0; color: var(--danger); font-size: var(--fs-row); font-weight: 600; }
 .dialog-error:not(:empty) { animation: nudge 260ms var(--ease-out); }
 .dialog-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 14px; }
 
 /* ---------- the guide: a key sheet ---------- */
 
-.guide { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px 26px; margin: 4px 0; }
+/* The guide's sections in as many columns as the dialog holds, each with
+   the same key column, so every description starts on one line. */
+.guide { display: grid; grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr)); gap: 6px 26px; margin: 4px 0; }
 .guide > div { animation: fade-up var(--dur-base) var(--ease-out-expo) both; }
 .guide > div:nth-child(2) { animation-delay: 40ms; }
 .guide > div:nth-child(3) { animation-delay: 80ms; }
@@ -200,13 +213,14 @@ dialog.is-wide { width: min(880px, 94vw); }
   border-top: var(--border-2);
   color: var(--text-2);
 }
+.guide-pref span { text-wrap: pretty; }
 .guide-pref input { flex: none; margin-top: var(--s-1); accent-color: var(--ink); }
 .guide h3 { margin: 14px 0 7px; padding-bottom: 5px; border-bottom: var(--border-2); color: var(--text-3); }
-.guide dl { display: grid; grid-template-columns: auto 1fr; gap: 6px 12px; margin: 0; font-size: var(--fs-row); }
-/* A keycap keeps one line's height when its description takes two. */
+.guide dl { display: grid; grid-template-columns: var(--guide-key-w) minmax(0, 1fr); align-items: baseline; gap: 6px 12px; margin: 0; font-size: var(--fs-row); }
+/* A keycap keeps one line, its description on the keycap's baseline. */
 .guide dt {
-  align-self: start;
   justify-self: start;
+  max-width: 100%;
   padding: 1px 5px;
   border: var(--border-2);
   border-bottom-width: 2px;
@@ -214,8 +228,7 @@ dialog.is-wide { width: min(880px, 94vw); }
   font: 500 var(--fs-fig) / 1.4 var(--mono);
   white-space: nowrap;
 }
-.guide dd { margin: 0; color: var(--text-2); }
-@media (max-width: 760px) { .guide { grid-template-columns: 1fr; } }
+.guide dd { margin: 0; color: var(--text-2); text-wrap: pretty; }
 
 /* ---------- notices ---------- */
 
@@ -265,14 +278,16 @@ dialog.is-wide { width: min(880px, 94vw); }
 .notice-mark .icon { width: 13px; height: 13px; stroke-width: 2.5; }
 .notice.is-error .notice-mark { background: var(--danger); }
 .notice.is-info .notice-mark { background: var(--paper); color: var(--ink); }
-.notice-text { font-weight: 500; overflow-wrap: anywhere; }
-.notice .btn { --sweep-color: var(--select); border-color: var(--on-ink); background-color: transparent; color: var(--on-ink); }
+.notice-text { font-weight: 500; overflow-wrap: anywhere; text-wrap: pretty; }
+.notice .btn { flex: none; --sweep-color: var(--select); border-color: var(--on-ink); background-color: transparent; color: var(--on-ink); }
 .notice .btn:hover { color: var(--ink); }
+/* The compact control's size, as the notice's action beside it. */
 .notice-close {
   display: grid;
+  flex: none;
   place-items: center;
-  width: 24px;
-  height: 24px;
+  width: var(--control-h-sm);
+  height: var(--control-h-sm);
   padding: 0;
   border: 0;
   background: none;
@@ -322,13 +337,8 @@ dialog.is-wide { width: min(880px, 94vw); }
 }
 .job-head { display: flex; align-items: center; gap: 10px; }
 .job-head > .icon { color: var(--live); }
-.job-title {
-  flex: 1;
-  font: 700 var(--fs-xs) / 1.2 var(--sans);
-  font-stretch: 118%;
-  letter-spacing: 0.09em;
-  text-transform: uppercase;
-}
+/* The label voice (base.css). */
+.job-title { flex: 1; line-height: 1.2; }
 .job-track { position: relative; display: block; height: 9px; overflow: hidden; border: var(--border); background: var(--rule-soft); }
 .job-track i {
   position: absolute;
