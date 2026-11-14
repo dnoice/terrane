@@ -269,7 +269,8 @@ export function install(api) {
     if (!st || !S.ages) return null;
     const A = tableFor(node);
     const k = st.k;
-    const title = api.sectionTitle('Since', st.date);
+    // Its text stays "Since MM/DD/YYYY", the date as the head's figure.
+    const title = api.sectionTitle('Since', st.date, ' ');
     if (!node.d) {
       const changed = node.m > st.t;
       return [title, el('dl', { class: 'facts since' },

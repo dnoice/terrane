@@ -2517,12 +2517,13 @@ function parts(...items) {
 
 /**
  * A section's head: its title, the rule, and a figure at the right in
- * mono. The text reads "Title · figure" (an .sr " · " before the figure),
- * as the head read before the figure had a place of its own.
+ * mono. The text reads "Title · figure" (sep, an .sr " · " by default,
+ * before the figure), as the head read before the figure had a place of
+ * its own; "Since" passes ' ' and keeps reading "Since MM/DD/YYYY".
  */
-function sectionTitle(text, figure = null) {
+function sectionTitle(text, figure = null, sep = ' · ') {
   return el('div', { class: 'section-title' }, el('span', { class: 't', text, title: text }),
-    figure != null && figure !== '' ? [el('span', { class: 'sr', text: ' · ' }), el('span', { class: 'n', text: figure })] : null);
+    figure != null && figure !== '' ? [el('span', { class: 'sr', text: sep }), el('span', { class: 'n', text: figure })] : null);
 }
 const shareBar = (part, whole) => el('span', { class: 'share' }, el('i', { style: { width: `${whole ? Math.min(100, (part / whole) * 100) : 0}%` } }));
 const pct = (part, whole) => (whole ? `${((part / whole) * 100).toFixed(part / whole < 0.1 ? 1 : 0)}%` : '0%');

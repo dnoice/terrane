@@ -19,7 +19,8 @@
       entries left their headers with these releases. app.js's header rolls its 1.9.0 entry out,
       and its header words now open the long form kept here. The title block, bar and
       instruments that follow add the section for web/css/components/stage.css, whose 1.0.0
-      entry left its header with stage.css 1.3.0.
+      entry left its header with stage.css 1.3.0. app.js 1.12.0's long form adds that
+      sectionTitle takes a separator, so the Since head keeps reading "Since MM/DD/YYYY".
     - 1.8.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — Records the names on the blocks:
       viewport.js 1.7.0. viewport.js's header rolls its 1.4.0 entry out; this file already
       holds it.
@@ -112,20 +113,20 @@ short form is kept too.
   survey is done". A disclosure's title is a span.t, so it can end in an ellipsis. In the
   inspector fact() titles its label, and api.parts(...) builds a value from span.part nodes
   joined by " · ", so a value breaks only after a separator: Size, Contains, Levels and the
-  selection's Size use it. api.sectionTitle(text, figure) draws a section's head with its figure
-  in a mono span.n at the right, an .sr " · " before it so its text reads as before ("Preview ·
-  first 16 KB"); every head the controller draws uses it. The fact "Of the archive" is "Of
-  archive". A path is text with a <wbr> after every "/". actionButton takes named, which marks a
-  button whose label carries a name (data-named) as one that may wrap. The legend's label words
-  go through setLabel into span.text, "Kind" with " · click to isolate" as a tail a narrow
-  window drops; fitLegend keeps the chips that fit whole and puts the rest behind a "+N" chip
-  whose menu (openMenu) isolates each kind as its chip does, steps Verify by content out when it
-  does not fit, and runs after each draw and on a ResizeObserver of #legend. The Duplicates
-  legend draws each group as a swatch and its words. The status line reads files, bytes,
-  folders, so a narrow cell's ellipsis takes folders first, and its label's words go into
-  span.text beside the lamp's icon. fatal() takes a detail: a quiet message is a sentence, and
-  "3D view unavailable" puts WebGL's error on a line of its own instead of in the middle of the
-  sentence.
+  selection's Size use it. api.sectionTitle(text, figure, sep) draws a section's head with its
+  figure in a mono span.n at the right, an .sr separator before it (" · " unless given) so its
+  text reads as before ("Preview · first 16 KB", and "Since MM/DD/YYYY", whose separator is a
+  space); every head the controller draws uses it. The fact "Of the archive" is "Of archive". A
+  path is text with a <wbr> after every "/". actionButton takes named, which marks a button
+  whose label carries a name (data-named) as one that may wrap. The legend's label words go
+  through setLabel into span.text, "Kind" with " · click to isolate" as a tail a narrow window
+  drops; fitLegend keeps the chips that fit whole and puts the rest behind a "+N" chip whose
+  menu (openMenu) isolates each kind as its chip does, steps Verify by content out when it does
+  not fit, and runs after each draw and on a ResizeObserver of #legend. The Duplicates legend
+  draws each group as a swatch and its words. The status line reads files, bytes, folders, so a
+  narrow cell's ellipsis takes folders first, and its label's words go into span.text beside the
+  lamp's icon. fatal() takes a detail: a quiet message is a sentence, and "3D view unavailable"
+  puts WebGL's error on a line of its own instead of in the middle of the sentence.
 
 - 1.11.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — Paint gives each file its
   kind's colour in a tone of its own extension (extTone): five steps from 22 % darker to 24 %
