@@ -21,7 +21,8 @@
  *     person would, in both passes, on the default fixture: Quick look over
  *     a text file, a cut text file, a picture, a sound or film, stepping
  *     through the list and closing back to it; the selection's total, the
- *     quick searches and the Untouched order.
+ *     quick searches and the Untouched order; and Changed with it, a
+ *     file's working session in the inspector, the menu and the palette.
  *
  * ✒ Key Features:
  *     - quicklook: P on a text file in the list opens the sheet with focus
@@ -39,14 +40,23 @@
  *       Space select two rows and the count row shows their total, which
  *       a single selection hides; Untouched equals the medianStep order,
  *       reverses on Enter, and four keys fit a 252 px ledger on one line
+ *     - changed-with: a file of the fixture's stamped session shows
+ *       session 1 in the inspector, its sentence, its 8 sessionmates
+ *       nearest in time with their times and itself marked in its place;
+ *       Show all puts session:1 in Find; the menu (Shift+F10) and the
+ *       palette offer it; a file under a dot-folder and the oldest file,
+ *       changed alone, say why they are in none, the menu item unavailable
+ *       with the reason "changed alone"
  *
  * ✒ Usage Instructions:
- *     node tools/ui-check.mjs quicklook presets --no-shots --port 5020
+ *     node tools/ui-check.mjs quicklook presets changed-with --no-shots --port 5020
  *
  * ✒ Other Important Information:
  *     - Dependencies: tools/ui-check.mjs (the context t); the fixture's
  *       archives/site/README.md, edge cases/copy-a.dat (300,000 bytes of
- *       text) and its random pictures and sound and film files
+ *       text), its random pictures and sound and film files, and its
+ *       stamped working session with the file under .cache beside it;
+ *       the page's js/model.js and js/relations.js for reference values
  *     - Compatible platforms: Node.js 22.5+
  * ----------------------------------------------------------------------------
  */
@@ -440,4 +450,141 @@ const presets = {
   },
 };
 
-export default [quicklook, presets];
+/* ---------- changed-with ---------- */
+
+/** The inspector's Changed with it, as it stands, or null when it is not shown. */
+const changedState = () => {
+  const body = document.getElementById('inspector-body');
+  const title = [...body.querySelectorAll('.section-title')].find((x) => x.textContent.startsWith('Changed with it'));
+  if (!title) return null;
+  return {
+    title: title.textContent,
+    note: body.querySelector('.session-note')?.textContent ?? null,
+    rows: [...body.querySelectorAll('.session-near .item')].map((r) => ({
+      name: r.querySelector('.nm').textContent, fig: r.querySelector('.fig').textContent, self: r.classList.contains('is-self'), button: r.tagName === 'BUTTON',
+    })),
+    show: [...body.querySelectorAll('.actions-grid button')].find((b) => /^Show all as session:/.test(b.textContent))?.textContent ?? null,
+  };
+};
+
+/** The open context menu's items: label, and the reason when unavailable. */
+const menuItems = () => [...document.querySelectorAll('#menu .menu-item')].map((b) => ({
+  label: b.querySelector('.menu-label').textContent, off: b.getAttribute('aria-disabled') === 'true', why: b.querySelector('.menu-why')?.textContent ?? null,
+}));
+
+/**
+ * Selects the file rel and shows it in the inspector, flying to it with
+ * WebGL; the location may stop a level or two above a deep file, which
+ * the inspector, the menu and the palette do not need. The list takes
+ * focus, so single keys and Shift+F10 act.
+ */
+async function selectFile(t, rel) {
+  await t.app((T, r) => {
+    const node = T.S.model.find(r);
+    if (T.S.noGL) {
+      T.api.setFocus(node.p);
+      T.api.select(node);
+    } else T.api.reveal(node);
+    return true;
+  }, rel);
+  await t.waitFor((T, r) => T.S.primary === T.S.model.find(r), { args: [rel], what: `${rel} selected` });
+  await t.settle();
+  await t.eval(() => document.getElementById('ledger-list').focus());
+}
+
+/** Opens the context menu for the selection from the keyboard (Shift+F10), reads it and closes it. */
+async function readMenu(t) {
+  await t.key('Shift+F10');
+  await t.waitFor(() => !document.getElementById('menu').hidden && document.querySelectorAll('#menu .menu-item').length > 0, { what: 'the context menu' });
+  const items = await t.eval(menuItems);
+  await t.key('Escape');
+  await t.waitFor(() => document.getElementById('menu').hidden, { what: 'the menu to close' });
+  return items;
+}
+
+const changedWith = {
+  name: 'changed-with',
+  title: 'Changed with it: a file\'s working session in the inspector, the menu and the palette',
+  data: 'fixture',
+  async run(t) {
+    await t.settle();
+    const stamped = t.manifest.session.files;
+    const mid = stamped[5];
+    const name = mid.slice(mid.lastIndexOf('/') + 1);
+    await selectFile(t, mid);
+    const shown = await t.waitFor(changedState, { what: 'Changed with it in the inspector' });
+    await t.shot('changed-with');
+    const want = await t.app((T, n) => {
+      const s = T.S.sessions.list[0];
+      const file = s.files.find((f) => f.n === n);
+      const p2 = (x) => String(x).padStart(2, '0');
+      const hm = (ms) => `${p2(new Date(ms).getHours())}:${p2(new Date(ms).getMinutes())}`;
+      const places = new Set(s.files.map((f) => f.p)).size;
+      return {
+        count: s.count, places, inFirst: !!file,
+        mates: s.files.filter((f) => f !== file).map((f) => ({ n: f.n, d: Math.abs(f.m - file.m), at: hm(f.m) })),
+        order: s.files.map((f) => f.n), self: hm(file.m),
+      };
+    }, name);
+    t.check(`a file of the fixture's stamped session is in session 1 (${name}, ${want.count} files in ${want.places} places)`, want.inFirst && shown.title === 'Changed with it · session 1', JSON.stringify(shown.title));
+    t.check(`the section says how many files in how many places changed when (${shown.note})`,
+      (shown.note || '').startsWith(`${want.count} files in ${want.places} places changed between `), shown.note);
+    const listed = shown.rows.filter((r) => !r.self);
+    const self = shown.rows.filter((r) => r.self);
+    const far = Math.max(...listed.map((r) => want.mates.find((m) => m.n === r.name)?.d ?? Infinity));
+    const nearestLeft = Math.min(...want.mates.filter((m) => !listed.some((r) => r.name === m.n)).map((m) => m.d));
+    t.check(`it lists its ${Math.min(8, want.count - 1)} sessionmates nearest in time, as buttons with their HH:MM`,
+      listed.length === Math.min(8, want.count - 1) && listed.every((r) => r.button && want.mates.some((m) => m.n === r.name && m.at === r.fig)) && far <= nearestLeft,
+      JSON.stringify({ listed, far, nearestLeft }));
+    const order = shown.rows.map((r) => r.name);
+    t.check('in the order they changed, the file itself marked in its place and not a button',
+      self.length === 1 && self[0].name === name && !self[0].button && self[0].fig === want.self
+      && JSON.stringify(order) === JSON.stringify(want.order.filter((n) => order.includes(n))), JSON.stringify(order));
+    t.check('the context menu offers its working session', (await readMenu(t)).some((i) => i.label === 'Show its working session (session:1)' && !i.off));
+    const cmd = await t.app((T) => T.api.COMMANDS.get('traverse').items()[0]);
+    t.check('and so does the command palette, for the selection', cmd.label === `Show the working session of ${name}` && cmd.detail === 'session:1' && !cmd.off, JSON.stringify(cmd));
+
+    // Show all puts session:1 in Find.
+    await t.eval(() => [...document.querySelectorAll('#inspector-body .actions-grid button')].find((b) => /^Show all as session:/.test(b.textContent)).focus());
+    await t.key('Enter');
+    const all = await t.waitFor((T) => T.S.query === 'session:1' && T.S.search && { tab: T.S.tab, n: T.S.search.list.length, focus: document.activeElement?.id, find: document.getElementById('q').value }, { what: 'session:1 in Find' });
+    t.check(`Show all as session:1 puts session:1 in Find, lists its ${all.n} files in Findings and moves to the list`,
+      all.find === 'session:1' && all.tab === 'findings' && all.n === want.count && all.focus === 'ledger-list', JSON.stringify(all));
+    await t.key('Escape');
+    await t.waitFor((T) => !T.S.search, { what: 'the search cleared' });
+
+    // A file under a dot-folder in the same window, and one changed alone.
+    await selectFile(t, t.manifest.session.hidden);
+    const dot = await t.waitFor(changedState, { what: 'Changed with it for the dot-folder file' });
+    t.check(`a file under a dot-folder inside the window is in none, and says why (${dot.note})`,
+      dot.title === 'Changed with it' && /folders whose names start with a dot/.test(dot.note || '') && dot.rows.length === 0 && dot.show === null, JSON.stringify(dot));
+    const lone = await t.app(async (T) => {
+      const R = await import(new URL('js/relations.js', document.baseURI).href);
+      const list = T.S.sessions.list;
+      let best = null;
+      const stack = [T.S.model.root];
+      while (stack.length) {
+        for (const c of stack.pop().c) {
+          if (c.d) { if (!(c.f & 2)) stack.push(c); } else if (c.m > 0 && !(c.f & 1) && R.sessionOf(list, c) === 0 && (!best || c.m < best.m)) best = c;
+        }
+      }
+      return best && T.api.relPath(best);
+    });
+    await selectFile(t, lone);
+    const alone = await t.waitFor(changedState, { what: 'Changed with it for a lone file' });
+    t.check(`the oldest file changed alone says so (${lone})`,
+      alone.title === 'Changed with it' && alone.note === 'Changed alone: no other file changed within 30 minutes of it.' && alone.show === null, JSON.stringify(alone));
+    const offItem = (await readMenu(t)).find((i) => i.label === 'Show its working session');
+    t.check('its menu item is there, unavailable, with the reason "changed alone"', !!offItem && offItem.off && offItem.why === 'changed alone', JSON.stringify(offItem));
+    const offCmd = await t.app((T) => T.api.COMMANDS.get('traverse').items()[0]);
+    t.check('and the palette\'s says the same', offCmd.off === 'changed alone', JSON.stringify(offCmd));
+    await t.app((T) => {
+      T.api.select(null);
+      T.api.setFocus(T.S.model.root);
+      return true;
+    });
+    await t.settle();
+  },
+};
+
+export default [quicklook, presets, changedWith];

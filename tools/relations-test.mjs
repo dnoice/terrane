@@ -2,16 +2,28 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Working Sessions Test (Terrane Edition - v1.0)
+ *     - Title: Working Sessions Test (Terrane Edition - v1.1)
  *     - File Name: relations-test.mjs
  *     - Relative Path: tools/relations-test.mjs
  *     - Artifact Type: test
- *     - Version: 1.0.0
+ *     - Version: 1.1.0
  *     - Date: 11/13/2026
  *     - Update: Friday, November 13, 2026
  *     - Author: Dennis 'dendogg' Smaltz
  *     - A.I. Acknowledgement: Anthropic - Claude Opus 5.5
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
+ *
+ * ✒ Changelog:
+ *     - 1.1.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — A
+ *       section for Changed with it: sessionOf at both ends of the newest,
+ *       middle and oldest sessions, 0 between sessions, before the oldest
+ *       and after the newest, under a dot-folder, with no time, for a
+ *       folder and for no list, and against each session's own files over
+ *       3,000 random files; nearest() in time order, the earlier first on
+ *       a tie, never the file itself, at either end, asked for too many or
+ *       none, and for a file outside the session.
+ *     - 1.0.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] —
+ *       Initial release.
  *
  * ✒ Description:
  *     Runs the browser's working-session module (web/js/relations.js) in
@@ -34,6 +46,9 @@
  *     - Facts: places, runs, bytes and the deepest folder holding them
  *     - session:N through parseQuery and runSearch: exactly the session's
  *       files, a file under a dot-folder inside the window left out
+ *     - Changed with it: sessionOf finds a file's session at the ends of
+ *       every window and gives 0 between them and under dot-folders;
+ *       nearest() keeps time order and takes the earlier on a tie
  *     - The route: every stop the box that shows its file or the mass,
  *       scree or plateau hiding it; no stop twice in a row; leg ends on
  *       box tops; at most 1,000 legs, and the total it was cut from
@@ -253,6 +268,78 @@ section('session:N as a search');
   const none = ['session:3', 'session:0', 'session:x'].map((q) => runSearch(model, parseQuery(q, ext)).list.length);
   check('a session that does not exist, 0 or a word matches nothing', none.every((n) => n === 0) && sessionPredicate(list, 3) === null && sessionPredicate(list, 0) === null, JSON.stringify(none));
   check('no folder is a match', ![...s1.set].some((n) => n.d));
+}
+
+/* ---------- changed with it ---------- */
+
+section('Changed with it: sessionOf and nearest');
+{
+  const model = build({
+    a: { 'a1.md': [10, T0], 'a2.md': [20, T0 + 5 * MIN], 'a3.md': [30, T0 + 12 * MIN], '.cache': { 'state.json': [1, T0 + 6 * MIN] } },
+    b: { 'b1.js': [40, T0 + 60 * MIN], 'b2.js': [50, T0 + 70 * MIN] },
+    c: { deep: { 'c1.css': [60, T0 + 3 * 60 * MIN] }, 'c2.css': [70, T0 + 3 * 60 * MIN + 20 * MIN] },
+    between: { 'gap.txt': [1, T0 + 125 * MIN] },
+    early: { 'first.txt': [1, T0 - 5 * 60 * MIN] },
+    late: { 'alone.txt': [5, T0 + 10 * 60 * MIN], 'untimed.txt': [5, 0] },
+  });
+  const list = sessions(model.root);
+  const of = (rel) => R.sessionOf(list, model.find(rel));
+  check('three sessions to look in, newest first', list.length === 3, `${list.length}`);
+  check('the newest session at both its ends: its first and its last file are in session 1', of('c/deep/c1.css') === 1 && of('c/c2.css') === 1);
+  check('the middle one, and the oldest at both its ends', of('b/b1.js') === 2 && of('b/b2.js') === 2 && of('a/a1.md') === 3 && of('a/a3.md') === 3 && of('a/a2.md') === 3);
+  check('a file changed between two sessions, more than 30 minutes from either, is in none',
+    of('between/gap.txt') === 0, `${of('between/gap.txt')}`);
+  check('nor is one changed before the oldest session, or after the newest', of('early/first.txt') === 0 && of('late/alone.txt') === 0);
+  check('a file under a dot-folder inside a session\'s window is in none, though its time is inside',
+    of('a/.cache/state.json') === 0 && list[2].start <= model.find('a/.cache/state.json').m && model.find('a/.cache/state.json').m <= list[2].end);
+  check('a file with no time, a folder, no file and no list give 0',
+    of('late/untimed.txt') === 0 && of('a') === 0 && R.sessionOf(list, null) === 0 && R.sessionOf([], model.find('a/a1.md')) === 0 && R.sessionOf(null, model.find('a/a1.md')) === 0);
+
+  // Against a plain search on random trees: every file, every answer.
+  let seed = 23;
+  const rnd = () => ((seed = (Math.imul(seed, 1103515245) + 12345) >>> 0) / 2 ** 32);
+  const spec = {};
+  for (let d = 0; d < 30; d++) spec[`d${d}`] = d % 7 === 0 ? { '.hid': {} } : {};
+  const dirs = Object.keys(spec);
+  for (let i = 0; i < 3000; i++) {
+    const d = spec[dirs[Math.floor(rnd() * dirs.length)]];
+    const tm = rnd() < 0.02 ? 0 : T0 - Math.floor(rnd() * 20 * 86400000);
+    if (rnd() < 0.1 && d['.hid']) d['.hid'][`h${i}`] = [i, tm];
+    else d[`f${i}`] = [i, tm];
+  }
+  const big = build(spec);
+  const bl = sessions(big.root);
+  const owner = new Map();
+  bl.forEach((s, k) => s.files.forEach((f) => owner.set(f, k + 1)));
+  let wrong = 0;
+  let files = 0;
+  const stack = [big.root];
+  while (stack.length) {
+    for (const ch of stack.pop().c) {
+      if (ch.d) stack.push(ch);
+      else {
+        files++;
+        if (R.sessionOf(bl, ch) !== (owner.get(ch) || 0)) wrong++;
+      }
+    }
+  }
+  check(`over ${files.toLocaleString('en-US')} random files in ${bl.length} sessions, sessionOf agrees with each session's own files`, wrong === 0 && bl.length > 10, `${wrong} wrong`);
+
+  // nearest: a window grown on the nearer side, earlier first on a tie.
+  const times = { 't00.md': 0, 't10.md': 10, 't20.md': 20, 't25.md': 25, 't40.md': 40, 't41.md': 41, 't99.md': 99 };
+  const nm = build({ x: Object.fromEntries(Object.entries(times).map(([k, v]) => [k, [1, T0 + v * MIN]])) });
+  const [s] = sessions(nm.root, { gapMs: 60 * MIN });
+  const at = (n) => nm.find(`x/${n}`);
+  const near = (n, k) => names(R.nearest(s, at(n), k));
+  check('the three nearest to the file at 25 are 10, 20 and 40, in time order: 10 and 40 are equally near, and the earlier is taken first',
+    near('t25.md', 3) === 't10.md,t20.md,t40.md', near('t25.md', 3));
+  check('the file itself is never among them, and at an end they come from the one side',
+    near('t00.md', 2) === 't10.md,t20.md' && near('t99.md', 2) === 't40.md,t41.md' && !near('t41.md', 6).includes('t41.md'), `${near('t00.md', 2)} | ${near('t99.md', 2)}`);
+  check('asking for more than there are gives every other file; for none, nothing',
+    near('t40.md', 50) === 't00.md,t10.md,t20.md,t25.md,t41.md,t99.md' && near('t40.md', 0) === '' && R.nearest(s, null, 3).length === 0);
+  const outside = { n: 'outside', m: T0 + 32 * MIN, p: null };
+  check('a file outside the session is placed by its time', names(R.nearest(s, outside, 2)) === 't25.md,t40.md' && names(R.nearest(s.files, outside, 1)) === 't25.md',
+    names(R.nearest(s, outside, 2)));
 }
 
 /* ---------- the route ---------- */
