@@ -1,11 +1,11 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Controller Seams Scenario (Terrane Edition - v1.4)
+ *     - Title: Controller Seams Scenario (Terrane Edition - v1.5)
  *     - File Name: seams.mjs
  *     - Relative Path: tools/ui-scenarios/seams.mjs
  *     - Artifact Type: test
- *     - Version: 1.4.0
+ *     - Version: 1.5.0
  *     - Date: 11/13/2026
  *     - Update: Friday, November 13, 2026
  *     - Author: Dennis 'dendogg' Smaltz
@@ -13,6 +13,17 @@
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
  *
  * ✒ Changelog:
+ *     - 1.5.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
+ *       registries the palette, the remembered view and saved searches
+ *       use (COMMANDS, LEDGER_SUB, AFTER_FOCUS, AFTER_SELECT,
+ *       TAB_SECTIONS) are frozen, hold no controller entry, and are
+ *       compared at the end with the rest; S.searches may hold the store
+ *       that feature keeps there. New checks: AFTER_FOCUS hears the
+ *       folder you are in, AFTER_SELECT hears select() and selectAll(),
+ *       a LEDGER_SUB control stands after the sort keys, cursorTo moves
+ *       the list's cursor, a TAB_SECTIONS section is drawn in the Places
+ *       tab, copyText says what happened, and the key table carries the
+ *       palette's labels, palette: false and gl fields.
  *     - 1.4.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
  *       S.sessions slot may hold what the Session traverse feature fills
  *       it with after the survey (a list of working sessions), as
@@ -59,6 +70,9 @@
  *     - Pins add up in source order and stop at 3,000; hover lines,
  *       inspector sections, tabs, Survey sections, layout options and the
  *       after-layout, refresh, survey and query hooks each take effect
+ *     - The focus and selection hooks, controls on the ledger's count
+ *       row, sections in another feature's tab, selectAll, cursorTo,
+ *       copyText and the key table's palette fields
  *     - The only hook the controller registers itself is the survey hook
  *       that rebuilds the shared age table
  *     - Feature search tokens through parseQuery's is: and prefix tables
@@ -134,7 +148,8 @@ export default {
     await t.settle();
     const start = await t.app(async (T) => {
       const a = T.api;
-      const regs = ['KEYS', 'ESCAPE', 'PIN_SOURCES', 'TIP_LINES', 'READING', 'TABS', 'LAYOUT_OPTS', 'AFTER_LAYOUT', 'AFTER_REFRESH', 'AFTER_SURVEY', 'AFTER_OP', 'MENU', 'AFTER_QUERY', 'SURVEY'];
+      const regs = ['KEYS', 'ESCAPE', 'PIN_SOURCES', 'TIP_LINES', 'READING', 'TABS', 'LAYOUT_OPTS', 'AFTER_LAYOUT', 'AFTER_REFRESH', 'AFTER_SURVEY', 'AFTER_OP', 'MENU', 'AFTER_QUERY', 'SURVEY',
+        'COMMANDS', 'LEDGER_SUB', 'AFTER_FOCUS', 'AFTER_SELECT', 'TAB_SECTIONS'];
       const mod = await import(new URL('js/features.js', document.baseURI).href);
       // A feature's entries carry its owner; the controller's carry none, or 'core'.
       const own = (reg) => [...reg].filter((x) => !x.owner || x.owner === 'core').map((x) => x.id);
@@ -143,8 +158,9 @@ export default {
         frozen: Object.isFrozen(a) && regs.every((n) => Object.isFrozen(a[n])) && Object.isFrozen(a.INSPECTOR) && Object.isFrozen(a.QUERY),
         // places is null, or the store the Landmarks feature keeps there;
         // sessions is null, or the working sessions the Session traverse found.
-        slots: ['time', 'interior', 'places', 'sessions'].every((k) => k in T.S) && ['time', 'interior'].every((k) => T.S[k] === null)
+        slots: ['time', 'interior', 'places', 'sessions', 'searches'].every((k) => k in T.S) && ['time', 'interior'].every((k) => T.S[k] === null)
           && (T.S.places === null || Array.isArray(T.S.places.benchmarks)) && (T.S.sessions === null || Array.isArray(T.S.sessions.list))
+          && (T.S.searches === null || (Array.isArray(T.S.searches.history) && Array.isArray(T.S.searches.saved)))
           && 'ages' in T.S && typeof T.S.ages?.kept === 'function' && T.S.ages.folders === T.S.model.root.dc + 1,
         ids: Object.fromEntries([...regs.map((n) => [n, own(a[n])]), ['focus', own(a.INSPECTOR.focus)], ['node', own(a.INSPECTOR.node)]]),
         all: Object.fromEntries([...regs.map((n) => [n, a[n].ids()]), ['focus', a.INSPECTOR.focus.ids()], ['node', a.INSPECTOR.node.ids()]]),
@@ -163,7 +179,7 @@ export default {
     const featureIds = Object.entries(start.all).map(([n, list]) => [n, list.filter((id) => !ids[n].includes(id))]).filter(([, l]) => l.length);
     t.note(`feature entries left out of the comparisons: ${featureIds.map(([n, l]) => `${n} ${l.join(' ')}`).join('; ') || 'none'}`);
     t.check('the api and every registry are frozen', start.frozen);
-    t.check('S declares time, interior, places and sessions as null; ages holds the age table the survey built', start.slots);
+    t.check('S declares time, interior, places, sessions and searches as null; ages holds the age table the survey built', start.slots);
     t.check('features.js exports the FEATURES list', start.features);
     t.check('Escape, pins and hover lines hold the controller entries in order',
       same(ids.ESCAPE, ['floating', 'placing', 'kind-filter', 'search', 'selection']) && same(ids.PIN_SOURCES, ['search', 'heavy'])
@@ -176,6 +192,9 @@ export default {
       && same(ids.AFTER_SURVEY, ['ages']) && start.tokens === 0, JSON.stringify(ids.AFTER_SURVEY));
     t.check('the Survey tab\'s own sections are a registry, in the order drawSurvey drew them',
       same(ids.SURVEY, ['largest', 'duplicates', 'empty', 'sealed', 'links']), JSON.stringify(ids.SURVEY));
+    const g1regs = ['COMMANDS', 'LEDGER_SUB', 'AFTER_FOCUS', 'AFTER_SELECT', 'TAB_SECTIONS'];
+    t.check('the palette commands, ledger sub-line controls, focus and selection hooks and tab sections hold no controller entry',
+      g1regs.every((n) => ids[n].length === 0), JSON.stringify(g1regs.map((n) => ids[n])));
     t.check('the key allocation is fixed: I Interiors, T , . < > Time, B H J Landmarks, the canvas keeps W A S D Q E R F',
       same(start.owners, OWNERS) && start.ownersFrozen, JSON.stringify(start.owners));
     t.check('the tab buttons are made from TABS, Contents selected', same(start.tabs, ['contents:Contents:true', 'findings:Findings:false', 'survey:Survey:false', 'journal:Journal:false']), JSON.stringify(start.tabs));
@@ -490,6 +509,96 @@ export default {
       for (const k of ['seam', 'never']) delete T.api.QUERY.prefix[k];
     });
 
+    // The seams the palette, the remembered view and saved searches use:
+    // the focus and selection hooks, controls on the ledger's count row,
+    // sections in another feature's tab, selectAll, cursorTo, copyText,
+    // and the palette's fields in the key table.
+    await t.eval(muteErrors, true);
+    await t.app((T) => {
+      const a = T.api;
+      const S = T.S;
+      window.__seam.focusHeard = [];
+      window.__seam.selHeard = [];
+      a.select(null);
+      a.AFTER_FOCUS.add({ id: 'seam-focus', run: (dir) => { window.__seam.focusHeard.push(dir === S.focus ? dir.n : `not the focus: ${dir.n}`); } });
+      a.AFTER_SELECT.add({ id: 'seam-select', run: (sel, p) => { window.__seam.selHeard.push([sel === S.sel, sel.size, p ? p.n : null]); } });
+      a.LEDGER_SUB.add({ id: 'seam-sub', tab: 'contents', build: (ctx) => a.el('button', { class: 'sort', type: 'button', 'data-k': 'seam-sub', text: `Seam ${ctx.items.length} ${ctx.focus === S.focus}` }) });
+      a.LEDGER_SUB.add({ id: 'seam-sub-broken', tab: 'contents', order: 60, build: () => { throw new Error('sub on purpose'); } });
+      a.TAB_SECTIONS.add({ id: 'seam-tab', tab: 'places', build: () => a.el('details', { class: 'seam-tab' }, a.el('summary', {}, 'Seam section')) });
+      a.TAB_SECTIONS.add({ id: 'seam-tab-broken', tab: 'places', order: 60, build: () => { throw new Error('tab section on purpose'); } });
+      return true;
+    });
+    const dirName = await t.app((T) => {
+      const d = T.S.model.root.c.find((c) => c.d && !c.e && c.c.length > 2);
+      T.api.setFocus(d);
+      return d.n;
+    });
+    await t.waitFor((T, n) => T.S.focus.n === n, { args: [dirName], timeout: 8000 });
+    await t.settle();
+    const g1 = await t.app((T) => {
+      const a = T.api;
+      const S = T.S;
+      S.tab = 'contents';
+      a.drawLedger();
+      const tool = document.querySelector('#ledger-sub .sub-tools [data-k="seam-sub"]');
+      const toolText = tool?.textContent ?? null;
+      const before = tool?.parentElement?.previousElementSibling?.className ?? null;
+      const items = a.listItems();
+      const two = items.slice(1, 3);
+      a.select(items[0]);
+      a.selectAll(two, two[1]);
+      const rows = [...document.querySelectorAll('#ledger-list .row[aria-selected="true"]')].length;
+      const moved = a.cursorTo(items[items.length - 1]);
+      const cursor = T.list.cursor === items.length - 1;
+      const notThere = a.cursorTo(S.model.root);
+      S.tab = 'places';
+      a.drawLedger();
+      const placed = [...document.querySelectorAll('#ledger-rich > details')].map((d) => d.className || d.querySelector('summary')?.firstChild?.textContent);
+      S.tab = 'contents';
+      a.drawLedger();
+      return {
+        tool: toolText, before, n: items.length,
+        sel: [S.sel.size, S.primary?.n === two[1].n], rows, moved, cursor, notThere,
+        built: a.tabSections('places').map((e) => e.className), placed, heard: { focus: window.__seam.focusHeard, sel: window.__seam.selHeard },
+        keys: {
+          lens: a.KEYS.get('lens').labels?.['2'], panels: Object.keys(a.KEYS.get('panels').labels || {}),
+          off: ['sibling', 'parent-child', 'activate', 'menu'].map((id) => a.KEYS.get(id).palette),
+          gl: ['descend', 'overview'].map((id) => a.KEYS.get(id).gl),
+        },
+      };
+    });
+    const g1errs = await t.eval(muteErrors, false);
+    t.check(`AFTER_FOCUS hears the folder you are in once it changes (${g1.heard.focus.join(', ')})`, g1.heard.focus.at(-1) === dirName, JSON.stringify(g1.heard.focus));
+    t.check('AFTER_SELECT hears select() and selectAll() with S.sel and the primary',
+      same(g1.heard.sel.slice(-2).map((x) => x.slice(0, 2)), [[true, 1], [true, 2]]) && g1.sel[0] === 2 && g1.sel[1] && g1.rows === 2, JSON.stringify({ heard: g1.heard.sel, sel: g1.sel, rows: g1.rows }));
+    t.check('a LEDGER_SUB control stands on the count row after the sort keys, told the rows shown and the folder; one that throws is reported and left out',
+      g1.tool === `Seam ${g1.n} true` && g1.before === 'sorts' && g1errs.some((e) => /LEDGER_SUB "seam-sub-broken" failed/.test(e)), JSON.stringify({ tool: g1.tool, before: g1.before, g1errs }));
+    t.check('cursorTo moves the list\'s cursor to a listed node, and answers false for one not listed', g1.moved && g1.cursor && g1.notThere === false);
+    t.check('a TAB_SECTIONS section is drawn in its tab, after the tab\'s own; one that throws is reported and left out',
+      g1.built.includes('seam-tab') && g1.placed.at(-1) === 'seam-tab' && g1.placed.includes('places-return') && g1errs.some((e) => /TAB_SECTIONS "seam-tab-broken" failed/.test(e)), JSON.stringify(g1.placed));
+    t.check('the key table carries the palette\'s fields: labels on the lens and panels, palette: false on the arrows, Enter and the menu, gl on V and 0',
+      g1.keys.lens === 'Lens: age' && same(g1.keys.panels, ['[', ']']) && g1.keys.off.every((x) => x === false) && g1.keys.gl.every((x) => x === true), JSON.stringify(g1.keys));
+    const copied = await t.app(async (T) => {
+      const said = [];
+      navigator.clipboard.writeText = async (text) => { said.push(text); };
+      await T.api.copyText('seam text', 'Seam copied.');
+      navigator.clipboard.writeText = async () => { throw new Error('denied'); };
+      await T.api.copyText('seam text', 'Seam copied.', 'Seam fallback.');
+      delete navigator.clipboard.writeText;
+      return { said, notices: [...document.querySelectorAll('#notices .notice-text')].map((n) => n.textContent).slice(-2) };
+    });
+    t.check('copyText writes to the clipboard and says so; refused, it says that with its fallback',
+      same(copied.said, ['seam text']) && same(copied.notices, ['Seam copied.', 'The browser did not allow clipboard access. Seam fallback.']), JSON.stringify(copied));
+    await t.app((T) => {
+      const a = T.api;
+      for (const [reg, id] of [['AFTER_FOCUS', 'seam-focus'], ['AFTER_SELECT', 'seam-select'], ['LEDGER_SUB', 'seam-sub'], ['LEDGER_SUB', 'seam-sub-broken'], ['TAB_SECTIONS', 'seam-tab'], ['TAB_SECTIONS', 'seam-tab-broken']]) a[reg].remove(id);
+      a.select(null);
+      a.setFocus(T.S.model.root);
+      a.drawLedger();
+      return true;
+    });
+    await t.settle();
+
     if (t.gl) {
       // Pins add up in source order and stop at the capacity.
       await t.settle();
@@ -561,7 +670,8 @@ export default {
 
     const end = await t.app((T) => {
       const a = T.api;
-      return Object.fromEntries([...['KEYS', 'ESCAPE', 'PIN_SOURCES', 'TIP_LINES', 'READING', 'TABS', 'LAYOUT_OPTS', 'AFTER_LAYOUT', 'AFTER_REFRESH', 'AFTER_SURVEY', 'AFTER_OP', 'MENU', 'AFTER_QUERY', 'SURVEY'].map((n) => [n, a[n].ids()]),
+      return Object.fromEntries([...['KEYS', 'ESCAPE', 'PIN_SOURCES', 'TIP_LINES', 'READING', 'TABS', 'LAYOUT_OPTS', 'AFTER_LAYOUT', 'AFTER_REFRESH', 'AFTER_SURVEY', 'AFTER_OP', 'MENU', 'AFTER_QUERY', 'SURVEY',
+        'COMMANDS', 'LEDGER_SUB', 'AFTER_FOCUS', 'AFTER_SELECT', 'TAB_SECTIONS'].map((n) => [n, a[n].ids()]),
         ['focus', a.INSPECTOR.focus.ids()], ['node', a.INSPECTOR.node.ids()]]);
     });
     t.check('every test entry is gone again', same(end, start.all), JSON.stringify(end).slice(0, 300));

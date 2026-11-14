@@ -2,11 +2,11 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Service Smoke Test (Terrane Edition - v1.5)
+ *     - Title: Service Smoke Test (Terrane Edition - v1.6)
  *     - File Name: smoke-test.mjs
  *     - Relative Path: tools/smoke-test.mjs
  *     - Artifact Type: test
- *     - Version: 1.5.0
+ *     - Version: 1.6.0
  *     - Date: 11/13/2026
  *     - Update: Friday, November 13, 2026
  *     - Author: Dennis 'dendogg' Smaltz
@@ -14,6 +14,11 @@
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
  *
  * ✒ Changelog:
+ *     - 1.6.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
+ *       search-token section checks double quotes: a quoted term keeps
+ *       its space, a quoted prefix value reaches its maker whole (in:"My
+ *       Folder"), a token that begins with a quote is a literal name, an
+ *       open quote runs to the end and empty quotes add nothing.
  *     - 1.5.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
  *       hardening checks. Through the service: the holding area refused
  *       under every other spelling (case, a trailing dot, NTFS stream
@@ -133,8 +138,9 @@
  *       box, so no layout can pass the viewport's capacity
  *     - Relation lines, without the service or a browser: the vertices the
  *       viewport writes for ties, routes and chevrons
- *     - Search tokens, without the service: the grammar answers as before
- *       and takes is: words and name:value tokens from its caller
+ *     - Search tokens, without the service: the grammar answers as before,
+ *       takes is: words and name:value tokens from its caller, and keeps
+ *       spaces inside double quotes
  *     - The age table, without the service: changed bytes and files per
  *       folder and step equal a brute-force walk, and the strata add up
  *     - The time view, without the service: the layout looked back to
@@ -1403,6 +1409,26 @@ try {
 }
 check('is: and prefix lookups use real words only: is:constructor and is:__proto__ match nothing and do not throw',
   !protoErr && JSON.stringify(protoHits.slice(0, 3)) === '[[],[],[]]', protoErr || JSON.stringify(protoHits));
+// Double quotes: whitespace splits only outside them, and they are dropped.
+const qq = new Model('root');
+qq.ingest([
+  [0, -1, 'root', NOW, 0, ['two words.txt', 10, NOW, 0, 'two.txt', 10, NOW, 0, 'words two.md', 10, NOW, 0, 'a*b.txt', 10, NOW, 0]],
+  [1, 0, 'My Folder', NOW, 0, ['inner.txt', 5, NOW, 0]],
+], [], qq.root);
+const qhits = (q, ext) => {
+  const pred = parseQuery(q, ext);
+  return pred ? JSON.stringify(runSearch(qq, pred).list.map((x) => x.n).sort()) : null;
+};
+check('a quoted term keeps its space: "two words" finds the one name with both words in that order, unquoted both names with both words',
+  qhits('"two words"') === '["two words.txt"]' && qhits('two words') === '["two words.txt","words two.md"]', `${qhits('"two words"')} ${qhits('two words')}`);
+let inSeen = null;
+const inExt = { prefix: { in: (v, raw) => { inSeen = [v, raw]; return (n) => n.p?.n.toLowerCase() === v; } } };
+check('a quoted prefix value reaches its maker whole, lower-cased and as typed, without the quotes',
+  qhits('in:"My Folder"', inExt) === '["inner.txt"]' && JSON.stringify(inSeen) === '["my folder","My Folder"]', `${qhits('in:"My Folder"', inExt)} ${JSON.stringify(inSeen)}`);
+check('a token that begins with a quote is a literal name term, never a prefix or a glob: "ext:md" finds nothing, "a*b" finds a*b.txt only',
+  qhits('"ext:md"') === '[]' && qhits('"a*b"') === '["a*b.txt"]' && qhits('a*b') === '[]', `${qhits('"ext:md"')} ${qhits('"a*b"')} ${qhits('a*b')}`);
+check('a quote left open runs to the end, and empty quotes add nothing',
+  qhits('"two wo') === '["two words.txt"]' && qhits('two ""') === qhits('two') && qhits('""') === null, `${qhits('"two wo')} ${qhits('two ""')} ${qhits('""')}`);
 
 console.log('\nAge table (no service)');
 const { buildAgeTable, LADDER_DAYS, STEPS, BAND_STEPS, BANDS, DAY } = await import(new URL('../web/js/timeline.js', import.meta.url));

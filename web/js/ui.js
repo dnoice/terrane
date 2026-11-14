@@ -1,11 +1,11 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Interface Primitives (Terrane Edition - v1.3)
+ *     - Title: Interface Primitives (Terrane Edition - v1.4)
  *     - File Name: ui.js
  *     - Relative Path: web/js/ui.js
  *     - Artifact Type: javascript
- *     - Version: 1.3.0
+ *     - Version: 1.4.0
  *     - Date: 11/13/2026
  *     - Update: Friday, November 13, 2026
  *     - Author: Dennis 'dendogg' Smaltz
@@ -13,6 +13,11 @@
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
  *
  * ✒ Changelog:
+ *     - 1.4.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] —
+ *       openSheet: a sheet in the shared dialog for the command palette,
+ *       built by its caller, named, hearing its own keys, taking the
+ *       floating slot as ask() does and giving focus back on close; an
+ *       action chosen in it runs in the frame after the close event.
  *     - 1.3.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] —
  *       Unavailable menu items are reached by the arrows and carry
  *       their reason as their description; the menu stops the browser's
@@ -29,8 +34,6 @@
  *       animation while their neighbours slide (FLIP); the virtual list
  *       cascades rows in when its items change; slideIndicator moves the
  *       ink plate of a tab strip or segmented switch.
- *     - 1.1.0 (11/11/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
- *       hover tip can carry a picture below its lines.
  *     Earlier entries: see CHANGELOG.md
  *
  * ✒ Description:
@@ -57,11 +60,16 @@
  *       focus, and marks a fresh list so its rows can cascade in; empty,
  *       it says so in a sentence (setEmpty) and in its name
  *     - slideIndicator(container, item) for tab strips and switches
+ *     - openSheet(build, { className, label, onKey }) for a richer modal
+ *       surface in the same dialog (the command palette): focus comes
+ *       back on close, and close(then) runs then once it has
  *
  * ✒ Usage Instructions:
- *     import { el, openMenu, ask, notice, tip, VirtualList } from './ui.js';
+ *     import { el, openMenu, ask, openSheet, notice, tip, VirtualList } from './ui.js';
  *     openMenu(x, y, [{ label: 'Rename', icon: 'rename', hint: 'F2', run }, 'sep']);
  *     const values = await ask({ title, fields: [{ name, label, value }] });
+ *     const sheet = openSheet((body) => body.append(input, listbox), { className: 'is-palette', label: 'Command palette', onKey });
+ *     sheet.close(() => runTheChosenAction());
  *     notice('Moved 3 items', { action: { label: 'Undo', run: undo } });
  *     list.setEmpty('This folder is empty.');
  *
@@ -227,6 +235,50 @@ export function ask({ title, body, fields = [], confirm = 'Confirm', danger = fa
       inputs[0].setSelectionRange(0, dot > 0 ? dot : v.length);
     }
   });
+}
+
+/**
+ * A sheet in the shared dialog, for something richer than ask(): build(body)
+ * fills it before it opens. It is modal, so the page's keys rest while it
+ * is open and Escape closes it natively; it takes the floating slot as
+ * ask() does. className is on the dialog while it is open, label names it,
+ * and onKey(e) hears every key pressed inside. Returns { close, body }.
+ * close(then) shuts it, puts focus back where it was before, and runs then
+ * in the next animation frame after the close event, so an action that
+ * moves focus keeps it where it put it.
+ */
+export function openSheet(build, { className = '', label = '', onKey } = {}) {
+  closeFloating();
+  const dlg = document.getElementById('dialog');
+  const returnTo = document.activeElement;
+  const classes = className.split(/\s+/).filter(Boolean);
+  const body = el('div', { class: 'sheet' });
+  let after = null;
+  const keydown = (e) => onKey?.(e);
+  const close = (then) => {
+    if (typeof then === 'function') after = then;
+    if (dlg.open) dlg.close('sheet');
+  };
+  const closer = () => close();
+  build(body);
+  dlg.replaceChildren(body);
+  dlg.classList.add(...classes);
+  if (label) dlg.setAttribute('aria-label', label);
+  dlg.addEventListener('keydown', keydown);
+  dlg.onclose = () => {
+    if (closeCurrent === closer) closeCurrent = null;
+    dlg.classList.remove(...classes);
+    dlg.removeAttribute('aria-label');
+    dlg.removeEventListener('keydown', keydown);
+    if (returnTo && returnTo !== document.body && returnTo.isConnected) returnTo.focus({ preventScroll: true });
+    const then = after;
+    after = null;
+    if (then) requestAnimationFrame(() => then());
+  };
+  closeCurrent = closer;
+  dlg.returnValue = '';
+  dlg.showModal();
+  return { close, body };
 }
 
 /* ---------- notices ---------- */

@@ -1,11 +1,11 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Tree Model (Terrane Edition - v1.3)
+ *     - Title: Tree Model (Terrane Edition - v1.4)
  *     - File Name: model.js
  *     - Relative Path: web/js/model.js
  *     - Artifact Type: javascript
- *     - Version: 1.3.0
+ *     - Version: 1.4.0
  *     - Date: 11/13/2026
  *     - Update: Friday, November 13, 2026
  *     - Author: Dennis 'dendogg' Smaltz
@@ -13,6 +13,10 @@
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
  *
  * ✒ Changelog:
+ *     - 1.4.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] —
+ *       Double quotes keep spaces in one search token and are dropped:
+ *       "two words" is one name term, and in:"My Folder" reaches its
+ *       prefix as the value my folder and the raw My Folder.
  *     - 1.3.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] —
  *       fmtDay (MM/DD/YYYY) and plural are the one date formatter and
  *       count wording every module imports; fmtDate builds on fmtDay.
@@ -21,8 +25,7 @@
  *       search grammar takes is: words and name:value tokens from the
  *       caller, so a feature can make itself searchable; is: looks up
  *       only real words, so is:constructor no longer matches everything.
- *     - 1.0.0 (11/09/2026) [dendogg + Anthropic - Claude Fable 5.2] —
- *       Initial release.
+ *     Earlier entries: see CHANGELOG.md
  *
  * ✒ Description:
  *     The in-browser copy of the scanned directory tree. It ingests scan
@@ -41,7 +44,8 @@
  *       folders need a deep scan
  *     - Nine content kinds derived from the extension
  *     - Search grammar: free text, glob, ext:, kind:, is:, size and age
- *       comparisons, all combinable
+ *       comparisons, all combinable; double quotes keep spaces in one
+ *       term or one prefix value
  *     - Extensible search: callers add is: words and name:value tokens
  *       without changing the grammar here; built-in ones cannot be replaced
  *     - Survey: largest files, heavyweight files, empty folders, unreadable
@@ -64,6 +68,7 @@
  *     is:empty          empty folders          is:dup   duplicate candidates
  *     is:hidden         dot-named entries      is:link  symbolic links
  *     is:sealed         folders that could not be read
+ *     "two words"       a name containing the two words with their space
  *
  * ✒ Other Important Information:
  *     - Dependencies: none
@@ -371,22 +376,58 @@ const SIZE_UNIT = { b: 1, k: 1024, kb: 1024, m: 1024 ** 2, mb: 1024 ** 2, g: 102
 const AGE_UNIT = { h: 1 / 24, d: 1, w: 7, mo: 30.4, m: 30.4, y: 365.25 };
 
 /**
+ * Splits a query into tokens. Whitespace splits only outside double
+ * quotes, and the quotes are dropped: '"two words"' is one token, and so
+ * is 'in:"My Folder"' ('in:My Folder'). A quote left open runs to the end.
+ * quoted is true for a token that begins with a quote: it is a literal
+ * name term, never a prefix, a glob or a size.
+ */
+function tokenize(text) {
+  const out = [];
+  let cur = '';
+  let open = false;
+  let quoted = false;
+  let started = false;
+  const end = () => {
+    if (started && cur) out.push({ raw: cur, quoted });
+    cur = '';
+    quoted = false;
+    started = false;
+  };
+  for (const ch of text) {
+    if (ch === '"') {
+      if (!started) quoted = true;
+      started = true;
+      open = !open;
+    } else if (!open && /\s/.test(ch)) end();
+    else {
+      cur += ch;
+      started = true;
+    }
+  }
+  end();
+  return out;
+}
+
+/**
  * Turns a query into a predicate over nodes, or null when it is empty.
  * ext.is adds is:<word> tests ({ word: (node) => boolean }); ext.prefix
  * adds name:value tokens ({ name: (value, raw) => predicate }), where
  * value is lower-cased and raw keeps its case. A predicate that is not a
  * function matches nothing. Built-in words and prefixes (ext, kind, is,
- * older, newer) cannot be replaced.
+ * older, newer) cannot be replaced. Double quotes keep spaces in one
+ * token: "two words" is a name term, in:"My Folder" a value.
  */
 export function parseQuery(text, ext = {}) {
   const isExt = ext?.is || {};
   const prefixExt = ext?.prefix || {};
   const tests = [];
   const terms = [];
-  for (const raw of text.trim().split(/\s+/).filter(Boolean)) {
+  for (const { raw, quoted } of tokenize(text)) {
     const tok = raw.toLowerCase();
     let m;
-    if ((m = tok.match(/^ext:\.?(.+)$/))) {
+    if (quoted) terms.push(tok);
+    else if ((m = tok.match(/^ext:\.?(.+)$/))) {
       const e = m[1];
       tests.push((n) => !n.d && extOf(n.n) === e);
     } else if ((m = tok.match(/^kind:(.+)$/))) {

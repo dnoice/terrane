@@ -1,11 +1,11 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Terrane Application (Terrane Edition - v1.8)
+ *     - Title: Terrane Application (Terrane Edition - v1.9)
  *     - File Name: app.js
  *     - Relative Path: web/js/app.js
  *     - Artifact Type: javascript
- *     - Version: 1.8.0
+ *     - Version: 1.9.0
  *     - Date: 11/13/2026
  *     - Update: Friday, November 13, 2026
  *     - Author: Dennis 'dendogg' Smaltz
@@ -13,6 +13,16 @@
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
  *
  * ✒ Changelog:
+ *     - 1.9.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] —
+ *       Seams for the command palette, the remembered view and saved
+ *       searches: COMMANDS (palette actions with no key), LEDGER_SUB
+ *       (controls on the ledger's count row), AFTER_FOCUS and
+ *       AFTER_SELECT hooks, and TAB_SECTIONS with api.tabSections. The
+ *       key table takes labels, palette: false and gl: true for the
+ *       palette. The api gains setLens, selectAll (Findings' Select all
+ *       uses it), copyText (copyPaths uses it), listItems, cursorTo,
+ *       rescan and tabSections; S gains the searches slot. Find's own
+ *       keys give way to a feature's listener that claimed one first.
  *     - 1.8.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] —
  *       Single-key shortcuts are off unless turned on in the guide:
  *       letters, digits and signs act while the world or the ledger
@@ -28,26 +38,6 @@
  *       with nothing to colour each say so, with no sort keys over an
  *       empty list; Copy, Create and Rename carry icons as their
  *       neighbours do.
- *     - 1.6.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] —
- *       Findings sorts by Size or Changed; a search opens in the order it
- *       asks for and keeps the one chosen until the query changes, and
- *       Select all follows the order shown. The Survey tab's sections are
- *       a registry (SURVEY), AFTER_QUERY hooks hear every run of the
- *       search and may give Findings its order and a note, and setQuery
- *       puts a query in Find and runs it at once. Under the Age lens a
- *       closed mass shows its typical age, the median step of its bytes
- *       in the age table (strata.js), instead of its newest change; the
- *       legend says so. Inside an open archive, which the table does not
- *       hold, a closed mass keeps its newest change, and while one is
- *       open the legend's title says that too. An archive opened with I
- *       (interior.js) hangs from its file: isAttached, updateWhere,
- *       stepSelection, goUp, refreshDirs, the crumbs and absPath
- *       (x.zip!/inner/file) follow the graft, and a flight into it lands
- *       where it was going. runOp refuses any change under it before
- *       anything is sent; the keys, menu and inspector say why. Paint
- *       walls it in the file's colour, hatches locked entries and
- *       half-bands twins, tied as the relation set 'twins'. The api gains
- *       hostOf and listCursor.
  *     Earlier entries: see CHANGELOG.md
  *
  * ✒ Description:
@@ -94,9 +84,10 @@
  *       the one lock in runOp know the graft, and nothing inside is ever
  *       fetched, changed, opened or revealed
  *     - Seams for features: ordered registries (KEYS, ESCAPE, PIN_SOURCES,
- *       TIP_LINES, INSPECTOR, READING, TABS, SURVEY, LAYOUT_OPTS, MENU)
- *       and hook lists (AFTER_LAYOUT, AFTER_REFRESH, AFTER_SURVEY,
- *       AFTER_OP, AFTER_QUERY), so a feature adds entries from its own
+ *       TIP_LINES, INSPECTOR, READING, TABS, SURVEY, LAYOUT_OPTS, MENU,
+ *       COMMANDS, LEDGER_SUB, TAB_SECTIONS) and hook lists
+ *       (AFTER_LAYOUT, AFTER_REFRESH, AFTER_SURVEY, AFTER_OP, AFTER_QUERY,
+ *       AFTER_FOCUS, AFTER_SELECT), so a feature adds entries from its own
  *       file instead of editing these functions
  *     - One key table drives the keyboard, the guide and the fixed key
  *       allocation; a reserved key can only be bound by its owner
@@ -120,6 +111,10 @@
  *         api.SURVEY.add({ id: 'sessions', order: 5, build: (sv) => el(...) });
  *         api.AFTER_QUERY.add({ id: 'route', run: (search, query) => {} });
  *         api.setQuery('session:1');   // into Find, run at once
+ *         api.COMMANDS.add({ id: 'link', section: 'Links', items: () => [{ label, run }] });
+ *         api.LEDGER_SUB.add({ id: 'save', tab: 'findings', build: (ctx) => button });
+ *         api.TAB_SECTIONS.add({ id: 'saved', tab: 'places', build: () => details });
+ *         api.AFTER_FOCUS.add({ id: 'hash', run: (dir) => {} });
  *     Every entry has a unique id; order (default 50) places it.
  *
  * ✒ Other Important Information:
@@ -172,10 +167,11 @@ const S = {
   findSort: null,
   layoutTimer: 0, surveyTimer: 0,
   // Owned by feature modules, null until one fills it: the date scrub,
-  // the open archive interior, benchmarks and the return point, and
-  // working sessions. ages is the shared age table (timeline.js), rebuilt
-  // after every survey and null until the first one.
-  time: null, interior: null, places: null, ages: null, sessions: null,
+  // the open archive interior, benchmarks and the return point, working
+  // sessions, and the search history and saved searches. ages is the
+  // shared age table (timeline.js), rebuilt after every survey and null
+  // until the first one.
+  time: null, interior: null, places: null, ages: null, sessions: null, searches: null,
 };
 
 /* ====================================================================== */
@@ -254,7 +250,10 @@ const keyName = (k) => (k.length === 1 ? k.toLowerCase() : k);
  * has focus. run(c) gets { e, k, t, ctrl, alt, inList, onCanvas } and
  * returns false, exactly, when the key was not used, so the browser keeps
  * it. An entry with a guide row and no keys documents the pointer or the
- * canvas's own keys.
+ * canvas's own keys. Three fields are for the command palette only:
+ * labels ({ key: label }, one palette item per key), palette: false (not
+ * offered there) and gl: true (offered as unavailable without WebGL); c
+ * then carries palette: true.
  */
 const KEYS = registry('KEYS', (x, list) => {
   const mod = x.mod || '';
@@ -406,7 +405,49 @@ const AFTER_QUERY = registry('AFTER_QUERY', needs('AFTER_QUERY', 'run'));
  */
 const SURVEY = registry('SURVEY', needs('SURVEY', 'build'));
 
-for (const reg of [KEYS, ESCAPE, PIN_SOURCES, TIP_LINES, INSPECTOR.focus, INSPECTOR.node, READING, TABS, LAYOUT_OPTS, AFTER_LAYOUT, AFTER_REFRESH, AFTER_SURVEY, AFTER_OP, MENU, AFTER_QUERY, SURVEY]) Object.freeze(reg);
+/**
+ * COMMANDS: what the command palette offers besides the keys, actions
+ * that have none: { id, owner, order, section, items() -> [{ label,
+ * detail?, hint?, run(), off?: string | null }] }. items() runs each time
+ * the palette opens, so it can say what applies now; an item that cannot
+ * run gives the reason as off. A static command returns one item.
+ */
+const COMMANDS = registry('COMMANDS', needs('COMMANDS', 'items'));
+
+/**
+ * LEDGER_SUB: controls on the ledger's count row: { id, owner, order,
+ * tab: 'contents' | 'findings', build(ctx) -> Element | Element[] | null },
+ * where ctx is { items (the rows in the order shown), search, focus }.
+ * They stand in a span.sub-tools after the count and its keys (Findings:
+ * its first sub-row). Every control carries data-k, so a redraw keeps
+ * focus on it.
+ */
+const LEDGER_SUB = registry('LEDGER_SUB', (x) => {
+  if (x.tab !== 'contents' && x.tab !== 'findings') throw new TypeError(`LEDGER_SUB: "${x.id}" needs tab 'contents' or 'findings'.`);
+  needs('LEDGER_SUB', 'build')(x);
+});
+
+/**
+ * AFTER_FOCUS run(dir) once the folder you are in has changed (moveFocus).
+ * AFTER_SELECT run(sel, primary) at the end of every selection change,
+ * select() (quiet ones included) and selectAll(). Both run often: a hook
+ * must be cheap, and defer anything that is not.
+ */
+const AFTER_FOCUS = registry('AFTER_FOCUS', needs('AFTER_FOCUS', 'run'));
+const AFTER_SELECT = registry('AFTER_SELECT', needs('AFTER_SELECT', 'run'));
+
+/**
+ * TAB_SECTIONS: sections a feature adds to a tab another one draws: { id,
+ * owner, order, tab, build() -> Element | null }. The tab's draw appends
+ * api.tabSections(tab), in order; one that throws is reported and left out.
+ */
+const TAB_SECTIONS = registry('TAB_SECTIONS', (x) => {
+  if (typeof x.tab !== 'string' || !x.tab) throw new TypeError(`TAB_SECTIONS: "${x.id}" needs a tab.`);
+  needs('TAB_SECTIONS', 'build')(x);
+});
+
+for (const reg of [KEYS, ESCAPE, PIN_SOURCES, TIP_LINES, INSPECTOR.focus, INSPECTOR.node, READING, TABS, LAYOUT_OPTS, AFTER_LAYOUT, AFTER_REFRESH, AFTER_SURVEY, AFTER_OP, MENU, AFTER_QUERY, SURVEY,
+  COMMANDS, LEDGER_SUB, AFTER_FOCUS, AFTER_SELECT, TAB_SECTIONS]) Object.freeze(reg);
 
 /* ====================================================================== */
 /* service                                                                */
@@ -743,6 +784,7 @@ function moveFocus(dir) {
   if (!S.primary) drawInspector();
   drawLegend();
   $('b-up').toggleAttribute('disabled', !S.focus.p);
+  runHooks(AFTER_FOCUS, dir);
 }
 
 /**
@@ -1033,6 +1075,20 @@ function select(node, { add = false, quiet = false } = {}) {
   drawInspector();
   if (!quiet) drawLedger(true);
   if (S.primary) say(S.sel.size > 1 ? `${S.sel.size} items selected` : describe(S.primary));
+  runHooks(AFTER_SELECT, S.sel, S.primary);
+}
+
+/**
+ * Selects nodes at once, primary (default the first) as the one the
+ * inspector shows: Findings' Select all, and a selection put back.
+ */
+function selectAll(nodes, primary = null) {
+  S.sel = new Set(nodes);
+  S.primary = primary && S.sel.has(primary) ? primary : nodes[0] ?? null;
+  repaint();
+  drawInspector();
+  drawLedger(true);
+  runHooks(AFTER_SELECT, S.sel, S.primary);
 }
 
 /**
@@ -1414,15 +1470,26 @@ async function remove(nodes = [...S.sel]) {
   if (ok) await runOp({ type: 'trash', paths: nodes.map(relPath) });
 }
 
-async function copyPaths(nodes = [...S.sel]) {
-  if (!nodes.length) nodes = [S.focus];
-  const text = nodes.map(absPath).join('\n');
+/**
+ * Puts text on the clipboard and says so with said; when the browser
+ * refuses, says that instead, with fail as the rest of the sentence.
+ * Resolves to true when the text was copied.
+ */
+async function copyText(text, said, fail = '') {
   try {
     await navigator.clipboard.writeText(text);
-    notice(nodes.length === 1 ? 'Path copied to the clipboard' : `${nodes.length} paths copied to the clipboard`);
+    notice(said);
+    return true;
   } catch {
-    notice('The browser did not allow clipboard access. The path is shown in the inspector.', { kind: 'error' });
+    notice(`The browser did not allow clipboard access.${fail ? ` ${fail}` : ''}`, { kind: 'error' });
+    return false;
   }
+}
+
+async function copyPaths(nodes = [...S.sel]) {
+  if (!nodes.length) nodes = [S.focus];
+  await copyText(nodes.map(absPath).join('\n'), nodes.length === 1 ? 'Path copied to the clipboard' : `${nodes.length} paths copied to the clipboard`,
+    'The path is shown in the inspector.');
 }
 
 async function verifyDuplicates() {
@@ -1744,19 +1811,58 @@ function sortToggle(label, on, dir, onclick) {
   }, label, on ? icon(dir < 0 ? 'sortDown' : 'sortUp') : null);
 }
 
+/**
+ * The controls LEDGER_SUB entries add to a tab's count row, in a
+ * span.sub-tools; null when there are none. One that throws is reported
+ * and left out.
+ */
+function subTools(tab, ctx) {
+  const parts = [];
+  for (const x of LEDGER_SUB) {
+    if (x.tab !== tab) continue;
+    try {
+      const r = x.build(ctx);
+      if (Array.isArray(r)) parts.push(...r.flat(Infinity));
+      else parts.push(r);
+    } catch (err) {
+      console.error(`LEDGER_SUB "${x.id}" failed:`, err);
+    }
+  }
+  const got = parts.filter(Boolean);
+  return got.length ? el('span', { class: 'sub-tools' }, ...got) : null;
+}
+
+/** The sections TAB_SECTIONS entries add to a tab, in order, for its draw to append. */
+function tabSections(tab) {
+  const out = [];
+  for (const x of TAB_SECTIONS) {
+    if (x.tab !== tab) continue;
+    try {
+      const r = x.build();
+      if (r) out.push(r);
+    } catch (err) {
+      console.error(`TAB_SECTIONS "${x.id}" failed:`, err);
+    }
+  }
+  return out;
+}
+
 function drawContents(sub, _host, keepScroll) {
   const sortBtn = (key, label) => sortToggle(label, S.sort.key === key, S.sort.dir, () => {
     S.sort = { key, dir: S.sort.key === key ? -S.sort.dir : key === 'name' ? 1 : -1 };
     drawLedger();
   });
   const n = S.focus.c.length;
+  const items = sortedContents();
+  const tools = subTools('contents', { items, search: S.search, focus: S.focus });
   // The sort keys stay together: in a narrow ledger they move under the
   // count as one. An empty folder has nothing to sort, so it shows none.
   sub.replaceChildren(el('span', { class: 'sub-count', text: `${fmtCount(n)} item${n === 1 ? '' : 's'} · ${fmtBytes(S.focus.s)}` }),
-    ...(n ? [el('span', { class: 'sorts' }, sortBtn('name', 'Name'), sortBtn('size', 'Size'), sortBtn('date', 'Changed'))] : []));
+    ...(n ? [el('span', { class: 'sorts' }, sortBtn('name', 'Name'), sortBtn('size', 'Size'), sortBtn('date', 'Changed'))] : []),
+    ...(tools ? [tools] : []));
   list.render = (node) => rowFor(node, { total: S.focus.s });
   list.setEmpty(S.focus.e ? `This folder could not be read (${S.focus.e}).` : S.focus.stub ? 'This folder has not been read yet.' : 'This folder is empty.');
-  list.setItems(sortedContents(), keepScroll, { follow: S.primary });
+  list.setItems(items, keepScroll, { follow: S.primary });
 }
 
 /**
@@ -1800,13 +1906,8 @@ function drawFindings(sub, _host, keepScroll) {
   // (replaceChildren would print a null argument as the text "null".)
   sub.replaceChildren(...[
     el('div', { class: 'sub-row' }, el('span', { class: 'sub-count', text: `${fmtCount(n)} match${n === 1 ? '' : 'es'} · ${fmtBytes(S.search.bytes)}` }),
-      n ? el('button', { class: 'sort', type: 'button', title: 'Select every match (up to 5,000)', onclick: () => {
-        S.sel = new Set(items.slice(0, 5000));
-        S.primary = items[0] || null;
-        repaint();
-        drawInspector();
-        drawLedger(true);
-      } }, icon('selectAll'), 'Select all') : null),
+      n ? el('button', { class: 'sort', type: 'button', title: 'Select every match (up to 5,000)', onclick: () => selectAll(items.slice(0, 5000), items[0]) }, icon('selectAll'), 'Select all') : null,
+      subTools('findings', { items, search: S.search, focus: S.focus })),
     n || note ? el('div', { class: 'sub-row' }, el('span', { class: 'sub-note', text: note, title: note || null }),
       n ? el('span', { class: 'sorts' }, sortBtn('size', 'Size'), sortBtn('date', 'Changed')) : null) : null,
   ].filter(Boolean));
@@ -2459,6 +2560,9 @@ function wireControls() {
   $('b-help').onclick = showGuide;
   $('q').addEventListener('input', onQuery);
   $('q').addEventListener('keydown', (e) => {
+    // A feature's listener, installed first, may claim a key (the search
+    // history's arrows).
+    if (e.defaultPrevented) return;
     if (e.key === 'Escape') { clearQuery(); $('view').focus(); }
     if (e.key === 'Enter' || e.key === 'ArrowDown') { e.preventDefault(); $('ledger-list').focus(); }
   });
@@ -2566,18 +2670,18 @@ function wireKeys() {
   core({ id: 'guide-travel', guide: [GO, 'W A S D', 'Move (Shift: faster)'] });
   core({ id: 'guide-turn', guide: [GO, 'Q  E', 'Turn'] });
   core({ id: 'guide-rise', guide: [GO, 'R  F', 'Rise / descend'] });
-  core({ id: 'descend', keys: ['v'], run: () => { S.view.descend(); }, guide: [GO, 'V', 'Drop to eye level'] });
-  core({ id: 'overview', keys: ['0', 'Home'], run: () => { overview(); }, guide: [GO, '0', 'Rise to the overview'] });
+  core({ id: 'descend', keys: ['v'], gl: true, run: () => { S.view.descend(); }, guide: [GO, 'V', 'Drop to eye level'] });
+  core({ id: 'overview', keys: ['0', 'Home'], gl: true, run: () => { overview(); }, guide: [GO, '0', 'Rise to the overview'] });
   core({ id: 'fly-to-selection', keys: ['g'], run: () => { if (S.primary) reveal(S.primary); }, guide: [GO, 'G', 'Fly to the selection'] });
   core({ id: 'closer', keys: ['+', '='], run: () => { S.view.zoomAt(0.7); } });
   core({ id: 'farther', keys: ['-', '_'], run: () => { S.view.zoomAt(1.45); } });
   core({ id: 'guide-double-click', guide: [GO, 'Double-click', 'Fly to folder / open file'] });
   core({ id: 'guide-click', guide: [SEL, 'Click', 'Select'] });
   core({ id: 'guide-ctrl-click', guide: [SEL, 'Ctrl+click', 'Add to selection'] });
-  core({ id: 'sibling', keys: ['ArrowLeft', 'ArrowRight'], when: (c) => c.onCanvas, run: (c) => { stepSelection(c.k); }, guide: [SEL, '← →', 'Previous / next sibling'] });
-  core({ id: 'parent-child', keys: ['ArrowUp', 'ArrowDown'], when: (c) => c.onCanvas, run: (c) => { stepSelection(c.k); }, guide: [SEL, '↑ ↓', 'Parent / first child'] });
+  core({ id: 'sibling', keys: ['ArrowLeft', 'ArrowRight'], palette: false, when: (c) => c.onCanvas, run: (c) => { stepSelection(c.k); }, guide: [SEL, '← →', 'Previous / next sibling'] });
+  core({ id: 'parent-child', keys: ['ArrowUp', 'ArrowDown'], palette: false, when: (c) => c.onCanvas, run: (c) => { stepSelection(c.k); }, guide: [SEL, '↑ ↓', 'Parent / first child'] });
   core({
-    id: 'activate', keys: ['Enter'], inList: false, when: (c) => !c.t.closest?.('button, summary, a'),
+    id: 'activate', keys: ['Enter'], inList: false, palette: false, when: (c) => !c.t.closest?.('button, summary, a'),
     run: () => {
       if (S.placing && S.primary?.d) transfer(S.placing.type, S.placing.nodes, S.primary);
       else activate(S.primary);
@@ -2588,8 +2692,14 @@ function wireKeys() {
   core({ id: 'back', mod: 'alt', keys: ['ArrowLeft'], run: () => { goBack(); }, guide: [SEL, 'Alt+←', 'Back'] });
   core({ id: 'find', keys: ['/'], run: () => { $('q').focus(); }, guide: [SEL, '/', 'Find'] });
   core({ id: 'guide-escape', guide: [SEL, 'Esc', 'Cancel, clear'] });
-  core({ id: 'panels', keys: ['[', ']'], run: (c) => { togglePanel(c.k === '[' ? 'ledger' : 'inspector'); }, guide: [SEL, '[  ]', 'Hide ledger / inspector'] });
-  core({ id: 'lens', keys: ['1', '2', '3', '4'], run: (c) => { setLens(['kind', 'age', 'size', 'dup'][Number(c.k) - 1]); }, guide: [SEL, '1 – 4', 'Lens'] });
+  core({
+    id: 'panels', keys: ['[', ']'], labels: { '[': 'Hide or show the ledger', ']': 'Hide or show the inspector' },
+    run: (c) => { togglePanel(c.k === '[' ? 'ledger' : 'inspector'); }, guide: [SEL, '[  ]', 'Hide ledger / inspector'],
+  });
+  core({
+    id: 'lens', keys: ['1', '2', '3', '4'], labels: { 1: 'Lens: kind', 2: 'Lens: age', 3: 'Lens: size', 4: 'Lens: duplicates' },
+    run: (c) => { setLens(['kind', 'age', 'size', 'dup'][Number(c.k) - 1]); }, guide: [SEL, '1 – 4', 'Lens'],
+  });
   core({ id: 'new-folder', keys: ['n'], run: () => { newFolder(S.primary?.d && S.sel.size === 1 ? S.primary : S.focus); }, guide: [CHG, 'N', 'New folder'] });
   core({ id: 'rename', keys: ['F2'], run: () => { rename(); }, guide: [CHG, 'F2', 'Rename'] });
   core({
@@ -2616,7 +2726,7 @@ function wireKeys() {
   });
   core({ id: 'guide-drag-row', guide: [CHG, 'Drag a row', 'Drop on a folder, breadcrumb or plateau'] });
   core({
-    id: 'menu', keys: ['ContextMenu', 'F10'], when: (c) => c.k === 'ContextMenu' || c.e.shiftKey,
+    id: 'menu', keys: ['ContextMenu', 'F10'], palette: false, when: (c) => c.k === 'ContextMenu' || c.e.shiftKey,
     run: () => {
       const i = visibleIndexOf(S.primary);
       // Without WebGL screenOf returns nothing; the menu opens mid-window.
@@ -2730,13 +2840,22 @@ function wireKeys() {
 const API = Object.freeze({
   S, KEY_OWNERS,
   KEYS, ESCAPE, PIN_SOURCES, TIP_LINES, INSPECTOR, READING, TABS, LAYOUT_OPTS, AFTER_LAYOUT, AFTER_REFRESH, AFTER_SURVEY, AFTER_OP, MENU, QUERY,
-  AFTER_QUERY, SURVEY,
+  AFTER_QUERY, SURVEY, COMMANDS, LEDGER_SUB, AFTER_FOCUS, AFTER_SELECT, TAB_SECTIONS,
   get, post, runOp, refreshDirs, writable, isAttached, hostOf, relPath, absPath,
   // The ledger row the keyboard cursor is on, or null.
   listCursor: () => (list?.items.length ? list.items[list.cursor] ?? null : null),
+  // The ledger list's rows, in the order shown.
+  listItems: () => list?.items ?? [],
+  // Moves the list's cursor to node and scrolls to it; false when it is not listed.
+  cursorTo: (node) => {
+    const i = list ? list.items.indexOf(node) : -1;
+    if (i >= 0) list.setCursor(i, true);
+    return i >= 0;
+  },
   relayout, queueLayout, repaint, drawPins, visibleIndexOf,
-  select, setFocus, reveal, activate, describe, say, forceOpen, overview,
-  drawAll, drawTabs, drawLedger, drawInspector, drawLegend, drawStatus, runQuery, setQuery,
+  select, selectAll, setFocus, reveal, activate, describe, say, forceOpen, overview, setLens, copyText,
+  rescan: fullScan,
+  drawAll, drawTabs, drawLedger, drawInspector, drawLegend, drawStatus, runQuery, setQuery, tabSections,
   el, notice, section, itemButton, actionButton, fact, shareBar, pct,
 });
 

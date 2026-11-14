@@ -1,11 +1,11 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Landmarks (Terrane Edition - v1.2)
+ *     - Title: Landmarks (Terrane Edition - v1.3)
  *     - File Name: landmarks.js
  *     - Relative Path: web/js/landmarks.js
  *     - Artifact Type: javascript
- *     - Version: 1.2.0
+ *     - Version: 1.3.0
  *     - Date: 11/13/2026
  *     - Update: Friday, November 13, 2026
  *     - Author: Dennis 'dendogg' Smaltz
@@ -13,6 +13,9 @@
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
  *
  * ✒ Changelog:
+ *     - 1.3.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
+ *       Places tab ends with the sections other features keep there
+ *       (api.tabSections('places')), such as Saved searches.
  *     - 1.2.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — A
  *       Find that asks is:benchmark runs again whenever the benchmarks
  *       change, so Findings, its count, the pins and the dimming
@@ -24,8 +27,7 @@
  *       section for it. H there marks the return point in the folder
  *       that holds the archive, and J there keeps that folder as the
  *       point J again comes back to.
- *     - 1.0.0 (11/12/2026) [dendogg + Anthropic - Claude Opus 5.5] —
- *       Initial release.
+ *     Earlier entries: see CHANGELOG.md
  *
  * ✒ Description:
  *     Benchmarks and the return point. A benchmark measures a folder at a
@@ -46,7 +48,8 @@
  *       pin mesh; up to 12 name-and-change tags outrank every other label
  *     - A Places tab: every benchmark with its change, missing ones with a
  *       sentence and Forget, entries gone, here now, grown and shrunk, Fly
- *       there, Measure again, Forget all, and the return point
+ *       there, Measure again, Forget all, and the return point; the
+ *       sections other features add to the tab follow (TAB_SECTIONS)
  *     - An inspector Benchmark section for a folder (or Set benchmark),
  *       menu items, hover lines and an is:benchmark search word
  *     - One notice after the first scan names the benchmarks that changed
@@ -85,7 +88,8 @@
  *       layout.js (BOX), theme.js (verdigris), ui.js (ask), icons.js;
  *       app.js's api: S, the registries, refreshDirs, relayout, reveal,
  *       setFocus, visibleIndexOf, hostOf, drawPins, drawLedger,
- *       drawInspector, say, notice, el, fact, itemButton, actionButton
+ *       drawInspector, tabSections, say, notice, el, fact, itemButton,
+ *       actionButton
  *     - Compatible platforms: any browser with ES2022 modules
  *     - Wording: a measurement says what "changed"; an entry that was not
  *       there is "here now, not then", never "created" or "added"
@@ -624,7 +628,9 @@ export function install(api) {
         el('div', { class: 'actions' },
           t && !t.e ? btn(has ? `Measure "${t.n}" again` : `Set benchmark on "${t.n}"`, () => bench(t), { icon: has ? 'remeasure' : 'bench', k: 'set', title: live ? 'B' : WAIT, off: !live }) : null,
           list.length || store.ret ? btn('Forget all…', forgetAll, { icon: 'remove', k: 'forget-all', danger: true }) : null)),
-      returnSection());
+      returnSection(),
+      // Sections other features keep here (saved searches).
+      ...api.tabSections('places'));
     if (had) host.querySelector(`[data-k="${CSS.escape(had)}"]`)?.focus({ preventScroll: true });
   }
 

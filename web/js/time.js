@@ -1,11 +1,11 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Time as a Dimension (Terrane Edition - v1.1)
+ *     - Title: Time as a Dimension (Terrane Edition - v1.2)
  *     - File Name: time.js
  *     - Relative Path: web/js/time.js
  *     - Artifact Type: javascript
- *     - Version: 1.1.0
+ *     - Version: 1.2.0
  *     - Date: 11/13/2026
  *     - Update: Friday, November 13, 2026
  *     - Author: Dennis 'dendogg' Smaltz
@@ -13,6 +13,9 @@
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
  *
  * ✒ Changelog:
+ *     - 1.2.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] —
+ *       , . < > carry one label each for the command palette: one date
+ *       earlier or later, the earliest date, the present.
  *     - 1.1.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] —
  *       Inside an open archive a folder is counted from its own
  *       entries, in a table built from its listing on the same ladder
@@ -300,8 +303,14 @@ export function install(api) {
   /* ---------- registry entries ---------- */
 
   api.KEYS.add({ id: 'time-toggle', owner: OWNER, keys: ['t'], run: () => { toggle(); }, guide: ['Time', 'T', 'Look back to a date / return to now'] });
-  api.KEYS.add({ id: 'time-step', owner: OWNER, keys: [',', '.'], run: (c) => { step(c.k === ',' ? 1 : -1); }, guide: ['Time', ',  .', 'Earlier / later date'] });
-  api.KEYS.add({ id: 'time-ends', owner: OWNER, keys: ['<', '>'], run: (c) => { if (c.k === '<') earliest(); else present(); }, guide: ['Time', '<  >', 'Earliest date / the present'] });
+  api.KEYS.add({
+    id: 'time-step', owner: OWNER, keys: [',', '.'], labels: { ',': 'Look back one date earlier', '.': 'Look back one date later' },
+    run: (c) => { step(c.k === ',' ? 1 : -1); }, guide: ['Time', ',  .', 'Earlier / later date'],
+  });
+  api.KEYS.add({
+    id: 'time-ends', owner: OWNER, keys: ['<', '>'], labels: { '<': 'Look back to the earliest date', '>': 'Return to the present' },
+    run: (c) => { if (c.k === '<') earliest(); else present(); }, guide: ['Time', '<  >', 'Earliest date / the present'],
+  });
 
   api.ESCAPE.add({ id: 'time', order: 40, owner: OWNER, active: () => !!S.time, clear: () => go(0, 'present') });
 

@@ -1,10 +1,10 @@
 <!--
 ✒ Metadata
-    - Title: Shipped File Changelogs (Terrane Edition - v1.4)
+    - Title: Shipped File Changelogs (Terrane Edition - v1.5)
     - File Name: CHANGELOG.md
     - Relative Path: CHANGELOG.md
     - Artifact Type: docs
-    - Version: 1.4.0
+    - Version: 1.5.0
     - Date: 11/13/2026
     - Update: Friday, November 13, 2026
     - Author: Dennis 'dendogg' Smaltz
@@ -12,6 +12,11 @@
     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
 
 ✒ Changelog:
+    - 1.5.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — Records the seams for
+      finding your way: app.js 1.9.0, ui.js 1.4.0, and the first sections for web/js/model.js
+      (1.4.0, double quotes in search) and web/js/landmarks.js (1.3.0, the Places tab's
+      sections from other features), whose 1.0.0 entries left their headers with these
+      releases.
     - 1.4.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — Records app.js 1.8.0:
       single-key shortcuts are off unless turned on in the guide.
     - 1.3.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — Records the hardening
@@ -56,6 +61,27 @@ here unchanged in the same edit.
 
 ## web/js/app.js
 
+- 1.9.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — Seams for Wave 3's first
+  group, finding your way (the command palette, the remembered view and links, search
+  history and saved searches). Five registries, frozen with the rest and handed out in the
+  api: COMMANDS, the palette's actions that have no key ({ id, owner, order, section,
+  items() }, asked each time the palette opens, an item unavailable with its reason as off);
+  LEDGER_SUB, controls a feature adds to the ledger's count row for Contents or Findings
+  ({ tab, build(ctx) } with ctx { items, search, focus }, drawn in a span.sub-tools after
+  the sort keys, Findings' on its first sub-row, each control with a data-k so a redraw
+  keeps focus on it); AFTER_FOCUS, run(dir) in moveFocus once the folder you are in has
+  changed; AFTER_SELECT, run(sel, primary) at the end of select(), quiet ones included, and
+  of the new selectAll(); and TAB_SECTIONS, sections a feature adds to a tab another one
+  draws, built by api.tabSections(tab). The key table takes three fields only the palette
+  reads: labels (one palette item per key, on the lens 1 to 4 and the panels [ ]),
+  palette: false (the arrows, Enter and the menu key) and gl: true (V and 0, unavailable
+  without WebGL). The api gains setLens; selectAll(nodes, primary), which Findings' Select
+  all now uses; copyText(text, said, fail), the clipboard write and its refusal, which
+  copyPaths now uses with the same sentences; listItems; cursorTo(node), which moves the
+  list's cursor to a node and scrolls to it; rescan, the whole survey again; and
+  tabSections. S declares the searches slot. Find's own keydown handler returns first when
+  a listener installed before it has claimed the key with preventDefault, so the search
+  history's arrows can step without the list taking focus.
 - 1.8.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — Single-key shortcuts are
   off unless turned on in the guide, on Dennis's call after the hardening pass offered the
   setting with shortcuts on: letters, digits and signs act while the world or the ledger
@@ -234,6 +260,15 @@ here unchanged in the same edit.
 
 ## web/js/ui.js
 
+- 1.4.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — openSheet(build, {
+  className, label, onKey }): a sheet in the shared dialog for something richer than ask(),
+  first the command palette. build(body) fills it before it opens; it is modal, so the
+  page's keys rest while it is open and Escape closes it natively; it takes the floating
+  slot as ask() does; className is on the dialog only while it is open, label names it, and
+  onKey hears every key pressed inside. It returns { close, body }. close(then) shuts it,
+  puts focus back on what had it before, and runs then in the next animation frame after
+  the close event, so an action chosen in the sheet that moves focus keeps it where it put
+  it rather than having the dialog's own return of focus undo it.
 - 1.3.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — Unavailable menu items are reached
   by the arrows and carry their reason as their description; the menu stops the browser's own
   context menu the Menu key would open over it. The virtual list keeps its cursor on its item
@@ -248,6 +283,38 @@ here unchanged in the same edit.
 - 1.1.0 (11/11/2026) [dendogg + Anthropic - Claude Opus 5.5] — The hover tip can carry a picture
   below its lines.
 - 1.0.0 (11/09/2026) [dendogg + Anthropic - Claude Fable 5.2] — Initial release.
+
+## web/js/model.js
+
+- 1.4.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — Double quotes keep spaces in
+  one search token and are dropped: "two words" is one name term, and in:"My Folder"
+  reaches its prefix as the value my folder and the raw My Folder. A token that begins with
+  a quote is a literal name term, never a prefix, a glob or a size; a quote left open runs
+  to the end of the query, and empty quotes add nothing. A query without quotes is split
+  and read exactly as before.
+- 1.3.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — fmtDay (MM/DD/YYYY) and
+  plural are the one date formatter and count wording every module imports; fmtDate builds
+  on fmtDay. isDir, which nothing used, is gone.
+- 1.2.0 (11/12/2026) [dendogg + Anthropic - Claude Opus 5.5] — The search grammar takes
+  is: words and name:value tokens from the caller, so a feature can make itself
+  searchable; is: looks up only real words, so is:constructor no longer matches
+  everything.
+- 1.0.0 (11/09/2026) [dendogg + Anthropic - Claude Fable 5.2] — Initial release.
+
+## web/js/landmarks.js
+
+- 1.3.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — The Places tab ends with the
+  sections other features keep there (api.tabSections('places')), such as Saved searches,
+  after the return point.
+- 1.2.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — A Find that asks
+  is:benchmark runs again whenever the benchmarks change, so Findings, its count, the pins
+  and the dimming follow; J opens a folded return point through api.forceOpen, so the
+  overview ends that unfold.
+- 1.1.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — A folder inside an open
+  archive takes no benchmark: B says why, the menu item is unavailable and the inspector
+  has no Benchmark section for it. H there marks the return point in the folder that holds
+  the archive, and J there keeps that folder as the point J again comes back to.
+- 1.0.0 (11/12/2026) [dendogg + Anthropic - Claude Opus 5.5] — Initial release.
 
 ## web/css/tokens.css
 
