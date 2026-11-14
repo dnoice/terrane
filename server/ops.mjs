@@ -38,6 +38,15 @@
  *       JSON line, { cmd, args, cwd }, instead of starting anything;
  *       makeOps takes spawn, a stand-in for child_process.spawn that a
  *       check uses to see the plan's order without launching a program.
+ *       The undo of a moves entry (a rename, a move, a batch rename)
+ *       that fails part way, as on a folder a terminal holds as its
+ *       working directory, keeps in the entry only the pairs still out
+ *       and saves the journal before it throws with moved, affected and
+ *       a sentence saying how many went back, so the next Undo resumes
+ *       where it stopped; one that fails before any pair moved says
+ *       nothing was changed. A renames or an undo failure names why in
+ *       words (reason: in use, not permitted, the disk full), never the
+ *       system's raw message.
  *     - 1.3.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
  *       holding index is untrusted data: a record is kept only when its
  *       id has the shape hold() mints and its name is one entry name
@@ -93,6 +102,9 @@
  *       items finished before the cancel stay and are journaled, so Undo
  *       returns the directory to where it started
  *     - Batches are validated in full before the first item is touched
+ *     - An undo that stops part way keeps only what is still out in its
+ *       journal entry and says how many items went back, so Undo again
+ *       resumes and every older entry stays within reach
  *     - A batch rename (renames) of up to 5,000 items is one journal
  *       entry; it refuses, before anything is renamed, a name taken by
  *       another item (a chain or a swap), two new names that the
@@ -138,7 +150,9 @@
  * ✒ Other Important Information:
  *     - Dependencies: Node.js built-ins only; guard.mjs, transfer.mjs
  *     - Compatible platforms: Node.js 20+ on Windows, macOS, Linux; the
- *       terminal plan is verified on Windows only
+ *       terminal plan's order and arguments are checked on Windows
+ *       through TERRANE_LAUNCH_LOG and a stand-in spawn; no terminal has
+ *       been launched for real on any platform
  *     - Testing: TERRANE_LAUNCH_LOG=<file> records every launch as a JSON
  *       line and starts nothing, as TERRANE_SLOW_COPY_MS slows a copy
  *     - Limitations: the existence check and the rename are two system
@@ -291,6 +305,20 @@ async function moveEntry(from, to, job) {
 }
 
 const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`;
+
+/** Why the operating system refused a call, as the end of a sentence (no path, no code to decode). */
+const REASONS = {
+  EBUSY: 'it is in use by another program.',
+  EPERM: 'the operating system did not permit it.',
+  EACCES: 'permission was denied.',
+  ENOSPC: 'the disk is full.',
+  ENOENT: 'it is no longer there.',
+  EEXIST: 'something else has its name now.',
+  ENOTEMPTY: 'something else has its name now.',
+};
+const reason = (err) => REASONS[err?.code] || `the operating system answered ${err?.code || 'with an error'}.`;
+/** A GuardError whose message already says why in words: the service passes it on whole, whatever its code. */
+const worded = (code, message, status) => Object.assign(new GuardError(code, message, status), { worded: true });
 
 function makeJob(id, type, onJob) {
   const ac = new AbortController();
@@ -607,7 +635,7 @@ export function makeOps(guard, { readOnly = false, onJob, spawn: spawnFn = spawn
       const pairs = done.map((one) => [guard.rel(one.from), guard.rel(one.to)]);
       if (failed) {
         if (done.length) await record('renames', `Partial rename (${done.length} of ${work.length})`, { kind: 'moves', pairs }, affected);
-        const e = new GuardError(failed.err.code || 'EIO', `Renaming stopped at "${path.basename(failed.one.from)}" after ${done.length} of ${plural(work.length, 'item')}: ${failed.err.message}`, 500);
+        const e = worded(failed.err.code || 'EIO', `Renaming stopped at "${path.basename(failed.one.from)}" after ${done.length} of ${plural(work.length, 'item')}: ${reason(failed.err)}`, 500);
         e.affected = affected;
         // In item order, every item before the one that failed, each at
         // its new path (an unchanged one at its own), so results[k] is
@@ -807,7 +835,15 @@ export function makeOps(guard, { readOnly = false, onJob, spawn: spawnFn = spawn
       }
       return [parentRel(abs)];
     },
-    async moves({ pairs }) {
+    /**
+     * Carries each pair back, the last moved first. Every pair is checked
+     * before the first moves. One that fails part way (a folder held as
+     * a program's working directory, on Windows) leaves in the entry only
+     * the pairs still out, saved before it throws, so the next Undo
+     * resumes there instead of failing its check on a pair already back.
+     */
+    async moves(undo) {
+      const { pairs } = undo;
       const resolved = [];
       for (const [fromRel, toRel] of pairs) {
         let from;
@@ -825,8 +861,22 @@ export function makeOps(guard, { readOnly = false, onJob, spawn: spawnFn = spawn
         resolved.push([from, to]);
       }
       const affected = new Set();
-      for (const [from, to] of resolved.reverse()) {
-        await moveEntry(to, from);
+      for (let k = resolved.length - 1; k >= 0; k--) {
+        const [from, to] = resolved[k];
+        try {
+          await moveEntry(to, from);
+        } catch (err) {
+          const back = resolved.length - 1 - k;
+          if (!back) throw worded(err.code || 'EIO', `Undo could not put "${path.basename(to)}" back: ${reason(err)} Nothing was changed.`, 500);
+          // What went back stays back; the entry keeps the rest, in order.
+          undo.pairs = pairs.slice(0, k + 1);
+          await saveJournal();
+          const e = worded(err.code || 'EIO', `Undo stopped at "${path.basename(to)}" after putting back ${back} of ${plural(pairs.length, 'item')}: ${reason(err)} Undo again to put back ${k ? `the other ${k + 1}` : 'the last one'}.`, 500);
+          e.affected = [...new Set([...affected, parentRel(from), parentRel(to)])];
+          // As undo() answers moved: [where it was, where it is now], in the order they went back.
+          e.moved = pairs.slice(k + 1).map(([f, t]) => [t, f]).reverse();
+          throw e;
+        }
         affected.add(parentRel(from));
         affected.add(parentRel(to));
       }

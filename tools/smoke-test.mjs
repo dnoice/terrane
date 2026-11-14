@@ -57,7 +57,19 @@
  *       child_process in ops.mjs or terrane.mjs. Every service it boots is
  *       given TERRANE_DATA, a temporary folder of its own removed at the
  *       end, so the warm start's cache of its surveys never reaches the
- *       real dataset home.
+ *       real dataset home. In-process, an Undo that stops part way: one
+ *       whose first item cannot go back says nothing was changed; one
+ *       that stops after the first says how many went back and how many
+ *       are left, answers moved and affected, and the journal on disk
+ *       keeps only the pairs still out; after a restart the next Undo
+ *       resumes, and the entry before it is undone after that. On
+ *       Windows, through the service, a folder held open as a child
+ *       process's working directory stops an Undo with 500 EBUSY and
+ *       that sentence whole, and once let go the next Undo finishes.
+ *       A source check: every entry a tracked web/ header held at the
+ *       last commit, or where the branch left main (git show, when git
+ *       is there), and holds no longer opens its CHANGELOG.md entry word
+ *       for word, whitespace aside.
  *     - 1.5.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
  *       hardening checks. Through the service: the holding area refused
  *       under every other spelling (case, a trailing dot, NTFS stream
@@ -176,7 +188,8 @@
  *       names, dates, flags, escaping names, bounds and damage
  *     - Undo answers and partial changes, in-process: the paths moved
  *       back, and the paths finished before a simulated failure, a batch
- *       rename's included
+ *       rename's included; an Undo that stops part way resumes, after a
+ *       restart too, and on Windows a folder held open stops one
  *     - The batch rename: one journal entry undone whole, and every
  *       refusal (taken names, chains and swaps, nesting, invalid and
  *       reserved names, the bound, traversal) before anything changes
@@ -198,7 +211,8 @@
  *       changed after the date
  *     - The source, read as text: one date formatter, no dead export in
  *       the shared modules, no idle icon, colours only from tokens.css,
- *       and no shell anywhere the service launches a program
+ *       no shell anywhere the service launches a program, and every
+ *       entry a web/ header rolled out kept word for word in CHANGELOG.md
  *
  * ✒ Usage Instructions:
  *     node tools/smoke-test.mjs
@@ -209,9 +223,11 @@
  *     - Dependencies: Node.js built-ins only; server/terrane.mjs,
  *       server/snapshot.mjs, server/archive.mjs, tools/make-fixture.mjs,
  *       web/js/layout.js, web/js/model.js, web/js/timeline.js,
- *       web/js/time.js, and web/js/viewport.js with the vendored three.js
+ *       web/js/time.js, and web/js/viewport.js with the vendored three.js;
+ *       git, when present, for the rolled-out header entries
  *     - Compatible platforms: Node.js 22.5+; the symbolic-link checks are
- *       skipped where links cannot be created
+ *       skipped where links cannot be created, the held-folder Undo
+ *       everywhere but Windows, and the rolled-out entries without git
  *     - Performance: about 10 seconds; the second service runs with
  *       TERRANE_SLOW_COPY_MS so a 24 MB copy takes long enough to cancel
  * ----------------------------------------------------------------------------
@@ -223,7 +239,7 @@ import path from 'node:path';
 import http from 'node:http';
 import crypto from 'node:crypto';
 import zlib from 'node:zlib';
-import { spawn } from 'node:child_process';
+import { spawn, execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
 const SERVER = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'server', 'terrane.mjs');
@@ -642,6 +658,30 @@ console.log('\nBatch rename');
   r = await s.op({ type: 'renames', items: [{ path: 'rn/one/a.txt', name: 'a.txt' }] });
   check('a batch where nothing changes is answered, and not journaled', r.status === 200 && r.body.label === 'Names unchanged' && !r.body.undoable && (await entries()).length === j0 + 2,
     JSON.stringify(r.body));
+  // Windows refuses to rename a folder a program holds as its working
+  // directory, as a terminal opened there does: an Undo that meets one
+  // stops part way, and the next Undo finishes once it is free.
+  if (process.platform === 'win32') {
+    const held = path.join(rn, 'held');
+    for (const n of ['h1', 'h2', 'h3']) fs.mkdirSync(path.join(held, n), { recursive: true });
+    const names = () => fs.readdirSync(held).sort();
+    r = await s.op({ type: 'renames', items: ['h1', 'h2', 'h3'].map((n, i) => ({ path: `rn/held/${n}`, name: `g${i + 1}` })) });
+    const holder = spawn(process.execPath, ['-e', 'setInterval(() => {}, 1000)'], { cwd: path.join(held, 'g2'), stdio: 'ignore' });
+    const exited = new Promise((res) => holder.once('exit', res));
+    await wait(300);
+    r = await s.post('/api/undo');
+    check('an Undo that meets a folder held open stops part way: 500 EBUSY, a sentence of how many went back, moved and affected',
+      r.status === 500 && r.body.code === 'EBUSY'
+      && r.body.message === 'Undo stopped at "g2" after putting back 1 of 3 items: it is in use by another program. Undo again to put back the other 2.'
+      && same(r.body.moved, [['rn/held/g3', 'rn/held/h3']]) && r.body.affected.includes('rn/held') && same(names(), ['g1', 'g2', 'h3']),
+      JSON.stringify({ body: r.body, names: names() }));
+    holder.kill();
+    await exited;
+    r = await s.post('/api/undo');
+    check('let go, the next Undo puts the other two back and says so; the entries before it stay in reach',
+      r.status === 200 && r.body.label === 'Undid: Renamed 3 items' && same(r.body.moved, [['rn/held/g2', 'rn/held/h2'], ['rn/held/g1', 'rn/held/h1']]) && same(names(), ['h1', 'h2', 'h3'])
+      && (await entries()).at(-1).undone, JSON.stringify({ body: r.body, names: names() }));
+  } else console.log('  skip  an Undo that meets a folder held open (Windows only: elsewhere a working directory can be renamed)');
   fs.rmSync(rn, { recursive: true, force: true });
 }
 
@@ -954,6 +994,44 @@ console.log('\nUndo answers and changes that stop part way (no service)');
   check('and it is journaled as a partial rename', (await o.journal()).at(-1)?.label === 'Partial rename (1 of 3)', JSON.stringify((await o.journal()).at(-1)));
   u = await o.undo();
   check('whose Undo carries the one finished name back', JSON.stringify(u.moved) === JSON.stringify([['four/s1.txt', 'four/r1.txt']]) && at('four', 'r1.txt') && !at('four', 's1.txt'), JSON.stringify(u));
+  // An Undo that stops part way: what went back stays back, the entry
+  // keeps the rest, and the next Undo resumes, after a restart too.
+  fs.mkdirSync(path.join(opsRoot, 'five'));
+  for (const n of ['u1', 'u2', 'u3']) fs.writeFileSync(path.join(opsRoot, 'five', n), n);
+  await o.run({ type: 'mkdir', parent: 'five', name: 'earlier' });
+  await o.run({ type: 'renames', items: ['u1', 'u2', 'u3'].map((n, i) => ({ path: `five/${n}`, name: `v${i + 1}` })) });
+  const undoFailing = async (name) => {
+    failOn(name);
+    try {
+      await o.undo();
+      return null;
+    } catch (e) {
+      return e;
+    } finally {
+      fsp.rename = rename;
+    }
+  };
+  const lastSaved = () => JSON.parse(fs.readFileSync(path.join(opsRoot, '.terrane-trash', 'journal.json'), 'utf8')).entries.at(-1);
+  err = await undoFailing('v3');
+  check('an Undo whose first item cannot go back says nothing was changed, and leaves its entry whole',
+    err?.status === 500 && err.worded && /^Undo could not put "v3" back: it is in use by another program\. Nothing was changed\.$/.test(err.message) && !err.moved
+    && at('five', 'v1') && at('five', 'v2') && at('five', 'v3') && lastSaved().undo.pairs.length === 3, JSON.stringify(err && { message: err.message, moved: err.moved }));
+  err = await undoFailing('v2');
+  check('an Undo that stops part way says how many went back and how many are left, with moved and affected',
+    err?.status === 500 && err.code === 'EBUSY' && err.worded
+    && /^Undo stopped at "v2" after putting back 1 of 3 items: it is in use by another program\. Undo again to put back the other 2\.$/.test(err.message)
+    && JSON.stringify(err.moved) === JSON.stringify([['five/v3', 'five/u3']]) && JSON.stringify(err.affected) === JSON.stringify(['five'])
+    && at('five', 'u3') && !at('five', 'v3') && at('five', 'v1') && at('five', 'v2'),
+    JSON.stringify(err && { code: err.code, message: err.message, moved: err.moved, affected: err.affected }));
+  check('the journal on disk keeps the entry, not undone, with only the two pairs still out',
+    lastSaved().undone === false && JSON.stringify(lastSaved().undo.pairs) === JSON.stringify([['five/u1', 'five/v1'], ['five/u2', 'five/v2']]), JSON.stringify(lastSaved()));
+  o = makeOps(g, {});
+  u = await o.undo();
+  check('after a restart the next Undo resumes: the other two go back, and moved names only them',
+    JSON.stringify(u.moved) === JSON.stringify([['five/v2', 'five/u2'], ['five/v1', 'five/u1']]) && /^Undid: Renamed 3 items/.test(u.label)
+    && at('five', 'u1') && at('five', 'u2') && at('five', 'u3') && !at('five', 'v1') && !at('five', 'v2'), JSON.stringify(u));
+  u = await o.undo();
+  check('and the entry before it is within reach of Undo again', u.ok && !at('five', 'earlier'), JSON.stringify(u));
 }
 
 console.log('\nHolding-area records, the holding area itself and links that move (no service)');
@@ -2058,6 +2136,63 @@ console.log('\nSource (no service)');
   });
   check('the service never runs a shell: no exec( or shell: true in ops.mjs or terrane.mjs, and nothing but spawn from child_process',
     launchers.length === 0, launchers.join(', '));
+
+  // A shipped header keeps three entries, and one it rolls out must reach
+  // CHANGELOG.md word for word. Every entry a tracked web/ header held at
+  // the last commit, or where this branch left main, and holds no longer
+  // must open its CHANGELOG.md entry, whitespace aside.
+  const REPO = path.join(TOOLS, '..');
+  const flat = (t) => t.replace(/\s+/g, ' ').trim();
+  const headerEntries = (text) => {
+    const out = new Map();
+    const lines = text.replace(/\r/g, '').split('\n');
+    let cur = null;
+    for (const l of lines.slice(lines.findIndex((x) => x.includes('✒ Changelog')) + 1)) {
+      if (l.includes('✒ ')) break;
+      const t = l.replace(/^\s*\*?\s?/, '').trim();
+      const m = t.match(/^- (\d+\.\d+\.\d+) \(/);
+      if (!t || t.startsWith('Earlier entries')) cur = null;
+      else if (m) out.set(cur = m[1], t);
+      else if (cur) out.set(cur, `${out.get(cur)} ${t}`);
+    }
+    return out;
+  };
+  const kept = new Map();
+  let file = null;
+  let cur = null;
+  for (const l of fs.readFileSync(path.join(REPO, 'CHANGELOG.md'), 'utf8').replace(/\r/g, '').split('\n')) {
+    const h = l.match(/^## (\S+)/);
+    const m = l.match(/^- (\d+\.\d+\.\d+) \(/);
+    if (h) kept.set(file = h[1], new Map());
+    else if (file && m) kept.get(file).set(cur = m[1], l);
+    else if (file && cur && l.trim()) kept.get(file).set(cur, `${kept.get(file).get(cur)} ${l}`);
+    else cur = null;
+  }
+  const git = (...a) => {
+    try {
+      return execFileSync('git', a, { cwd: REPO, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] });
+    } catch {
+      return null;
+    }
+  };
+  const bases = [git('rev-parse', 'HEAD'), git('merge-base', 'HEAD', 'main')].map((x) => x?.trim()).filter(Boolean);
+  if (bases.length) {
+    const lost = [];
+    let rolled = 0;
+    for (const [rel, entries] of kept) {
+      const now = headerEntries(fs.readFileSync(path.join(REPO, rel), 'utf8'));
+      for (const base of new Set(bases)) {
+        const then = git('show', `${base}:${rel}`);
+        if (!then) continue;
+        for (const [v, text] of headerEntries(then)) {
+          if (now.has(v)) continue;
+          rolled++;
+          if (!flat(entries.get(v) || '').startsWith(flat(text))) lost.push(`${rel} ${v} (since ${base.slice(0, 7)})`);
+        }
+      }
+    }
+    check(`every entry a web/ header rolled out since the last commit or main (${rolled}) opens its CHANGELOG.md entry word for word`, lost.length === 0, [...new Set(lost)].join(', '));
+  } else console.log('  skip  rolled-out header entries against CHANGELOG.md (no git history here)');
 }
 
 fs.rmSync(work, { recursive: true, force: true });

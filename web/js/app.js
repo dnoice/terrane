@@ -43,6 +43,9 @@
  *       readOnlyMode() (in the api) does not; a tree that cannot be read
  *       whole is set aside, said, and surveyed afresh. scanStream takes
  *       a route and a signal; window.__terrane gains firstDrawMs and warm.
+ *       A refresh, the catch-up or Rescan all that moves the folder you
+ *       are in runs AFTER_FOCUS (focusMoved); an Undo that stopped part
+ *       way runs AFTER_OP with moved and reads its folders again.
  *     - 1.8.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] —
  *       Single-key shortcuts are off unless turned on in the guide:
  *       letters, digits and signs act while the world or the ledger
@@ -410,8 +413,9 @@ const AFTER_SURVEY = registry('AFTER_SURVEY', needs('AFTER_SURVEY', 'run'));
  * 'undo' } for Undo) and res its answer (renamed: a path, or for renames
  * the [from, to] pairs; results, label; for an Undo, moved: the [from, to]
  * paths it carried back). A change that stopped part way runs it too, with res
- * { partial: true, results, label }: what it finished. It runs before the
- * affected folders are re-read, so a feature that names places by path
+ * { partial: true, results, label }: what it finished; an Undo that stopped
+ * part way, with { partial: true, moved, label }: what it carried back. It
+ * runs before the affected folders are re-read, so a feature that names places by path
  * can follow Terrane's own renames and moves (and their undo) before the
  * tree changes.
  */
@@ -490,7 +494,8 @@ const LEDGER_SUB = registry('LEDGER_SUB', (x) => {
 });
 
 /**
- * AFTER_FOCUS run(dir) once the folder you are in has changed (moveFocus).
+ * AFTER_FOCUS run(dir) once the folder you are in has changed: moveFocus,
+ * and a refresh, the catch-up or Rescan all that moved it (focusMoved).
  * AFTER_SELECT run(sel, primary) at the end of every selection change,
  * select() (quiet ones included) and selectAll(). Both run often: a hook
  * must be cheap, and defer anything that is not.
@@ -523,8 +528,9 @@ async function asError(res) {
   const err = new Error(body.message || `The service answered ${res.status}.`);
   err.code = body.code || String(res.status);
   err.affected = body.affected || [];
-  // A change that stopped part way names what it finished.
+  // A change that stopped part way names what it finished; an Undo, what it carried back.
   if (Array.isArray(body.results)) err.results = body.results;
+  if (Array.isArray(body.moved)) err.moved = body.moved;
   return err;
 }
 
@@ -699,11 +705,13 @@ function refreshDirs(rels) {
       const { added } = S.model.reconcile(dir, records);
       for (const child of added) await scanInto(child);
     }
+    const was = S.focus;
     for (const n of [...S.sel]) if (!isAttached(n)) S.sel.delete(n);
     if (S.primary && !isAttached(S.primary)) S.primary = [...S.sel].at(-1) || null;
     if (!isAttached(S.focus)) S.focus = S.model.root;
     S.trail = S.trail.filter(isAttached);
     runHooks(AFTER_REFRESH, dirs);
+    focusMoved(was);
     if (S.search) runQuery();
     queueLayout(40);
     queueSurvey();
@@ -769,6 +777,7 @@ async function fullScan() {
   S.scanning = true;
   stopPlacing();
   const name = S.info.name;
+  const was = S.focus;
   S.model = new Model(name);
   S.focus = S.model.root;
   S.sel.clear();
@@ -786,6 +795,7 @@ async function fullScan() {
   findCache = { search: null, key: '', items: [] };
   hold = null;
   drawAll();
+  focusMoved(was);
   thumbs.reload(TOKEN);
   try {
     await scanInto(S.model.root);
@@ -905,11 +915,13 @@ async function catchUp() {
     }
   }
   const counts = S.model.adopt(fresh);
+  const was = S.focus;
   for (const n of [...S.sel]) if (!isAttached(n)) S.sel.delete(n);
   if (S.primary && !isAttached(S.primary)) S.primary = [...S.sel].at(-1) || null;
   if (!isAttached(S.focus)) S.focus = S.model.root;
   S.trail = S.trail.filter(isAttached);
   runHooks(AFTER_REFRESH, null);
+  focusMoved(was);
   clearTimeout(S.surveyTimer);
   S.surveyTimer = 0;
   S.survey = S.model.survey();
@@ -1047,6 +1059,16 @@ function moveFocus(dir) {
   drawLegend();
   $('b-up').toggleAttribute('disabled', !S.focus.p);
   runHooks(AFTER_FOCUS, dir);
+}
+
+/**
+ * AFTER_FOCUS for a location the controller moved without moveFocus: a
+ * refresh, the warm start's catch-up or Rescan all found the folder you
+ * were in (was) gone and put you at the root, or a hook moved you. The
+ * address and the kept view hear it as they hear any move.
+ */
+function focusMoved(was) {
+  if (S.focus !== was) runHooks(AFTER_FOCUS, S.focus);
 }
 
 /**
@@ -1629,6 +1651,11 @@ async function undo() {
     await refreshDirs(res.affected);
     if (S.tab === 'journal') drawLedger();
   } catch (err) {
+    // An Undo that stopped part way carried some paths back: features
+    // follow them, and their folders are read again, as for a whole one.
+    if (err.moved?.length) runHooks(AFTER_OP, { type: 'undo' }, { ok: false, partial: true, label: err.message, moved: err.moved, affected: err.affected });
+    if (err.affected?.length) refreshDirs(err.affected);
+    if (S.tab === 'journal') drawLedger();
     notice(err.message, { kind: err.code === 'ENOUNDO' ? 'info' : 'error' });
   }
 }

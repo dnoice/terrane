@@ -35,6 +35,14 @@
  *     - A meta naming another root, or a data file cut short, reads as no
  *       cache; --no-warm keeps none and serves none (404); snapshot mode
  *       refuses the route; the route needs the token
+ *     - Read-only mode keeps the cache in the dataset home; a dataset
+ *       home inside the root, read-only or not, made or not, keeps none:
+ *       nothing is written inside the root, info.warm is null, ENOWARM
+ *       says why, the survey records no cache file, and the service says
+ *       so once at startup
+ *     - warmInside in-process: a home beside the root, under it, a
+ *       sibling whose name begins with the root's, a whole drive as the
+ *       root, another case, and a link into the root
  *     - The cache holds names, sizes and dates, never a file's contents
  *     - The writer in-process: abort removes its temporary file, two
  *       commits in a row leave one data file and its meta
@@ -73,7 +81,7 @@ const HERE = path.dirname(fileURLToPath(import.meta.url));
 const SERVER = path.join(HERE, '..', 'server', 'terrane.mjs');
 const { Model, relPath } = await import(new URL('../web/js/model.js', import.meta.url).href);
 const { scan } = await import(new URL('../server/scan.mjs', import.meta.url).href);
-const { warmWriter, readWarm, warmPaths } = await import(new URL('../server/warm.mjs', import.meta.url).href);
+const { warmWriter, readWarm, warmPaths, warmInside } = await import(new URL('../server/warm.mjs', import.meta.url).href);
 const { takeSnapshot } = await import(new URL('../server/snapshot.mjs', import.meta.url).href);
 
 let passed = 0;
@@ -122,14 +130,15 @@ async function boot(args, port, home) {
   const child = spawn(process.execPath, [SERVER, ...args, '--no-open', '--no-watch', '--port', String(port)], {
     stdio: ['ignore', 'pipe', 'inherit'], env: { ...process.env, TERRANE_DATA: home },
   });
+  // Everything the service printed, kept for what it says at startup.
+  let printed = '';
   const actual = await new Promise((resolve, reject) => {
-    let buf = '';
     child.stdout.on('data', (c) => {
-      buf += c;
-      const m = buf.match(/127\.0\.0\.1:(\d+)/);
+      printed += c;
+      const m = printed.match(/127\.0\.0\.1:(\d+)/);
       if (m) resolve(Number(m[1]));
     });
-    child.on('exit', () => reject(new Error(`the service exited: ${buf}`)));
+    child.on('exit', () => reject(new Error(`the service exited: ${printed}`)));
   });
   /** One request; the body as a Buffer, and parsed when it is JSON. */
   const request = (route, { token, headers = {} } = {}) => new Promise((resolve, reject) => {
@@ -158,6 +167,7 @@ async function boot(args, port, home) {
   });
   return {
     port: actual, token, request, stop,
+    printed: () => printed,
     get: (route, headers) => request(route, { token, headers }),
     info: async () => (await request('/api/info', { token })).body,
   };
@@ -345,7 +355,7 @@ r = await n.get('/api/warm');
 check('even with a good cache beside it: info.warm null, /api/warm 404 ENOWARM saying why', info.warm === null && r.status === 404 && r.body?.code === 'ENOWARM' && /--no-warm/.test(r.body?.message), `${r.status} ${r.raw}`);
 await n.stop();
 
-section('Read-only mode keeps the cache (it is outside the root)');
+section('Read-only mode keeps the cache (its dataset home is outside the root)');
 const home4 = newHome();
 const ro = await boot([root, '--read-only'], 5055, home4);
 await ro.get('/api/scan?path=');
@@ -354,7 +364,70 @@ info = await until(async () => {
   return i.warm ? i : null;
 });
 check('a read-only service writes the cache of its survey too', !!info?.warm && info.readOnly === true);
+check('and the cache is in the dataset home, outside the root', warmFiles(home4).length === 2 && !fs.readdirSync(root).some((n) => n.startsWith('warm-')), warmFiles(home4).join(', '));
 await ro.stop();
+
+section('A dataset home inside the root keeps no cache and writes nothing there');
+{
+  // A home folder as the root, its dataset home in the default layout
+  // under it (AppData, or .cache): nothing a survey does may land inside.
+  const homeRoot = path.join(work, 'home-root');
+  fs.mkdirSync(path.join(homeRoot, 'docs'), { recursive: true });
+  fs.writeFileSync(path.join(homeRoot, 'docs', 'a.txt'), 'alpha');
+  const inside = path.join(homeRoot, 'appdata', 'terrane', 'datasets');
+  /** Every folder and file under dir, as relative paths, folders with a trailing slash. */
+  const tree = (dir) => {
+    const out = [];
+    const walk = (d, rel) => {
+      for (const e of fs.readdirSync(d, { withFileTypes: true })) {
+        const r = rel ? `${rel}/${e.name}` : e.name;
+        out.push(e.isDirectory() ? `${r}/` : r);
+        if (e.isDirectory()) walk(path.join(d, e.name), r);
+      }
+    };
+    walk(dir, '');
+    return out.sort();
+  };
+  for (const [mode, args, port, made] of [['read-only', ['--read-only'], 5057, false], ['read and write', [], 5058, true]]) {
+    if (made) fs.mkdirSync(inside, { recursive: true });
+    const was = tree(homeRoot);
+    const h = await boot([homeRoot, ...args], port, inside);
+    const surveyed = await h.get('/api/scan?path=');
+    await wait(600);
+    const i = await h.info();
+    const w = await h.get('/api/warm');
+    const names = recordsOf(surveyed.raw.toString('utf8')).flatMap((rec) => [rec[2], ...rec[5].filter((_, k) => k % 4 === 0)]);
+    check(`${mode}, the dataset home ${made ? 'made' : 'not made yet'} inside the root: a whole survey writes nothing inside the root`,
+      same(tree(homeRoot), was), `${was.join(', ')} -> ${tree(homeRoot).join(', ')}`);
+    check('info.warm is null, and /api/warm is 404 ENOWARM saying why',
+      i.warm === null && w.status === 404 && w.body?.code === 'ENOWARM' && /dataset home is inside this directory/.test(w.body?.message || ''), `${JSON.stringify(i.warm)} ${w.status} ${w.raw}`);
+    check('the survey records no file of a cache', names.length > 0 && !names.some((n) => String(n).startsWith('warm-')), names.join(', '));
+    check('and the service says so once, at startup', (h.printed().match(/Warm start\s+: off\. The dataset home .* is inside the directory/g) || []).length === 1, h.printed());
+    await h.stop();
+  }
+}
+
+section('warmInside, in-process');
+{
+  const real = fs.realpathSync(root);
+  check('a dataset home beside the root is outside it', !(await warmInside(real, path.join(work, 'data-beside'))));
+  check('one under the root is inside it, whether made or not', (await warmInside(real, path.join(real, 'area-01'))) && (await warmInside(real, path.join(real, 'appdata', 'not', 'made'))));
+  check('a sibling whose name begins with the root\'s is outside it', !(await warmInside(real, `${real}-data`)));
+  check('with a whole drive as the root, every dataset home on it is inside', await warmInside(path.parse(real).root, path.join(work, 'data-beside')));
+  if (process.platform === 'win32' || process.platform === 'darwin') {
+    check('the same path in another case is inside, where case does not matter', await warmInside(real, path.join(real.toUpperCase(), 'x')));
+  }
+  const link = path.join(work, 'to-root');
+  let linked = false;
+  try {
+    fs.symlinkSync(real, link, process.platform === 'win32' ? 'junction' : 'dir');
+    linked = true;
+  } catch { /* no link privilege */ }
+  if (linked) {
+    check('one reached through a link into the root is inside it, by its real location', await warmInside(real, path.join(link, 'appdata')));
+    fs.rmSync(link, { force: true });
+  } else console.log('  note  no link or junction can be made here; the link case is left out');
+}
 
 section('Snapshot mode');
 const snapDir = path.join(work, 'snaps');

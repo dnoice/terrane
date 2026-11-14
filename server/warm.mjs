@@ -41,13 +41,19 @@
  *     - readWarm(root): the meta, or null unless it is format 1, names
  *       exactly this root, holds finite counts, and the data file has the
  *       size the meta records; any error is null
+ *     - warmInside(root): whether the cache's folder, by its real
+ *       location (the nearest part that exists resolved, the rest added
+ *       back), is the root or under it, compared as the platform compares
+ *       names; the service then keeps none, so the cache never lands in
+ *       the tree it records
  *     - Temporary files another process left behind more than ten
  *       minutes ago are removed when a writer starts
  *     - The records are the scanner's: names, sizes, dates and flags,
  *       never what a file contains
  *
  * ✒ Usage Instructions:
- *     import { warmWriter, readWarm, warmPaths } from './warm.mjs';
+ *     import { warmWriter, readWarm, warmPaths, warmInside } from './warm.mjs';
+ *     if (await warmInside(guard.root)) return;   // no cache inside the root
  *     const w = warmWriter(guard.root, { version: '1.3.0' });
  *     for await (const batch of scan(root, { signal })) w.push(batch);
  *     if (!signal.aborted) await w.commit(); else await w.abort();
@@ -62,12 +68,14 @@
  *
  * ✒ Other Important Information:
  *     - Dependencies: Node.js built-ins only (fs, zlib, crypto, stream);
- *       snapshot.mjs (datasetHome, slugOf)
+ *       snapshot.mjs (datasetHome, slugOf), guard.mjs (foldName)
  *     - Compatible platforms: Node.js 22.5+ on Windows, macOS, Linux
  *     - Security: the cache holds real file names, as a snapshot does, so
- *       it stays in the dataset home, outside the project and outside the
- *       authorized directory; it is written in read-only mode too, since
- *       it is never inside the root
+ *       it stays in the dataset home, outside the project. The service
+ *       asks warmInside first and keeps no cache when that home's real
+ *       location is inside the authorized directory, so the cache is
+ *       never written inside the root; read-only mode, which refuses
+ *       changes to the directory, still writes it there
  *     - Limitations: one cache per root, replaced by every complete
  *       survey; a cache from a survey that was dropped part way is never
  *       written
@@ -81,6 +89,7 @@ import crypto from 'node:crypto';
 import zlib from 'node:zlib';
 import { pipeline } from 'node:stream';
 import { datasetHome, slugOf } from './snapshot.mjs';
+import { foldName } from './guard.mjs';
 
 export const WARM_FORMAT = 1;
 /** A temporary file of another process older than this is taken as left behind. */
@@ -92,6 +101,39 @@ export function warmPaths(root, base) {
   const dir = datasetHome(slugOf(root), base);
   const stem = `warm-${crypto.createHash('sha256').update(String(root)).digest('hex').slice(0, 16)}`;
   return { dir, data: path.join(dir, `${stem}.ndjson.gz`), meta: path.join(dir, `${stem}.json`) };
+}
+
+/**
+ * Whether the cache for root would be written inside root: its folder's
+ * real location (the nearest part of it that exists, resolved, with the
+ * rest added back) is root or lies under it, compared as this platform
+ * compares names. A dataset home inside the directory, set by
+ * TERRANE_DATA or reached because the root is a home folder or a whole
+ * drive, would put the cache into the tree it records: a write inside
+ * the root, a record of its own temporary file, and a change the watcher
+ * sees. root is the guard's root, a real path already.
+ */
+export async function warmInside(root, base) {
+  const { dir } = warmPaths(root, base);
+  let at = path.resolve(dir);
+  const rest = [];
+  let real = null;
+  for (;;) {
+    try {
+      real = path.join(await fsp.realpath(at), ...rest);
+      break;
+    } catch {
+      const up = path.dirname(at);
+      if (up === at) break;
+      rest.unshift(path.basename(at));
+      at = up;
+    }
+  }
+  const fold = (p) => p.split(path.sep).map(foldName).join(path.sep);
+  const r = fold(path.resolve(root));
+  const prefix = r.endsWith(path.sep) ? r : r + path.sep;
+  const d = fold(real ?? path.resolve(dir));
+  return d === r || d.startsWith(prefix);
 }
 
 const pause = (ms) => new Promise((r) => setTimeout(r, ms));

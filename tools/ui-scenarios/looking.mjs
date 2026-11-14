@@ -33,7 +33,13 @@
  *       at 2 MB at most, with no other file fetched; a sound or film is
  *       answered 206 in byte ranges; Escape gives focus back to the list;
  *       P on a folder says why nothing opened; the inspector's button
- *       opens it too; no raw request ever asks for more than 2 MB
+ *       opens it too; no raw request ever asks for more than 2 MB. The
+ *       content's keys come first: on a focused player the arrows, Home
+ *       and End step nowhere; on copy-a.dat's one long line ArrowRight
+ *       scrolls and stays, a key held from scrolling stops at the edge,
+ *       ArrowLeft scrolls back, and a fresh ArrowRight at the edge steps
+ *       on; on the marker file, taller than the sheet, End and Home
+ *       scroll to its end and top first, and Home again steps
  *     - presets: Quick searches stands after Working sessions, closed;
  *       opened, each count and size equals runSearch on its query; Enter
  *       runs one into Findings and says what it found; Ctrl+ArrowDown and
@@ -54,8 +60,10 @@
  * ✒ Other Important Information:
  *     - Dependencies: tools/ui-check.mjs (the context t); the fixture's
  *       archives/site/README.md, edge cases/copy-a.dat (300,000 bytes of
- *       text), its random pictures and sound and film files, and its
- *       stamped working session with the file under .cache beside it;
+ *       text on one line), its marker TERRANE_TEST_DATA.txt (the
+ *       manifest, one field a line), its random pictures and sound and
+ *       film files, and its stamped working session with the file under
+ *       .cache beside it;
  *       the page's js/model.js and js/relations.js for reference values
  *     - Compatible platforms: Node.js 22.5+
  * ----------------------------------------------------------------------------
@@ -213,6 +221,28 @@ const quicklook = {
     await t.key('ArrowRight');
     t.check('End goes to the last file, and ArrowRight there says Last file', (await t.live()) === 'Last file', await t.live());
 
+    // A player keeps its own keys: they seek, and no file is stepped to.
+    const playing = await t.app((T) => T.S.primary?.n);
+    const player = await t.eval(() => {
+      const m = document.createElement('audio');
+      m.controls = true;
+      m.tabIndex = 0;
+      m.className = 'probe-player';
+      document.querySelector('#dialog .look-body').append(m);
+      m.focus();
+      return document.activeElement === m;
+    });
+    for (const k of ['ArrowLeft', 'ArrowRight', 'Home', 'End']) await t.key(k);
+    await t.sleep(150);
+    const onPlayer = await t.app((T) => ({ primary: T.S.primary?.n, name: document.querySelector('#dialog .look-name')?.textContent, open: document.getElementById('dialog').open }));
+    t.check('on a focused player, ArrowLeft, ArrowRight, Home and End stay the player\'s: the sheet stays on its file',
+      player && onPlayer.open && onPlayer.primary === playing && onPlayer.name === playing, JSON.stringify({ player, playing, onPlayer }));
+    await t.eval(() => {
+      document.querySelector('#dialog .probe-player')?.remove();
+      document.querySelector('#dialog .look-body').focus();
+      return true;
+    });
+
     // Escape gives focus back to the list.
     await t.key('Escape');
     const shut = await t.waitFor(() => !document.getElementById('dialog').open && { focus: document.activeElement?.id || 'body' }, { what: 'Quick look to close' });
@@ -227,6 +257,68 @@ const quicklook = {
     }, { what: 'copy-a.dat in Quick look' });
     await t.shot('quicklook-cut');
     t.check(`a text file over 256 KB says only its first 256 KB is shown (${cut.cut})`, cut.cut === 'First 256 KB of 293 KB' && cut.len <= 262144 && cut.len > 200000, JSON.stringify(cut));
+
+    // Its one line is far wider than the sheet: the arrows scroll it first.
+    const body = () => {
+      const p = document.querySelector('#dialog .look-body');
+      return {
+        focus: document.activeElement === p, left: Math.round(p.scrollLeft), max: p.scrollWidth - p.clientWidth,
+        name: document.querySelector('#dialog .look-name')?.textContent,
+      };
+    };
+    const wide = await t.eval(body);
+    await t.key('ArrowRight');
+    const right = await t.until(() => {
+      const b = (() => {
+        const p = document.querySelector('#dialog .look-body');
+        return { left: p.scrollLeft, name: document.querySelector('#dialog .look-name')?.textContent };
+      })();
+      return b.left > 0 && b;
+    }, { timeout: 2000 }) || await t.eval(body);
+    const afterRight = await t.app((T) => T.S.primary?.n);
+    t.check(`on a line wider than the sheet, ArrowRight scrolls the text (${Math.round(right.left)} of ${wide.max} px) and stays on copy-a.dat`,
+      wide.focus && wide.max > 0 && right.left > 0 && right.name === 'copy-a.dat' && afterRight === 'copy-a.dat', JSON.stringify({ wide, right, afterRight }));
+    // At the right edge a key still held from scrolling does not run on into the next file.
+    await t.eval(() => {
+      const p = document.querySelector('#dialog .look-body');
+      p.scrollLeft = p.scrollWidth;
+      p.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', code: 'ArrowRight', repeat: true, bubbles: true, cancelable: true }));
+      return true;
+    });
+    await t.sleep(100);
+    const heldEdge = await t.app((T) => ({ primary: T.S.primary?.n, name: document.querySelector('#dialog .look-name')?.textContent }));
+    t.check('at the edge, ArrowRight held from scrolling stops there: the sheet stays on copy-a.dat', heldEdge.primary === 'copy-a.dat' && heldEdge.name === 'copy-a.dat', JSON.stringify(heldEdge));
+    await t.sleep(300);
+    const atEdge = (await t.eval(body)).left;
+    await t.eval(() => {
+      window.__lookKeys = [];
+      window.addEventListener('keydown', (e) => window.__lookKeys.push({ key: e.key, at: e.target?.className, prevented: e.defaultPrevented, left: e.target?.scrollLeft }), { once: true });
+      return true;
+    });
+    await t.key('ArrowLeft');
+    const back = await t.until((_T, x) => {
+      const p = document.querySelector('#dialog .look-body');
+      return p.scrollLeft < x && { left: p.scrollLeft, name: document.querySelector('#dialog .look-name')?.textContent };
+    }, { args: [atEdge], timeout: 3000 });
+    t.check('ArrowLeft scrolls it back, still on copy-a.dat', !!back && back.name === 'copy-a.dat',
+      JSON.stringify({ atEdge, back, now: await t.eval(body), keys: await t.eval(() => window.__lookKeys) }));
+    // Pressed again at the right edge, ArrowRight steps on.
+    const edgeOrder = await t.app((T) => T.api.listItems().filter((n) => !n.d).map((n) => n.n));
+    const nextFile = edgeOrder[edgeOrder.indexOf('copy-a.dat') + 1];
+    // The browser may still be easing the last scroll: let it end, then
+    // stand at the edge.
+    await t.sleep(400);
+    const edged = await t.until(() => {
+      const p = document.querySelector('#dialog .look-body');
+      p.scrollLeft = p.scrollWidth;
+      return p.scrollLeft + p.clientWidth >= p.scrollWidth - 1;
+    }, { timeout: 2000 });
+    t.check('the text can be brought to its right edge', !!edged);
+    await t.key('ArrowRight');
+    if (nextFile) {
+      const stepped = await t.until((T, n) => T.S.primary?.n === n && document.querySelector('#dialog .look-name')?.textContent === n, { args: [nextFile], timeout: 4000 });
+      t.check(`at the right edge, a fresh ArrowRight steps to the next file, ${nextFile}`, !!stepped, await t.app((T) => T.S.primary?.n));
+    } else t.check('at the right edge of the last file, ArrowRight says Last file', (await t.live()) === 'Last file', await t.live());
     await t.key('p');
     await t.waitFor(() => !document.getElementById('dialog').open, { what: 'P to close it' });
     t.check('P closes it again, focus on the list', (await t.eval(() => document.activeElement?.id)) === 'ledger-list');
@@ -237,6 +329,45 @@ const quicklook = {
     await t.sleep(150);
     const folder = { open: await t.eval(() => document.getElementById('dialog').open), live: await t.live() };
     t.check('P on a folder opens nothing and says why', !folder.open && folder.live === 'Quick look shows files. strata-old is a folder.', JSON.stringify(folder));
+
+    // A text taller than the sheet (the fixture's marker, its manifest
+    // laid out one field a line): Home and End go to its top and end first.
+    const MARK = 'TERRANE_TEST_DATA.txt';
+    const tallAt = () => {
+      const p = document.querySelector('#dialog .look-body');
+      return { focus: document.activeElement === p, top: Math.round(p.scrollTop), max: p.scrollHeight - p.clientHeight, name: document.querySelector('#dialog .look-name')?.textContent };
+    };
+    if (await goTo(t, MARK)) {
+      await t.key('p');
+      await t.waitFor((_T, n) => {
+        const d = document.getElementById('dialog');
+        return d.open && d.querySelector('.look-name')?.textContent === n && !!d.querySelector('.look-gutter');
+      }, { args: [MARK], what: 'the marker file in Quick look' });
+      const tall = await t.eval(tallAt);
+      if (tall.max > 0) {
+        await t.key('End');
+        const end = await t.until((T, n) => {
+          const p = document.querySelector('#dialog .look-body');
+          return p.scrollTop > 0 && T.S.primary?.n === n && document.querySelector('#dialog .look-name')?.textContent === n && Math.round(p.scrollTop);
+        }, { args: [MARK], timeout: 3000 });
+        t.check(`on a text taller than the sheet, End scrolls toward its end (${end} of ${tall.max} px) and stays on it`, tall.focus && !!end, JSON.stringify({ tall, now: await t.eval(tallAt) }));
+        await t.sleep(400);
+        await t.key('Home');
+        const top = await t.until((T, n) => {
+          const p = document.querySelector('#dialog .look-body');
+          return p.scrollTop === 0 && T.S.primary?.n === n && document.querySelector('#dialog .look-name')?.textContent === n;
+        }, { args: [MARK], timeout: 3000 });
+        t.check('Home scrolls it back to its top, still on it', !!top, JSON.stringify(await t.eval(tallAt)));
+        const firstFile = await t.app((T) => T.api.listItems().filter((n) => !n.d)[0]?.n);
+        await t.key('Home');
+        if (firstFile !== MARK) {
+          const there = await t.until((T, n) => T.S.primary?.n === n && document.querySelector('#dialog .look-name')?.textContent === n, { args: [firstFile], timeout: 4000 });
+          t.check(`at its top, Home again steps to the first file, ${firstFile}`, !!there, await t.app((T) => T.S.primary?.n));
+        } else t.check('at its top, Home again says First file', (await t.live()) === 'First file', await t.live());
+      } else t.skip('Home and End scroll a text taller than the sheet first', `the marker file fits the sheet (${JSON.stringify(tall)})`);
+      await t.key('Escape');
+      await t.waitFor(() => !document.getElementById('dialog').open, { what: 'Quick look to close' });
+    } else t.skip('Home and End scroll a text taller than the sheet first', `the fixture has no ${MARK}`);
 
     // A picture: a thumbnail, or the file itself at 2 MB at most, and nothing else.
     const pic = await findFile(t, ['png', 'jpg', 'jpeg', 'gif', 'webp'], RAW_IMAGE_MAX);

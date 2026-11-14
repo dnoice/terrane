@@ -45,6 +45,11 @@
  *       list shown, Home and End to the first and last; each step aborts
  *       the last read, stops the last player, selects the file, moves the
  *       list's cursor to it and says what it is; at an end it says so
+ *     - The content's keys come first: a player seeks with them, and the
+ *       body scrolls with them while it can go further that way (the
+ *       arrows sideways, Home and End up and down), so a long line or a
+ *       long text is read to its edge before the next press steps; a key
+ *       held to scroll stops at the edge
  *
  * ✒ Usage Instructions:
  *     Listed in features.js and installed by app.js. Select a file in the
@@ -54,6 +59,7 @@
  * ✒ Examples:
  *     P on README.md          the text, its lines numbered
  *     → in the sheet          the next file in Contents, selected
+ *     → on a long line        scrolls it; at its right edge, the next file
  *     P on bulk-write         Quick look shows files. bulk-write is a folder.
  *
  * ✒ Other Important Information:
@@ -89,12 +95,29 @@ const VIDEO_EXT = new Set(['mp4', 'm4v', 'webm', 'mov', 'ogv']);
 /** Lines in a text, a final newline ending the last one rather than starting another. */
 const countLines = (text) => (text ? text.split('\n').length - (text.endsWith('\n') ? 1 : 0) : 0);
 
+/** The keys that step through the list, and where each goes. */
+const STEPS = { ArrowLeft: -1, ArrowRight: 1, Home: 'first', End: 'last' };
+
+/**
+ * Whether the body can still scroll the way a key scrolls it: the arrows
+ * sideways, Home and End up and down, as a focused scroll region does.
+ */
+function canScroll(pane, key) {
+  if (key === 'ArrowLeft') return pane.scrollLeft > 0;
+  if (key === 'ArrowRight') return pane.scrollLeft + pane.clientWidth < pane.scrollWidth - 1;
+  if (key === 'Home') return pane.scrollTop > 0;
+  if (key === 'End') return pane.scrollTop + pane.clientHeight < pane.scrollHeight - 1;
+  return false;
+}
+
 export function install(api) {
   const { S, el } = api;
   const $ = (id) => document.getElementById(id);
 
   // The open sheet: { sheet, node, pane, parts, abort, media }, or null.
   let look = null;
+  // The step key last left to the body to scroll with, while it is held.
+  let held = null;
 
   /* ---------- what is shown, and where it stands ---------- */
 
@@ -317,16 +340,25 @@ export function install(api) {
           el('div', { class: 'look-meta' }, parts.facts, parts.where, parts.cut)),
         pane,
         el('p', { class: 'look-foot', 'aria-hidden': 'true' }, kbd('←'), kbd('→'), ' previous / next file · ', kbd('Home'), kbd('End'), ' first / last · ',
-          kbd('P'), ' or ', kbd('Esc'), ' closes'));
+          kbd('P'), ' or ', kbd('Esc'), ' closes · a long text scrolls to its edge first; a player keeps its keys'));
     }, {
       className: 'is-look', label: `Quick look: ${node.n}`,
       onKey: (e) => {
         if (e.ctrlKey || e.metaKey || e.altKey) return;
-        if (e.key === 'ArrowLeft') step(-1);
-        else if (e.key === 'ArrowRight') step(1);
-        else if (e.key === 'Home') step('first');
-        else if (e.key === 'End') step('last');
-        else if (e.key === 'p' || e.key === 'P' || e.key === 'Escape') close();
+        const to = STEPS[e.key];
+        if (to !== undefined) {
+          // The content's keys first: a player seeks with them, and the
+          // body scrolls with them while it can go further that way.
+          if (e.target instanceof Element && e.target.closest('audio, video')) return;
+          if (!e.repeat) held = null;
+          if (e.target === pane && canScroll(pane, e.key)) {
+            held = e.key;
+            return;
+          }
+          // A key held to scroll stops at the edge rather than running on
+          // through the files; pressed again, it steps.
+          if (!(e.repeat && held === e.key)) step(to);
+        } else if (e.key === 'p' || e.key === 'P' || e.key === 'Escape') close();
         else return;
         e.preventDefault();
         e.stopPropagation();

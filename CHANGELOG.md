@@ -27,7 +27,11 @@
       and the lists saved as CSV; then that of landmarks.js: places export and import;
       then that of features.js again: a terminal opened in a folder. Starting fast extends
       those of app.js, model.js, landmarks.js and ui.js: the warm start; app.js's header
-      rolls its 1.7.0 entry out to this file's copy.
+      rolls its 1.7.0 entry out to this file's copy. The review of Wave 3 extends that of
+      app.js again: the folder you are in followed after a refresh, and an Undo that
+      stopped part way. The app.js 1.7.0 entry now opens with its header's words, which
+      rolled out without being copied here, and the page says how an entry's long form and
+      its header's short form are kept together.
     - 1.4.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — Records app.js 1.8.0:
       single-key shortcuts are off unless turned on in the guide.
     - 1.3.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — Records the hardening
@@ -68,7 +72,9 @@
 
 The headers of `web/` files keep their three latest entries. This file
 keeps all of them. When a header rolls an entry out, the entry is copied
-here unchanged in the same edit.
+here unchanged in the same edit. Where this file already holds an
+entry's long form, the header's words are copied in to open it, so the
+short form is kept too.
 
 ## web/js/app.js
 
@@ -162,7 +168,16 @@ here unchanged in the same edit.
   { route, signal }) reads any route that answers the scan's NDJSON. window.__terrane
   gains firstDrawMs (performance.now() at the first layout that drew a box, rounded) and
   warm: { used, settledMs }, and is set once the first tree is drawn, warm or not. The
-  header's 1.7.0 entry rolled out to keep it within 40 lines.
+  header's 1.7.0 entry rolled out to keep it within 40 lines. The review of Wave 3:
+  refreshDirs and catchUp note the folder you were in before they prune the tree, and
+  fullScan before it starts a new one; once the selection, focus and trail are pruned
+  and AFTER_REFRESH has run (fullScan: once everything is reset and drawn), the new
+  focusMoved(was) runs AFTER_FOCUS when the location moved, so the address and the kept
+  view no longer name a folder that left the tree, and a reload no longer says "Nothing
+  at" it. asError carries moved; an Undo that fails with moved (one that stopped part
+  way) runs AFTER_OP with { type: 'undo' } and { ok: false, partial: true, moved, label,
+  affected }, reads the affected folders again and redraws the Journal tab before its
+  error notice, which now carries the service's own sentence.
 - 1.8.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — Single-key shortcuts are
   off unless turned on in the guide, on Dennis's call after the hardening pass offered the
   setting with shortcuts on: letters, digits and signs act while the world or the ledger
@@ -174,7 +189,10 @@ here unchanged in the same edit.
   disk no longer stalls every refresh; Rescan all lets go of the old tree and runs the search
   again; the forced unfold ends at the overview or off its branch; focus survives a redraw or a
   hidden panel; a narrow inspector drawer and a single-key setting; a page the service did not
-  serve asks it nothing. In full: refreshDirs reads a folder that is gone from disk through its
+  serve asks it nothing. Counts say "1 item" and "1 match"; an empty folder, a search with no
+  match and a legend with nothing to colour each say so, with no sort keys over an empty list;
+  Copy, Create and Rename carry icons as their neighbours do.
+  In full: refreshDirs reads a folder that is gone from disk through its
   parent in the same pass, where it used to wait on a refresh chained behind itself, which left
   every later refresh, Undo, Restore, F5 and B waiting for good. fullScan stops placing and lets
   go of S.force, S.search, S.sessions, the sorted Findings and a held flight, then runs the query

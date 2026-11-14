@@ -31,9 +31,14 @@
  *       nothing; fixed, Enter renames the three files on disk, the
  *       Journal holds one entry, the renamed items stay selected, and
  *       Ctrl+Z restores them by content hash; a benchmark on a folder of
- *       a batch follows it and Undo carries it back; F2 with one item still
- *       opens the single rename; on the read-only service F2 with several
- *       says read-only and the menu's item says why it is unavailable
+ *       a batch follows it and Undo carries it back; on Windows that
+ *       Undo first meets a folder held open by a child process as its
+ *       working directory, stops part way with a notice saying how many
+ *       went back, shows it back in the tree with the benchmark following
+ *       it, and finishes with the next Ctrl+Z once let go; F2 with one
+ *       item still opens the single rename; on the read-only service F2
+ *       with several says read-only and the menu's item says why it is
+ *       unavailable
  *     - 'dupes' (writes): an unverified group says to verify first and
  *       offers nothing; Verify by content from the Survey; the fixture's
  *       true copies show Reclaimable and Keep newest and Keep oldest in
@@ -57,7 +62,7 @@
  *
  * ✒ Other Important Information:
  *     - Dependencies: tools/ui-check.mjs (the context t, t.readOnlyUrl,
- *       t.goto); node:fs, node:crypto; the fixture's edge cases (the
+ *       t.goto); node:fs, node:crypto, node:child_process; the fixture's edge cases (the
  *       three true copies) and archives/site.zip
  *     - Compatible platforms: Node.js 22.5+
  * ----------------------------------------------------------------------------
@@ -66,6 +71,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
+import { spawn } from 'node:child_process';
 
 const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
 
@@ -231,7 +237,12 @@ const batchRename = {
     await t.key('Enter');
     const onDisk = await t.poll(() => same(listing(), [...kept]), { timeout: 8000 });
     t.check(`Enter applies: the three files are renamed on disk (${listing().join(', ')})`, onDisk);
-    const ops = t.requests(before).filter((r) => r.method === 'POST' && r.path === '/api/op');
+    // The disk can show the new names a moment before the answer is recorded.
+    const opsSent = () => t.requests(before).filter((r) => r.method === 'POST' && r.path === '/api/op');
+    const ops = (await t.poll(() => {
+      const sent = opsSent();
+      return sent.length > 0 && sent.every((r) => r.status) && sent;
+    }, { timeout: 4000 })) || opsSent();
     t.check('in one request to the service', ops.length === 1 && ops[0].status === 200, JSON.stringify(ops));
     t.check('the renamed files keep their contents', same(kept.map((n) => sha(`${dir}/${n}`)), hashes));
     const after = await t.waitFor((T) => T.S.sel.size === 3 && [...T.S.sel].every((n) => /^kept-/.test(n.n)) && {
@@ -270,6 +281,32 @@ const batchRename = {
       return b?.rel === 'edge cases/vacant one' && b.node === T.S.model.find('edge cases/vacant one') && b.rel;
     }, { timeout: 10000, what: 'the benchmark to follow the batch rename' });
     t.check(`a benchmark on a folder of the batch follows it (${carried})`, !!carried && fs.existsSync(t.abs('edge cases/vacant two')));
+    // Windows will not rename a folder a program holds as its working
+    // directory, as a terminal opened there does. Held, the folder renamed
+    // first (the last to go back) stops the Undo part way: the page says
+    // how many went back and shows them; let go, the next Ctrl+Z finishes.
+    if (process.platform === 'win32') {
+      const pairs = JSON.parse(fs.readFileSync(t.abs('.terrane-trash/journal.json'), 'utf8')).entries.at(-1).undo.pairs;
+      const [[firstFrom, firstTo], [otherFrom, otherTo]] = pairs;
+      const holder = spawn(process.execPath, ['-e', 'setInterval(() => {}, 1000)'], { cwd: t.abs(firstTo), stdio: 'ignore' });
+      const exited = new Promise((res) => holder.once('exit', res));
+      await t.sleep(300);
+      await t.key('Ctrl+Z');
+      const name = (rel) => rel.slice(rel.lastIndexOf('/') + 1);
+      const want = `Undo stopped at "${name(firstTo)}" after putting back 1 of 2 items: it is in use by another program. Undo again to put back the last one.`;
+      const part = await t.until((T, msg, back) => {
+        const said = [...document.querySelectorAll('#notices .notice-text')].map((x) => x.textContent);
+        return said.includes(msg) && !!T.S.model.find(back) && { b: T.places.benchmarks[0]?.rel };
+      }, { args: [want, otherFrom], timeout: 10000 });
+      t.check(`an Undo that meets a folder held open says how many went back, and the tree shows it back (${name(otherFrom)})`,
+        !!part && fs.existsSync(t.abs(otherFrom)) && !fs.existsSync(t.abs(otherTo)) && fs.existsSync(t.abs(firstTo)) && !fs.existsSync(t.abs(firstFrom)),
+        JSON.stringify({ part, want, said: await t.eval(() => [...document.querySelectorAll('#notices .notice-text')].map((x) => x.textContent)) }));
+      // The benchmark is on the folder once named empty one: back with what went back, else still held.
+      const wantB = firstTo === 'edge cases/vacant one' ? firstTo : 'edge cases/empty one';
+      t.check(`the benchmark follows what went back and stays on what did not (${part?.b})`, part?.b === wantB, JSON.stringify({ part, wantB }));
+      holder.kill();
+      await exited;
+    } else t.skip('an Undo that meets a folder held open', 'Windows only: elsewhere a working directory can be renamed');
     await t.key('Ctrl+Z');
     const back = await t.waitFor((T, r) => {
       const b = T.places.benchmarks[0];

@@ -45,8 +45,17 @@
  *       it, decompressed otherwise, through pipeline() so it ends when
  *       the page goes away; ENOWARM 404 when there is none or with
  *       --no-warm, and ESNAPSHOT in snapshot mode, where no cache is
- *       kept. --no-warm turns it off. The cache is outside the root, so
- *       read-only mode keeps it too.
+ *       kept. --no-warm turns it off. Read-only mode keeps the cache
+ *       too, since it is written in the dataset home and never inside
+ *       the root: a dataset home whose real location is inside the root
+ *       (warmInside: TERRANE_DATA there, or a home folder or a whole
+ *       drive as the root) turns the warm start off, said once at
+ *       startup and in ENOWARM's sentence, so nothing is written inside
+ *       the directory and no survey records the cache's own files. The
+ *       --help text says what --read-only still writes. Error bodies
+ *       carry moved, the paths an Undo that stopped part way carried
+ *       back; an error marked worded keeps its own sentence instead of
+ *       the stock explanation of its code.
  *     - 1.4.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — POST
  *       /api/hash reads a file only once its real location is proved
  *       inside the root and outside the holding area, as /api/raw and
@@ -131,7 +140,8 @@
  *     - A warm start: the last complete survey of the root is kept in the
  *       dataset home (names, sizes, dates and flags, never contents) and
  *       served by GET /api/warm, so the next launch draws at once while
- *       the page surveys the directory again; --no-warm turns it off
+ *       the page surveys the directory again; --no-warm turns it off,
+ *       and it is off while the dataset home is inside the directory
  *     - Zero npm dependencies; three.js and the fonts are vendored in web/
  *
  * ✒ Usage Instructions:
@@ -156,7 +166,10 @@
  *         --thumbs <db>   Thumbnail dataset to serve (default: thumbs.db in
  *                         the dataset folder for the root).
  *     Safety:
- *         --read-only     Refuse every operation that changes the disk.
+ *         --read-only     Refuse every operation that changes the directory.
+ *                         The tree of the last survey is still written to
+ *                         the dataset home outside it (never inside it);
+ *                         add --no-warm to write nothing at all.
  *     Processing:
  *         --no-watch      Do not watch for outside changes (manual refresh).
  *         --no-warm       Keep no tree of the last survey and serve none: every
@@ -175,8 +188,9 @@
  *       the browser sends to every port on this host, carries only the
  *       thumbnail secret
  *     - Privacy: the warm cache holds real file names, as a snapshot does;
- *       it is kept in the dataset home, outside the project and outside
- *       the authorized directory
+ *       it is kept in the dataset home, outside the project, and only
+ *       while that home's real location is outside the authorized
+ *       directory; otherwise none is kept
  *     - Limitations: on Linux the recursive watcher is skipped above 15,000
  *       folders, where its setup cost stops being reasonable; the interface
  *       then offers manual refresh
@@ -198,7 +212,7 @@ import { makeOps } from './ops.mjs';
 import { openSnapshots, listSnapshots, datasetHome, slugOf } from './snapshot.mjs';
 import { openThumbs } from './thumbs.mjs';
 import { inspect } from './archive.mjs';
-import { warmWriter, readWarm, warmPaths } from './warm.mjs';
+import { warmWriter, readWarm, warmPaths, warmInside } from './warm.mjs';
 
 const VERSION = '1.3.0';
 const WEB = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'web');
@@ -223,6 +237,9 @@ if (!usageOk || flag('--help')) {
     '',
     '  Terrane only works inside the directory you name here. With --snapshot it',
     '  shows a recorded structure instead and touches no real files at all.',
+    '  --read-only refuses every change to the directory. The tree of the last',
+    '  survey is still kept in the dataset home outside it (TERRANE_DATA moves it;',
+    '  --no-warm keeps none), and never when that home is inside the directory.',
     '',
   ].join('\n'));
   process.exit(usageOk ? 0 : 1);
@@ -248,10 +265,17 @@ if (snapshotArg) {
   }
 }
 const readOnly = flag('--read-only') || !!snap;
-// The tree of the last complete survey, kept outside the root so the next
-// launch can draw at once. Off in snapshot mode, which is a recorded tree
-// already, and with --no-warm.
-const warmOn = !snap && !flag('--no-warm');
+// The tree of the last complete survey, kept in the dataset home so the
+// next launch can draw at once; read-only mode keeps it too, since it is
+// never written inside the root. Off in snapshot mode, which is a
+// recorded tree already, and with --no-warm. Off as well when the dataset
+// home's real location is inside the root (TERRANE_DATA there, or a home
+// folder or a whole drive as the root): the cache would be a write inside
+// the directory, recorded by the survey it records, and seen by the
+// watcher. Said once at startup.
+const warmWanted = !snap && !flag('--no-warm');
+const warmBlocked = warmWanted && await warmInside(guard.root);
+const warmOn = warmWanted && !warmBlocked;
 
 // The thumbnail dataset sits beside the structure snapshots. It is opened
 // lazily so one built after the service started is still picked up.
@@ -319,7 +343,10 @@ const json = (res, status, body) => {
 
 const fail = (res, err) => {
   const status = err instanceof GuardError ? err.status : 500;
-  const explain = {
+  // A system error's own message names absolute paths and codes, so its
+  // code is explained instead; an error marked worded already says why
+  // in words (a rename or an Undo that stopped part way), and is kept.
+  const explain = err.worded ? null : {
     EACCES: 'Permission denied by the operating system.',
     EPERM: 'The operating system did not permit this.',
     EBUSY: 'The item is in use by another program.',
@@ -331,8 +358,10 @@ const fail = (res, err) => {
       ok: false, code: err.code || 'EIO', message: explain || err.message, affected: err.affected || [],
       // An archive refusal names the format found and the one the name suggests.
       ...(err.format !== undefined ? { format: err.format } : {}), ...(err.claimed ? { claimed: err.claimed } : {}),
-      // A change that stopped part way names what it finished.
+      // A change that stopped part way names what it finished; an Undo
+      // that stopped part way, what it carried back.
       ...(Array.isArray(err.results) ? { results: err.results } : {}),
+      ...(Array.isArray(err.moved) ? { moved: err.moved } : {}),
     });
   } else res.end();
 };
@@ -489,7 +518,9 @@ async function warmApi(req, res) {
   const m = warmOn ? await readWarm(guard.root) : null;
   const none = () => new GuardError('ENOWARM', warmOn
     ? 'No tree from an earlier session is kept for this directory.'
-    : 'Terrane was started with --no-warm, so it keeps no tree from an earlier session.', 404);
+    : warmBlocked
+      ? 'Terrane keeps no tree from an earlier session here: its dataset home is inside this directory, where the cache would change the tree it records. Set TERRANE_DATA to a folder outside it.'
+      : 'Terrane was started with --no-warm, so it keeps no tree from an earlier session.', 404);
   if (!m) throw none();
   let fh;
   try {
@@ -865,7 +896,8 @@ const listen = (attempt = 0) => {
           `  Taken                : ${new Date(snapMeta.takenAt).toLocaleString('en-US')} (${snapMeta.files.toLocaleString('en-US')} files)`,
           '  Mode                 : snapshot (no real file is read or changed)']
         : [`  Authorized directory : ${guard.root}`,
-          `  Mode                 : ${readOnly ? 'read-only' : 'read and write (no overwrite, no direct delete)'}`]),
+          `  Mode                 : ${readOnly ? 'read-only' : 'read and write (no overwrite, no direct delete)'}`,
+          ...(warmBlocked ? [`  Warm start           : off. The dataset home (${warmPaths(guard.root).dir}) is inside the directory; set TERRANE_DATA to a folder outside it.`] : [])]),
       `  Open                 : ${address}`,
       '',
       '  Ctrl+C to stop.',
