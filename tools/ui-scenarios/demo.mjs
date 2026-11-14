@@ -18,7 +18,9 @@
  *       polish scenario serves the demo world the same way. demo-regions
  *       opens it with ?regions: the world drawn from regions answered in
  *       the page, a folder's region read, a rename and its Undo read again
- *       through fresh regions, and still no request to /api/ leaving it.
+ *       through fresh regions, a search answered in the page whose first
+ *       match Enter reveals, the Survey listed, and still no request to
+ *       /api/ leaving it.
  *     - 1.1.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] —
  *       Quick look in the demo world: a README's text, a photo drawn in
  *       the page, a sound for an audio file and the film recorded in the
@@ -311,6 +313,23 @@ const demoRegions = {
         return T.S.model.find('Projects/harbor-api').c.map((c) => c.n);
       });
       t.check('Undo puts the old name back in the region', undone.includes('README.md') && !undone.includes('README-renamed.md'));
+
+      // A search, answered in the page by the demo's own column tree, and Enter reveals.
+      await t.eval(() => document.getElementById('q').focus());
+      await t.type('invoice');
+      const found = await t.until((T) => T.S.query === 'invoice' && T.S.search?.regions && T.S.tab === 'findings' && T.list.items.length > 0
+        && { total: T.S.search.total, first: T.api.relPath(T.list.items[0]) }, { timeout: 15000 });
+      t.check(`Find answers in regions: ${found?.total} matches for invoice`, found?.total >= 4, JSON.stringify(found));
+      await t.eval(() => document.getElementById('ledger-list').focus());
+      await t.key('Enter');
+      const shown = await t.until((T, r) => T.S.primary && !T.S.primary.ref && T.api.relPath(T.S.primary) === r && T.api.isAttached(T.S.primary), { args: [found?.first], timeout: 15000 });
+      t.check(`and Enter reveals the first, ${found?.first}`, !!shown);
+      await t.app((T) => { T.api.setQuery(''); return true; });
+      // The Survey lists, from the same tree.
+      await t.app((T) => { T.S.tab = 'survey'; T.api.drawLedger(); return true; });
+      const listed = await t.until((T) => T.S.survey && !T.S.survey.pending && document.querySelectorAll('#ledger-rich .item').length > 0
+        && { largest: T.S.survey.largest.length, groups: T.S.survey.dupGroups.length, items: document.querySelectorAll('#ledger-rich .item').length }, { timeout: 15000 });
+      t.check(`the Survey lists in regions: ${listed?.largest} largest files, ${listed?.groups} candidate groups`, listed?.largest > 0 && listed.groups > 0, JSON.stringify(listed));
 
       const asked = t.requests(mark).filter((r) => /\/api\//.test(r.url));
       t.check(`not one request to /api/ left the page (${asked.length})`, asked.length === 0, JSON.stringify(asked.slice(0, 3)));

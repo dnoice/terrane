@@ -20,7 +20,10 @@
  *       service's codes and sentences. A fresh read applies the world's
  *       depth-1 records through the same refresh, after the changes queued
  *       before it. createDemoService takes threshold (0 draws every tree in
- *       regions).
+ *       regions), or regions: true for the same. find, marks, survey,
+ *       sessions and places are answered by questions.js over the same
+ *       tree, after the changes queued before them, and check is refused
+ *       with ENOWARM: no tree is kept from an earlier session to check.
  *     - 1.0.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] —
  *       Initial release.
  *
@@ -36,7 +39,9 @@
  *       and depth stubs), stat, raw, inside (zip interiors; other formats
  *       refused in the service's words), journal, thumbs
  *     - Region routes: tree and region (ids, a path's chain, a fresh read)
- *       answered by columns.js, as the service answers them
+ *       answered by columns.js, as the service answers them, and the
+ *       whole-tree questions (find, marks, survey, sessions, places) by
+ *       questions.js; GET check refused, as GET warm is
  *     - Every operation: new folder, rename, a batch rename, move, copy,
  *       remove to the holding area, restore, permanent deletion of held
  *       items, undo, cancel, with the service's checks: names, collisions
@@ -86,6 +91,7 @@
 
 import { buildWorld, find, walk, textOf, insideOf, isBinary, extOf, hash32, rng, FLAG_LINK, FLAG_HIDDEN } from './demo-world.js';
 import { REGION_THRESHOLD, treeFrom, answer } from './columns.js';
+import { QUESTION_ROUTES } from './questions.js';
 
 export const DEMO_VERSION = '1.4.0';
 export const DEMO_ROOT = '/demo/Studio';
@@ -167,7 +173,9 @@ const ARCHIVE_FOUND = [
  * Creates the demo service over a fresh world. emit(msg) receives what
  * the service's event stream would carry: { type: 'job' | 'change' | ... }.
  */
-export function createDemoService({ now = Date.now(), seed, emit = () => {}, clock = () => Date.now(), threshold = REGION_THRESHOLD } = {}) {
+export function createDemoService({ now = Date.now(), seed, emit = () => {}, clock = () => Date.now(), threshold: given = REGION_THRESHOLD, regions = false } = {}) {
+  // regions: true draws even this small world in regions, as a tree above the threshold is drawn.
+  const threshold = regions ? 0 : given;
   const world = buildWorld({ now, seed });
   const root = world.root;
   const SESSION = `d${now.toString(36)}`;
@@ -777,6 +785,7 @@ export function createDemoService({ now = Date.now(), seed, emit = () => {}, clo
         }
         if (route === 'thumbs') return { status: 200, json: { rows: thumbRows() } };
         if (route === 'warm') throw new DemoError('ENOWARM', 'The demo world is built afresh on every visit, so there is no tree kept from an earlier session.', 404);
+        if (route === 'check') throw new DemoError('ENOWARM', 'The demo world is built afresh on every visit, so there is no tree kept from an earlier session to check.', 404);
         if (route === 'tree') return answer(tree(), 'tree', params, regionCtx());
         if (route === 'region') {
           // A fresh read changes the tree, so it waits its turn as a change does.
@@ -784,6 +793,8 @@ export function createDemoService({ now = Date.now(), seed, emit = () => {}, clo
           const ask = () => answer(tree(), 'region', params, regionCtx());
           return fresh ? await serial(ask) : await ask();
         }
+        // The whole-tree questions, over the same tree, after any change queued before them.
+        if (QUESTION_ROUTES.includes(route)) return await serial(() => answer(tree(), route, params, regionCtx()));
       }
       if (method === 'POST') {
         if (route === 'op') return { status: 200, json: await run(body || {}) };

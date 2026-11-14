@@ -20,7 +20,11 @@
  *       the browser model's node and the age table's row; a path's chain
  *       with skip; a fresh read after a new folder shows it, with the
  *       parent's new count in up; a stale generation and too many ids
- *       refused in the service's words.
+ *       refused in the service's words. The whole-tree questions: with
+ *       regions: true the threshold is 0; find equals runSearch for 14
+ *       queries on one clock, the survey model.survey(), the sessions
+ *       relations.sessions; places and marks answer; check is refused with
+ *       its sentence; a wrong generation is ESTALE.
  *     - 1.0.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] —
  *       Initial release.
  *
@@ -78,7 +82,8 @@ import path from 'node:path';
 
 const W = await import(new URL('../web/js/demo-world.js', import.meta.url).href);
 const { createDemoService } = await import(new URL('../web/js/demo-service.js', import.meta.url).href);
-const { Model, relPath } = await import(new URL('../web/js/model.js', import.meta.url).href);
+const { Model, relPath, parseQuery, runSearch, isAncestor } = await import(new URL('../web/js/model.js', import.meta.url).href);
+const R = await import(new URL('../web/js/relations.js', import.meta.url).href);
 const C = await import(new URL('../web/js/columns.js', import.meta.url).href);
 const { buildAgeTable, STEPS } = await import(new URL('../web/js/timeline.js', import.meta.url).href);
 const { scan } = await import(new URL('../server/scan.mjs', import.meta.url).href);
@@ -435,6 +440,60 @@ section('Regions');
   check('a path not in the tree is ENOENT 404, naming the deepest folder found', r.status === 404 && r.json.code === 'ENOENT' && r.json.deepest === 'Projects');
   r = await rh('region', q([['v', '1'], ['ids', '0'], ['with', '0:a/b']]));
   check('a name with a slash is EBADREQ 400', r.status === 400 && r.json.code === 'EBADREQ');
+}
+
+section('The whole-tree questions');
+{
+  const rs = createDemoService({ now: NOW, clock: () => NOW, regions: true });
+  check('createDemoService({ regions: true }) draws every tree in regions: threshold 0', rs.info().regions.threshold === 0);
+  const ask = async (route, o) => rs.handle('GET', route, new URLSearchParams({ v: '1', ...o }));
+  const model = new Model(rs.world.root.name);
+  const idMap = [];
+  for (const b of (await rs.handle('GET', 'scan', { path: '' })).batches) model.ingest(b, idMap, model.root);
+  const realNow = Date.now;
+  Date.now = () => NOW;
+  try {
+    const sv = model.survey();
+    const sess = R.sessions(model.root);
+    const ext = {
+      is: { benchmark: () => false },
+      prefix: { session: (v) => R.sessionPredicate(sess, /^\d+$/.test(v) ? Number(v) : 0), in: (_v, raw) => {
+        const dir = model.find(raw.trim().replace(/^\/+/, ''));
+        return dir?.d ? (n) => n !== dir && isAncestor(dir, n) : () => false;
+      } },
+    };
+    const queries = ['invoice', '*.jpg', 'kind:video,audio', 'ext:pdf >100kb', 'is:empty', 'is:hidden', 'is:link', 'is:sealed', 'is:dup', 'newer:30d', 'older:1y', 'in:Projects', 'session:1', '"harbor"'];
+    const bad = [];
+    for (const text of queries) {
+      const s = runSearch(model, parseQuery(text, ext));
+      const a = (await ask('find', { q: text })).json;
+      const b = (await ask('find', { q: text, sort: 'date', dir: '1' })).json;
+      const bySize = s.list.slice(0, 5000).map(relPath);
+      const byDate = [...s.list].sort((x, y) => ((x.d ? x.mm : x.m) - (y.d ? y.mm : y.m))).slice(0, 5000).map(relPath);
+      if (a.total !== s.set.size || a.bytes !== s.bytes || JSON.stringify(a.hits.map((h) => h[0])) !== JSON.stringify(bySize) || JSON.stringify(b.hits.map((h) => h[0])) !== JSON.stringify(byDate)) bad.push(`${text}: ${a.total}/${s.set.size}`);
+    }
+    check(`find over the demo world equals the page's runSearch for ${queries.length} queries: totals, bytes and the order by size and by date`, bad.length === 0, bad.join(' | '));
+    const a = (await ask('survey', {})).json;
+    check(`survey equals model.survey(): largest, empty, sealed, links and ${a.dupGroups.length} candidate groups`,
+      JSON.stringify(a.largest.map((r) => r[0])) === JSON.stringify(sv.largest.map(relPath))
+      && a.empty.count === sv.empty.length && a.sealed.count === sv.sealed.length && a.links.count === sv.links.length
+      && JSON.stringify(a.dupGroups.map((g) => [g.size, g.count, g.waste])) === JSON.stringify(sv.dupGroups.map((g) => [g.size, g.files.length, g.waste])));
+    const se = (await ask('sessions', {})).json;
+    check(`sessions equal relations.sessions (${se.count} sessions, ${se.considered} files considered)`, se.count === sess.length && se.considered === sess.considered && se.skipped === sess.skipped
+      && se.list.every((r, i) => r.start === sess[i].start && r.end === sess[i].end && r.count === sess[i].count && r.bytes === sess[i].bytes && r.bulk === sess[i].bulk));
+    const pl = (await ask('places', { q: 'harbor', limit: '5' })).json;
+    check(`places ranks the demo's names (${pl.places.map((p) => p[0]).join(', ')})`, pl.places.length > 0 && /harbor/i.test(pl.places[0][0]));
+    const f = (await ask('find', { q: 'invoice' })).json;
+    const mk = (await ask('marks', { q: f.qid, ids: '0' })).json;
+    check('marks answer for a search the demo keeps', mk.marks.length === 1 && mk.marks[0].w === f.total);
+  } finally {
+    Date.now = realNow;
+  }
+  const c = await rs.handle('GET', 'check', {});
+  check('GET check is refused: ENOWARM, with the demo\'s sentence', c.status === 404 && c.json.code === 'ENOWARM'
+    && c.json.message === 'The demo world is built afresh on every visit, so there is no tree kept from an earlier session to check.', JSON.stringify(c.json));
+  const st = await rs.handle('GET', 'find', new URLSearchParams({ v: '2', q: 'x' }));
+  check('a question for a wrong generation is ESTALE 409', st.status === 409 && st.json.code === 'ESTALE');
 }
 
 console.log(`\n${passed} passed, ${failed} failed\n`);

@@ -15,7 +15,9 @@
  * ✒ Changelog:
  *     - 1.1.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] —
  *       ?regions in the address makes the demo service draw every tree in
- *       regions (threshold 0), so the region path runs with no service.
+ *       regions (createDemoService({ regions: true }), threshold 0), so the
+ *       region path, its search and its survey included, runs with no
+ *       service.
  *     - 1.0.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] —
  *       Initial release.
  *
@@ -443,7 +445,7 @@ export function startDemo({ thumbs } = {}) {
   // ?regions draws even this small world in regions, so the region path
   // runs with no service at all.
   const regions = new URLSearchParams(location.search).has('regions');
-  const svc = createDemoService({ emit: (msg) => listeners.forEach((fn) => fn(msg)), ...(regions ? { threshold: 0 } : {}) });
+  const svc = createDemoService({ emit: (msg) => listeners.forEach((fn) => fn(msg)), regions });
   const realFetch = window.fetch.bind(window);
   const enc = new TextEncoder();
 
