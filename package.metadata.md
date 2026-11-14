@@ -1,17 +1,20 @@
 <!--
 ✒ Metadata
-    - Title: Package Manifest (Terrane Edition - v1.11)
+    - Title: Package Manifest (Terrane Edition - v1.12)
     - File Name: package.json
     - Relative Path: package.json
     - Artifact Type: config
-    - Version: 1.11.0
-    - Date: 11/13/2026
-    - Update: Friday, November 13, 2026
+    - Version: 1.12.0
+    - Date: 11/14/2026
+    - Update: Saturday, November 14, 2026
     - Author: Dennis 'dendogg' Smaltz
     - A.I. Acknowledgement: Anthropic - Claude Opus 5.5
     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
 
 ✒ Changelog:
+    - 1.12.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
+      test script ends with tools/flavors-test.mjs, the Node check of
+      the flavors.
     - 1.11.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — Adds
       the demo script (tools/demo.mjs: the repository served as GitHub
       Pages serves it, or the demo world written to disk) and the export

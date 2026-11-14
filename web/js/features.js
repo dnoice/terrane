@@ -1,18 +1,20 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Feature Modules (Terrane Edition - v1.3)
+ *     - Title: Feature Modules (Terrane Edition - v1.4)
  *     - File Name: features.js
  *     - Relative Path: web/js/features.js
  *     - Artifact Type: javascript
- *     - Version: 1.3.0
- *     - Date: 11/13/2026
- *     - Update: Friday, November 13, 2026
+ *     - Version: 1.4.0
+ *     - Date: 11/14/2026
+ *     - Update: Saturday, November 14, 2026
  *     - Author: Dennis 'dendogg' Smaltz
  *     - A.I. Acknowledgement: Anthropic - Claude Opus 5.5
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
  *
  * ✒ Changelog:
+ *     - 1.4.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
+ *       flavors' palette commands, Flavor (flavors.js).
  *     - 1.3.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
  *       sixth to eighth, finding your way: the command palette, Ctrl+K
  *       (palette.js); the remembered view and links, a reload and an
@@ -30,9 +32,6 @@
  *       Age lens's typical age for closed masses (strata.js). The fifth:
  *       Interiors, a zip archive looked inside as a walled floor
  *       (interior.js).
- *     - 1.1.0 (11/12/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
- *       first feature: Time, the date scrub (time.js). The second:
- *       Landmarks, benchmarks and the return point (landmarks.js).
  *     Earlier entries: see CHANGELOG.md
  *
  * ✒ Description:
@@ -99,6 +98,7 @@ import * as dupes from './dupes.js';
 import * as copyas from './copyas.js';
 import * as exportLists from './exports.js';
 import * as terminal from './terminal.js';
+import * as flavors from './flavors.js';
 
 /** Feature modules in install order. */
-export const FEATURES = [time, landmarks, traverse, strata, interior, palette, resume, searches, quicklook, presets, batch, dupes, copyas, exportLists, terminal];
+export const FEATURES = [time, landmarks, traverse, strata, interior, palette, resume, searches, quicklook, presets, batch, dupes, copyas, exportLists, terminal, flavors];

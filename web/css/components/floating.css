@@ -1,18 +1,21 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Floating Surfaces (Terrane Edition - v1.1)
+ *     - Title: Floating Surfaces (Terrane Edition - v1.2)
  *     - File Name: floating.css
  *     - Relative Path: web/css/components/floating.css
  *     - Artifact Type: stylesheet
- *     - Version: 1.1.0
- *     - Date: 11/13/2026
- *     - Update: Friday, November 13, 2026
+ *     - Version: 1.2.0
+ *     - Date: 11/14/2026
+ *     - Update: Saturday, November 14, 2026
  *     - Author: Dennis 'dendogg' Smaltz
  *     - A.I. Acknowledgement: Anthropic - Claude Opus 5.5
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
  *
  * ✒ Changelog:
+ *     - 1.2.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] —
+ *       The guide's Mouse section: the Flavor list, the chosen flavor's
+ *       drags in the guide's own key style, and its note.
  *     - 1.1.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] —
  *       The keyboard's menu item is edged in ink, not marked by the
  *       highlighter alone; the guide's setting for single-key
@@ -201,10 +204,24 @@ dialog.is-wide { width: min(880px, 94vw); }
   color: var(--text-2);
 }
 .guide-pref input { flex: none; margin-top: var(--s-1); accent-color: var(--ink); }
-.guide h3 { margin: 14px 0 7px; padding-bottom: 5px; border-bottom: var(--border-2); color: var(--text-3); }
-.guide dl { display: grid; grid-template-columns: auto 1fr; gap: 6px 12px; margin: 0; font-size: var(--fs-row); }
+/* The Mouse section: the flavor and its drags, under the keys. */
+.guide-flavor { margin-top: var(--s-3); animation: fade-up var(--dur-base) var(--ease-out-expo) 120ms both; }
+.guide-flavor-pick { display: flex; align-items: center; gap: var(--s-2); margin: 0 0 var(--s-2); color: var(--text-2); }
+.guide-flavor-pick select {
+  height: var(--control-h);
+  padding: 0 var(--s-1);
+  border: var(--border);
+  border-radius: var(--radius);
+  background: var(--surface-field);
+  color: var(--text);
+  font: 400 var(--fs-row) / 1 var(--sans);
+}
+.guide-flavor dl { grid-template-columns: auto 1fr auto 1fr; }
+.guide-note { margin: var(--s-2) 0 0; color: var(--text-3); font-size: var(--fs-row); }
+.guide h3, .guide-flavor h3 { margin: 14px 0 7px; padding-bottom: 5px; border-bottom: var(--border-2); color: var(--text-3); }
+.guide dl, .guide-flavor dl { display: grid; grid-template-columns: auto 1fr; gap: 6px 12px; margin: 0; font-size: var(--fs-row); }
 /* A keycap keeps one line's height when its description takes two. */
-.guide dt {
+.guide dt, .guide-flavor dt {
   align-self: start;
   justify-self: start;
   padding: 1px 5px;
@@ -214,8 +231,9 @@ dialog.is-wide { width: min(880px, 94vw); }
   font: 500 var(--fs-fig) / 1.4 var(--mono);
   white-space: nowrap;
 }
-.guide dd { margin: 0; color: var(--text-2); }
-@media (max-width: 760px) { .guide { grid-template-columns: 1fr; } }
+.guide dd, .guide-flavor dd { margin: 0; color: var(--text-2); }
+.guide-flavor dl { grid-template-columns: auto 1fr auto 1fr; }
+@media (max-width: 760px) { .guide, .guide-flavor dl { grid-template-columns: 1fr; } }
 
 /* ---------- notices ---------- */
 
