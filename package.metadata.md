@@ -1,10 +1,10 @@
 <!--
 ✒ Metadata
-    - Title: Package Manifest (Terrane Edition - v1.12)
+    - Title: Package Manifest (Terrane Edition - v1.14)
     - File Name: package.json
     - Relative Path: package.json
     - Artifact Type: config
-    - Version: 1.12.0
+    - Version: 1.14.0
     - Date: 11/14/2026
     - Update: Saturday, November 14, 2026
     - Author: Dennis 'dendogg' Smaltz
@@ -12,7 +12,10 @@
     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
 
 ✒ Changelog:
-    - 1.12.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
+    - 1.14.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] —
+      Raises the package version to 1.5.0: Wave 4, Scale and the
+      interface polish, is merged.
+    - 1.13.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
       test script runs tools/regions-test.mjs after the warm test and
       before the demo test: the tree the service keeps in columns, its
       regions and changes against the page's model, the generator of

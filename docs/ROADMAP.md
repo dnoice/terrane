@@ -1,10 +1,10 @@
 <!--
 ✒ Metadata
-    - Title: Terrane Roadmap (Terrane Edition - v1.11)
+    - Title: Terrane Roadmap (Terrane Edition - v1.12)
     - File Name: ROADMAP.md
     - Relative Path: docs/ROADMAP.md
     - Artifact Type: docs
-    - Version: 1.11.0
+    - Version: 1.12.0
     - Date: 11/14/2026
     - Update: Saturday, November 14, 2026
     - Author: Dennis 'dendogg' Smaltz
@@ -12,6 +12,13 @@
     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
 
 ✒ Changelog:
+    - 1.12.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — Where
+      things stand and the build waves record what reached `main` while
+      Wave 4 was on its branch: steady drawing conventions and Blender's
+      view controls, flavors, and the Guide window, each with its
+      checks; Next names the eight tabs beside the Inspector. Wave 4,
+      with `main` merged into it, measured again and swept, is merged
+      into `main` as Terrane 1.5.0.
     - 1.11.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — Where
       things stand and the build waves record Wave 4's polish of the
       sheet, under way on branch `wave-4`, with its commits and its
@@ -147,7 +154,14 @@ As of 11/14/2026:
 - **Complete, on `main`:** the names on the blocks. A name is
   printed on its box by the box's own shader, lit and shadowed with it,
   instead of standing over it as a tag.
-- **Complete on branch `wave-4`, waiting to be merged:** Wave 4, Scale
+- **Complete, on `main`:** steady drawing conventions and Blender's
+  view controls (hatching and bands stay put as the eye travels; the
+  middle button and the numpad views), flavors (the mouse steers the
+  world as Blender, AutoCAD, SketchUp, Maya, 3ds Max, Rhino,
+  SolidWorks, Unity, Unreal Engine or Google Earth does), and the Guide
+  window (Keys, Mouse, Reading the world and Settings as tabs, which
+  freed the inspector's space).
+- **Complete, on `main` as Terrane 1.5.0:** Wave 4, Scale
   and the interface polish. Scale: above 100,000 entries the service
   keeps the tree and the page draws it from the regions near the eye,
   letting them go under a budget; search, the survey and working
@@ -157,9 +171,11 @@ As of 11/14/2026:
   columns and heights, three uppercase voices, labels and heads on one
   line, values that break only at their separators, nothing cut off
   without an ellipsis, and the `polish` check that measures all of it.
-- **Next:** merging Wave 4 into `main`. After it, the open ground is
-  what Stage 4 still lacks (section 4), the rest of Stage 6, and the
-  Stage 5 deferrals in section 4.
+- **Next:** eight tabs beside the Inspector in the panel on the
+  right, built and merged one at a time: Preview, Cleanup, Shelf, Compare, Activity, Notes and tags,
+  Watch and Connections. The open ground beyond them is what Stage 4
+  still lacks (section 4), the rest of Stage 6, and the Stage 5
+  deferrals in section 4.
 
 Section 5 has the detail for every wave.
 
@@ -282,7 +298,7 @@ location derived from the camera.
 Exit test: fly from the overview to a file twelve levels down in a
 400,000-file tree, with stable geometry and correct location at each end.
 
-### Stage 4. Streaming the data, not only the geometry. Exit test met, on branch `wave-4`
+### Stage 4. Streaming the data, not only the geometry. Exit test met
 
 Above 100,000 entries the browser no longer holds the whole tree. Five
 of the plan's six items are done; layout in a worker is not, because
@@ -294,7 +310,7 @@ Done on 11/13/2026 (Wave 3):
   the warm start. Its first form was validated by a full survey in the
   background, and while that survey ran the page held two trees.
 
-Done on 11/14/2026 (Wave 4, on branch `wave-4`, waiting to be merged):
+Done on 11/14/2026 (Wave 4):
 
 - The service keeps the tree and serves regions: above the region
   threshold, 100,000 entries, it holds the tree in typed columns, from
@@ -719,12 +735,64 @@ failed"; `node tools/ui-check.mjs --no-shots`, both passes, "1412
 passed, 0 failed, 6 skipped". It was merged into `main` in the commit
 titled "Merge labels: the names on the blocks".
 
-### Complete on branch `wave-4`: Wave 4, Scale and the interface polish
+### Complete: steady conventions and Blender's view controls
 
-Wave 4 runs on its own branch, `wave-4`, made from `main` at the names
-on the blocks (`d6d6601`), in a separate worktree, and waits to be
-merged into `main`. It had two parts, built one after the other: the
-polish of the sheet around the world, then Scale, the rest of Stage 4.
+Hatching, stipple and bands broke as the eye travelled: they were
+measured from the floating origin, which moves to the eye at every
+layout, and their period was chosen per pixel, so two faces of one box
+took different octaves. They are now drawn from each box's own centre
+with one period for the whole box, from the eye's distance to it,
+blended between octaves. As in Blender, the middle button orbits, Shift
+with it slides and Ctrl with it flies in and out, and the numpad gives
+the top, front and right views, steps of orbit, and a frame of the
+selection. The new `views` scenario draws the conventions with the
+origin moved and moved back under the same eye (7 of 840,160 pixels
+differ, against 6,045 and 11,984 with the old coordinates). Checks:
+`npm test`, "797 passed, 0 failed"; `node tools/ui-check.mjs
+--no-shots`, both passes, "1424 passed, 0 failed, 6 skipped". It was
+merged into `main` in the commit titled "Merge controls: steady
+conventions and Blender's view controls".
+
+### Complete: flavors
+
+A flavor is a way to steer the world with the mouse, named after the
+tool whose hands it comes from: Terrane's own, Blender, AutoCAD (with
+Fusion 360 and Revit), SketchUp, Maya (with Cinema 4D), 3ds Max, Rhino,
+SolidWorks, Unity, Unreal Engine and Google Earth
+(`web/js/flavors.js`). The Guide's Mouse tab and the palette choose
+one, the choice is kept in this browser, and a press a flavor leaves
+alone keeps Terrane's meaning. In Terrane's own flavor the middle
+button now grabs the ground and moves it, with Shift orbiting. The
+`views` scenario makes every drag of every flavor with the mouse and
+judges what the eye did. Checks: `npm test`, "874 passed, 0 failed";
+`node tools/ui-check.mjs --no-shots`, both passes, "1438 passed, 1
+failed, 6 skipped", the failure the full-upload picture's one byte one
+level apart, after which that check counts only differences over two
+levels (`transitions` again: "33 passed, 0 failed"). It was merged
+into `main` in the commit titled "Merge presets: flavors, the mouse as
+the tool your hands know".
+
+### Complete: the Guide window
+
+The Guide became one window in four tabs, Keys, Mouse, Reading the
+world and Settings, opening on the tab used last. Reading the world
+left the inspector for its tab, which freed the inspector's space for
+tools of its own. The checks that read the Reading rows read them from
+the Guide, and the single-key setting is reached in Settings. Checks:
+`npm test`, "874 passed, 0 failed"; `node tools/ui-check.mjs
+--no-shots`, both passes, "1439 passed, 0 failed, 6 skipped". It was
+merged into `main` in the commit titled "Merge guide: the Guide window,
+with Reading the world as a tab".
+
+### Complete: Wave 4, Scale and the interface polish
+
+Wave 4 ran on its own branch, `wave-4`, made from `main` at the names
+on the blocks (`d6d6601`), in a separate worktree. Once `main`'s steady
+conventions, flavors and Guide window had been merged into it, measured
+again and swept, it was merged into `main` as Terrane 1.5.0, in the
+commit titled "Merge wave-4: Wave 4, Scale and the interface polish".
+It had two parts, built one after the other: the polish of the sheet
+around the world, then Scale, the rest of Stage 4.
 An adversarial review of Scale, a fix step, and a docs and sweep step
 followed.
 
@@ -900,35 +968,36 @@ GPU, seed 11 (ARCHITECTURE section 4 has the full table):
 Final check lines, on Windows 11 with Edge 157 on an RTX 5050 laptop
 GPU and the default fixture of 3,126 files:
 
-- `node --check` on all 101 script files outside `web/vendor/`: no
+- `node --check` on all 104 script files outside `web/vendor/`: no
   error;
 - `npm test`: "255 passed, 0 failed", "97 passed, 0 failed",
   "57 passed, 0 failed", "33 passed, 0 failed", "60 passed, 0 failed",
   "52 passed, 0 failed", "54 passed, 0 failed", "31 passed, 0 failed",
-  "80 passed, 0 failed", "159 passed, 0 failed", "68 passed, 0 failed"
-  and "119 passed, 0 failed", 1,065 in all, `regions-test` and
-  `partial-test` among them;
+  "80 passed, 0 failed", "159 passed, 0 failed", "68 passed, 0 failed",
+  "119 passed, 0 failed" and "77 passed, 0 failed", 1,142 in all,
+  `regions-test`, `partial-test` and `flavors-test` among them;
 - `node tools/vendor.mjs --check`:
   "Every vendored file matches the manifest.";
-- the headers of the 78 files the branch touched (the digiSpace header
-  in full, the version raised once with the date and the tag, shipped
-  headers within three entries and 40 lines) and the long form in
-  `CHANGELOG.md` of every new entry of a file it tracks: in rule, once
-  the service's 1.7.0 entry gave the threshold as 100,000 and
-  `time.js` 1.3.0's long form opened with its header's words;
+- the headers of the 85 files the branch touched, after `main` was
+  merged into it (the digiSpace header in full, the version raised once
+  with the date and the tag, shipped headers within three entries and
+  40 lines) and the long form in `CHANGELOG.md` of every new entry of a
+  file it tracks: in rule;
 - Markdown: no line over 100 columns outside tables and fences in the
-  README, ARCHITECTURE, this roadmap, `CHANGELOG.md`,
-  `package.metadata.md` and `VENDORED.md`;
-- `node tools/ui-check.mjs --no-shots --port 5270`, both passes, 45
-  scenarios: "2539 passed, 0 failed, 8 skipped" (1,332 and 3 skipped
-  with WebGL, 1,207 and 5 without). The skips are, in each pass, what
-  needs `--snapshot`, what needs a synthetic snapshot and the `splash`
-  check for a sheet gone before the first look, and without WebGL two
-  checks of what is drawn in the world. Draw calls at the baseline
-  (overview 7, selected 9, search 8, duplicate ties 10). The check ran
-  on port 5270 rather than 5279 because it also takes the ports one,
-  two, six, eight and nine above its own, which from 5279 would leave
-  the range of ports this step was given.
+  README, ARCHITECTURE, this roadmap, `CHANGELOG.md` and
+  `package.metadata.md`;
+- `node tools/ui-check.mjs --no-shots --port 5270`, both passes:
+  "2566 passed, 0 failed, 8 skipped" (1,359 and 3 skipped with WebGL,
+  1,207 and 5 without). The skips are, in each pass, what needs
+  `--snapshot`, what needs a synthetic snapshot and the `splash` check
+  for a sheet gone before the first look, and without WebGL two checks
+  of what is drawn in the world. Draw calls at the baseline (overview
+  7, selected 9, search 8, duplicate ties 10). Before it, the merged
+  tree's first full run found ten failures, all in `polish`: the
+  Guide's tabs, built on `main` meanwhile, set their own capitals
+  instead of a voice, and its longest key, Numpad 2 4 6 8, was cut off
+  in a 96 px column. The tabs now take the TIGHT voice and the column
+  is 104 px.
 
 ## 6. Development datasets
 

@@ -43,7 +43,8 @@
  *       changes are read into the kept tree whether or not a page listens
  *       and announced as change events marked kept; while the disk is not
  *       watched, a page that connects has the kept tree checked by folder
- *       times (regions.recheck), at most once in ten seconds.
+ *       times (regions.recheck), at most once in ten seconds. Reports
+ *       version 1.5.0 in GET /api/info: Wave 4 is merged.
  *     - 1.6.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] —
  *       Reports version 1.4.0 in GET /api/info: Wave 3 is merged.
  *     - 1.5.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — GET
@@ -262,7 +263,7 @@ import { warmWriter, readWarm, warmPaths, warmInside, readWarmTree, checkWarm, s
 import { makeRegions } from './regions.mjs';
 import { REGION_THRESHOLD } from '../web/js/columns.js';
 
-const VERSION = '1.4.0';
+const VERSION = '1.5.0';
 const WEB = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'web');
 
 const args = process.argv.slice(2);
