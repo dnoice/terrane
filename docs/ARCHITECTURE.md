@@ -1,10 +1,10 @@
 <!--
 ✒ Metadata
-    - Title: Terrane Architecture (Terrane Edition - v1.5)
+    - Title: Terrane Architecture (Terrane Edition - v1.6)
     - File Name: ARCHITECTURE.md
     - Relative Path: docs/ARCHITECTURE.md
     - Artifact Type: docs
-    - Version: 1.5.0
+    - Version: 1.6.0
     - Date: 11/13/2026
     - Update: Friday, November 13, 2026
     - Author: Dennis 'dendogg' Smaltz
@@ -12,6 +12,9 @@
     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
 
 ✒ Changelog:
+    - 1.6.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
+      single-key setting is off unless turned on in the guide, and
+      the interface check turns it on for every page it opens.
     - 1.5.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
       hardening pass. The route diagram names info and journal, and
       what snapshot mode answers and refuses (hash among the refusals);
@@ -619,10 +622,15 @@ B H J are Landmarks'. A reserved key is refused to any other owner, and a
 key bound twice is refused. Session traverse and Strata have no keys.
 `inList` (default true) decides whether a key acts while the ledger list
 has focus; the guide is made from the same table. The guide also holds
-the single-key setting: turned off, a key that types one character and
-needs neither Ctrl nor Alt acts only while the world or the ledger list
-has focus (WCAG 2.1.4), and Ctrl and Alt chords act everywhere. It is
-kept in this browser.
+the single-key setting. It is off unless turned on there: a key that
+types one character and needs neither Ctrl nor Alt acts only while the
+world or the ledger list has focus (WCAG 2.1.4), and Ctrl and Alt chords
+act everywhere. Turned on, single keys act wherever focus is. It is kept
+in this browser. The page leaves focus alone on load, so the skip link
+stays the first stop for Tab; a first letter key does nothing until the
+world (a click gives it focus) or the list has focus. `tools/ui-check.mjs`
+turns the setting on for every page it opens, and the `hardening`
+scenario clears it to check the default.
 
 ### Relation lines
 

@@ -1,11 +1,11 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Terrane Application (Terrane Edition - v1.7)
+ *     - Title: Terrane Application (Terrane Edition - v1.8)
  *     - File Name: app.js
  *     - Relative Path: web/js/app.js
  *     - Artifact Type: javascript
- *     - Version: 1.7.0
+ *     - Version: 1.8.0
  *     - Date: 11/13/2026
  *     - Update: Friday, November 13, 2026
  *     - Author: Dennis 'dendogg' Smaltz
@@ -13,6 +13,10 @@
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
  *
  * ✒ Changelog:
+ *     - 1.8.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] —
+ *       Single-key shortcuts are off unless turned on in the guide:
+ *       letters, digits and signs act while the world or the ledger
+ *       list has focus, and Ctrl and Alt chords act everywhere.
  *     - 1.7.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] —
  *       Hardening: a folder gone from disk no longer stalls every
  *       refresh; Rescan all lets go of the old tree and runs the search
@@ -2506,15 +2510,15 @@ function onEscape(typing) {
  * wherever focus is. Off, they act only while the world or the ledger
  * list has focus, so a stray key on a button or a word said to speech
  * input starts nothing (WCAG 2.1.4); Ctrl and Alt chords act everywhere
- * either way. Kept in this browser; on unless turned off in the guide.
+ * either way. Kept in this browser; off unless turned on in the guide.
  */
 const PREF_KEY = 'terrane.single-keys';
 const prefs = {
   get singleKeys() {
     try {
-      return localStorage.getItem(PREF_KEY) !== 'focused';
+      return localStorage.getItem(PREF_KEY) === 'everywhere';
     } catch {
-      return true;
+      return false;
     }
   },
   set singleKeys(on) {

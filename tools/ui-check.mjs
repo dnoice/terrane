@@ -2,11 +2,11 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Interface Check (Terrane Edition - v1.3)
+ *     - Title: Interface Check (Terrane Edition - v1.4)
  *     - File Name: ui-check.mjs
  *     - Relative Path: tools/ui-check.mjs
  *     - Artifact Type: test
- *     - Version: 1.3.0
+ *     - Version: 1.4.0
  *     - Date: 11/13/2026
  *     - Update: Friday, November 13, 2026
  *     - Author: Dennis 'dendogg' Smaltz
@@ -14,6 +14,11 @@
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
  *
  * ✒ Changelog:
+ *     - 1.4.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — Every
+ *       page opens with single-key shortcuts turned on, as the guide's
+ *       setting turns them on, because the page now starts with them
+ *       off and scenarios press letters wherever focus happens to be.
+ *       The hardening scenario clears the setting to check the default.
  *     - 1.3.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — t.key
  *       sends every key as a keyDown event, a key that types nothing
  *       without text. Headless Edge 157 can stop delivering rawKeyDown
@@ -48,6 +53,8 @@
  * ✒ Key Features:
  *     - Zero dependencies: the browser is driven through Node's built-in
  *       WebSocket; no Puppeteer, no Playwright
+ *     - Pages open with single-key shortcuts turned on (the guide's
+ *       setting), so a scenario's letter keys act wherever focus is
  *     - Per-feature scenario files in tools/ui-scenarios/, each a module
  *       whose default export is one scenario or a list of them
  *     - Keyboard-only steps: real key events (Tab, Enter, Escape, arrows,
@@ -404,6 +411,12 @@ class Page {
     for (const d of ['Page', 'Runtime', 'Network', 'Log']) await page.send(`${d}.enable`);
     await page.send('Emulation.setDeviceMetricsOverride', { ...VIEWPORT, deviceScaleFactor: 1, mobile: false });
     await page.send('Emulation.setFocusEmulationEnabled', { enabled: true });
+    // The page starts with single-key shortcuts off; scenarios press letters
+    // wherever focus happens to be, so turn them on as the guide's setting
+    // does. The hardening scenario clears it to check the default.
+    await page.send('Page.addScriptToEvaluateOnNewDocument', {
+      source: "try { localStorage.setItem('terrane.single-keys', 'everywhere'); } catch {}",
+    });
     await page.send('Page.navigate', { url });
     return page;
   }

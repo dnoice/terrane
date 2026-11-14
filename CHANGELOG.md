@@ -1,10 +1,10 @@
 <!--
 ✒ Metadata
-    - Title: Shipped File Changelogs (Terrane Edition - v1.3)
+    - Title: Shipped File Changelogs (Terrane Edition - v1.4)
     - File Name: CHANGELOG.md
     - Relative Path: CHANGELOG.md
     - Artifact Type: docs
-    - Version: 1.3.0
+    - Version: 1.4.0
     - Date: 11/13/2026
     - Update: Friday, November 13, 2026
     - Author: Dennis 'dendogg' Smaltz
@@ -12,6 +12,8 @@
     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
 
 ✒ Changelog:
+    - 1.4.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — Records app.js 1.8.0:
+      single-key shortcuts are off unless turned on in the guide.
     - 1.3.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — Records the hardening
       pass: app.js 1.7.0 in full, index.html 1.6.0 and viewport.js 1.5.0. Adds the sections
       for web/js/ui.js and web/css/tokens.css, whose 1.0.0 entries left their headers with
@@ -53,6 +55,13 @@ keeps all of them. When a header rolls an entry out, the entry is copied
 here unchanged in the same edit.
 
 ## web/js/app.js
+
+- 1.8.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — Single-key shortcuts are
+  off unless turned on in the guide, on Dennis's call after the hardening pass offered the
+  setting with shortcuts on: letters, digits and signs act while the world or the ledger
+  list has focus, and Ctrl and Alt chords act everywhere. A first key pressed before
+  anything has focus therefore does nothing until the world is clicked or tabbed to; the
+  page still leaves focus alone on load, so the skip link stays the first stop for Tab.
 
 - 1.7.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — Hardening: a folder gone from
   disk no longer stalls every refresh; Rescan all lets go of the old tree and runs the search

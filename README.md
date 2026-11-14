@@ -1,10 +1,10 @@
 <!--
 ✒ Metadata
-    - Title: Terrane Readme (Terrane Edition - v1.8)
+    - Title: Terrane Readme (Terrane Edition - v1.9)
     - File Name: README.md
     - Relative Path: README.md
     - Artifact Type: docs
-    - Version: 1.8.0
+    - Version: 1.9.0
     - Date: 11/13/2026
     - Update: Friday, November 13, 2026
     - Author: Dennis 'dendogg' Smaltz
@@ -12,6 +12,10 @@
     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
 
 ✒ Changelog:
+    - 1.9.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — Single-key
+      shortcuts are off unless turned on in the guide, and the key
+      section says how to reach them. What was verified records the
+      full interface check with the new default.
     - 1.8.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — What
       was verified records the full interface check with the `splash`
       reload step fixed, and the loading sheet after a reload under
@@ -240,9 +244,10 @@ The breadcrumbs and the Contents tab follow the folder you are in. Clicking
 a breadcrumb, a ledger row, a search result or a survey entry flies you
 there. Everything can also be done from the ledger with the keyboard alone;
 the 3D view is never the only route. Press `?` in the app for the full key
-list. The guide also holds a setting for single-key shortcuts: turned
-off, letters, digits and signs act only while the world or the ledger
-list has focus, and Ctrl and Alt shortcuts act everywhere.
+list. Single-key shortcuts (letters, digits and signs) act while the
+world or the ledger list has focus: click the world, or Tab to it, and
+they work. Ctrl and Alt shortcuts act everywhere. A setting in the guide
+lets single-key shortcuts act wherever focus is.
 
 Below 860 px wide (or at 200% zoom) the inspector folds away, and `]` or
 its toggle in the view tools opens it as a drawer over the world.
@@ -389,6 +394,7 @@ by the Windows hidden attribute.
 | `npm run ui-check` on Windows 11 (11/13/2026), Edge 157 on an RTX 5050 laptop GPU, after the hardening pass: 24 scenarios, the earlier ones plus `hardening` (focus kept through redraws and hidden panels, contrast, live regions, menus, the single-key setting, is:benchmark, the forced unfold, an 800 by 500 window, the page opened from disk and from another server) and `hardening-disk` (a folder deleted from outside, the time view after a change, a list reordered under its cursor, Rescan all with a search), in a WebGL pass and a pass with WebGL disabled | 867 passed and 5 skipped; two failures, the `splash` scenario's reload step in each pass, as before; draw calls at the baseline recorded again once the empty relation layer stopped drawing (overview 6, selected 8, search 7, duplicate ties 9) |
 | The final sanity sweep on Windows 11 (11/13/2026), after the polish pass: `node --check` on every script outside `web/vendor/`, `npm test`, `npm run vendor -- --check`, and `npm run ui-check` in both passes with Edge 157 on an RTX 5050 laptop GPU and the default fixture of 3,126 files | No syntax error in 57 scripts; 392 passed (181, 77, 45, 33 and 56), none failed; every vendored file matches the manifest; 867 passed and 5 skipped, with the `splash` reload step failing once in each pass as before; draw calls at the baseline. The same results again after the merge into `main` as Terrane 1.3.0 |
 | `npm run ui-check` on Windows 11 (11/13/2026), Edge 157 on an RTX 5050 laptop GPU, after the load screen fix: the `splash` reload step reads a record the page keeps of the sheet from its first frame, because with reduced motion the sheet left 48 to 98 ms after it appeared, before the first look | 879 passed, 0 failed, 5 skipped; draw calls at the baseline |
+| `npm run ui-check` on Windows 11 (11/13/2026), Edge 157 on an RTX 5050 laptop GPU, with single-key shortcuts off by default: the interface check turns them on for every page it opens, and `hardening` clears the setting to check the default (T on a toolbar button starts nothing, T in the world looks back; turned on in the guide, T on the button acts and the choice is kept) | 879 passed, 0 failed, 5 skipped |
 
 Not verified: running on macOS; frame rate at street level in the largest
 trees on a hardware GPU; Open and Reveal reaching a desktop application on

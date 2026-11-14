@@ -1,11 +1,11 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Hardening Scenarios (Terrane Edition - v1.0)
+ *     - Title: Hardening Scenarios (Terrane Edition - v1.1)
  *     - File Name: hardening.mjs
  *     - Relative Path: tools/ui-scenarios/hardening.mjs
  *     - Artifact Type: test
- *     - Version: 1.0.0
+ *     - Version: 1.1.0
  *     - Date: 11/13/2026
  *     - Update: Friday, November 13, 2026
  *     - Author: Dennis 'dendogg' Smaltz
@@ -13,6 +13,11 @@
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
  *
  * ✒ Changelog:
+ *     - 1.1.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
+ *       single-key check follows the new default: cleared to what a
+ *       first visit gets, T on a toolbar button starts nothing while T
+ *       in the world looks back; turned on in the guide, T on the button
+ *       acts too, and the choice is kept in this browser.
  *     - 1.0.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] —
  *       Initial release: the page-side checks of the hardening pass.
  *
@@ -189,33 +194,38 @@ const hardening = {
     await t.key('Escape');
 
     /* ---- the guide's setting for single-key shortcuts ---- */
-    await t.tabTo('#b-help', { max: 120 });
-    await t.key('?');
-    await t.waitFor(() => document.getElementById('dialog').open);
-    const g = await t.eval(() => ({ box: !!document.getElementById('pref-single-keys'), focus: document.activeElement?.textContent?.trim() }));
-    t.check('the guide opens on its Close button and offers the setting for single-key shortcuts', g.box && g.focus === 'Close', JSON.stringify(g));
-    await t.tabTo('#pref-single-keys', { back: true, max: 4 });
-    await t.key('Space');
-    await t.key('Escape');
-    await t.waitFor(() => !document.getElementById('dialog').open);
+    // Off by default. The harness turns it on for every page; clear that to
+    // see what a first visit gets.
+    await t.eval(() => { localStorage.removeItem('terrane.single-keys'); return true; });
     await t.tabTo('#b-help', { max: 120 });
     await t.key('T');
     const offButton = await t.app((T) => T.S.time === null);
     await t.tabTo('#view', { max: 80 });
     await t.key('T');
     const onCanvas = await t.until((T) => !!T.S.time);
-    t.check('turned off, T on a toolbar button starts nothing, and T in the world still looks back', offButton && !!onCanvas);
+    t.check('by default, T on a toolbar button starts nothing, and T in the world still looks back', offButton && !!onCanvas);
     await t.key('Escape');
     await t.waitFor((T) => T.S.time === null);
-    // Turned on again the same way.
-    await t.key('?');
+    // Turned on in the guide.
+    await t.tabTo('#b-help', { max: 120 });
+    await t.key('Enter');
     await t.waitFor(() => document.getElementById('dialog').open);
+    const g = await t.eval(() => {
+      const box = document.getElementById('pref-single-keys');
+      return { box: !!box, checked: !!box?.checked, focus: document.activeElement?.textContent?.trim() };
+    });
+    t.check('the guide opens on its Close button and offers the setting for single-key shortcuts, off', g.box && !g.checked && g.focus === 'Close', JSON.stringify(g));
     await t.tabTo('#pref-single-keys', { back: true, max: 4 });
     await t.key('Space');
     await t.key('Escape');
     await t.waitFor(() => !document.getElementById('dialog').open);
-    const restored = await t.eval(() => localStorage.getItem('terrane.single-keys'));
-    t.check('and turned on again in the guide, the choice is kept in this browser', restored === 'everywhere', String(restored));
+    await t.tabTo('#b-help', { max: 120 });
+    await t.key('T');
+    const onButton = await t.until((T) => !!T.S.time);
+    const kept = await t.eval(() => localStorage.getItem('terrane.single-keys'));
+    t.check('turned on in the guide, T on a toolbar button looks back too, and the choice is kept in this browser', !!onButton && kept === 'everywhere', String(kept));
+    await t.key('Escape');
+    await t.waitFor((T) => T.S.time === null);
 
     /* ---- is:benchmark follows the store ---- */
     await t.key('/');
