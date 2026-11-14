@@ -31,8 +31,9 @@
  *     - Thumbnails drawn on a canvas from each image's style, size and
  *       colour (sea, desert, city, night, screens, textures, icons and
  *       more), cached per image and size
- *     - rawUrl() hands an image's picture, or a short synthesized tone
- *       for audio, where the page would load the original
+ *     - rawUrl() hands an image's picture, a short synthesized tone for
+ *       audio, or a few seconds of animated sea recorded in the page for
+ *       film, where the page would load the original
  *     - One download-style arrival in Downloads after a minute, so the
  *       live refresh shows itself; ?still in the address turns it off
  *     - A notice says this is the demo, that changes last until a reload,
@@ -345,6 +346,73 @@ function sound(node) {
   return url;
 }
 
+/* ---------- film ---------- */
+
+const FILM = new Set(['mp4', 'mov', 'mkv', 'webm', 'm4v', 'avi']);
+/** The demo's one film: a blob URL once recorded, undefined while recording, null where it cannot be. */
+let film = null;
+let filming = false;
+
+/**
+ * Records a few seconds of animated sea from a canvas, once, so a film
+ * in Quick look plays something. Every film in the world shares it.
+ */
+function makeFilm() {
+  if (filming || typeof MediaRecorder === 'undefined') return;
+  const c = document.createElement('canvas');
+  if (!c.captureStream) return;
+  const type = ['video/webm;codecs=vp9', 'video/webm;codecs=vp8', 'video/webm', 'video/mp4'].find((t) => MediaRecorder.isTypeSupported(t));
+  if (!type) return;
+  filming = true;
+  c.width = 640;
+  c.height = 360;
+  const g = c.getContext('2d');
+  let rec;
+  try {
+    rec = new MediaRecorder(c.captureStream(30), { mimeType: type, videoBitsPerSecond: 900000 });
+  } catch {
+    return;
+  }
+  const chunks = [];
+  rec.ondataavailable = (e) => {
+    if (e.data.size) chunks.push(e.data);
+  };
+  rec.onstop = () => {
+    film = URL.createObjectURL(new Blob(chunks, { type: type.split(';')[0] }));
+  };
+  const t0 = performance.now();
+  const SECS = 5;
+  const frame = () => {
+    const t = (performance.now() - t0) / 1000;
+    const sky = g.createLinearGradient(0, 0, 0, 360);
+    sky.addColorStop(0, '#9cc7dc');
+    sky.addColorStop(1, '#f6e7b8');
+    g.fillStyle = sky;
+    g.fillRect(0, 0, 640, 360);
+    g.fillStyle = '#f4c430';
+    g.beginPath();
+    g.arc(470, 120 - t * 6, 34, 0, Math.PI * 2);
+    g.fill();
+    for (let k = 0; k < 4; k++) {
+      g.fillStyle = ['#7fb3c8', '#4f86a6', '#3f7896', '#2a5670'][k];
+      g.beginPath();
+      g.moveTo(0, 360);
+      for (let x = 0; x <= 640; x += 16) g.lineTo(x, 200 + k * 34 + Math.sin(x / (60 + k * 14) + t * (1.4 + k * 0.5)) * (10 + k * 3));
+      g.lineTo(640, 360);
+      g.fill();
+    }
+    g.fillStyle = 'rgba(24,32,30,0.75)';
+    g.fillRect(16, 16, 168, 30);
+    g.fillStyle = '#f1f4f0';
+    g.font = '16px ui-monospace, monospace';
+    g.fillText(`TERRANE DEMO 00:0${Math.min(SECS - 1, Math.floor(t))}`, 24, 37);
+    if (t < SECS) requestAnimationFrame(frame);
+    else rec.stop();
+  };
+  rec.start();
+  frame();
+}
+
 /* ---------- the stand-ins ---------- */
 
 const apiUrl = (input) => {
@@ -471,10 +539,12 @@ export function startDemo({ thumbs } = {}) {
       if (!node || node.dir) return null;
       if (node.img) return picture(node, 960);
       if (AUDIO.has(extOf(node.name))) return sound(node);
+      if (FILM.has(extOf(node.name))) return film;
       return null;
     },
     /** Says what the visitor is looking at, once the world is surveyed. */
     welcome(api) {
+      setTimeout(makeFilm, 1500);
       const s = svc.world.stats;
       api.notice(`This is Terrane's demo: a made-up studio drive of ${s.files.toLocaleString('en-US')} files. Change anything you like; it lasts until you reload.`, {
         kind: 'info', ms: 20000,
