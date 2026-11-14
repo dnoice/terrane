@@ -18,8 +18,8 @@
  *       (api.tabSections('places')), such as Saved searches. A batch
  *       rename carries benchmarks along by its pairs (res.renamed), or,
  *       stopped part way, from each item's path to its results entry.
- *       Export and import closes the tab: a places file of the
- *       benchmarks, the return point and the saved searches, and Import
+ *       Export and import follows the return point: a places file of
+ *       the benchmarks, the return point and the saved searches, and Import
  *       places… to take one in for this directory and source, with Undo;
  *       both are in the palette.
  *     - 1.2.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — A
@@ -77,8 +77,9 @@
  *       notice says so. Another tab's saves are merged in, not overwritten
  *     - In snapshot mode a measurement is of the snapshot, dated when it
  *       was taken, and kept apart from the live directory's benchmarks
- *     - Export and import, last in the Places tab and in the palette:
- *       Export places saves terrane-places-<directory>-YYYY-MM-DD.json
+ *     - Export and import, after the return point in the Places tab, and
+ *       in the palette: Export places saves
+ *       terrane-places-<directory>-YYYY-MM-DD.json
  *       with the benchmarks, the return point and the saved searches;
  *       Import places… reads one of at most 2 MB, refuses a file that is
  *       not a places file, is for another directory (compared in any case
@@ -654,9 +655,9 @@ export function install(api) {
           t && !t.e ? btn(has ? `Measure "${t.n}" again` : `Set benchmark on "${t.n}"`, () => bench(t), { icon: has ? 'remeasure' : 'bench', k: 'set', title: live ? 'B' : WAIT, off: !live }) : null,
           list.length || store.ret ? btn('Forget all…', forgetAll, { icon: 'remove', k: 'forget-all', danger: true }) : null)),
       returnSection(),
-      // Sections other features keep here (saved searches).
-      ...api.tabSections('places'),
-      fileSection());
+      fileSection(),
+      // Sections other features keep here (saved searches), after the tab's own.
+      ...api.tabSections('places'));
     if (had) host.querySelector(`[data-k="${CSS.escape(had)}"]`)?.focus({ preventScroll: true });
   }
 
@@ -785,7 +786,7 @@ export function install(api) {
     } : { kind: 'info' });
   }
 
-  /** The Places tab's last section: Export places, and Import places… through a file input kept here. */
+  /** The Places tab's section after the return point: Export places, and Import places… through a file input kept here. */
   function fileSection() {
     const input = el('input', {
       type: 'file', accept: '.json,application/json', 'data-k': 'import-input', hidden: true,

@@ -41,7 +41,20 @@
  *       journaled. In-process, a batch rename whose second file is in
  *       use throws with results and affected, is journaled as a partial
  *       rename, and its Undo carries the finished name back. The
- *       read-only and snapshot services refuse it.
+ *       read-only and snapshot services refuse it. A terminal section
+ *       boots on 5045 with TERRANE_LAUNCH_LOG and on 5046 read-only: 401
+ *       without the token, 415 for another content type; the root and a
+ *       folder named "term dir & ; %" each log one launch whose working
+ *       directory is the real path and whose arguments never hold it; a
+ *       file is ENOTDIR, traversal 400, the holding area 403, a junction
+ *       outside EOUTSIDE, none logged; Open is logged and starts nothing;
+ *       read-only is EREADONLY with its sentence and nothing logged; the
+ *       snapshot service answers ESNAPSHOT. terminalPlan for Windows,
+ *       macOS and Linux; in-process, a stand-in spawn proves the next
+ *       terminal is tried after ENOENT, the 501 when none is there, and a
+ *       stop on any other error. A source check: no exec( (a RegExp's
+ *       .exec( aside), no shell: true and nothing but spawn imported from
+ *       child_process in ops.mjs or terrane.mjs.
  *     - 1.5.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
  *       hardening checks. Through the service: the holding area refused
  *       under every other spelling (case, a trailing dot, NTFS stream
@@ -149,6 +162,10 @@
  *     - Snapshot mode: written outside the tree it records, replays a live
  *       scan exactly, refuses every change and every content read
  *     - Read-only mode refuses mutations
+ *     - A terminal in a folder, with every launch written to a log
+ *       instead of started: the folder only as the working directory,
+ *       every refusal before a launch, the plan for three platforms, and
+ *       its order through a stand-in spawn
  *     - Archive interiors: the fixture's archives listed through the
  *       service, every refusal by status and sentence, the bounds, and a
  *       tree unchanged by listing; snapshot mode refuses listing
@@ -177,7 +194,8 @@
  *       every ladder step keeps the present's boxes and lowers only what
  *       changed after the date
  *     - The source, read as text: one date formatter, no dead export in
- *       the shared modules, no idle icon, colours only from tokens.css
+ *       the shared modules, no idle icon, colours only from tokens.css,
+ *       and no shell anywhere the service launches a program
  *
  * ✒ Usage Instructions:
  *     node tools/smoke-test.mjs
@@ -1094,6 +1112,8 @@ const u = await sm.post('/api/undo');
 check('snapshot mode refuses every change', r.status === 403 && u.status === 403 && /snapshot/i.test(r.body.message) && !has('from-snapshot'));
 r = await sm.op({ type: 'renames', items: [{ path: 'docs/b.txt', name: 'z.txt' }] });
 check('a batch rename too', r.status === 403 && r.body.code === 'ESNAPSHOT' && has('docs', 'b.txt') && !has('docs', 'z.txt'), JSON.stringify(r.body));
+r = await sm.post('/api/terminal', { path: '' });
+check('a terminal too, with ESNAPSHOT and a sentence of its own', r.status === 403 && r.body.code === 'ESNAPSHOT' && /opens no terminal/.test(r.body.message), JSON.stringify(r.body));
 check('snapshot mode never reads file contents', (await sm.get('/api/raw?path=docs/b.txt')).status === 403);
 r = await sm.request('GET', '/api/raw?path=docs/b.txt', { token: sm.token, headers: { Range: 'bytes=0-2' } });
 check('nor a byte range of one: ESNAPSHOT, no bytes', r.status === 403 && r.body.code === 'ESNAPSHOT' && !r.headers['content-range'], `${r.status} ${JSON.stringify(r.body)}`);
@@ -1112,6 +1132,138 @@ r = await ro.op({ type: 'renames', items: [{ path: 'docs/b.txt', name: 'z.txt' }
 check('a batch rename too', r.status === 403 && /read-only/i.test(r.body.message) && has('docs', 'b.txt') && !has('docs', 'z.txt'), JSON.stringify(r.body));
 check('read-only still scans', (await ro.get('/api/scan?path=')).status === 200);
 await ro.stop();
+
+console.log('\nOpen a terminal (TERRANE_LAUNCH_LOG: nothing is started)');
+{
+  const { makeGuard } = await import('../server/guard.mjs');
+  const { makeOps, terminalPlan } = await import('../server/ops.mjs');
+  const { EventEmitter } = await import('node:events');
+  const log = path.join(work, 'launch.log');
+  const roLog = path.join(work, 'launch-read-only.log');
+  const lines = (f) => (fs.existsSync(f) ? fs.readFileSync(f, 'utf8').split('\n').filter(Boolean).map((l) => JSON.parse(l)) : []);
+  const odd = 'term dir & ; %';
+  fs.mkdirSync(path.join(root, odd));
+  let termLink = false;
+  try {
+    fs.symlinkSync(outside, path.join(root, 'term-escape'), 'junction');
+    termLink = true;
+  } catch { /* no link here */ }
+  const real = (...p) => fs.realpathSync.native(path.join(root, ...p));
+  /** A POST with any content type, for the JSON rule. */
+  const rawPost = (port, route, text, type, token) => new Promise((resolve, reject) => {
+    const req = http.request({ host: '127.0.0.1', port, path: route, method: 'POST', headers: { 'Content-Type': type, 'Content-Length': Buffer.byteLength(text), ...(token ? { 'X-Terrane-Token': token } : {}) } }, (res) => {
+      let t = '';
+      res.on('data', (c) => { t += c; });
+      res.on('end', () => resolve({ status: res.statusCode, text: t }));
+    });
+    req.on('error', reject);
+    req.end(text);
+  });
+
+  const tw = await boot([], 5045, { TERRANE_LAUNCH_LOG: log });
+  const term = (body) => tw.request('POST', '/api/terminal', { token: tw.token, body });
+  r = await tw.request('POST', '/api/terminal', { body: { path: '' } });
+  check('POST /api/terminal without the token is 401', r.status === 401 && r.body.code === 'ETOKEN', JSON.stringify(r.body));
+  r = await rawPost(tw.port, '/api/terminal', JSON.stringify({ path: '' }), 'text/plain', tw.token);
+  check('with another content type it is 415', r.status === 415, `${r.status} ${r.text}`);
+  check('neither reached a launch', lines(log).length === 0);
+
+  const plan = terminalPlan(process.platform, process.env);
+  r = await term({ path: '' });
+  let got = lines(log);
+  check('the root opens a terminal: one launch, the plan\'s first, whose working directory is the root\'s real path',
+    r.status === 200 && r.body.ok && got.length === 1 && got[0].cmd === plan[0].cmd && JSON.stringify(got[0].args) === JSON.stringify(plan[0].args) && got[0].cwd === fs.realpathSync.native(root),
+    `${r.status} ${JSON.stringify(r.body)} ${JSON.stringify(got)}`);
+  r = await term({ path: odd });
+  got = lines(log);
+  check(`a folder named "${odd}" opens in its real path, and no argument holds the path`,
+    r.status === 200 && got.length === 2 && got[1].cwd === real(odd) && got.every((l) => l.args.every((a) => !a.includes(odd) && !a.includes(root) && !a.includes(work))),
+    `${r.status} ${JSON.stringify(got[1])}`);
+  r = await term({ path: 'docs/b.txt' });
+  check('a file is refused: ENOTDIR, 400, "b.txt is not a folder."', r.status === 400 && r.body.code === 'ENOTDIR' && r.body.message === 'b.txt is not a folder.', JSON.stringify(r.body));
+  r = await term({ path: '../outside' });
+  const climb = r.status;
+  r = await term({ path: '.terrane-trash' });
+  const held = r.status;
+  r = await term({ path: 'no such folder' });
+  const missing = r.status;
+  r = await term({});
+  check('traversal is 400, the holding area 403, a folder that is not there 404, and no path 400', climb === 400 && held === 403 && missing === 404 && r.status === 400, `${climb} ${held} ${missing} ${r.status}`);
+  if (termLink) {
+    r = await term({ path: 'term-escape' });
+    check('a link that leads outside the root is refused with EOUTSIDE before anything is launched', r.status === 403 && r.body.code === 'EOUTSIDE', JSON.stringify(r.body));
+  }
+  check('none of the refusals reached a launch', lines(log).length === 2, JSON.stringify(lines(log).slice(2)));
+  r = await tw.op({ type: 'open', path: 'docs/b.txt' });
+  const opened = lines(log)[2];
+  check('Open goes to the launch log too, and starts nothing', r.status === 200 && lines(log).length === 3 && opened?.args.some((a) => a.endsWith('b.txt')) && opened.cwd === null, JSON.stringify(opened));
+  await tw.stop();
+
+  const tr = await boot(['--read-only'], 5046, { TERRANE_LAUNCH_LOG: roLog });
+  r = await tr.request('POST', '/api/terminal', { token: tr.token, body: { path: '' } });
+  check('read-only mode refuses a terminal with EREADONLY and its sentence, and launches nothing',
+    r.status === 403 && r.body.code === 'EREADONLY' && r.body.message === 'Terrane was started in read-only mode, so it does not open a terminal, from which anything on disk could be changed.' && lines(roLog).length === 0,
+    JSON.stringify(r.body));
+  await tr.stop();
+
+  // The plan, for every platform.
+  const win = terminalPlan('win32', { ComSpec: 'C:\\Windows\\system32\\cmd.exe' });
+  check('Windows: Windows Terminal in ".", then ComSpec asked to start a console of its own, both detached and shown',
+    JSON.stringify(win) === JSON.stringify([
+      { cmd: 'wt.exe', args: ['-d', '.'], detached: true, windowsHide: false },
+      { cmd: 'C:\\Windows\\system32\\cmd.exe', args: ['/d', '/c', 'start', 'cmd.exe'], detached: true, windowsHide: false },
+    ]) && terminalPlan('win32', {})[1].cmd === 'cmd.exe', JSON.stringify(win));
+  check('macOS: open -a Terminal .', JSON.stringify(terminalPlan('darwin', {}).map((x) => [x.cmd, x.args])) === JSON.stringify([['open', ['-a', 'Terminal', '.']]]));
+  check('Linux: x-terminal-emulator, then gnome-terminal, with no arguments',
+    JSON.stringify(terminalPlan('linux', {}).map((x) => [x.cmd, x.args])) === JSON.stringify([['x-terminal-emulator', []], ['gnome-terminal', []]]));
+
+  // In-process, with a stand-in for spawn: the plan's order, nothing started.
+  const g = await makeGuard(root);
+  const fake = (codes) => {
+    const calls = [];
+    const fn = (cmd, args, opts) => {
+      calls.push({ cmd, args, opts });
+      const child = new EventEmitter();
+      child.unref = () => {};
+      setImmediate(() => (codes[cmd] ? child.emit('error', Object.assign(new Error(`spawn ${cmd} ${codes[cmd]}`), { code: codes[cmd] })) : child.emit('spawn')));
+      return child;
+    };
+    return { calls, fn };
+  };
+  if (plan.length > 1) {
+    const f = fake({ [plan[0].cmd]: 'ENOENT' });
+    const res = await makeOps(g, { spawn: f.fn }).terminal(odd);
+    check(`when ${plan[0].cmd} is not there the next terminal is tried, with the folder as its working directory, no shell, detached`,
+      res.ok && f.calls.length === 2 && f.calls[1].cmd === plan[1].cmd && f.calls.every((c) => c.opts.cwd === real(odd) && c.opts.shell === false && c.opts.detached === true && c.opts.stdio === 'ignore'),
+      JSON.stringify(f.calls.map((c) => [c.cmd, c.opts.cwd, c.opts.shell])));
+  }
+  const none = fake(Object.fromEntries(plan.map((x) => [x.cmd, 'ENOENT'])));
+  let threw = null;
+  try {
+    await makeOps(g, { spawn: none.fn }).terminal('');
+  } catch (e) {
+    threw = e;
+  }
+  check(`when no terminal is there: ELAUNCH, 501, "No terminal was found: tried ${plan.map((x) => x.cmd).join(', ')}."`,
+    threw?.code === 'ELAUNCH' && threw.status === 501 && threw.message === `No terminal was found: tried ${plan.map((x) => x.cmd).join(', ')}.` && none.calls.length === plan.length, threw?.message);
+  const denied = fake({ [plan[0].cmd]: 'EACCES' });
+  threw = null;
+  try {
+    await makeOps(g, { spawn: denied.fn }).terminal('');
+  } catch (e) {
+    threw = e;
+  }
+  check('any other failure stops there, with the system\'s code', threw?.code === 'ELAUNCH' && /EACCES/.test(threw.message) && denied.calls.length === 1, threw?.message);
+  threw = null;
+  try {
+    await makeOps(g, { readOnly: true, spawn: none.fn }).terminal('');
+  } catch (e) {
+    threw = e;
+  }
+  check('a read-only ops refuses before trying anything', threw?.code === 'EREADONLY' && none.calls.length === plan.length);
+  fs.rmSync(path.join(root, odd), { recursive: true, force: true });
+  if (termLink) fs.rmSync(path.join(root, 'term-escape'), { force: true, recursive: false });
+}
 
 console.log('\nArchive interiors (the fixture\'s archives, through the service)');
 const { makeFixture, unseal } = await import('./make-fixture.mjs');
@@ -1892,6 +2044,14 @@ console.log('\nSource (no service)');
   check('component stylesheets read their colours from tokens.css, never a raw colour', raw.length === 0, raw.join(', '));
   const utilities = fs.readFileSync(path.join(WEBDIR, 'css', 'utilities.css'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
   check('utilities outrank components by layer, without !important', !/!important/.test(utilities));
+  const launchers = ['ops.mjs', 'terrane.mjs'].filter((f) => {
+    const src = fs.readFileSync(path.join(TOOLS, '..', 'server', f), 'utf8');
+    // child_process's exec runs a shell; a RegExp's .exec( launches nothing.
+    const imported = [...src.matchAll(/import\s*\{([^}]*)\}\s*from\s*'node:child_process'/g)].flatMap((m) => m[1].split(',').map((x) => x.trim()));
+    return /(?<![.\w$])exec(?:Sync)?\(/.test(src) || /shell:\s*true/.test(src) || imported.some((x) => /^exec(?:Sync)?\b/.test(x));
+  });
+  check('the service never runs a shell: no exec( or shell: true in ops.mjs or terrane.mjs, and nothing but spawn from child_process',
+    launchers.length === 0, launchers.join(', '));
 }
 
 fs.rmSync(work, { recursive: true, force: true });

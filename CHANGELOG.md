@@ -24,7 +24,8 @@
       acting on many extend those of app.js and landmarks.js, and acting on many itself
       those of terrane.css and features.js: the batch rename, duplicate cleanup and copy
       as. Getting things in and out extends those of ui.js and features.js: download()
-      and the lists saved as CSV; then that of landmarks.js: places export and import.
+      and the lists saved as CSV; then that of landmarks.js: places export and import;
+      then that of features.js again: a terminal opened in a folder.
     - 1.4.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — Records app.js 1.8.0:
       single-key shortcuts are off unless turned on in the guide.
     - 1.3.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — Records the hardening
@@ -368,7 +369,12 @@ here unchanged in the same edit.
   lists from its last section, Export as CSV, all in the palette too; the CSV is written
   by the DOM-free csv.js (RFC 4180, a UTF-8 byte order mark, CRLF, and an apostrophe
   before a text cell that begins with = + - @, a tab or a CR) and saved in the page,
-  with no service call (exports.js).
+  with no service call (exports.js); and a terminal opened in a folder, from the context
+  menu (a folder's "Open a terminal here", a file's "in its folder", the folder you are
+  in), the inspector's Terminal here and the palette, unavailable with the reason in
+  snapshot or read-only mode, inside an open archive and in a folder that cannot be read;
+  the service starts it with the folder as its working directory, never an argument
+  (terminal.js).
 - 1.2.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — The third: Session
   traverse, working sessions as a search and a route (traverse.js). The fourth: Strata,
   bytes by last change and the Age lens's typical age for closed masses (strata.js). The
@@ -405,8 +411,8 @@ here unchanged in the same edit.
   after the return point. A batch rename (body type 'renames') carries benchmarks along by
   the pairs the service answers (res.renamed); one that stopped part way, by each item's
   path to its entry in res.results, where it now is, leaving out an item that kept its
-  name. Export and import, the tab's last section and two palette commands, carries
-  places between browsers, profiles and addresses. Export places saves
+  name. Export and import, a section after the return point and two palette commands,
+  carries places between browsers, profiles and addresses. Export places saves
   terrane-places-<directory>-YYYY-MM-DD.json: { terrane: 'places', format: 1, root,
   source ('live' or 'snapshot'), exportedAt, benchmarks, ret, searches }, the benchmarks
   and the return point from the store's exportData() and the saved searches as kept.

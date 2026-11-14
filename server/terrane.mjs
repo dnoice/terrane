@@ -30,7 +30,10 @@
  *       is closed rather than left open. A preferred port that Windows
  *       refuses with EACCES, because another program holds it
  *       exclusively, is passed over for the next one, as a port in use
- *       always was, instead of stopping the service.
+ *       always was, instead of stopping the service. POST /api/terminal
+ *       { path } opens a terminal in a folder (ops.terminal): the token,
+ *       the Host check and the JSON rule as for every POST, refused in
+ *       read-only mode, and in snapshot mode with a sentence of its own.
  *     - 1.4.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — POST
  *       /api/hash reads a file only once its real location is proved
  *       inside the root and outside the holding area, as /api/raw and
@@ -75,7 +78,8 @@
  *     the command line, serves the interface on the loopback address, and
  *     exposes that directory (and nothing else) to the browser: progressive
  *     scanning, metadata, previews, archive contents, guarded file
- *     operations, undo, and live change notifications.
+ *     operations, undo, a terminal in a folder, and live change
+ *     notifications.
  *
  * ✒ Key Features:
  *     - Explicit authorization: no directory argument, no service
@@ -108,6 +112,9 @@
  *       the port, whose secret opens thumbnails and nothing else
  *     - Interface files revalidated by a weak ETag (no-cache, 304 when
  *       unchanged); the page, which holds the token, is never stored
+ *     - POST /api/terminal { path }: a terminal whose working directory
+ *       is that folder, never an argument; refused in read-only and
+ *       snapshot mode, since a terminal can change anything
  *     - Zero npm dependencies; three.js and the fonts are vendored in web/
  *
  * ✒ Usage Instructions:
@@ -361,7 +368,10 @@ const snapInfo = () => ({
 });
 
 async function snapshotApi(req, res, route, q) {
-  if (req.method !== 'GET') throw new GuardError('ESNAPSHOT', SNAP_REFUSAL, 403);
+  if (req.method !== 'GET') {
+    if (route === 'terminal') throw new GuardError('ESNAPSHOT', 'Snapshot mode: Terrane is showing a recorded copy of the directory structure, so it opens no terminal, which would work on the real directory. Start Terrane on the real directory to do this.', 403);
+    throw new GuardError('ESNAPSHOT', SNAP_REFUSAL, 403);
+  }
   if (route === 'info') return json(res, 200, snapInfo());
   if (route === 'scan') {
     const rel = relParts(q.get('path') || '').join('/');
@@ -643,6 +653,8 @@ async function api(req, res, url) {
     if (route === 'restore') return json(res, 200, await ops.restore(body.ids || []));
     if (route === 'purge') return json(res, 200, await ops.purge());
     if (route === 'cancel') return json(res, 200, ops.cancel(String(body.job || '')));
+    // Not queued with the changes, as Open is; refused in read-only mode.
+    if (route === 'terminal') return json(res, 200, await ops.terminal(body.path));
     if (route === 'hash') {
       const paths = (body.paths || []).slice(0, 4000);
       const results = new Array(paths.length);

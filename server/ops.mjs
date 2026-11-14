@@ -22,7 +22,22 @@
  *       one journal entry undone as moves, answered with renamed, the
  *       [from, to] pairs. One that stops part way journals what it
  *       finished as a partial rename and throws with results, item by
- *       item, and affected.
+ *       item, and affected. terminal(rel) opens a terminal in a folder:
+ *       refused in read-only mode, the folder reached through its
+ *       parent's real location and its own (a link must end inside the
+ *       root and outside the holding area), ENOTDIR for anything but a
+ *       folder, and outside the queue, as Open is. It tries the exported
+ *       terminalPlan(platform, env) in order with the folder as the
+ *       working directory and never as an argument, moving on when a
+ *       terminal is not installed, else ELAUNCH (501) naming what it
+ *       tried. On Windows the plan is wt.exe -d ., then cmd.exe /d /c
+ *       start cmd.exe, since a cmd.exe started directly with no console
+ *       input closes at once. launch() takes cwd, windowsHide and
+ *       detached, always with shell: false; TERRANE_LAUNCH_LOG names a
+ *       file each launch (Open and Reveal included) is written to as one
+ *       JSON line, { cmd, args, cwd }, instead of starting anything;
+ *       makeOps takes spawn, a stand-in for child_process.spawn that a
+ *       check uses to see the plan's order without launching a program.
  *     - 1.3.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
  *       holding index is untrusted data: a record is kept only when its
  *       id has the shape hold() mints and its name is one entry name
@@ -53,10 +68,10 @@
  * ✒ Description:
  *     Performs the real changes Terrane makes on disk: create folder, rename
  *     (one item or many), move, copy, remove to the holding area, restore,
- *     open and reveal. Each change is validated through the path guard,
- *     never overwrites existing data, and is written to a persistent
- *     journal with the exact inverse needed to undo it, including after the
- *     service restarts.
+ *     open, reveal and open a terminal. Each change is validated through
+ *     the path guard, never overwrites existing data, and is written to a
+ *     persistent journal with the exact inverse needed to undo it,
+ *     including after the service restarts.
  *
  * ✒ Key Features:
  *     - No overwrite, ever: a name collision is refused with a 409 unless
@@ -94,7 +109,14 @@
  *       end is proved inside the root
  *     - A relative link is never carried to a folder from which it would
  *       point outside the root
- *     - Read-only mode refuses every mutation with an explanation
+ *     - A terminal opens in a folder only when the service may change the
+ *       disk: the folder (its real location inside the root) is the
+ *       terminal's working directory, never an argument, and the
+ *       terminals of terminalPlan are tried in order
+ *     - Every launch is an argument array with no shell; under
+ *       TERRANE_LAUNCH_LOG it is written to that file instead of started
+ *     - Read-only mode refuses every mutation, and a terminal, with an
+ *       explanation
  *
  * ✒ Usage Instructions:
  *     const ops = makeOps(guard, { readOnly: false, onJob: (view) => {} });
@@ -106,6 +128,7 @@
  *     ops.cancel('k3x9q2');
  *     await ops.run({ type: 'trash', paths: ['old.log'] });
  *     await ops.undo();
+ *     await ops.terminal('docs');           // a terminal whose working directory is docs
  *     Each call resolves to { ok, label, affected: [dir rel paths], ... };
  *     a cancelled job resolves with cancelled: true and says what was done.
  *     A job that stops part way rejects with an error whose results lists
@@ -114,7 +137,10 @@
  *
  * ✒ Other Important Information:
  *     - Dependencies: Node.js built-ins only; guard.mjs, transfer.mjs
- *     - Compatible platforms: Node.js 20+ on Windows, macOS, Linux
+ *     - Compatible platforms: Node.js 20+ on Windows, macOS, Linux; the
+ *       terminal plan is verified on Windows only
+ *     - Testing: TERRANE_LAUNCH_LOG=<file> records every launch as a JSON
+ *       line and starts nothing, as TERRANE_SLOW_COPY_MS slows a copy
  *     - Limitations: the existence check and the rename are two system
  *       calls, so another program creating the same name in the few
  *       microseconds between them is not defended against. The journal
@@ -161,6 +187,30 @@ export function validHold(r) {
   if (process.platform === 'win32' && (n.includes('\\') || n.includes(':'))) return false;
   return true;
 }
+
+/**
+ * The terminals to try, in order, for a platform: [{ cmd, args, detached,
+ * windowsHide }]. The folder is never an argument: it is the child's
+ * working directory, which each of these opens in. On Windows, Windows
+ * Terminal (wt.exe, an App Execution Alias) is told to start in '.', its
+ * working directory; failing that, cmd.exe is asked, with fixed words and
+ * nothing of the folder, to start a console of its own there. A cmd.exe
+ * started directly, with no console input, would read nothing and close
+ * at once. The child is detached and shown, so it outlives the service.
+ */
+export function terminalPlan(platform, env = {}) {
+  if (platform === 'win32') {
+    const shown = { detached: true, windowsHide: false };
+    return [
+      { cmd: 'wt.exe', args: ['-d', '.'], ...shown },
+      { cmd: env.ComSpec || 'cmd.exe', args: ['/d', '/c', 'start', 'cmd.exe'], ...shown },
+    ];
+  }
+  const own = { detached: true, windowsHide: true };
+  if (platform === 'darwin') return [{ cmd: 'open', args: ['-a', 'Terminal', '.'], ...own }];
+  return [{ cmd: 'x-terminal-emulator', args: [], ...own }, { cmd: 'gnome-terminal', args: [], ...own }];
+}
+
 const JOBBED = new Set(['move', 'copy', 'trash']);
 const PROGRESS_MS = 150;
 
@@ -274,7 +324,13 @@ function makeJob(id, type, onJob) {
   return job;
 }
 
-export function makeOps(guard, { readOnly = false, onJob } = {}) {
+/**
+ * The operations on one guarded root. readOnly refuses every change and a
+ * terminal; onJob(view) hears job progress; spawn stands in for
+ * child_process.spawn, for a check that must see what would be launched
+ * without starting it.
+ */
+export function makeOps(guard, { readOnly = false, onJob, spawn: spawnFn = spawn } = {}) {
   const SESSION = Date.now().toString(36);
   const journal = [];
   const jobs = new Map();
@@ -827,14 +883,33 @@ export function makeOps(guard, { readOnly = false, onJob } = {}) {
     return next;
   };
 
-  const launch = (cmd, args) => new Promise((resolve, reject) => {
-    const child = spawn(cmd, args, { detached: true, stdio: 'ignore', windowsHide: true });
-    child.once('error', (err) => reject(new GuardError('ELAUNCH', `The system handler could not be started (${cmd}: ${err.code || err.message}).`, 501)));
-    child.once('spawn', () => {
-      child.unref();
-      resolve();
+  // The test hook: with TERRANE_LAUNCH_LOG naming a file, each launch is
+  // appended to it as one JSON line, { cmd, args, cwd }, and nothing is
+  // started, so a check can see what would have run.
+  const launchLog = process.env.TERRANE_LAUNCH_LOG || '';
+
+  /**
+   * Starts a program with an argument array and no shell, detached and
+   * with its output ignored. cwd is its working directory; windowsHide
+   * keeps a console window from showing (true for the system handlers).
+   * A failure rejects with ELAUNCH, carrying the system's code as
+   * launchCode (ENOENT when the program is not there).
+   */
+  const launch = async (cmd, args, { cwd, windowsHide = true, detached = true } = {}) => {
+    if (launchLog) {
+      await fs.appendFile(launchLog, `${JSON.stringify({ cmd, args, cwd: cwd ?? null })}\n`);
+      return;
+    }
+    await new Promise((resolve, reject) => {
+      const child = spawnFn(cmd, args, { cwd, detached, stdio: 'ignore', windowsHide, shell: false });
+      child.once('error', (err) => reject(Object.assign(
+        new GuardError('ELAUNCH', `The system handler could not be started (${cmd}: ${err.code || err.message}).`, 501), { launchCode: err.code })));
+      child.once('spawn', () => {
+        child.unref();
+        resolve();
+      });
     });
-  });
+  };
 
   const openJob = (op) => {
     const id = typeof op.job === 'string' && JOB_ID.test(op.job) && !jobs.has(op.job)
@@ -861,6 +936,44 @@ export function makeOps(guard, { readOnly = false, onJob } = {}) {
     },
 
     jobs: () => [...jobs.values()].map((j) => j.view()),
+
+    /**
+     * Opens a terminal in a folder (rel; '' is the root), outside the
+     * queue of changes, as Open is. Refused in read-only mode, since a
+     * terminal can change anything. A folder other than the root is
+     * reached through its parent's real location and then its own, so a
+     * link must end inside the root and outside the holding area. The
+     * folder becomes the terminal's working directory and is never one of
+     * its arguments; the plan's terminals are tried in order, moving on
+     * when one is not installed.
+     */
+    async terminal(rel) {
+      if (readOnly) throw new GuardError('EREADONLY', 'Terrane was started in read-only mode, so it does not open a terminal, from which anything on disk could be changed.', 403);
+      let dir = guard.resolve(rel);
+      const name = dir === guard.root ? path.basename(guard.root) || guard.root : path.basename(dir);
+      if (dir !== guard.root) {
+        await guard.assertParentInside(dir);
+        dir = await guard.realInside(dir, { gone: `${name} is no longer there.` });
+      }
+      let st;
+      try {
+        st = await fs.stat(dir);
+      } catch (err) {
+        throw new GuardError(err.code || 'ENOENT', `${name} is no longer there.`, 404);
+      }
+      if (!st.isDirectory()) throw new GuardError('ENOTDIR', `${name} is not a folder.`, 400);
+      const tried = [];
+      for (const step of terminalPlan(process.platform, process.env)) {
+        try {
+          await launch(step.cmd, step.args, { cwd: dir, windowsHide: step.windowsHide, detached: step.detached });
+          return { ok: true, label: `Opened a terminal in ${name}`, affected: [], undoable: false };
+        } catch (err) {
+          if (err.launchCode !== 'ENOENT') throw err;
+          tried.push(step.cmd);
+        }
+      }
+      throw new GuardError('ELAUNCH', `No terminal was found: tried ${tried.join(', ')}.`, 501);
+    },
 
     run(op) {
       if (op.type === 'open' || op.type === 'reveal') {

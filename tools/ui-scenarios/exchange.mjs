@@ -19,8 +19,9 @@
  * ✒ Description:
  *     Checks what Terrane lets out of the page and back in, in a real
  *     browser, keyboard first, with WebGL on and off: lists saved as CSV
- *     files and read back against the rows the ledger listed, and places
- *     saved as a file and taken in again.
+ *     files and read back against the rows the ledger listed, places
+ *     saved as a file and taken in again, and a terminal opened in a
+ *     folder, every launch read from the service's launch log.
  *
  * ✒ Key Features:
  *     - 'export' (read-only fixture, both passes): downloads are allowed
@@ -44,15 +45,25 @@
  *       benchmark found in the tree; a file for another root, one of the
  *       snapshot and one that is not a places file are each refused with
  *       their sentence and change nothing; the same file twice skips all
+ *     - 'terminal' (writes, both passes): on the read-only service a
+ *       folder's "Open a terminal here" and the inspector's Terminal here
+ *       are unavailable with "read-only mode" and launch nothing; on the
+ *       writable one the menu's item, a file's "Open a terminal in its
+ *       folder", the inspector's Terminal here and the palette each write
+ *       one line to the launch log whose working directory is the real
+ *       path of the folder and whose arguments never hold it, and the
+ *       notice says so; inside an open archive both are unavailable with
+ *       "inside an archive"
  *
  * ✒ Usage Instructions:
  *     node tools/ui-check.mjs export --port 5040 --no-shots
  *     node tools/ui-check.mjs exchange --pass nogl
  *
  * ✒ Other Important Information:
- *     - Dependencies: tools/ui-check.mjs (the context t and its page's
- *       DevTools connection); node:fs, node:os, node:path; the fixture's
- *       edge cases
+ *     - Dependencies: tools/ui-check.mjs (the context t, its page's
+ *       DevTools connection, t.readOnlyUrl, t.goto, t.launchLog and
+ *       t.launches); node:fs, node:os, node:path; the fixture's edge
+ *       cases and archives/site.zip
  *     - Compatible platforms: Node.js 22.5+; Edge or Chrome
  * ----------------------------------------------------------------------------
  */
@@ -397,8 +408,8 @@ const placesFile = {
       const start = await placesState(t);
 
       // Export places, reached with Tab and pressed with Enter.
-      t.check('the Places tab ends with Export and import', await toFileSection(t)
-        && await t.eval(() => [...document.querySelectorAll('#ledger-rich > details')].at(-1)?.classList.contains('places-file')));
+      t.check('the Places tab has Export and import right after the return point, before the sections other features add', await toFileSection(t)
+        && await t.eval(() => document.querySelector('#ledger-rich > details.places-return')?.nextElementSibling?.classList.contains('places-file')));
       await t.tabTo('#ledger-rich [data-k="places-export"]');
       await t.key('Enter');
       const got = await dl.next();
@@ -488,4 +499,158 @@ const placesFile = {
   },
 };
 
-export default [exportLists, placesFile];
+/* ---------- terminal ---------- */
+
+/** Shows Contents, selects the entry named n there, puts the list's cursor on it and focuses the list. */
+function pick(t, n) {
+  return t.app((T, name) => {
+    T.S.tab = 'contents';
+    T.api.drawLedger();
+    const node = T.S.focus.c.find((c) => c.n === name);
+    if (!node) return false;
+    T.api.select(node);
+    T.api.cursorTo(node);
+    document.getElementById('ledger-list').focus();
+    return true;
+  }, n);
+}
+
+/** The open context menu's items: label, and the reason when unavailable. */
+const menuItems = () => [...document.querySelectorAll('#menu .menu-item')].map((b) => ({
+  label: b.querySelector('.menu-label').textContent, off: b.getAttribute('aria-disabled') === 'true', why: b.querySelector('.menu-why')?.textContent ?? null,
+}));
+
+/** Opens the context menu from the keyboard (Shift+F10) and reads it; Escape closes it unless choose names an item to press. */
+async function menu(t, choose = null) {
+  await t.key('Shift+F10');
+  await t.waitFor(() => !document.getElementById('menu').hidden && document.querySelectorAll('#menu .menu-item').length > 0, { what: 'the context menu' });
+  const items = await t.eval(menuItems);
+  if (!choose) await t.key('Escape');
+  else {
+    let at = null;
+    for (let k = 0; k < 40; k++) {
+      at = await t.eval(() => document.activeElement?.querySelector?.('.menu-label')?.textContent ?? null);
+      if (at === choose) break;
+      await t.key('ArrowDown');
+    }
+    if (at !== choose) throw new Error(`the menu has no "${choose}": ${JSON.stringify(items.map((i) => i.label))}`);
+    await t.key('Enter');
+  }
+  await t.waitFor(() => document.getElementById('menu').hidden, { what: 'the menu to close' });
+  return items;
+}
+
+/** The inspector's Terminal here button: { off, text }, or null. */
+const terminalButton = (t) => t.eval(() => {
+  const b = document.querySelector('#inspector-body .terminal-action button');
+  return b ? { off: b.getAttribute('aria-disabled') === 'true', text: b.textContent } : null;
+});
+
+/** Waits for the launch log to grow past n, and returns its newest line. */
+const nextLaunch = async (t, n) => {
+  const ok = await t.poll(() => t.launches().length > n, { timeout: 5000 });
+  return ok ? t.launches().at(-1) : null;
+};
+
+const terminalScenario = {
+  name: 'terminal',
+  title: 'Open a terminal: unavailable in read-only mode, launched with the folder as its working directory, unavailable inside an archive',
+  data: 'fixture',
+  write: true,
+  async run(t) {
+    await t.settle();
+    const real = (rel) => fs.realpathSync.native(t.abs(rel));
+
+    // The read-only service: offered, unavailable, with the reason.
+    await t.goto(t.readOnlyUrl);
+    await goInto(t, 'edge cases');
+    const roBefore = t.launches(t.readOnlyLaunchLog).length;
+    await pick(t, 'empty one');
+    const ro = (await menu(t)).find((i) => i.label === 'Open a terminal here');
+    t.check('on the read-only service a folder\'s menu offers "Open a terminal here", unavailable: read-only mode', ro?.off === true && ro.why === 'read-only mode', JSON.stringify(ro));
+    const roButton = await terminalButton(t);
+    t.check('and the inspector\'s Terminal here is unavailable, saying why in its name', roButton?.off && /unavailable: read-only mode/.test(roButton.text), JSON.stringify(roButton));
+    await t.eval(() => document.querySelector('#inspector-body .terminal-action button')?.focus());
+    await t.key('Enter');
+    await t.sleep(300);
+    t.check('pressed anyway, it launches nothing', t.launches(t.readOnlyLaunchLog).length === roBefore, JSON.stringify(t.launches(t.readOnlyLaunchLog).slice(roBefore)));
+
+    // The writable service.
+    await t.goto(t.url);
+    await goInto(t, 'edge cases');
+    await pick(t, 'empty one');
+    let n = t.launches().length;
+    const items = await menu(t, 'Open a terminal here');
+    const labels = items.map((i) => i.label);
+    t.check('the menu of a folder offers it after Copy path, available', labels.indexOf('Open a terminal here') > labels.indexOf('Copy path') && !items.find((i) => i.label === 'Open a terminal here').off, JSON.stringify(labels));
+    const said = await noticeLike(t, /^Opened a terminal in /);
+    t.check(`choosing it says "${said}"`, said === 'Opened a terminal in "empty one".', said);
+    let got = await nextLaunch(t, n);
+    t.check(`and the service launches ${got?.cmd} once, its working directory the folder's real path`, !!got && got.cwd === real('edge cases/empty one') && t.launches().length === n + 1, JSON.stringify(got));
+    t.check('no argument of it holds the path', !!got && got.args.every((a) => !a.includes('empty one') && !a.includes(t.root)), JSON.stringify(got?.args));
+
+    // A file: its folder.
+    await pick(t, '-leading-dash.txt');
+    n = t.launches().length;
+    await menu(t, 'Open a terminal in its folder');
+    got = await nextLaunch(t, n);
+    t.check('"Open a terminal in its folder" on a file opens it in the file\'s folder', got?.cwd === real('edge cases'), JSON.stringify(got));
+
+    // The inspector of the folder you are in: Terminal here, with Enter.
+    await t.app((T) => {
+      T.api.select(null);
+      return true;
+    });
+    await t.waitFor(() => !!document.querySelector('#inspector-body .terminal-action button'), { what: 'Terminal here in the summary of the folder you are in' });
+    n = t.launches().length;
+    await t.eval(() => document.querySelector('#inspector-body .terminal-action button').focus());
+    await t.key('Enter');
+    got = await nextLaunch(t, n);
+    t.check('Terminal here in the summary of the folder you are in opens it there', got?.cwd === real('edge cases'), JSON.stringify(got));
+
+    // The palette.
+    await t.eval(() => document.getElementById('ledger-list').focus());
+    await t.key('Ctrl+K');
+    await t.waitFor(() => document.getElementById('dialog').open && document.activeElement?.classList.contains('palette-input'), { what: 'the palette' });
+    await t.type('open a terminal');
+    const top = await t.until((_T, w) => {
+      const l = document.querySelector('#palette-list [aria-selected="true"] .pal-label')?.textContent;
+      return l === w && l;
+    }, { args: ['Open a terminal in edge cases'], timeout: 3000 });
+    t.check('the palette offers "Open a terminal in edge cases"', top === 'Open a terminal in edge cases',
+      await t.eval(() => document.querySelector('#palette-list [aria-selected="true"] .pal-label')?.textContent ?? null));
+    n = t.launches().length;
+    await t.key('Enter');
+    got = await nextLaunch(t, n);
+    t.check('and Enter opens it there', got?.cwd === real('edge cases'), JSON.stringify(got));
+
+    // Inside an open archive there is no folder on disk.
+    const zip = t.manifest.archives.site.path;
+    await goInto(t, zip.slice(0, zip.lastIndexOf('/')));
+    await pick(t, zip.slice(zip.lastIndexOf('/') + 1));
+    await t.key('i');
+    await t.waitFor((T) => !!T.S.interior, { timeout: 8000, what: `the interior of ${zip}` });
+    await t.app((T) => {
+      const dir = T.S.interior.root.c.find((c) => c.d) || T.S.interior.root;
+      T.api.select(dir);
+      document.getElementById('ledger-list').focus();
+      return true;
+    });
+    n = t.launches().length;
+    const inside = (await menu(t)).find((i) => i.label === 'Open a terminal here');
+    t.check('inside an open archive a folder\'s "Open a terminal here" is unavailable: inside an archive', inside?.off === true && inside.why === 'inside an archive', JSON.stringify(inside));
+    const inButton = await terminalButton(t);
+    t.check('and so is the inspector\'s Terminal here', inButton?.off && /unavailable: inside an archive/.test(inButton.text), JSON.stringify(inButton));
+    t.check('nothing was launched', t.launches().length === n);
+    await t.keys('Escape', 'Escape');
+    await t.waitFor((T) => !T.S.interior, { what: 'the archive closed' });
+    await t.app((T) => {
+      T.api.select(null);
+      T.api.setFocus(T.S.model.root);
+      return true;
+    });
+    await t.settle();
+  },
+};
+
+export default [exportLists, placesFile, terminalScenario];

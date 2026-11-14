@@ -21,7 +21,11 @@
  *       every scenario starts fresh while t.reload() brings them back.
  *       t.readOnlyUrl names the read-only service in a write scenario
  *       too, and t.goto(url) opens it (or any address) and waits as for
- *       the first load.
+ *       the first load. Every service it starts is given
+ *       TERRANE_LAUNCH_LOG, a launch-<port>.log in its work folder, so no
+ *       check ever starts a program, Open and Reveal included; a scenario
+ *       reads it through t.launchLog (and t.readOnlyLaunchLog) and
+ *       t.launches().
  *     - 1.4.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — Every
  *       page opens with single-key shortcuts turned on, as the guide's
  *       setting turns them on, because the page now starts with them
@@ -88,6 +92,8 @@
  *       pointerdown on the sheet once the survey is done, as a click would
  *     - Starts and stops every process it uses and removes its temp data,
  *       including a browser its launcher handed off to another process
+ *     - Launches nothing on the machine: each service writes what it would
+ *       launch (Open, Reveal, a terminal) to a log the scenario can read
  *
  * ✒ Usage Instructions:
  *     node tools/ui-check.mjs [scenario...] [options]
@@ -110,7 +116,9 @@
  *     live, notices, mark, requests, shot, drawCalls, sleep, url,
  *     readOnlyUrl (the read-only service, also from a write scenario),
  *     reload() and goto(url) (each waits for the survey and the loading
- *     sheet as at the start).
+ *     sheet as at the start), launchLog and readOnlyLaunchLog (the files
+ *     the two services write their launches to) and launches(file),
+ *     those launches as [{ cmd, args, cwd }].
  *     t.app(fn) and t.waitFor(fn) call fn(window.__terrane) in the page,
  *     so fn must be self-contained and return plain JSON values.
  *
@@ -154,7 +162,8 @@
  *       Google Chrome; server/terrane.mjs, tools/make-fixture.mjs
  *     - Compatible platforms: Windows, macOS, Linux
  *     - Safety: the services it starts are read-only, except for scenarios
- *       marked write, which get a throwaway fixture of their own
+ *       marked write, which get a throwaway fixture of their own; none of
+ *       them launches a program (TERRANE_LAUNCH_LOG)
  *     - Exit code 0 means every check passed
  * ----------------------------------------------------------------------------
  */
@@ -227,8 +236,15 @@ function removeDir(dir) {
   }
 }
 
-async function startService(args, port) {
-  const child = spawn(process.execPath, [SERVER, ...args, '--no-open', '--port', String(port)], { stdio: ['ignore', 'pipe', 'pipe'] });
+/**
+ * Starts the service on args at port. Every launch it would make (Open,
+ * Reveal, a terminal) is written to launchLog instead (TERRANE_LAUNCH_LOG),
+ * so no check ever starts a program on the machine.
+ */
+async function startService(args, port, launchLog) {
+  const child = spawn(process.execPath, [SERVER, ...args, '--no-open', '--port', String(port)], {
+    stdio: ['ignore', 'pipe', 'pipe'], env: { ...process.env, TERRANE_LAUNCH_LOG: launchLog },
+  });
   let out = '';
   const actual = await new Promise((resolve, reject) => {
     const timer = setTimeout(() => reject(new Error(`The service did not start: ${out.trim()}`)), 30000);
@@ -254,7 +270,7 @@ async function startService(args, port) {
     return undefined;
   });
   cleanups.push(stop);
-  return { port: actual, url: `http://127.0.0.1:${actual}/`, stop };
+  return { port: actual, url: `http://127.0.0.1:${actual}/`, stop, launchLog };
 }
 
 function findBrowser() {
@@ -550,6 +566,18 @@ function context(page, env) {
     url: env.url,
     // The read-only service's address; in a write scenario url is its own writable one.
     readOnlyUrl: env.readOnlyUrl || env.url,
+    // Where the scenario's service writes the launches it would make, and
+    // the read-only service's, which a write scenario reaches through readOnlyUrl.
+    launchLog: env.launchLog,
+    readOnlyLaunchLog: env.readOnlyLaunchLog || env.launchLog,
+    /** The launches written to a log so far: [{ cmd, args, cwd }]. */
+    launches(file = env.launchLog) {
+      try {
+        return fs.readFileSync(file, 'utf8').split('\n').filter(Boolean).map((l) => JSON.parse(l));
+      } catch {
+        return [];
+      }
+    },
     baseline: env.baseline,
     recorded: env.recorded,
     page,
@@ -1001,7 +1029,7 @@ async function main() {
     data = { kind: 'fixture', args: [root, '--read-only'], manifest, root, files: FILES, seed: SEED, madeIn: Date.now() - t0 };
   }
 
-  const service = await startService(data.args, PORT);
+  const service = await startService(data.args, PORT, path.join(work, `launch-${PORT}.log`));
   print('\nTerrane interface check');
   print(`  Browser   : ${exe}`);
   print(`  Data      : ${data.kind === 'snapshot' ? `snapshot ${opt.snapshot}` : `fixture, ${data.manifest.files.toLocaleString('en-US')} files, seed ${data.seed} (${data.root}${data.madeIn ? `, made in ${(data.madeIn / 1000).toFixed(1)} s` : ''})`}`);
@@ -1025,7 +1053,7 @@ async function main() {
       await browser.close();
       continue;
     }
-    const env = { pass, data, root: data.root, url: service.url, shots, shotSeq: 0, baseline: null, recorded: null, prefix: pass };
+    const env = { pass, data, root: data.root, url: service.url, launchLog: service.launchLog, shots, shotSeq: 0, baseline: null, recorded: null, prefix: pass };
     if (pass === 'webgl') {
       const b = await measureBaseline(browser, { ...env, prefix: `${pass} baseline` });
       env.baseline = b.states;
@@ -1047,8 +1075,10 @@ async function main() {
         }
         const root = path.join(work, `write-${pass}-${s.name}`);
         const manifest = await makeFixture(root, { files: data.files || FILES, seed: data.seed || SEED });
-        const svc = await startService([root], PORT + 1);
-        await runScenario(browser, s, { ...env, scenario: s.name, prefix, root, url: svc.url, readOnlyUrl: env.url, data: { ...data, manifest, root } });
+        const svc = await startService([root], PORT + 1, path.join(work, `launch-${PORT + 1}.log`));
+        await runScenario(browser, s, {
+          ...env, scenario: s.name, prefix, root, url: svc.url, readOnlyUrl: env.url, launchLog: svc.launchLog, readOnlyLaunchLog: env.launchLog, data: { ...data, manifest, root },
+        });
         await svc.stop();
         removeDir(root);
       } else await runScenario(browser, s, { ...env, scenario: s.name, prefix });
