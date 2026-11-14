@@ -46,6 +46,10 @@
  *     - A stale generation (409 ESTALE) stops every request and calls
  *       onStale once, so no answer of an old tree lands in a new model
  *     - ages: a RegionAges over the rows every folder carries
+ *     - extra() adds to every region request (a search's qid, so its
+ *       marks ride along) and onFilled(node, R) hears each region filled,
+ *       its marks (mk, dup, hv) decoded with it; heldIds() and node(id)
+ *       name the folders held for the marks a page asks for
  *
  * ✒ Usage Instructions:
  *     const R = createRegions({ fetchJSON, model, onStale, onLanded });
@@ -137,6 +141,7 @@ export function decode(json) {
     anchor: json.anchor ?? null,
     regions: (json.regions || []).map((R) => ({
       id: R.id, n: R.n, tail: R.tail || null, dirs: decodeDirs([R.self, ...R.d]), files: decodeFiles(R.f || []),
+      mk: R.mk || null, dup: R.dup || null, hv: R.hv || null,
     })),
     more: json.more || [],
     target: json.target || null,
@@ -185,7 +190,7 @@ export function measure(name, t0) {
  * { regions: true }). onStale() runs once when the tree's generation
  * changed under it; onLanded() after each batch of regions is in.
  */
-export function createRegions({ fetchJSON, model, onStale = () => {}, onLanded = () => {} } = {}) {
+export function createRegions({ fetchJSON, model, onStale = () => {}, onLanded = () => {}, extra = () => null, onFilled = null } = {}) {
   const M = model;
   let v = null;
   let entries = null;
@@ -268,6 +273,14 @@ export function createRegions({ fetchJSON, model, onStale = () => {}, onLanded =
     for (const ch of node.c) if (ch.d) byId.set(ch.x, ch);
     heldSet.add(node);
     node._t = ++tick;
+    // The marks a region carries (a search's, the survey's) go on its new nodes here.
+    if (onFilled) {
+      try {
+        onFilled(node, R);
+      } catch (err) {
+        console.error('Marking a region failed:', err);
+      }
+    }
     measure('terrane:region', t0);
     return node;
   }
@@ -302,7 +315,7 @@ export function createRegions({ fetchJSON, model, onStale = () => {}, onLanded =
     const t0 = clock();
     let ans;
     try {
-      ans = await fetchJSON('region', { v: String(v), ids: ids.join(',') });
+      ans = await fetchJSON('region', { v: String(v), ids: ids.join(','), ...(extra() || {}) });
     } catch (err) {
       for (const id of ids) flying.delete(id);
       flights--;
@@ -385,7 +398,7 @@ export function createRegions({ fetchJSON, model, onStale = () => {}, onLanded =
     const at = v;
     let ans;
     try {
-      ans = await fetchJSON('region', { v: String(v), path: parts.join('/'), skip: String(i) });
+      ans = await fetchJSON('region', { v: String(v), path: parts.join('/'), skip: String(i), ...(extra() || {}) });
     } catch (err) {
       if (err?.code === 'ESTALE') {
         goStale();
@@ -436,6 +449,18 @@ export function createRegions({ fetchJSON, model, onStale = () => {}, onLanded =
       };
     },
     live,
+
+    /** The service ids of the folders whose children are held, the root first. */
+    heldIds() {
+      const out = [];
+      for (const n of heldSet) out.push(n.x);
+      return out;
+    },
+
+    /** The folder node of a service id, while it is held; null otherwise. */
+    node(id) {
+      return byId.get(id) ?? null;
+    },
 
     /**
      * Waits for the service's tree, polling GET /api/tree, then makes the
@@ -559,7 +584,7 @@ export function createRegions({ fetchJSON, model, onStale = () => {}, onLanded =
         const chunk = rels.slice(i, i + FRESH_MAX);
         let ans;
         try {
-          ans = await fetchJSON('region', { v: String(v), fresh: '1', paths: JSON.stringify(chunk) });
+          ans = await fetchJSON('region', { v: String(v), fresh: '1', paths: JSON.stringify(chunk), ...(extra() || {}) });
         } catch (err) {
           if (err?.code === 'ESTALE') {
             goStale();

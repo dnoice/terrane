@@ -25,7 +25,8 @@
       time.js (1.3.0), traverse.js (1.3.0) and interior.js (1.3.0), and records model.js
       1.6.0 and layout.js 1.5.0, whose 1.3.0 and 1.2.0 entries leave their headers; this
       file already holds them. It adds the section for web/js/places.js, whose 1.0.0 entry
-      left its header with places.js 1.3.0.
+      left its header with places.js 1.3.0. The whole-tree questions answered by the service
+      extend the entries of app.js (1.12.0), model.js (1.6.0) and traverse.js (1.3.0).
     - 1.8.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — Records the names on the blocks:
       viewport.js 1.7.0. viewport.js's header rolls its 1.4.0 entry out; this file already
       holds it.
@@ -108,10 +109,11 @@ short form is kept too.
   the legend's whole chips behind +N; the status reads files, bytes, folders; the veil's error
   on its own line. A tree above the region threshold, or one a survey finds past it, is drawn
   from regions (regions.js) the page asks for as the eye nears them; a folder's region is held
-  before you go there or select it; changed folders are read again as fresh regions; search and
-  the survey say they are not available at this size. Region answers are decoded in a module
-  worker, and regions are let go under a budget of held entries, never a pinned folder or one
-  standing open. drawContents builds div.sub-row.is-count
+  before you go there or select it; changed folders are read again as fresh regions. Region
+  answers are decoded in a module worker, and regions are let go under a budget of held entries,
+  never a pinned folder or one standing open. The service answers search, the survey and Verify
+  there: Findings lists the first 5,000 of the true total as refs, each made a node when acted
+  on, and marks by name dim and pin what is held. drawContents builds div.sub-row.is-count
   (span.sub-count with span.n "14 items" and span.b " · 199 GB", then the LEDGER_SUB tools) and
   div.sub-row.is-columns with the sort keys in the order seen, Name, Changed, Untouched, Size;
   drawFindings the count row, the
@@ -137,7 +139,26 @@ short form is kept too.
   draws each group as a swatch and its words. The status line reads files, bytes, folders, so a
   narrow cell's ellipsis takes folders first, and its label's words go into span.text beside the
   lamp's icon. fatal() takes a detail: a quiet message is a sentence, and "3D view unavailable"
-  puts WebGL's error on a line of its own instead of in the middle of the sentence.
+  puts WebGL's error on a line of its own instead of in the middle of the sentence. In region
+  mode runQuery asks GET /api/find through askTree (parsed in the worker) with the query, the
+  order, limit 5,000, the folder you are in and, for is:benchmark, the benchmarks' paths, and
+  returns a promise; a later query drops an earlier answer. S.search is then { regions, qid,
+  list (refs), order, total, bytes, set (a WeakSet), within and tail (WeakMaps), in, sess }, so
+  a search never keeps a region alive. The marks of every folder held are asked 1,500 at a time
+  (GET /api/marks), and every region asked while a search shows carries its own by place
+  (regionMarks, through the client's extra and onFilled). A sort key asks again with the
+  qid; the count, q-count and the Findings tab say the total, and "The first 5,000 of N
+  matches, in this order." when it is larger; Select all takes the first 1,000 and says
+  "Select all takes the first 1,000 matches at this size."; screeHasMatch reads the tail.
+  resolveRow makes a ref a node and puts it in its list's place; select, reveal, a row's
+  click, double-click and context menu and the list's keys do it first, so S.sel and
+  S.primary only ever hold nodes. The survey is asked of the service (debounced after a
+  refresh, as a page survey is) and lists refs with the whole tree's counts ("The first 300 of
+  N." where a list is longer); heavyweights are pinned from hv and candidates stamped as dup on
+  held files (GET /api/marks?dup=1). Verify reads the top groups' files (dupfiles=4000) and
+  hashes them by path, keeps what it proved by path (provedRel) and regroups later surveys
+  with it (dupMap); duplicate ties reach the held box nearest each copy. api.ask and
+  api.resolveRow serve the features, and __terrane.asked counts the questions and their times.
   Region mode (Scale, Stage 4): GET /api/info's regions decides at the start, when the
   threshold is 0 or the entries known are above it. When the service cannot say how large the
   tree is, a whole survey counts root.fc + root.dc + 1 per batch and, once past the threshold,
@@ -640,17 +661,20 @@ short form is kept too.
   regions: true } holds only the regions the page asked for, through fillRegion, refillRegion
   (children kept by name and kind), dropRegion and setFigures, every figure the service's.
   dirFrom makes a folder from a record D, whose layout (D_ID to D_LEN) is defined here; kids(n)
-  is a folder's count, the service's when it has one; relPath gives a ref its own path. A
-  record D is 62 values, [id, name, mtime, err, s, fc, dc, h, mm, cn, k0..k8, b0..b20,
-  f0..f20, md]; columns.js writes it and re-exports the indices, and timeline.js reads its age
-  row. A region folder is a Model folder plus x (its service id), cn (its direct children), u
-  (true while its children are not held), tail ({ n, s } of the children a region does not
-  hold) and g (its age row, a Float64Array of 43). fillRegion takes a decoded region (regions.js
-  decode) and makes files as #addFiles does and folders through dirFrom, in the order sent;
-  refillRegion keeps every node still there, as reconcile does, a kept folder with its own
-  region; dropRegion returns the folders beneath that held their children; setFigures marks
-  the parent to sort again when the size changed. A model in region mode is never given to
-  reconcile, recompute, survey or adopt.
+  is a folder's count, the service's when it has one; relPath gives a ref its own path, and
+  refFrom makes a ref from the service's tuple for the lists. A record D is 62 values, [id,
+  name, mtime, err, s, fc, dc, h, mm, cn, k0..k8, b0..b20, f0..f20, md]; columns.js writes it
+  and re-exports the indices, and timeline.js reads its age row. A region folder is a Model
+  folder plus x (its service id), cn (its direct children), u (true while its children are not
+  held), tail ({ n, s } of the children a region does not hold) and g (its age row, a
+  Float64Array of 43). fillRegion takes a decoded region (regions.js decode) and makes files as
+  #addFiles does and folders through dirFrom, in the order sent; refillRegion keeps every node
+  still there, as reconcile does, a kept folder with its own region; dropRegion returns the
+  folders beneath that held their children; setFigures marks the parent to sort again when the
+  size changed. A model in region mode is never given to reconcile, recompute, survey or adopt.
+  refFrom(t) reads the tuple [rel, d, s, m (mm for a folder), k, f, fc, cn, e, x or -1, pid]
+  into { ref: true, n, d, s, m, mm, k, f, fc, cn, e, rel, pid, x, p }, p a ref of the parent's
+  path, so rowFor, itemButton, describe and the CSV rows draw it as they draw a node.
 
 - 1.5.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — Camera RAW files are images:
   cr3, nrw, srf, sr2, raf, rw2, orf, pef, srw, 3fr, erf, kdc, mrw, x3f and iiq join cr2, nef,
@@ -840,10 +864,17 @@ short form is kept too.
 - 1.3.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — A session's time breaks between
   its two dates outside their nowrap spans, its dash kept with the first; Changed with it
   carries the session as its head's figure, the head's text unchanged; Working sessions' title
-  is a span.t. In region mode no sessions are found, and Working sessions and Changed with it
-  say they are not available at this size. S.sessions stays null there, sessionFor gives the
-  reason "not available at this size" to the menu and the palette, and Changed with it shows
-  its head with the sentence api.notAtSize('Working sessions').
+  is a span.t. In region mode the service finds the sessions of the whole tree: S.sessions
+  reads its list, a session's facts and a file's session and neighbours, and the traverse joins
+  the held boxes nearest the session's files. S.sessions there is the service's: load() asks
+  GET /api/sessions the first time Working sessions is drawn, byK keeps each session's facts
+  (its common folder a ref) as they arrive, from the list or from a session: search's answer,
+  and ofFile each file's { k, why, facts, near, before } from ?path&near=8, which Changed with
+  it, the menu and the palette read; the menu and the palette look a file up first when it is
+  not known yet. The service evaluates session:N; the page keeps its note and its date order.
+  The traverse asks ?k&files=1000&q=<qid> once per search, the session's files narrowed by the
+  query, and routes each through the held node nearest it (api.nearest), a folder standing for
+  the files it hides.
 
 - 1.2.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — Changed with it: the inspector
   says which working session a selected file was changed in, lists the 8 files nearest to it in

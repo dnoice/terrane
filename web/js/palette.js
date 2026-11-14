@@ -14,8 +14,9 @@
  *
  * ✒ Changelog:
  *     - 1.1.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] —
- *       In region mode the places group says "Places are not available at
- *       this size.", and so does the live region; the actions are as before.
+ *       In region mode the service ranks the places over every name in the
+ *       tree (GET /api/places), as here, and answers refs; a place chosen
+ *       is found by its path first. The actions are as before.
  *     - 1.0.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] —
  *       Initial release.
  *
@@ -44,7 +45,8 @@
  *       on the name, or on the path when the query holds a '/'; folders
  *       before files on an equal score; built when the palette opens and
  *       kept until the next survey or refresh. Archive entries are not
- *       listed: they hang from a file, not from the tree
+ *       listed: they hang from a file, not from the tree. In region mode
+ *       the service ranks them the same way, the latest ask winning
  *     - An empty query lists every action; typed, the best 8 actions come
  *       first, then the best 40 places, ranked 60 ms after the last key
  *     - Going to a place: a folder is flown to (or gone to without
@@ -89,7 +91,7 @@
 import { openSheet, el } from './ui.js';
 import { rank } from './fuzzy.js';
 import { icon } from './icons.js';
-import { KINDS, fmtBytes, fmtCount } from './model.js';
+import { KINDS, fmtBytes, fmtCount, refFrom } from './model.js';
 import { cssHex } from './theme.js';
 
 export const name = 'Command palette';
@@ -112,9 +114,6 @@ export function install(api) {
   const $ = (id) => document.getElementById(id);
 
   /* ---------- places: every folder and file, folders first ---------- */
-
-  /** What the places group says in region mode. */
-  const PLACES_NOT_HERE = 'Places are not available at this size.';
 
   // nodes[k] and lower[k] side by side; paths (and their lower-cased form)
   // only once a query asks for them.
@@ -216,6 +215,8 @@ export function install(api) {
     let timer = 0;
     let sayTimer = 0;
     let done = false;
+    // Region mode: each ranking asked of the service counts, so a late answer never replaces a newer one.
+    let asked = 0;
 
     const option = (item, k) => {
       const id = `palette-opt-${k}`;
@@ -253,23 +254,21 @@ export function install(api) {
       if (speak && item?.node) api.say(api.describe(item.node));
     }
 
-    function draw(acts, spots, noPlaces = false) {
+    function draw(acts, spots) {
       shown = [...acts, ...spots.map((node) => ({ node }))];
       const parts = [];
       if (acts.length) parts.push(el('div', { class: 'palette-group', role: 'presentation', text: 'Actions' }));
       acts.forEach((a, k) => parts.push(option(a, k)));
       if (spots.length) parts.push(el('div', { class: 'palette-group', role: 'presentation', text: 'Places' }));
       spots.forEach((n, k) => parts.push(option({ node: n }, acts.length + k)));
-      // Region mode: the page holds only part of the tree, so it lists no places.
-      if (noPlaces) parts.push(el('div', { class: 'palette-group', role: 'presentation', text: 'Places' }), el('p', { class: 'palette-empty', role: 'presentation', text: PLACES_NOT_HERE }));
-      else if (!shown.length) parts.push(el('p', { class: 'palette-empty', role: 'presentation', text: 'Nothing matches. Try fewer letters, or a / to search paths.' }));
+      if (!shown.length) parts.push(el('p', { class: 'palette-empty', role: 'presentation', text: 'Nothing matches. Try fewer letters, or a / to search paths.' }));
       listbox.replaceChildren(...parts);
       setActive(0);
       clearTimeout(sayTimer);
       sayTimer = setTimeout(() => {
         if (done) return;
         const a = `${fmtCount(acts.length)} action${acts.length === 1 ? '' : 's'}`;
-        api.say(!input.value.trim() ? a : noPlaces ? `${a}. ${PLACES_NOT_HERE}` : `${a}, ${fmtCount(spots.length)} place${spots.length === 1 ? '' : 's'}`);
+        api.say(!input.value.trim() ? a : `${a}, ${fmtCount(spots.length)} place${spots.length === 1 ? '' : 's'}`);
       }, 250);
     }
 
@@ -281,8 +280,15 @@ export function install(api) {
         return;
       }
       const acts = rank(q, all, { limit: ACTIONS_MAX, key: (a) => a.label }).map((r) => r.item);
+      // Region mode: the service ranks every name in the tree, as below, and answers refs.
       if (api.regionMode()) {
-        draw(acts, [], true);
+        const seq = ++asked;
+        api.ask('places', { q, limit: String(PLACES_MAX) }).then((ans) => {
+          if (seq !== asked || done) return;
+          draw(acts, ans.places.map(refFrom));
+        }, (err) => {
+          if (seq === asked && !done) api.notice(`Places could not be ranked: ${err.message}`, { kind: 'error' });
+        });
         return;
       }
       const P = placeList();
@@ -296,7 +302,16 @@ export function install(api) {
       draw(acts, spots);
     }
 
-    function goPlace(node) {
+    function goPlace(place) {
+      // A ref (region mode) is made a node first, its region held.
+      if (place.ref) {
+        api.resolveRef(place).then((node) => {
+          if (node) goPlace(node);
+          else api.say(`${place.n} is no longer in the tree.`);
+        }, (err) => api.notice(err.message, { kind: 'error' }));
+        return;
+      }
+      const node = place;
       if (node.d) api.setFocus(node);
       else if (S.noGL) {
         api.setFocus(node.p);

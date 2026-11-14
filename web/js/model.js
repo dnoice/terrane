@@ -19,7 +19,8 @@
  *       (children kept by name and kind), dropRegion and setFigures, every
  *       figure the service's. dirFrom makes a folder from a record D, whose
  *       layout (D_ID to D_LEN) is defined here; kids(n) is a folder's count,
- *       the service's when it has one; relPath gives a ref its own path.
+ *       the service's when it has one; relPath gives a ref its own path, and
+ *       refFrom makes a ref from the service's tuple for the lists.
  *     - 1.5.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] —
  *       Camera RAW files are images: cr3, nrw, srf, sr2, raf, rw2, orf,
  *       pef, srw, 3fr, erf, kdc, mrw, x3f and iiq join cr2, nef, arw and
@@ -271,6 +272,24 @@ export function relPath(node) {
   const parts = [];
   for (let a = node; a && a.p; a = a.p) parts.push(a.n);
   return parts.reverse().join('/');
+}
+
+/**
+ * A ref from the service's tuple [rel, d, s, m (mm for a folder), k, f,
+ * fc, cn, e, x or -1, pid]: what a list shows of an entry the page may not
+ * hold, drawn as a node is (name, path, kind, size, date, counts) and made
+ * a node by resolving its path. Its parent is a ref of the folder's path.
+ */
+export function refFrom(t) {
+  const rel = String(t[0]);
+  const cut = rel.lastIndexOf('/');
+  const up = cut < 0 ? '' : rel.slice(0, cut);
+  const d = !!t[1];
+  return {
+    ref: true, n: cut < 0 ? rel : rel.slice(cut + 1), d, s: t[2], m: t[3], mm: t[3], k: d ? undefined : t[4], f: t[5], fc: t[6], cn: d ? t[7] : undefined,
+    e: t[8] || 0, rel, pid: t[10], x: t[9] >= 0 ? t[9] : undefined,
+    p: { ref: true, d: true, n: up.slice(up.lastIndexOf('/') + 1), rel: up, p: null },
+  };
 }
 
 export function isAncestor(anc, node) {

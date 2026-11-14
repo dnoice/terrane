@@ -17,7 +17,9 @@
  *       search… is a 24 px icon tool on the Findings count row, Saved
  *       searches' title a span.t, and the in: note reads "In X: at any
  *       depth." so it keeps one line; the guide's "↑ ↓ in Find" is the key ↑
- *       ↓ and its words.
+ *       ↓ and its words. In region mode the in: note reads what the service
+ *       resolved in: to (the find answer's in), and a saved search says its
+ *       count once the service has answered.
  *     - 1.0.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] —
  *       Initial release.
  *
@@ -202,8 +204,15 @@ export function install(api) {
   api.AFTER_QUERY.add({
     id: 'searches-in', order: 60, owner: OWNER,
     run: (search) => {
-      const r = lastIn;
+      let r = lastIn;
       lastIn = null;
+      // Region mode: the service resolved in: and says what it found, by path.
+      if (search?.regions) {
+        r = null;
+        const got = search.in;
+        if (got && got.rel === null && api.hostOf(S.focus) && (got.raw === '.' || got.raw.startsWith('./'))) r = inArchive(got.raw);
+        else if (got) r = { raw: got.raw, dir: got.rel === null ? null : { rel: got.rel, n: got.rel ? got.rel.slice(got.rel.lastIndexOf('/') + 1) : S.model.root.n } };
+      }
       if (!search || !r) return;
       if (!r.dir) {
         search.note = r.why || `No folder ${r.raw} in this directory.`;
@@ -228,10 +237,11 @@ export function install(api) {
 
   const named = (s) => `"${s.name}"`;
 
-  function run(s) {
-    api.setQuery(s.query);
+  async function run(s) {
+    // Region mode: the service answers, and the count is said once it has.
+    await api.setQuery(s.query);
     document.getElementById('ledger-list')?.focus();
-    const n = S.search ? S.search.list.length : 0;
+    const n = S.search ? S.search.total ?? S.search.list.length : 0;
     api.say(`Saved search ${named(s)}: ${fmtCount(n)} match${n === 1 ? '' : 'es'}.`);
   }
 

@@ -29,8 +29,10 @@
  *       --region-threshold <n> (else TERRANE_REGION_THRESHOLD, else
  *       400,000; 0 for every tree) must be a whole number, or the usage is
  *       printed; a snapshot above it is read into the tree once the service
- *       listens. Ctrl+C stops a build that is running. The page does not
- *       ask for regions yet.
+ *       listens. Ctrl+C stops a build that is running. The questions that
+ *       walk the whole tree are answered from it too (GET /api/find,
+ *       /api/marks, /api/survey, /api/sessions and /api/places, through
+ *       regions.handleAsk), with the same checks, in every mode.
  *     - 1.6.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] —
  *       Reports version 1.4.0 in GET /api/info: Wave 3 is merged.
  *     - 1.5.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — GET
@@ -485,6 +487,7 @@ async function snapshotApi(req, res, route, q) {
   // The tree and its regions come from the snapshot, never the disk.
   if (route === 'tree') return regions.handleTree(req, res, q);
   if (route === 'region') return regions.handleRegion(req, res, q);
+  if (regions.asks.includes(route)) return regions.handleAsk(req, res, q, route);
   if (route === 'scan') {
     const rel = relParts(q.get('path') || '').join('/');
     const depth = q.get('depth') ? Math.max(1, Number(q.get('depth'))) : Infinity;
@@ -724,6 +727,7 @@ async function api(req, res, url) {
     // fresh read lists folders through the guard as a scan does.
     if (route === 'tree') return regions.handleTree(req, res, q);
     if (route === 'region') return regions.handleRegion(req, res, q);
+    if (regions.asks.includes(route)) return regions.handleAsk(req, res, q, route);
     if (route === 'scan') {
       const rel = q.get('path') || '';
       const abs = guard.resolve(rel);

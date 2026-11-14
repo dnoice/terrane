@@ -16,8 +16,9 @@
  *     - 1.1.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
  *       guide's row for gathering a selection becomes two, each a key and its
  *       words: Ctrl+↑ ↓ moves in the list without selecting, Space adds or
- *       drops the row. In region mode the quick searches are not counted
- *       ("—", "Not counted at this size.").
+ *       drops the row. In region mode the service counts the quick searches
+ *       (GET /api/find with limit 0), once per survey, and a quick search
+ *       says its count once the service has answered it.
  *     - 1.0.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] —
  *       Initial release.
  *
@@ -160,12 +161,29 @@ export function install(api) {
     return out;
   }
 
-  function run(p) {
-    api.setQuery(p.query);
+  /**
+   * Region mode: the four counts asked of the service, one GET /api/find
+   * with limit 0 each, once per survey. Resolves to the counts.
+   */
+  function askCounts(survey) {
+    if (cache?.survey === survey) return cache.asking ?? Promise.resolve(cache.counts);
+    const asking = Promise.all(PRESETS.map((p) => api.ask('find', { q: p.query, limit: '0' }))).then((list) => {
+      const out = list.map((a) => ({ n: a.total, bytes: a.bytes }));
+      if (cache?.survey === survey) cache = { survey, counts: out };
+      return out;
+    }, (err) => {
+      if (cache?.survey === survey) cache = null;
+      throw err;
+    });
+    cache = { survey, counts: null, asking };
+    return asking;
+  }
+
+  async function run(p) {
+    // Region mode: the service answers, and the count is said once it has.
+    await api.setQuery(p.query);
     document.getElementById('ledger-list')?.focus();
-    // Region mode: Find has said that search is not available at this size.
-    if (api.regionMode()) return;
-    const n = S.search ? S.search.list.length : 0;
+    const n = S.search ? S.search.total ?? S.search.list.length : 0;
     api.say(`Quick search ${p.label}: ${matches(n)}, ${fmtBytes(S.search?.bytes || 0)}.`);
   }
 
@@ -174,22 +192,24 @@ export function install(api) {
       el('span', { class: 'preset-mark', 'aria-hidden': 'true' }, icon('search')),
       el('span', {}, el('span', { class: 'nm', text: p.label }), el('code', { class: 'path', text: p.query })),
       el('span', { class: 'fig', text: '…' })));
-    const busy = S.scanning;
-    // Region mode: the page holds only part of the tree, so nothing is counted.
+    const busy = S.scanning || !!S.survey?.pending;
+    // Region mode: the service counts them over the whole tree.
     const region = api.regionMode();
     const d = api.section('Quick searches', fmtCount(PRESETS.length), false,
-      el('p', { class: 'note', text: region ? 'Not counted at this size.' : busy ? 'Counted once the survey has finished.' : 'Searches worth running often, counted across every level. Enter puts one in Find.' }),
+      el('p', { class: 'note', text: busy ? 'Counted once the survey has finished.' : 'Searches worth running often, counted across every level. Enter puts one in Find.' }),
       rows);
+    const show = (list) => list.forEach((c, i) => {
+      rows[i].querySelector('.fig').textContent = `${fmtCount(c.n)} · ${fmtBytes(c.bytes)}`;
+    });
     // Counted the first time the section is open after a survey.
     const fill = () => {
+      if (!d.open || busy || !S.survey) return;
       if (region) {
-        for (const r of rows) r.querySelector('.fig').textContent = '—';
+        const sv = S.survey;
+        askCounts(sv).then((list) => { if (S.survey === sv && d.isConnected) show(list); }, () => {});
         return;
       }
-      if (!d.open || S.scanning || !S.survey) return;
-      counts(S.survey).forEach((c, i) => {
-        rows[i].querySelector('.fig').textContent = `${fmtCount(c.n)} · ${fmtBytes(c.bytes)}`;
-      });
+      show(counts(S.survey));
     };
     d.addEventListener('toggle', fill);
     if (survey === S.survey) fill();

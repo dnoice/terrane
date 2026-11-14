@@ -17,9 +17,10 @@
  *       session's time breaks between its two dates outside their nowrap
  *       spans, its dash kept with the first; Changed with it carries the
  *       session as its head's figure, the head's text unchanged; Working
- *       sessions' title is a span.t. In region mode no sessions are found,
- *       and Working sessions and Changed with it say they are not
- *       available at this size.
+ *       sessions' title is a span.t. In region mode the service finds the
+ *       sessions of the whole tree: S.sessions reads its list, a session's
+ *       facts and a file's session and neighbours, and the traverse joins
+ *       the held boxes nearest the session's files.
  *     - 1.2.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] —
  *       Changed with it: the inspector says which working session a
  *       selected file was changed in, lists the 8 files nearest to it in
@@ -98,7 +99,7 @@
  * ----------------------------------------------------------------------------
  */
 
-import { fmtBytes, fmtCount, fmtDay as day, plural, relPath } from './model.js';
+import { fmtBytes, fmtCount, fmtDay as day, plural, relPath, refFrom } from './model.js';
 import { sessions, sessionFacts, sessionPredicate, route, sessionOf, nearest, underHidden, GAP_MS, MAX_LEGS } from './relations.js';
 import { THEME } from './theme.js';
 
@@ -148,12 +149,27 @@ export function install(api) {
     return f.places === 1 ? `in ${path}` : `under ${path}`;
   };
 
+  /**
+   * A session's facts by its number: sessionFacts of the page's own in
+   * whole-tree mode; in region mode the service's, kept as they arrive
+   * (the Working sessions rows, a session: search's answer), its common
+   * folder a ref so relPath reads it. null when it is not known.
+   */
+  function factsOf(k) {
+    const sess = S.sessions;
+    if (!sess) return null;
+    if (sess.regions) return sess.byK.get(k) ?? null;
+    const s = sess.list?.[k - 1];
+    return s ? sessionFacts(s) : null;
+  }
+
+  /** How many sessions there are, or null before they are counted. */
+  const countOf = () => (S.sessions?.regions ? S.sessions.count : S.sessions?.list.length ?? null);
+
   /** What a session covers, in one sentence. */
   function summary(k) {
-    const list = S.sessions?.list;
-    const s = list?.[k - 1];
-    if (!s) return noteFor(k);
-    const f = sessionFacts(s);
+    const f = factsOf(k);
+    if (!f) return noteFor(k);
     const kind = f.bulk ? ', written at once' : '';
     const world = S.noGL ? '' : ' The traverse joins them in the world.';
     return `Session ${k}${k === 1 ? ', the newest' : ''}: ${plural(f.count, 'file')} in ${plural(f.places, 'place')} changed ${spoken(f.start, f.end)}${kind}, ${fmtBytes(f.bytes)}, ${where(f)}. Findings lists them in the order they changed.${world}`;
@@ -161,12 +177,11 @@ export function install(api) {
 
   /** The Findings note for session:k, without the route's part. */
   function noteFor(k) {
-    const list = S.sessions?.list;
-    if (!list) return 'Working sessions are counted once the survey has finished.';
+    const n = countOf();
+    if (n === null) return 'Working sessions are counted once the survey has finished.';
     if (!k) return 'session: takes a number; session:1 is the newest working session.';
-    const s = list[k - 1];
-    if (!s) return `There is no session ${fmtCount(k)}: ${plural(list.length, 'working session')} ${list.length === 1 ? 'was' : 'were'} found.`;
-    const f = sessionFacts(s);
+    const f = factsOf(k);
+    if (!f) return `There is no session ${fmtCount(k)}: ${plural(n, 'working session')} ${n === 1 ? 'was' : 'were'} found.`;
     return `Session ${k}: ${when(f.start, f.end)}, ${plural(f.count, 'file')} in ${plural(f.places, 'place')}${f.bulk ? ', written at once' : ''}.`;
   }
 
@@ -184,18 +199,44 @@ export function install(api) {
     routeTimer = setTimeout(drawRoute, ms);
   }
 
+  /**
+   * Region mode: the session's files in time order, narrowed by the rest
+   * of the query, the first 1,000 as the service lists them, each as the
+   * held node nearest it (a folder's stands for the files it hides).
+   * Asked once per search; null until they are in.
+   */
+  function regionStops(a) {
+    if (a.stops) return a.stops;
+    if (!a.asking) {
+      a.asking = api.ask('sessions', { k: String(a.k), files: '1000', q: a.search.qid }).then((ans) => {
+        a.refs = ans.files.map(refFrom);
+        a.stops = [];
+        queueRoute(0);
+      }, () => { a.stops = []; });
+    }
+    return null;
+  }
+
   /** Draws the route of the session search over the current layout, and says in Findings when it was cut short. */
   function drawRoute() {
     routeTimer = 0;
     const search = S.search;
     if (!active || active.search !== search || !search) return clearRoute();
-    const s = S.sessions?.list[active.k - 1];
+    const region = !!search.regions;
+    const s = region ? factsOf(active.k) : S.sessions?.list[active.k - 1];
     if (!s || S.noGL || !S.layout) {
       if (!S.noGL) S.view.clearRelation('session');
       return undefined;
     }
     // The session's files in time order, narrowed by the rest of the query.
-    const files = s.files.filter((f) => search.set.has(f));
+    let files;
+    if (region) {
+      if (!regionStops(active)) return undefined;
+      files = active.refs.map((ref) => {
+        const n = api.nearest(ref.rel);
+        return n.d ? { p: n } : n;
+      });
+    } else files = s.files.filter((f) => search.set.has(f));
     const r = route(S.layout, files, { maxLegs: MAX_LEGS });
     if (r.count) S.view.setRelation('session', { ...TRAVERSE, legs: r.legs });
     else S.view.clearRelation('session');
@@ -217,7 +258,7 @@ export function install(api) {
   }
 
   function row(s, k) {
-    const f = sessionFacts(s);
+    const f = S.sessions?.regions ? s : sessionFacts(s);
     // A session that crossed midnight carries two dates: in a narrow ledger
     // the second goes under the first, rather than being cut off. The
     // dash stays with the first (a no-break space before it) and the line
@@ -233,19 +274,20 @@ export function install(api) {
   }
 
   function workingSessions() {
-    const region = api.regionMode();
-    const list = region ? null : S.sessions?.list;
-    const minutes = Math.round((S.sessions?.gapMs ?? GAP_MS) / 60000);
+    const sess = S.sessions;
+    // Region mode: the service finds them, the first time they are read.
+    if (sess?.regions && !sess.found) sess.load();
+    const n = sess?.regions ? (sess.found ? sess.count : null) : sess ? sess.list.length : null;
+    const minutes = Math.round((sess?.gapMs ?? GAP_MS) / 60000);
     const body = [];
-    if (region) body.push(el('p', { class: 'note', text: api.notAtSize('Working sessions') }));
-    else if (!list) body.push(el('p', { class: 'note', text: 'Working sessions are counted once the survey has finished.' }));
+    if (n === null) body.push(el('p', { class: 'note', text: sess?.regions ? 'Working sessions are being counted.' : 'Working sessions are counted once the survey has finished.' }));
     else {
       body.push(el('p', { class: 'note', text: `Files changed within ${minutes} minutes of one another, newest first. Folders whose names start with a dot are left out. A copy, a checkout or an extraction changes every file it writes, so it shows as a session too.` }));
-      if (!list.length) body.push(el('p', { class: 'note', text: `No two files changed within ${minutes} minutes of one another.` }));
-      list.slice(0, ROWS).forEach((s, i) => body.push(row(s, i + 1)));
-      if (list.length > ROWS) body.push(el('p', { class: 'note', text: `The ${ROWS} newest of ${fmtCount(list.length)}. Type session:N in Find for an older one.` }));
+      if (!n) body.push(el('p', { class: 'note', text: `No two files changed within ${minutes} minutes of one another.` }));
+      for (let k = 1; k <= Math.min(ROWS, n); k++) body.push(row(sess.regions ? sess.byK.get(k) : sess.list[k - 1], k));
+      if (n > ROWS) body.push(el('p', { class: 'note', text: `The ${ROWS} newest of ${fmtCount(n)}. Type session:N in Find for an older one.` }));
     }
-    const details = el('details', { class: 'sessions', open }, el('summary', {}, el('span', { class: 't', text: 'Working sessions' }), el('span', { class: 'n', text: list ? fmtCount(list.length) : '…' })), ...body);
+    const details = el('details', { class: 'sessions', open }, el('summary', {}, el('span', { class: 't', text: 'Working sessions' }), el('span', { class: 'n', text: n !== null ? fmtCount(n) : '…' })), ...body);
     details.addEventListener('toggle', () => { open = details.open; });
     return details;
   }
@@ -260,8 +302,13 @@ export function install(api) {
   function sessionFor(node) {
     if (!node || node.d) return { k: 0, why: 'a folder has no working session; select a file' };
     if (api.hostOf(node)) return { k: 0, why: 'inside an archive' };
-    if (api.regionMode()) return { k: 0, why: 'not available at this size' };
     if (!S.sessions) return { k: 0, why: 'counted once the survey has finished' };
+    // Region mode: the service's answer, once it is in (see ofFile).
+    if (S.sessions.regions) {
+      const a = S.sessions.ofFile.get(relPath(node));
+      if (!a) return { k: 0, why: 'being looked up' };
+      return a.k ? { k: a.k, s: a.facts } : { k: 0, why: a.why };
+    }
     const list = S.sessions.list;
     const k = sessionOf(list, node);
     if (k) return { k, s: list[k - 1] };
@@ -270,26 +317,56 @@ export function install(api) {
     return { k: 0, why: 'changed alone' };
   }
 
+  /**
+   * Region mode: a file's session as the service answers it ({ k, why,
+   * facts, near: refs, before }), asked once per file and survey; the
+   * inspector is drawn again once it is in.
+   */
+  function lookUp(node) {
+    const sess = S.sessions;
+    const rel = relPath(node);
+    if (sess.ofFile.has(rel) || sess.asking.has(rel)) return;
+    sess.asking.add(rel);
+    api.ask('sessions', { path: rel, near: String(NEAR) }).then((a) => {
+      sess.asking.delete(rel);
+      if (S.sessions !== sess) return;
+      const facts = a.facts ? { ...a.facts, common: { ref: true, d: true, rel: a.facts.common } } : null;
+      if (facts) sess.byK.set(a.k, { k: a.k, ...facts });
+      sess.ofFile.set(rel, { k: a.k, why: a.why, facts, near: a.near.map(refFrom), before: a.before });
+      if (S.primary && relPath(S.primary) === rel) api.drawInspector();
+    }, () => sess.asking.delete(rel));
+  }
+
   /** The inspector's Changed with it: the file's session, its nearest sessionmates in time, and Show all. */
   function changedWith(node, ctx) {
     if (node.d || ctx?.inside) return null;
-    // Region mode: the page holds only part of the tree, so it does not
-    // find sessions; the section says so where it would stand.
-    if (api.regionMode()) return [api.sectionTitle('Changed with it'), el('p', { class: 'session-note', text: api.notAtSize('Working sessions') })];
     if (!S.sessions) return null;
+    const region = !!S.sessions.regions;
+    if (region) lookUp(node);
     const { k, s, why } = sessionFor(node);
     const minutes = Math.round((S.sessions.gapMs ?? GAP_MS) / 60000);
     if (!k) {
       const text = why === 'changed alone' ? `Changed alone: no other file changed within ${minutes} minutes of it.`
         : why === 'in a folder whose name starts with a dot' ? 'Working sessions leave out folders whose names start with a dot, and this file is in one.'
-          : 'Its last change is not recorded, so it belongs to no working session.';
+          : why === 'being looked up' ? 'Its working session is being looked up.'
+            : 'Its last change is not recorded, so it belongs to no working session.';
       return [api.sectionTitle('Changed with it'), el('p', { class: 'session-note', text })];
     }
-    const f = sessionFacts(s);
-    const near = nearest(s, node, NEAR);
-    const at = s.files.indexOf(node);
-    // In time order, the file in its own place among them.
-    const before = near.filter((x) => s.files.indexOf(x) < at);
+    let f;
+    let near;
+    let before;
+    if (region) {
+      const a = S.sessions.ofFile.get(relPath(node));
+      f = a.facts;
+      near = a.near;
+      before = near.slice(0, a.before);
+    } else {
+      f = sessionFacts(s);
+      near = nearest(s, node, NEAR);
+      const at = s.files.indexOf(node);
+      // In time order, the file in its own place among them.
+      before = near.filter((x) => s.files.indexOf(x) < at);
+    }
     const shown = [...before, node, ...near.slice(before.length)];
     const rows = shown.map((x) => (x === node
       ? el('div', { class: 'item is-static is-self', 'aria-current': 'true' },
@@ -308,10 +385,40 @@ export function install(api) {
 
   /* ---------- registry entries ---------- */
 
+  // Whole-tree mode; in region mode the service evaluates session:N.
   api.QUERY.prefix.session = Object.assign((value) => {
-    const list = S.sessions?.list;
+    const list = S.sessions?.regions ? null : S.sessions?.list;
     return list ? sessionPredicate(list, numberOf(value)) : null;
   }, { owner: OWNER });
+
+  /**
+   * Region mode's S.sessions: the service finds the sessions of the whole
+   * tree, read the first time something asks (load); byK keeps each
+   * session's facts as they arrive, ofFile each file's session.
+   */
+  function serviceSessions() {
+    const sess = {
+      regions: true, list: null, count: null, gapMs: GAP_MS, considered: 0, skipped: 0, found: false, built: Date.now(), route: null,
+      byK: new Map(), ofFile: new Map(), asking: new Set(), loading: null,
+      load() {
+        if (!sess.loading) {
+          sess.loading = api.ask('sessions').then((a) => {
+            if (S.sessions !== sess) return sess;
+            Object.assign(sess, { count: a.count, gapMs: a.gapMs, considered: a.considered, skipped: a.skipped, found: true, ms: a.ms });
+            for (const r of a.list) sess.byK.set(r.k, { ...r, common: { ref: true, d: true, rel: r.common } });
+            sess.list = a.list.map((r) => sess.byK.get(r.k));
+            if (S.tab === 'survey') api.drawLedger(true);
+            return sess;
+          }, (err) => {
+            sess.loading = null;
+            throw err;
+          });
+        }
+        return sess.loading;
+      },
+    };
+    return sess;
+  }
 
   /**
    * The sessions of the tree as it is at this survey, found the first time
@@ -348,7 +455,7 @@ export function install(api) {
   api.AFTER_SURVEY.add({
     id: 'traverse', order: 30, owner: OWNER,
     run: () => {
-      S.sessions = api.regionMode() ? null : lazySessions(S.model.root);
+      S.sessions = api.regionMode() ? serviceSessions() : lazySessions(S.model.root);
       if (tokensOf(S.query).length) {
         api.runQuery();
         // The survey redraws its own tab; any other shows the new matches here.
@@ -367,6 +474,11 @@ export function install(api) {
         return;
       }
       const k = numberOf(toks[0]);
+      // Region mode: the service's answer names the session it evaluated.
+      if (search.regions && S.sessions?.regions && search.sess) {
+        if (search.sess.facts) S.sessions.byK.set(search.sess.k, { k: search.sess.k, ...search.sess.facts, common: { ref: true, d: true, rel: search.sess.facts.common } });
+        if (S.sessions.count === null) S.sessions.count = search.sess.count;
+      }
       active = { search, k, base: noteFor(k) };
       // A session reads in the order it happened.
       search.sort = { key: 'date', dir: 1 };
@@ -389,10 +501,30 @@ export function install(api) {
   // After the copies (30), before the actions (50).
   api.INSPECTOR.node.add({ id: 'session', order: 32, owner: OWNER, build: changedWith });
 
+  /** Region mode: looks the file's session up, then finds it, or says why it has none. */
+  function findFor(node) {
+    const sess = S.sessions;
+    const rel = relPath(node);
+    const go = () => {
+      const a = sess.ofFile.get(rel);
+      if (!a) return;
+      if (a.k) find(a.k);
+      else api.say(`${node.n} is in no working session: ${a.why}.`);
+    };
+    if (sess.ofFile.has(rel)) return go();
+    return api.ask('sessions', { path: rel, near: String(NEAR) }).then((a) => {
+      const facts = a.facts ? { ...a.facts, common: { ref: true, d: true, rel: a.facts.common } } : null;
+      if (facts) sess.byK.set(a.k, { k: a.k, ...facts });
+      sess.ofFile.set(rel, { k: a.k, why: a.why, facts, near: a.near.map(refFrom), before: a.before });
+      go();
+    }, (err) => api.notice(err.message, { kind: 'error' }));
+  }
+
   api.MENU.add({
     id: 'traverse', owner: OWNER,
     items: (node) => {
       if (!node || node.d || api.hostOf(node)) return null;
+      if (S.sessions?.regions && !S.sessions.ofFile.has(relPath(node))) return [{ label: 'Show its working session', icon: 'search', run: () => findFor(node) }];
       const { k, why } = sessionFor(node);
       return [k ? { label: `Show its working session (session:${k})`, icon: 'search', run: () => find(k) }
         : { label: 'Show its working session', icon: 'search', disabled: true, reason: why, run: () => {} }];
@@ -403,6 +535,9 @@ export function install(api) {
     id: 'traverse', owner: OWNER, section: 'Working sessions',
     items: () => {
       const node = S.primary;
+      if (node && !node.d && S.sessions?.regions && !S.sessions.ofFile.has(relPath(node))) {
+        return [{ label: `Show the working session of ${node.n}`, detail: 'Working sessions', run: () => findFor(node) }];
+      }
       const { k, why } = sessionFor(node);
       return [{
         label: node && !node.d ? `Show the working session of ${node.n}` : 'Show the working session of the selected file',

@@ -38,7 +38,15 @@
  *     - A budget of 400 entries: six folders visited, the entries held
  *       kept near it, the folder you are in still held
  *     - Rescan all: a new generation, the folder you are in kept by path
- *     - Find and the Survey tab say they are not available at this size
+ *     - Search on the service: Findings holds every match of notes (the
+ *       disk's count) as refs; Enter reveals the deepest as a node in its
+ *       ref's place; the Changed key asks again; Select all selects them
+ *       and says its sentence; Export CSV says its row count
+ *     - session:1 and, with WebGL, its traverse; Changed with it for one
+ *       of its files; Ctrl+K finds a folder among the service's places
+ *     - The Survey from the service: Largest files reveals; the quick
+ *       searches carry its counts; Verify confirms the fixture's three
+ *       copies; Keep newest moves two and Ctrl+Z puts them back
  *     - regions-switch (read-only, threshold 1,000): the whole survey
  *       begun, stopped, the tree asked for with build=1, the page drawn in
  *       regions and the status line saying so
@@ -70,6 +78,44 @@ function entriesOnDisk(root) {
     }
   }
   return n;
+}
+
+/** Folders and files under root whose names hold term, in any case: what a search for it matches. */
+function matchesOnDisk(root, term) {
+  let n = 0;
+  const low = term.toLowerCase();
+  const stack = [root];
+  while (stack.length) {
+    const dir = stack.pop();
+    for (const d of fs.readdirSync(dir, { withFileTypes: true })) {
+      if (dir === root && d.name === '.terrane-trash') continue;
+      if (d.name.toLowerCase().includes(low)) n++;
+      if (d.isDirectory()) stack.push(`${dir}/${d.name}`);
+    }
+  }
+  return n;
+}
+
+/** Verify by content from the Survey tab, by keyboard (as many.mjs's dupes does); resolves once the copies with rel are verified. */
+async function verifyIn(t, rel) {
+  const open = await t.eval(() => {
+    const s = document.querySelector('#ledger-rich details:has(.group-head) > summary');
+    s.focus();
+    return s.parentElement.open;
+  });
+  if (!open) await t.key('Enter');
+  await t.waitFor(() => document.querySelector('#ledger-rich details:has(.group-head)')?.open, { what: 'Duplicate candidates open' });
+  await t.eval(() => {
+    const d = document.querySelector('#ledger-rich details:has(.group-head)');
+    if (!d.contains(document.activeElement)) d.querySelector('summary').focus();
+    return true;
+  });
+  await t.tabTo('#ledger-rich details:has(.group-head) .actions button:first-child', { max: 6 });
+  await t.key('Enter');
+  return t.waitFor((T, r) => {
+    const g = T.S.survey.dupGroups.find((x) => x.files.some((f) => T.api.relPath(f) === r));
+    return g?.verified && { mode: g.mode, n: g.files.length, waste: g.waste, hash: typeof g.hash === 'string' };
+  }, { args: [rel], timeout: 20000, what: 'the copies verified' });
 }
 
 /**
@@ -341,25 +387,146 @@ export default [
       t.check(`Rescan all: the generation rises (${was.v} to ${now.v}) and the folder you are in is kept by its path (${was.rel})`, now.v > was.v && (now.rel === was.rel || now.rel.startsWith(`${was.rel}/`)) && now.held, JSON.stringify(now));
       await t.settle();
 
-      // The questions that walk the whole tree say they are not available.
+      // Search, answered by the service over the whole tree.
+      const wantNotes = matchesOnDisk(t.root, 'notes');
       await t.eval(() => document.getElementById('q').focus());
       await t.type('notes');
-      await t.waitFor((T) => T.S.query === 'notes', { timeout: 5000, what: 'the query' });
-      await t.sleep(200);
-      const said = await t.live();
-      const searched = await t.app((T) => ({ search: T.S.search, tab: T.S.tab }));
-      t.check('typing in Find says that search is not available at this size', said === 'Search is not available at this size.' && searched.search === null, said);
+      await t.waitFor((T) => T.S.query === 'notes' && T.S.search?.regions && T.S.tab === 'findings', { timeout: 20000, what: 'Findings for notes' });
+      const found = await t.app((T) => ({
+        total: T.S.search.total, listed: T.S.search.list.length, refs: T.S.search.list.filter((x) => x.ref).length,
+        count: document.getElementById('q-count').textContent, finds: T.asked.find,
+      }));
+      t.check(`Find runs on the service: ${found.total} matches, every one on disk (${wantNotes}), listed as refs, and the count says so`,
+        found.total === wantNotes && found.listed === wantNotes && found.refs > 0 && found.count === `${wantNotes.toLocaleString('en-US')} found` && found.finds > 0, JSON.stringify(found));
+      // Enter on the deepest match reveals it: a node, attached, selected.
+      const deep = await t.app((T) => {
+        const items = T.list.items;
+        let best = 0;
+        items.forEach((n, i) => { if (T.api.relPath(n).split('/').length > T.api.relPath(items[best]).split('/').length) best = i; });
+        T.list.setCursor(best, true);
+        return T.api.relPath(items[best]);
+      });
+      await t.eval(() => document.getElementById('ledger-list').focus());
+      await t.key('Enter');
+      const revealed = await t.waitFor((T, r) => T.S.primary && !T.S.primary.ref && T.api.relPath(T.S.primary) === r && T.api.isAttached(T.S.primary)
+        && { inList: T.list.items.includes(T.S.primary) }, { args: [deep], timeout: 20000, what: `${deep} revealed` });
+      t.check(`Enter on the deepest match (${deep}) reveals it: S.primary is its node, attached, and stands in the list in the ref's place`, revealed.inList, JSON.stringify(revealed));
+      // The Changed sort key asks the service again, and the list comes back in date order.
+      const finds0 = await t.app((T) => T.asked.find);
+      await t.eval(() => [...document.querySelectorAll('#ledger-sub .sorts .sort')].find((b) => /Changed/.test(b.textContent)).click());
+      const resorted = await t.waitFor((T) => T.S.search.order.key === 'date' && T.S.search.order.dir === 1 && {
+        finds: T.asked.find, dates: T.list.items.map((n) => (n.d ? n.mm : n.m)),
+      }, { timeout: 20000, what: 'Findings by date' });
+      t.check('the Changed sort key asks the service again, and Findings lists the matches oldest first',
+        resorted.finds > finds0 && resorted.dates.every((d, i, a) => i === 0 || a[i - 1] <= d), JSON.stringify(resorted).slice(0, 200));
+      // Select all takes the first 1,000, and says so.
+      await t.eval(() => document.querySelector('#ledger-sub .sub-select').click());
+      const all = await t.waitFor((T) => T.S.sel.size === T.S.search.total && [...T.S.sel].every((n) => !n.ref && T.api.isAttached(n)) && T.S.sel.size, { timeout: 30000, what: 'every match selected' });
+      const said2 = await t.live();
+      t.check(`Select all selects every match as nodes (${all}) and says "${said2}"`, all === wantNotes && said2 === 'Select all takes the first 1,000 matches at this size.', said2);
+      // Export CSV, Findings: the notice's row count is the list's.
+      // The file itself is not saved here (the export scenario reads files back): only the click on its link is skipped.
+      const exported = await t.app(async () => {
+        const was = HTMLAnchorElement.prototype.click;
+        HTMLAnchorElement.prototype.click = function () {};
+        try {
+          document.querySelector('#ledger-sub [data-k="export-csv"]').click();
+        } finally {
+          HTMLAnchorElement.prototype.click = was;
+        }
+        return [...document.querySelectorAll('#notices .notice-text')].map((n) => n.textContent).reverse().find((x) => /^Exported /.test(x)) || null;
+      });
+      t.check(`Export CSV of Findings says "${exported}"`, exported?.startsWith(`Exported ${wantNotes.toLocaleString('en-US')} rows to terrane-`), exported);
+      await t.app((T) => { T.api.select(null); return true; });
+      await t.eval(() => document.getElementById('q').focus());
       await t.key('Escape');
-      await t.waitFor((T) => !T.S.query, { what: 'Find cleared' });
+      await t.waitFor((T) => !T.S.query && !T.S.search, { what: 'Find cleared' });
+
+      // Working sessions: session:1 is answered by the service; with WebGL the traverse is drawn.
+      await t.app((T) => { T.api.setQuery('session:1'); return true; });
+      const sess = await t.waitFor((T) => T.S.search?.regions && T.S.query === 'session:1' && T.S.search.total > 0 && (!T.S.noGL ? (T.S.sessions?.route?.count ?? -1) >= 0 && T.S.sessions.route : true) && {
+        total: T.S.search.total, note: T.S.search.note, order: T.S.search.order, route: T.S.sessions?.route ?? null,
+      }, { timeout: 30000, what: 'session:1 and its traverse' });
+      t.check(`session:1 finds the newest working session on the service (${sess.total} files), in time order, its note from the service's facts`,
+        sess.total > 0 && sess.order.key === 'date' && sess.order.dir === 1 && /^Session 1: /.test(sess.note), JSON.stringify(sess).slice(0, 300));
+      if (t.gl) t.check(`with WebGL the traverse is drawn (${sess.route?.count} legs)`, sess.route?.count > 0, JSON.stringify(sess.route));
+      // Changed with it, for a file of that session.
+      const mate = await t.app((T) => T.api.relPath(T.S.search.list[0]));
+      await t.app(selectAt, mate);
+      const changed = await t.waitFor((T, f) => T.S.primary && T.api.relPath(T.S.primary) === f
+        && [...document.querySelectorAll('#inspector-body .section-title')].some((h) => /Changed with it/.test(h.textContent) && /session 1/.test(h.textContent))
+        && document.querySelector('#inspector-body .session-near')?.textContent, { args: [mate], timeout: 20000, what: 'Changed with it' });
+      t.check(`Changed with it is listed for ${mate}: session 1 and its nearest files`, !!changed, String(changed).slice(0, 200));
+      await t.app((T) => { T.api.select(null); T.api.setQuery(''); return true; });
+      await t.waitFor((T) => !T.S.search, { what: 'Find cleared' });
+
+      // The palette finds a folder by name and goes there.
+      const target = chain[1];
+      const leaf = target.split('/').at(-1);
+      await t.eval(() => document.getElementById('view').focus());
+      await t.key('Ctrl+K');
+      await t.waitFor(() => document.activeElement?.classList.contains('palette-input'), { what: 'the palette' });
+      await t.type(leaf);
+      const opt = await t.until((_T, l) => {
+        const rows = [...document.querySelectorAll('.palette-option.is-place')];
+        return rows.length && rows[0].querySelector('.pal-label').textContent === l && rows.map((r) => r.querySelector('.pal-label').textContent);
+      }, { args: [leaf], timeout: 20000 });
+      if (!opt) {
+        const why = await t.eval(() => ({ input: document.querySelector('.palette-input')?.value, list: document.getElementById('palette-list')?.textContent.slice(0, 300), notices: [...document.querySelectorAll('#notices .notice-text')].map((n) => n.textContent) }));
+        throw new Error(`the folder never came first among the places: ${JSON.stringify(why)}`);
+      }
+      await t.key('Enter');
+      await t.waitFor((T, r) => {
+        const f = T.api.relPath(T.S.focus);
+        return (f === r || f.startsWith(`${r}/`)) && !T.S.focus.u;
+      }, { args: [target], timeout: 20000, what: `the palette's place ${target}` });
+      t.check(`Ctrl+K finds ${leaf} among the places the service ranks and Enter goes there`, opt[0] === leaf, JSON.stringify(opt));
+      await t.settle();
+
+      // The Survey: answered by the service; Largest files reveals.
       await t.tabTo('.tabs [data-tab=survey]', { max: 80 });
       await t.key('Enter');
-      await t.waitFor((T) => T.S.tab === 'survey', { what: 'the Survey tab' });
-      const survey = await t.text('#ledger-rich');
-      t.check('the Survey tab says the survey of the whole directory is not available at this size', /The survey of the whole directory is not available at this size\./.test(survey), survey.slice(0, 200));
-      await t.tabTo('.tabs [data-tab=findings]', { back: true, max: 20 });
+      await t.waitFor((T) => T.S.tab === 'survey' && T.S.survey && !T.S.survey.pending && T.S.survey.regions, { timeout: 20000, what: 'the service\'s survey' });
+      const sv = await t.app((T) => ({ largest: T.S.survey.largest.map((f) => T.api.relPath(f)), groups: T.S.survey.dupGroups.length, surveys: T.asked.survey }));
+      t.check(`the Survey tab lists the service's survey (${sv.largest.length} largest files, ${sv.groups} candidate groups)`, sv.largest.length > 0 && sv.groups > 0, JSON.stringify(sv).slice(0, 200));
+      await t.tabTo('#ledger-rich .item');
       await t.key('Enter');
-      const findings = await t.text('#ledger-sub');
-      t.check('Findings says that search is not available at this size', /Search is not available at this size\./.test(findings), findings);
+      const big = await t.waitFor((T, r) => T.S.primary && !T.S.primary.ref && T.api.relPath(T.S.primary) === r && T.api.isAttached(T.S.primary), { args: [sv.largest[0]], timeout: 20000, what: 'the largest file revealed' });
+      t.check(`Largest files, Enter reveals ${sv.largest[0]}`, !!big);
+      // The quick searches are counted by the service.
+      const preset = await t.app(async (T) => {
+        const d = [...document.querySelectorAll('#ledger-rich details')].find((x) => x.querySelector('.preset-row'));
+        d.open = true;
+        d.dispatchEvent(new Event('toggle'));
+        return true;
+      });
+      const figs = await t.waitFor(() => {
+        const f = [...document.querySelectorAll('#ledger-rich .preset-row .fig')].map((x) => x.textContent);
+        return f.length === 4 && f.every((x) => /^[\d,]+ · /.test(x)) && f;
+      }, { timeout: 20000, what: 'the quick searches counted' });
+      const presetWant = await t.app(async (T) => (await T.api.ask('find', { q: 'is:empty is:folder', limit: '0' })).total);
+      t.check(`the quick searches show the service's counts (${figs.join(' | ')})`, preset && figs[3].startsWith(`${presetWant.toLocaleString('en-US')} · `), JSON.stringify(figs));
+
+      // Verify by content confirms the fixture's copies; Keep newest moves two and Undo restores them.
+      const [a, b, c] = m.duplicates;
+      const v = await verifyIn(t, a);
+      t.check(`Verify by content confirms the fixture's ${v.n} copies (${v.mode}) by path`, v.n === 3 && v.mode === 'full', JSON.stringify(v));
+      const on = (rel) => fs.existsSync(t.abs(rel));
+      // The group's own Keep newest: other groups may be confirmed too.
+      const at = await t.app((T, r) => T.S.survey.dupGroups.findIndex((x) => x.files.some((f) => T.api.relPath(f) === r)), a);
+      await t.tabTo(`#ledger-rich .dup-clean [data-k="dup:survey:${at}:newest"]`, { max: 300 });
+      await t.key('Enter');
+      const asked = await t.waitFor(() => document.getElementById('dialog').open && document.querySelector('#dialog .dup-confirm')?.textContent, { what: 'the confirmation' });
+      t.check('Keep newest asks to keep one copy of the group and move the other two',/^Keeps /.test(asked) && [a, b, c].filter((x) => asked.includes(x)).length === 3, asked);
+      await t.tabTo('#dialog button[type=submit]');
+      await t.key('Enter');
+      const moved = await t.poll(() => [a, b, c].filter(on).length === 1, { timeout: 15000 });
+      t.check('Keep newest moves the two other copies to the holding area', moved, JSON.stringify([[a, b, c].map(on), await t.notices()]));
+      await t.waitFor((T) => !document.getElementById('dialog').open, { what: 'the dialog closed' });
+      await t.eval(() => document.getElementById('view').focus());
+      await t.key('Ctrl+Z');
+      t.check('Ctrl+Z puts them back', await t.poll(() => [a, b, c].every(on), { timeout: 15000 }));
+      await t.waitFor((T, r) => r.every((x) => !!T.S.model.find(x) || !T.S.model.find(x.slice(0, x.lastIndexOf('/')))?.c.length), { args: [[a, b, c]], timeout: 20000, what: 'the copies back in the regions' });
     },
   },
   {

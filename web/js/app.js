@@ -22,10 +22,12 @@
  *       above the region threshold, or one a survey finds past it, is drawn
  *       from regions (regions.js) the page asks for as the eye nears them;
  *       a folder's region is held before you go there or select it; changed
- *       folders are read again as fresh regions; search and the survey say
- *       they are not available at this size. Region answers are decoded in
- *       a module worker, and regions are let go under a budget of held
- *       entries, never a pinned folder or one standing open.
+ *       folders are read again as fresh regions. Region answers are decoded
+ *       in a module worker, and regions are let go under a budget of held
+ *       entries, never a pinned folder or one standing open. The service
+ *       answers search, the survey and Verify there: Findings lists the
+ *       first 5,000 of the true total as refs, each made a node when acted
+ *       on, and marks by name dim and pin what is held.
  *     - 1.11.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] —
  *       Paint gives each file its kind's colour in a tone of its own
  *       extension, a closed mass a richer tint and, on its sides, strata
@@ -112,6 +114,11 @@
  *       closed folder once its region lands, reads a folder's region before
  *       going there, selecting it or measuring it, and finds any path or
  *       ref by asking for its chain; the status line says how much it holds
+ *     - In region mode the service answers the questions that walk the
+ *       whole tree (search, its marks, the survey, Verify's groups): lists
+ *       of refs with the true counts, a ref made a node in its list's place
+ *       before anything acts on it, and the marks of the folders held asked
+ *       by name, and carried on every region asked for while a search shows
  *     - Region answers fetched and decoded in a module worker
  *       (region-worker.js), so the main thread never parses one; regions
  *       let go under a budget once the view is settled, never those of the
@@ -155,15 +162,15 @@
  *     - Limitations: when WebGL is unavailable the ledger, inspector,
  *       search and every operation keep working without the 3D world;
  *       during a warm start's catch-up the page holds two trees, about
- *       twice 150 MB per million entries. In region mode search, the
- *       survey, working sessions and the palette's places are not
- *       available until the service answers them
+ *       twice 150 MB per million entries. In region mode the twins of an
+ *       open archive are not looked for, and Findings and the Survey's lists
+ *       hold the first 5,000 and 1,000 the service sends
  * ----------------------------------------------------------------------------
  */
 
 import {
   Model, KINDS, FLAG_LINK, FLAG_HIDDEN, IMAGE_EXT, TEXT_EXT, extOf, fmtBytes, fmtCount, fmtDate, fmtAge, freshness, relPath, depthOf,
-  isAncestor, parseQuery, runSearch, plural, kids,
+  isAncestor, parseQuery, runSearch, plural, kids, refFrom,
 } from './model.js';
 import { anchorOf, poseRelative, vantage } from './places.js';
 import { buildLayout, BOX, STYLE, AUX } from './layout.js';
@@ -730,7 +737,10 @@ function refreshDirs(rels) {
       S.trail = S.trail.filter(isAttached);
       runHooks(AFTER_REFRESH, dirs);
       focusMoved(was);
+      // The service answers the search and the survey of the changed tree.
+      if (S.search) runQuery();
       queueLayout(40);
+      queueSurvey();
       drawAll();
     }).catch((err) => notice(`Refresh failed: ${err.message}`, { kind: 'error' }));
     return refreshChain;
@@ -795,7 +805,7 @@ function queueSurvey() {
 function surveyNow() {
   clearTimeout(S.surveyTimer);
   S.surveyTimer = 0;
-  if (S.regions) return;
+  if (S.regions) return surveyRegions();
   S.survey = S.model.survey();
   S.survey.dupGroups = keepVerified(S.survey.dupGroups);
   S.model.dupGroups = S.survey.dupGroups;
@@ -1043,14 +1053,21 @@ async function catchUp() {
 const REGION_STAGE = 'Large directory: reading it in regions';
 
 /**
- * The survey in region mode, until the service answers the questions that
- * walk the whole tree: every list empty, and regions set so the Survey
- * tab says so instead of listing nothing.
+ * The survey in region mode until the service's is in: every list empty
+ * and pending set, so the Survey tab says it is being compiled.
  */
-const regionSurvey = () => ({ regions: true, largest: [], heavy: new Set(), empty: [], sealed: [], links: [], dupGroups: [] });
+const regionSurvey = () => ({
+  regions: true, pending: true, largest: [], heavy: [], empty: [], sealed: [], links: [], counts: { empty: 0, sealed: 0, links: 0 }, dupGroups: [], base: [],
+});
 
-/** The sentence a whole-tree question gives in region mode. */
+/** The sentence a whole-tree question the service does not answer gives in region mode: the twins of an open archive. */
 const notAtSize = (what) => `${what} is not available at this size.`;
+
+/** The most matches a search lists in region mode, and how many Select all takes. */
+const FIND_LIMIT = 5000;
+const SELECT_ALL_REGIONS = 1000;
+/** Folders whose marks one request asks for. */
+const MARK_CHUNK = 1500;
 
 /**
  * The entries past which a whole survey stops and the page reads the tree
@@ -1111,7 +1128,7 @@ function regionWorkerOf() {
     w.onerror = (e) => {
       e.preventDefault?.();
       regionWorker = false;
-      for (const p of rw.pending.values()) mainThreadRegion(p.params).then(p.resolve, p.reject);
+      for (const p of rw.pending.values()) p.retry().then(p.resolve, p.reject);
       rw.pending.clear();
       w.terminate();
     };
@@ -1130,8 +1147,37 @@ function regionFetch(route, params) {
   if (!rw) return mainThreadRegion(params);
   return new Promise((resolve, reject) => {
     const id = ++rw.seq;
-    rw.pending.set(id, { resolve, reject, params });
+    rw.pending.set(id, { resolve, reject, retry: () => mainThreadRegion(params) });
     rw.w.postMessage({ id, url: `/api/region?${new URLSearchParams(params)}` });
+  });
+}
+
+/**
+ * A whole-tree question's answer from the service (find, marks, survey,
+ * sessions, places), for the generation the page holds: parsed in the
+ * worker when there is one, so a long list never parses on the main
+ * thread. A stale generation opens the tree again.
+ */
+const asked = { find: 0, marks: 0, survey: 0, sessions: 0, places: 0, ms: [] };
+function askTree(route, params = {}) {
+  const all = { v: String(S.regions?.v ?? 1), ...params };
+  asked[route] = (asked[route] || 0) + 1;
+  const t0 = performance.now();
+  const rw = regionWorkerOf();
+  const direct = () => get(route, all);
+  const p = !rw ? direct() : new Promise((resolve, reject) => {
+    const id = ++rw.seq;
+    rw.pending.set(id, { resolve: (m) => resolve(m.json), reject, retry: () => direct().then((json) => ({ json })) });
+    rw.w.postMessage({ id, url: `/api/${route}?${new URLSearchParams(all)}`, json: true });
+  });
+  return p.then((json) => {
+    // How long each answer took, for the scale measurement: the last 200.
+    asked.ms.push([route, Math.round(performance.now() - t0), json?.ms ?? null]);
+    if (asked.ms.length > 200) asked.ms.shift();
+    return json;
+  }, (err) => {
+    if (err?.code === 'ESTALE' && S.regions) reopenRegions({ build: false });
+    throw err;
   });
 }
 
@@ -1139,6 +1185,9 @@ function regionFetch(route, params) {
 
 const regionClient = (model) => createRegions({
   fetchJSON: regionFetch, model, onStale: () => { reopenRegions({ build: false }); }, onLanded: regionsLanded,
+  // A search's marks ride on every region asked for while it shows.
+  extra: () => (S.search?.regions && S.search.qid ? { q: S.search.qid } : null),
+  onFilled: regionMarks,
 });
 
 /**
@@ -1164,10 +1213,14 @@ function takeRegions(client) {
   clearTimeout(S.layoutTimer);
   S.layoutTimer = 0;
   S.survey = regionSurvey();
+  provedRel.clear();
   focusMoved(was);
   runHooks(AFTER_SURVEY, S.survey, { full: true, regions: true });
   relayout();
   drawAll();
+  // The service's survey of the whole tree, and the search in Find on it.
+  surveyNow();
+  if (S.query.trim()) runQuery();
 }
 
 /**
@@ -1315,6 +1368,417 @@ function nearestNode(rel) {
     node = next;
   }
   return node;
+}
+
+/* ---------- the whole-tree questions, answered by the service ---------- */
+
+/**
+ * A region is in: what its new nodes are marked with. The survey's marks
+ * (dup: a candidate's group, hv: a heavyweight) on its files; and, when
+ * it carries the marks of the search showing (mk, by place), its matches,
+ * the folders holding matches and how many of its children not held do.
+ */
+function regionMarks(node, R) {
+  const nf = R.files.names.length;
+  const c = node.c;
+  for (let j = 0; j < nf; j++) {
+    const f = c[j];
+    if (f.dup) f.dup = 0;
+    if (f.hv) f.hv = false;
+  }
+  if (R.dup) for (let i = 0; i < R.dup.length; i += 2) if (c[R.dup[i]]) c[R.dup[i]].dup = dupNumber(R.dup[i + 1], c[R.dup[i]]);
+  if (R.hv) for (const i of R.hv) if (c[i]) c[i].hv = true;
+  const s = S.search;
+  if (!R.mk || !s?.regions || R.mk.q !== s.qid) return;
+  if (R.mk.w) s.within.set(node, R.mk.w);
+  let marked = 0;
+  for (const [di, w, self] of R.mk.d) {
+    const ch = c[nf + di];
+    if (!ch) continue;
+    marked++;
+    if (self) s.set.add(ch);
+    if (w) s.within.set(ch, w);
+  }
+  for (const fi of R.mk.f) {
+    if (!c[fi]) continue;
+    marked++;
+    s.set.add(c[fi]);
+  }
+  if (R.mk.n > marked) s.tail.set(node, R.mk.n - marked);
+  else s.tail.delete(node);
+}
+
+/**
+ * A candidate's group as the page numbers it: the service's number, or,
+ * once Verify (or proof kept from it) regrouped the candidates, its new
+ * one: by path for a file whose group was read, by group for the rest.
+ */
+function dupNumber(g, node) {
+  const map = S.survey?.dupMap;
+  if (!map) return g;
+  const r = map.byRel.get(relPath(node));
+  if (r !== undefined) return r;
+  return map.byOld.get(g) ?? g;
+}
+
+/** A held folder's marks by name, from GET /api/marks: its matches, the folders holding them, how many of its children not held do. */
+function markFolder(dir, m, search) {
+  if (!dir || dir.u) return;
+  if (m.w) search.within.set(dir, m.w);
+  let marked = 0;
+  if (m.d.length || m.f.length) {
+    const files = new Map();
+    const dirs = new Map();
+    for (const c of dir.c) (c.d ? dirs : files).set(c.n, c);
+    for (const [name, w, self] of m.d) {
+      const c = dirs.get(name);
+      if (!c) continue;
+      marked++;
+      if (self) search.set.add(c);
+      if (w) search.within.set(c, w);
+    }
+    for (const name of m.f) {
+      const c = files.get(name);
+      if (!c) continue;
+      marked++;
+      search.set.add(c);
+    }
+  }
+  if (m.n > marked) search.tail.set(dir, m.n - marked);
+}
+
+/** Asks the marks of a new search for every folder held, 1,500 at a time, and repaints as they land. */
+async function markSearch(search) {
+  const R = S.regions;
+  const ids = R.heldIds();
+  for (let i = 0; i < ids.length; i += MARK_CHUNK) {
+    let ans;
+    try {
+      ans = await askTree('marks', { q: search.qid, ids: ids.slice(i, i + MARK_CHUNK).join(',') });
+    } catch (err) {
+      // The service let the search go (four newer ones): it runs again.
+      if (err.code === 'EQUERY' && S.search === search) runQuery();
+      return;
+    }
+    if (S.search !== search || S.regions !== R) return;
+    for (const m of ans.marks) markFolder(R.node(m.id), m, search);
+    repaint();
+  }
+}
+
+/** Asks the survey's marks (candidates' groups, heavyweights) for every folder held, and repaints. */
+async function markDups() {
+  const R = S.regions;
+  const sv = S.survey;
+  const ids = R.heldIds();
+  for (let i = 0; i < ids.length; i += MARK_CHUNK) {
+    let ans;
+    try {
+      ans = await askTree('marks', { dup: '1', ids: ids.slice(i, i + MARK_CHUNK).join(',') });
+    } catch {
+      return;
+    }
+    if (S.survey !== sv || S.regions !== R) return;
+    for (const m of ans.marks) {
+      const dir = R.node(m.id);
+      if (!dir || dir.u) continue;
+      const files = new Map();
+      for (const c of dir.c) {
+        if (c.d) continue;
+        files.set(c.n, c);
+        c.dup = 0;
+        c.hv = false;
+      }
+      for (const [name, g] of m.dup) {
+        const f = files.get(name);
+        if (f) f.dup = dupNumber(g, f);
+      }
+      for (const name of m.hv) {
+        const f = files.get(name);
+        if (f) f.hv = true;
+      }
+    }
+  }
+  repaint();
+  drawLegend();
+}
+
+/** The benchmarks' paths, which is:benchmark names to the service. */
+const benchRels = () => (S.places?.benchmarks || []).map((b) => b.rel).filter((r) => typeof r === 'string').slice(0, 200);
+
+/** What GET /api/find is asked for a query in an order. */
+function findParams(text, order, extra = {}) {
+  const p = { q: text, sort: order.key, dir: String(order.dir), limit: String(FIND_LIMIT), focus: S.focus && !hostOf(S.focus) ? relPath(S.focus) : '', ...extra };
+  if (/is:benchmark/i.test(text)) p.bench = JSON.stringify(benchRels());
+  return p;
+}
+
+let querySeq = 0;
+/**
+ * The search in region mode: the service runs it over the whole tree and
+ * answers the true total and the first 5,000 in the order asked, as refs;
+ * a later query, or the tree read again, drops a late answer. Then the
+ * marks of every folder held, so the world dims and pins as it does.
+ */
+async function runQueryRegions() {
+  const seq = ++querySeq;
+  const R = S.regions;
+  const text = S.query;
+  const none = () => {
+    S.search = null;
+    findCache = { search: null, key: '', items: [] };
+    $('q-count').textContent = '';
+    runHooks(AFTER_QUERY, null, S.query);
+  };
+  if (!text.trim()) return none();
+  const order = S.findSort || { key: 'size', dir: -1 };
+  let ans;
+  try {
+    ans = await askTree('find', findParams(text, order));
+  } catch (err) {
+    if (seq === querySeq && S.regions === R && err.code !== 'ESTALE') notice(`The search could not run: ${err.message}`, { kind: 'error' });
+    return undefined;
+  }
+  if (seq !== querySeq || S.regions !== R || S.query !== text) return undefined;
+  if (ans.qid === null) return none();
+  const search = {
+    regions: true, qid: ans.qid, text, list: ans.hits.map(refFrom), order: ans.sort || order, total: ans.total, bytes: ans.bytes,
+    set: new WeakSet(), within: new WeakMap(), tail: new WeakMap(), in: ans.in, sess: ans.sess, note: '',
+  };
+  S.search = search;
+  findCache = { search: null, key: '', items: [] };
+  $('q-count').textContent = `${fmtCount(search.total)} found`;
+  runHooks(AFTER_QUERY, search, S.query);
+  markSearch(search);
+  repaint();
+  drawLedger(true);
+  return undefined;
+}
+
+/** The search's first 5,000 asked again in another order (a sort key, or the order a feature gives a search). */
+async function reorderHits(s, o) {
+  const k = `${o.key}:${o.dir}`;
+  if (s.reordering === k) return;
+  s.reordering = k;
+  let ans;
+  try {
+    ans = await askTree('find', findParams(s.text, o, { qid: s.qid }));
+  } catch {
+    s.reordering = null;
+    return;
+  }
+  if (S.search !== s) return;
+  s.reordering = null;
+  s.list = ans.hits.map(refFrom);
+  s.order = ans.sort || o;
+  s.total = ans.total;
+  s.bytes = ans.bytes;
+  if (ans.qid !== s.qid) {
+    s.qid = ans.qid;
+    s.set = new WeakSet();
+    s.within = new WeakMap();
+    s.tail = new WeakMap();
+    markSearch(s);
+  }
+  findCache = { search: null, key: '', items: [] };
+  if (S.tab === 'findings') drawLedger(true);
+}
+
+/** The service's survey as the page's: refs in every list, the counts beside them, groups numbered as sent. */
+function surveyFrom(ans) {
+  const base = ans.dupGroups.map((g, i) => ({ g: i + 1, size: g.size, count: g.count, waste: g.waste, files: g.files.map(refFrom), verified: false }));
+  return {
+    regions: true, pending: false,
+    largest: ans.largest.map(refFrom), heavy: ans.heavy.map(refFrom),
+    empty: ans.empty.list.map(refFrom), sealed: ans.sealed.list.map(refFrom), links: ans.links.list.map(refFrom),
+    counts: { empty: ans.empty.count, sealed: ans.sealed.count, links: ans.links.count },
+    dupGroups: base, base, dupMap: null, ms: ans.ms,
+  };
+}
+
+let surveySeq = 0;
+/**
+ * The survey in region mode, asked of the service (debounced after a
+ * refresh, as a page survey is): the lists, the candidates with what
+ * Verify proved put back by path, then the survey's marks on what is held.
+ */
+async function surveyRegions() {
+  const seq = ++surveySeq;
+  const R = S.regions;
+  let ans;
+  try {
+    ans = await askTree('survey');
+  } catch (err) {
+    if (seq === surveySeq && S.regions === R && err.code !== 'ESTALE') notice(`The survey could not be read: ${err.message}`, { kind: 'error' });
+    return;
+  }
+  if (seq !== surveySeq || S.regions !== R) return;
+  const sv = surveyFrom(ans);
+  if (provedRel.size) await keepVerifiedRegions(sv);
+  if (seq !== surveySeq || S.regions !== R) return;
+  S.survey = sv;
+  S.model.dupGroups = sv.dupGroups;
+  runHooks(AFTER_SURVEY, sv, { full: false, regions: true });
+  markDups();
+  repaint();
+  if (S.tab === 'survey') drawLedger();
+  drawLegend();
+}
+
+/**
+ * What Verify proved in region mode, by path: { hash, mode, s, m }. It
+ * stands while a file keeps its size and last change, as proved does for
+ * the whole tree; a Rescan all starts afresh.
+ */
+const provedRel = new Map();
+
+/**
+ * Regroups the service's candidates (sv.base) where their files' contents
+ * are known: full lists the top groups' files whole; settled(g) says
+ * whether a group is read (Verify) or proved throughout (kept). A read
+ * group splits by hash into confirmed groups; the rest stay as they are.
+ * The new numbering is kept (dupMap) for nodes held now and regions to come.
+ */
+function regroupRegions(sv, full, settled) {
+  const read = new Map();
+  for (const x of full) if (settled(x)) read.set(x.g, x);
+  const out = sv.base.filter((g) => !read.has(g.g));
+  const byRel = new Map();
+  for (const x of read.values()) {
+    const buckets = new Map();
+    for (const f of x.files) {
+      byRel.set(f.rel, 0);
+      const p = provedRel.get(f.rel);
+      if (!p || p.s !== f.s || p.m !== f.m) continue;
+      if (!buckets.has(p.hash)) buckets.set(p.hash, []);
+      buckets.get(p.hash).push(f);
+    }
+    for (const [hash, list] of buckets) {
+      if (list.length > 1) out.push({ g: null, size: x.size, count: list.length, files: list, waste: x.size * (list.length - 1), verified: true, mode: provedRel.get(list[0].rel).mode, hash });
+    }
+  }
+  out.sort((a, b) => b.waste - a.waste);
+  const byOld = new Map();
+  out.forEach((g, i) => {
+    if (g.verified) for (const f of g.files) byRel.set(f.rel, i + 1);
+    else byOld.set(g.g, i + 1);
+  });
+  for (const g of read.keys()) byOld.set(g, 0);
+  sv.dupGroups = out;
+  sv.dupMap = { byOld, byRel };
+  return read.size;
+}
+
+/** The candidates of a new survey with what was proved put back: the top groups' files read, where every one is proved still. */
+async function keepVerifiedRegions(sv) {
+  let ans;
+  try {
+    ans = await askTree('survey', { dupfiles: '4000' });
+  } catch {
+    return;
+  }
+  const full = ans.groups.map((x) => ({ g: x.g, size: x.size, files: x.files.map(refFrom) }));
+  regroupRegions(sv, full, (x) => x.files.every((f) => {
+    const p = provedRel.get(f.rel);
+    return p && p.s === f.s && p.m === f.m;
+  }));
+}
+
+/** Verify by content in region mode: the top groups' files, up to 4,000, read by path and split by hash. */
+async function verifyRegions() {
+  const sv = S.survey;
+  if (!sv || sv.pending) return;
+  let ans;
+  try {
+    ans = await askTree('survey', { dupfiles: '4000' });
+  } catch (err) {
+    notice(err.message, { kind: 'error' });
+    return;
+  }
+  const full = ans.groups.map((x) => ({ g: x.g, size: x.size, files: x.files.map(refFrom) }));
+  const files = full.flatMap((x) => x.files);
+  if (!files.length) return;
+  notice(`Reading ${fmtCount(files.length)} files to compare their contents…`, { kind: 'info', ms: 3000 });
+  let results;
+  try {
+    ({ results } = await post('hash', { paths: files.map((f) => f.rel) }));
+  } catch (err) {
+    notice(err.message, { kind: 'error' });
+    return;
+  }
+  if (S.survey !== sv) return;
+  files.forEach((f, i) => {
+    const h = results[i];
+    if (h && !h.error) provedRel.set(f.rel, { hash: h.hash, mode: h.mode, s: f.s, m: f.m });
+  });
+  regroupRegions(sv, full, () => true);
+  S.model.dupGroups = sv.dupGroups;
+  // Held files take their new numbers; regions to come are numbered by dupMap.
+  for (const id of S.regions.heldIds()) {
+    const dir = S.regions.node(id);
+    if (!dir || dir.u) continue;
+    for (const f of dir.c) {
+      if (f.d) continue;
+      const r = sv.dupMap.byRel.get(relPath(f));
+      if (r !== undefined) f.dup = r;
+      else if (f.dup) f.dup = sv.dupMap.byOld.get(f.dup) ?? f.dup;
+    }
+  }
+  const confirmed = sv.dupGroups.filter((g) => g.verified);
+  notice(`${fmtCount(confirmed.length)} groups confirmed identical, ${fmtBytes(confirmed.reduce((a, g) => a + g.waste, 0))} reclaimable.`);
+  repaint();
+  drawLedger();
+  drawLegend();
+  drawInspector();
+}
+
+/**
+ * A ref made a node (its path resolved, its region held), and put in its
+ * place in the list that showed it, so the list's cursor, highlight and
+ * selection work on the node from then on.
+ */
+function resolveRow(ref) {
+  const found = S.regions ? S.regions.resolve(ref.rel) : Promise.resolve(S.model.find(ref.rel));
+  return found.then((node) => {
+    if (!node) {
+      notice(`${ref.rel || ref.n} is no longer in the tree.`, { kind: 'info' });
+      return null;
+    }
+    let swapped = false;
+    for (const arr of new Set([list?.items, S.search?.list, findCache.items])) {
+      if (!arr) continue;
+      const i = arr.indexOf(ref);
+      if (i >= 0) {
+        arr[i] = node;
+        swapped = true;
+      }
+    }
+    if (swapped) list?.draw();
+    return node;
+  });
+}
+
+/** fn(node), once a ref is a node; at once for a node. */
+const withNode = (node, fn) => (node?.ref ? resolveRow(node).then((n) => n && fn(n), (err) => notice(err.message, { kind: 'error' })) : fn(node));
+
+/**
+ * Select all in Findings. In region mode the first 1,000 matches are
+ * found (each made a node) and selected, and the page says so.
+ */
+async function selectAllMatches(items) {
+  if (!S.regions) {
+    selectAll(items.slice(0, 5000), items[0]);
+    return;
+  }
+  const search = S.search;
+  const nodes = [];
+  for (const it of items.slice(0, SELECT_ALL_REGIONS)) {
+    const n = it.ref ? await resolveRow(it) : it;
+    if (S.search !== search) return;
+    if (n) nodes.push(n);
+  }
+  selectAll(nodes, nodes[0] ?? null);
+  say(`Select all takes the first ${fmtCount(SELECT_ALL_REGIONS)} matches at this size.`);
 }
 
 /* ====================================================================== */
@@ -1503,9 +1967,12 @@ function dominantKind(dir) {
 
 function screeHasMatch(i) {
   const info = S.layout.scree.get(i);
-  const kids = S.layout.node[i].c;
+  const dir = S.layout.node[i];
+  const kids = dir.c;
   for (let k = info.from; k < kids.length; k++) if (S.search.set.has(kids[k]) || S.search.within.has(kids[k])) return true;
-  return false;
+  // Region mode: the children not held lie in the scree too, and the
+  // service counted their matches.
+  return !!dir.tail && S.search.tail?.get(dir) > 0;
 }
 
 /**
@@ -1701,7 +2168,10 @@ function syncViewSelection() {
   const p = S.primary;
   if (p && !p.d && p.dup && S.survey) {
     const group = S.survey.dupGroups[p.dup - 1];
-    if (group) ties = group.files.filter((f) => f !== p).slice(0, 40).map(visibleIndexOf).filter((j) => j >= 0 && j !== i);
+    // A group's files are refs in region mode: each ties to the held box nearest it.
+    const at = (f) => visibleIndexOf(f.ref && S.regions ? S.regions.nearest(f.rel) : f);
+    const own = relPath(p);
+    if (group) ties = group.files.filter((f) => f !== p && relPath(f) !== own).slice(0, 40).map(at).filter((j) => j >= 0 && j !== i);
   }
   S.view.setTies(ties.length ? i : -1, [...new Set(ties)]);
   // Twins: an entry of the open archive and the files here with its name
@@ -1759,6 +2229,11 @@ function searchPins(L, room) {
 function heavyPins(L) {
   if (S.search || !S.survey || S.lens === 'dup') return null;
   const pins = [];
+  // Region mode: the survey's heavyweights are refs; their nodes carry hv.
+  if (S.regions) {
+    for (let i = 0; i < L.n; i++) if (L.type[i] === BOX.FILE && L.node[i].hv) pins.push({ i, color: THEME.ink });
+    return pins;
+  }
   for (const f of S.survey.heavy) {
     const i = L.index.get(f);
     if (i !== undefined) pins.push({ i, color: THEME.ink });
@@ -1778,6 +2253,12 @@ function describe(node) {
 }
 
 function select(node, { add = false, quiet = false } = {}) {
+  // A ref (a list's entry the page may not hold) is made a node first:
+  // the selection only ever holds nodes.
+  if (node?.ref) {
+    withNode(node, (n) => select(n, { add, quiet }));
+    return;
+  }
   if (!node) {
     S.sel.clear();
     S.primary = null;
@@ -1921,7 +2402,8 @@ function reveal(node) {
   if (!node) return;
   const seq = ++revealSeq;
   if (node.ref || (S.regions && !isAttached(node))) {
-    const found = S.regions ? S.regions.resolve(relPath(node)) : Promise.resolve(node.ref ? S.model.find(node.rel) : null);
+    // A ref is put in its list's place as its node (resolveRow).
+    const found = node.ref ? resolveRow(node) : S.regions ? S.regions.resolve(relPath(node)) : Promise.resolve(null);
     found.then((n) => { if (seq === revealSeq && n) revealNow(n); }, (err) => notice(err.message, { kind: 'error' }));
     return;
   }
@@ -2309,8 +2791,8 @@ function keepVerified(groups) {
 }
 
 async function verifyDuplicates() {
-  // Region mode holds no duplicate candidates until the service groups them.
-  if (S.regions) return;
+  // Region mode: the service lists the top groups' files, read by path.
+  if (S.regions) return verifyRegions();
   // A survey still queued after a refresh holds the files as they are
   // now; the one shown may hold nodes a refresh has replaced since.
   if (S.surveyTimer) surveyNow();
@@ -2513,24 +2995,33 @@ function rowFor(node, { showPath = false, total } = {}) {
   const mark = S.interior?.rowMark(node);
   const cls = (node.d ? (node.e ? 'swatch is-sealed' : kids(node) ? 'swatch is-dir' : 'swatch is-empty') : 'swatch') + (crossed ? ' is-crossed' : '') + (mark ? ` ${mark.cls}` : '');
   const share = total ? Math.max(0, Math.min(1, node.s / total)) : 0;
-  const row = el('div', { class: `row${S.sel.has(node) ? ' is-selected' : ''}`, draggable: node.p && !writable() && !hostOf(node) ? 'true' : null, 'aria-selected': S.sel.has(node) ? 'true' : 'false', title: showPath ? relPath(node) : node.n },
+  const row = el('div', { class: `row${S.sel.has(node) ? ' is-selected' : ''}`, draggable: node.p && !node.ref && !writable() && !hostOf(node) ? 'true' : null, 'aria-selected': S.sel.has(node) ? 'true' : 'false', title: showPath ? relPath(node) : node.n },
     el('span', { class: cls, style: node.d ? null : { background: cssHex(KINDS[node.k].color) } }),
     el('span', { class: 'row-name' }, node.n, node.d ? el('small', { text: node.e ? node.e : fmtCount(node.fc) }) : showPath ? el('small', { text: relPath(node.p) || '/' }) : null,
       crossed ? el('span', { class: 'sr', text: `, changed since ${S.time.date}` }) : null, mark ? el('span', { class: 'sr', text: mark.sr }) : null),
     el('span', { class: 'row-size' }, fmtBytes(node.s), total ? el('i', { style: { width: `${share * 100}%` } }) : null));
+  // A ref's row acts on its node, found by its path and put in its place.
   row.addEventListener('click', (e) => {
     list.cursor = list.items.indexOf(node);
-    if (showPath && !e.ctrlKey && !e.metaKey) reveal(node);
-    else select(node, { add: e.ctrlKey || e.metaKey });
+    const add = e.ctrlKey || e.metaKey;
+    withNode(node, (n) => {
+      if (showPath && !add) reveal(n);
+      else select(n, { add });
+    });
   });
   row.addEventListener('dblclick', () => {
-    if (S.placing && node.d) transfer(S.placing.type, S.placing.nodes, node);
-    else activate(node);
+    withNode(node, (n) => {
+      if (S.placing && n.d) transfer(S.placing.type, S.placing.nodes, n);
+      else activate(n);
+    });
   });
   row.addEventListener('contextmenu', (e) => {
     e.preventDefault();
-    if (!S.sel.has(node)) select(node);
-    menuFor(node, e.clientX, e.clientY);
+    const { clientX: x, clientY: y } = e;
+    withNode(node, (n) => {
+      if (!S.sel.has(n)) select(n);
+      menuFor(n, x, y);
+    });
   });
   row.addEventListener('dragstart', (e) => {
     S.drag = S.sel.has(node) ? tops(movable([...S.sel])) : [node];
@@ -2771,6 +3262,13 @@ let findCache = { search: null, key: '', items: [] };
 /** The matches in the Findings order, sorted once per search and order. */
 function findingsItems() {
   const s = S.search;
+  // Region mode: the service sent the first 5,000 in the order asked; a
+  // different order is asked for, and the list stays until it lands.
+  if (s.regions) {
+    const o = findSort();
+    if (o.key !== s.order.key || o.dir !== s.order.dir) reorderHits(s, o);
+    return s.list;
+  }
   const { key, dir } = findSort();
   const k = `${key}:${dir}`;
   if (findCache.search === s && findCache.key === k) return findCache.items;
@@ -2783,7 +3281,7 @@ function findingsItems() {
 
 function drawFindings(sub, _host, keepScroll) {
   if (!S.search) {
-    sub.replaceChildren(caption(S.regions ? notAtSize('Search') : S.query && S.scanning ? 'Runs again once the survey is done' : 'Type in Find to search every level.'));
+    sub.replaceChildren(caption(S.query && S.scanning ? 'Runs again once the survey is done' : 'Type in Find to search every level.'));
     list.setEmpty('');
     list.setItems([]);
     return;
@@ -2794,8 +3292,12 @@ function drawFindings(sub, _host, keepScroll) {
     S.findSort = { key, dir: order.key === key ? -order.dir : key === 'date' ? 1 : -1 };
     drawLedger();
   });
-  const note = S.search.note || '';
-  const n = S.search.list.length;
+  const total = S.search.total ?? S.search.list.length;
+  // Region mode: the service lists the first 5,000 in the order asked.
+  const cut = S.search.regions && total > S.search.list.length
+    ? `The first ${fmtCount(S.search.list.length)} of ${fmtCount(total)} matches, in this order.` : '';
+  const note = [S.search.note || '', cut].filter(Boolean).join(' ');
+  const n = total;
   // The count row and its tools, the note on a row of its own, then the
   // column heads: Select all in the mark slot, Changed, and Size on the
   // size column. With no match there is nothing to select or sort: the
@@ -2805,7 +3307,7 @@ function drawFindings(sub, _host, keepScroll) {
       subTools('findings', { items, search: S.search, focus: S.focus })),
     note ? el('div', { class: 'sub-row sub-note', text: note }) : null,
     n ? el('div', { class: 'sub-row is-columns' },
-      el('button', { class: 'btn btn-icon sub-tool sub-select', type: 'button', title: 'Select every match (up to 5,000)', onclick: () => selectAll(items.slice(0, 5000), items[0]) },
+      el('button', { class: 'btn btn-icon sub-tool sub-select', type: 'button', title: S.regions ? `Select the first ${fmtCount(SELECT_ALL_REGIONS)} matches` : 'Select every match (up to 5,000)', onclick: () => { selectAllMatches(items); } },
         icon('selectAll'), el('span', { class: 'sr', text: 'Select all' })),
       el('span', { class: 'sorts' }, sortBtn('date', 'Changed'), sortBtn('size', 'Size'))) : null,
   ].filter(Boolean));
@@ -2833,12 +3335,8 @@ function itemButton(node, figure) {
 
 function drawSurvey(sub, host) {
   const sv = S.survey;
-  if (S.regions) {
-    sub.replaceChildren(caption('Noteworthy conditions, every level'));
-    host.replaceChildren(el('p', { class: 'note', text: notAtSize('The survey of the whole directory') }));
-    return;
-  }
-  if (!sv) {
+  // Region mode: the service's survey is on its way.
+  if (!sv || sv.pending) {
     sub.replaceChildren(caption('Compiled once the survey is done'));
     host.replaceChildren();
     return;
@@ -3111,7 +3609,7 @@ function nodeCopies(node, ctx) {
   if (!g) return null;
   return [
     sectionTitle(g.verified ? (g.mode === 'sampled' ? 'Probable copies' : 'Identical copies') : 'Same-size candidates'),
-    el('div', {}, g.files.filter((f) => f !== node).slice(0, 8).map((f) => itemButton(f, ''))),
+    el('div', {}, g.files.filter((f) => f !== node && relPath(f) !== relPath(node)).slice(0, 8).map((f) => itemButton(f, ''))),
     ...dupExtras(g, { node, where: 'inspector', ro: ctx?.ro ?? writable() }),
   ];
 }
@@ -3346,16 +3844,13 @@ function drawStatus() {
 /* search                                                                 */
 /* ====================================================================== */
 
+/**
+ * Runs the query in Find. In whole-tree mode at once, over the model; in
+ * region mode the service runs it and this returns a promise that settles
+ * once the answer is shown (a later query drops an earlier answer).
+ */
 function runQuery() {
-  // Region mode: the page holds only part of the tree, so it cannot
-  // search all of it; it says so instead of listing what it happens to hold.
-  if (S.regions) {
-    S.search = null;
-    $('q-count').textContent = '';
-    if (S.query.trim()) say(notAtSize('Search'));
-    runHooks(AFTER_QUERY, null, S.query);
-    return;
-  }
+  if (S.regions) return runQueryRegions();
   const pred = parseQuery(S.query, QUERY);
   S.search = pred ? runSearch(S.model, pred) : null;
   $('q-count').textContent = S.search ? `${fmtCount(S.search.list.length)} found` : '';
@@ -3372,11 +3867,18 @@ function applyQuery() {
   if (text !== S.query) S.findSort = null;
   S.query = text;
   const had = !!S.search;
-  runQuery();
-  if (S.search && S.tab !== 'findings') S.tab = 'findings';
-  else if (!S.search && had && S.tab === 'findings') S.tab = 'contents';
-  repaint();
-  drawLedger();
+  const show = () => {
+    if (S.query !== text) return;
+    if (S.search && S.tab !== 'findings') S.tab = 'findings';
+    else if (!S.search && had && S.tab === 'findings') S.tab = 'contents';
+    repaint();
+    drawLedger();
+  };
+  const ran = runQuery();
+  // Region mode: shown once the service has answered.
+  if (ran?.then) return ran.then(show);
+  show();
+  return undefined;
 }
 
 function onQuery() {
@@ -3391,7 +3893,7 @@ function onQuery() {
 function setQuery(text) {
   $('q').value = text;
   if (text !== S.query) list.cursor = 0;
-  applyQuery();
+  return applyQuery();
 }
 
 function clearQuery() {
@@ -3859,7 +4361,7 @@ function wireKeys() {
 
   TABS.add({ id: 'contents', order: 10, label: 'Contents', list: true, draw: drawContents });
   TABS.add({
-    id: 'findings', order: 20, label: 'Findings', list: true, draw: drawFindings, count: () => (S.search ? S.search.list.length : null), enter: (node) => reveal(node),
+    id: 'findings', order: 20, label: 'Findings', list: true, draw: drawFindings, count: () => (S.search ? S.search.total ?? S.search.list.length : null), enter: (node) => reveal(node),
     key: () => { const o = findSort(); return `${o.key}:${o.dir}`; },
   });
   TABS.add({ id: 'survey', order: 30, label: 'Survey', draw: drawSurvey });
@@ -3867,17 +4369,24 @@ function wireKeys() {
 
   SURVEY.add({ id: 'largest', order: 10, build: (sv) => section('Largest files', fmtCount(sv.largest.length), true, sv.largest.slice(0, 80).map((f) => itemButton(f, fmtBytes(f.s)))) });
   SURVEY.add({ id: 'duplicates', order: 20, build: surveyDuplicates });
-  SURVEY.add({ id: 'empty', order: 30, build: (sv) => section('Empty folders', fmtCount(sv.empty.length), false, sv.empty.length ? sv.empty.slice(0, 300).map((d) => itemButton(d, '')) : el('p', { class: 'note', text: 'None.' })) });
+  // In region mode a list holds the first 1,000 the service sent, and its count is the whole tree's.
+  const countOf = (sv, key) => sv.counts?.[key] ?? sv[key].length;
+  const cutNote = (sv, key) => {
+    const n = countOf(sv, key);
+    const shown = Math.min(300, sv[key].length);
+    return sv.regions && n > shown ? el('p', { class: 'note', text: `The first ${fmtCount(shown)} of ${fmtCount(n)}.` }) : null;
+  };
+  SURVEY.add({ id: 'empty', order: 30, build: (sv) => section('Empty folders', fmtCount(countOf(sv, 'empty')), false, sv.empty.length ? [cutNote(sv, 'empty'), sv.empty.slice(0, 300).map((d) => itemButton(d, ''))] : el('p', { class: 'note', text: 'None.' })) });
   SURVEY.add({
     id: 'sealed', order: 40,
-    build: (sv) => section('Sealed folders', fmtCount(sv.sealed.length), sv.sealed.length > 0, sv.sealed.length
-      ? [el('p', { class: 'note', text: 'These could not be read, so their contents are not counted.' }), sv.sealed.slice(0, 300).map((d) => itemButton(d, d.e))]
+    build: (sv) => section('Sealed folders', fmtCount(countOf(sv, 'sealed')), sv.sealed.length > 0, sv.sealed.length
+      ? [el('p', { class: 'note', text: 'These could not be read, so their contents are not counted.' }), cutNote(sv, 'sealed'), sv.sealed.slice(0, 300).map((d) => itemButton(d, d.e))]
       : el('p', { class: 'note', text: 'Every folder was readable.' })),
   });
   SURVEY.add({
     id: 'links', order: 50,
-    build: (sv) => section('Symbolic links', fmtCount(sv.links.length), false, sv.links.length
-      ? [el('p', { class: 'note', text: 'Shown but never followed.' }), sv.links.slice(0, 300).map((f) => itemButton(f, 'link'))]
+    build: (sv) => section('Symbolic links', fmtCount(countOf(sv, 'links')), false, sv.links.length
+      ? [el('p', { class: 'note', text: 'Shown but never followed.' }), cutNote(sv, 'links'), sv.links.slice(0, 300).map((f) => itemButton(f, 'link'))]
       : el('p', { class: 'note', text: 'None.' })),
   });
 }
@@ -3927,8 +4436,13 @@ const API = Object.freeze({
   resolveRef: (ref) => (!ref?.ref ? Promise.resolve(ref ?? null) : S.regions ? S.regions.resolve(ref.rel) : Promise.resolve(S.model.find(ref.rel))),
   nearest: (rel) => (S.regions ? S.regions.nearest(rel) : nearestNode(rel)),
   // How many entries a folder holds (the service's count in region mode),
-  // and the sentence a whole-tree question gives in region mode.
+  // and the sentence a whole-tree question the service does not answer
+  // gives in region mode (the twins of an open archive).
   kids, notAtSize,
+  // Region mode: a whole-tree question asked of the service (find, marks,
+  // survey, sessions, places), resolving to its JSON; and a ref made a
+  // node in the list that showed it.
+  ask: askTree, resolveRow,
   select, selectAll, setFocus, reveal, activate, describe, say, forceOpen, overview, setLens, copyText,
   rescan: fullScan,
   drawAll, drawTabs, drawLedger, drawInspector, drawLegend, drawStatus, runQuery, setQuery, tabSections,
@@ -4025,7 +4539,8 @@ async function start() {
         if (!(e.ctrlKey || e.metaKey)) select(node, { quiet: true });
       } else if (e.key === 'Enter') {
         e.preventDefault();
-        if (S.placing && node.d) transfer(S.placing.type, S.placing.nodes, node);
+        // A ref's row is made a node first (select and reveal do it too).
+        if (S.placing && node.d) withNode(node, (n) => transfer(S.placing.type, S.placing.nodes, n));
         else (TABS.get(S.tab)?.enter || activate)(node);
       } else if (e.key === ' ') {
         e.preventDefault();
@@ -4120,6 +4635,9 @@ function expose(t0) {
     get firstDrawMs() { return firstDrawMs; },
     get places() { return S.places; },
     get regions() { return S.regions; },
+    // Region mode: how many of each whole-tree question were asked, and
+    // the last 200 answers' [route, ms in the page, ms in the service].
+    asked,
     // Whether region answers are decoded in the worker: true, false (on the
     // main thread), or null before the first one.
     get regionWorker() { return regionWorker === null ? null : !!regionWorker; },

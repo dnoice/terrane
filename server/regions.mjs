@@ -45,6 +45,10 @@
  *     - The handlers parse and cap their parameters (64 ids, 100 names,
  *       50 fresh paths), answer through columns.js answer() and write JSON
  *       with no-store; mem is the process's memory in MB
+ *     - handleAsk answers the whole-tree questions (find, marks, survey,
+ *       sessions, places: questions.js) after any change under way; the
+ *       survey is worked out before a new tree is served (prepMs), so
+ *       every region carries its candidates and heavyweights from the first
  *
  * ✒ Usage Instructions:
  *     import { makeRegions } from './regions.mjs';
@@ -65,8 +69,8 @@
  *
  * ✒ Other Important Information:
  *     - Dependencies: Node.js built-ins only (node:sqlite); scan.mjs,
- *       guard.mjs, web/js/columns.js (which imports model.js and
- *       timeline.js)
+ *       guard.mjs, web/js/columns.js (which imports model.js, timeline.js
+ *       and questions.js, and through it relations.js and fuzzy.js)
  *     - Compatible platforms: Node.js 22.5+ on Windows, macOS, Linux
  *     - Performance: about 650 to 750 MB for 5,000,000 entries; run such a
  *       service with --max-old-space-size=4096
@@ -80,6 +84,7 @@ import { DatabaseSync } from 'node:sqlite';
 import { scan } from './scan.mjs';
 import { relParts, GuardError } from './guard.mjs';
 import { ColumnTree, answer, REGION_THRESHOLD } from '../web/js/columns.js';
+import { prepare, QUESTION_ROUTES } from '../web/js/questions.js';
 
 const BATCH = 200;
 const PROGRESS_ROWS = 50000;
@@ -107,6 +112,7 @@ export function makeRegions({ guard = null, snap = null, meta = null, threshold 
   let loaded = 0;
   let progress = { folders: 0, files: 0, of: null };
   let loadMs = null;
+  let prepMs = null;
   let building = null;
   let ac = null;
   let chain = Promise.resolve();
@@ -220,11 +226,16 @@ export function makeRegions({ guard = null, snap = null, meta = null, threshold 
       try {
         const next = snap ? await fromSnapshot(snap.file(), signal) : await fromScan(signal);
         if (signal.aborted) throw new Error('The build was stopped.');
+        loadMs = Date.now() - t0;
+        // The survey is worked out before the tree is served, so every
+        // region carries its candidates and heavyweights from the first.
+        const p0 = Date.now();
+        prepare(next);
+        prepMs = Date.now() - p0;
         await serial(() => {
           tree = next;
           if (loaded++ > 0) v++;
         });
-        loadMs = Date.now() - t0;
         state = 'ready';
       } catch (err) {
         if (signal.aborted) state = tree ? 'ready' : 'none';
@@ -252,7 +263,7 @@ export function makeRegions({ guard = null, snap = null, meta = null, threshold 
   const readers = guard ? { depth1: (rel) => collect(rel, 1), deep: (rel) => collect(rel, Infinity) } : null;
 
   const ctx = (warm) => ({
-    threshold, state, v, progress, loadMs, error, mem: memMB(), warm: null, entries: entriesOf(warm), relParts,
+    threshold, state, v, progress, loadMs, prepMs, error, mem: memMB(), warm: null, entries: entriesOf(warm), relParts,
   });
 
   const send = (res, status, body) => {
@@ -318,6 +329,21 @@ export function makeRegions({ guard = null, snap = null, meta = null, threshold 
         return refuse(res, err);
       }
     },
+
+    /** The whole-tree questions (find, marks, survey, sessions, places), after any change under way. */
+    async handleAsk(req, res, q, route) {
+      try {
+        await chain;
+        const r = await answer(tree, route, q, ctx());
+        return send(res, r.status, r.json);
+      } catch (err) {
+        if (err instanceof GuardError) throw err;
+        return refuse(res, err);
+      }
+    },
+
+    /** The routes handleAsk answers. */
+    asks: QUESTION_ROUTES,
 
     /** Stops a build that is running; the process is about to end. */
     shutdown() {

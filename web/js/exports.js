@@ -16,9 +16,10 @@
  *     - 1.1.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — Export
  *       CSV on the Contents and Findings count rows is a 24 px icon tool
  *       (download), named Export CSV, its title saying what it saves. In
- *       region mode Findings and the Survey's lists have nothing to export
- *       at this size, and a folder held in part exports its largest items
- *       and says so.
+ *       region mode Findings and the Survey's lists export what the page
+ *       holds and say "Exported the first N of M" when the service counted
+ *       more, and a folder held in part exports its largest items and says
+ *       so.
  *     - 1.0.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] —
  *       Initial release.
  *
@@ -75,12 +76,17 @@ export const name = 'Export lists';
 const OWNER = 'exports';
 
 /** The Survey's lists: what each holds, its file name part and why it may be empty. */
+/** How many a list holds in the whole tree: in region mode the service's counts, which the lists may stop short of. */
+const counted = (sv, key) => sv.counts?.[key] ?? sv[key].length;
 const LISTS = Object.freeze([
-  { id: 'largest', label: 'Largest files', what: 'largest-files', why: 'the survey found no files', table: (sv, o) => nodeRows(sv.largest, o), count: (sv) => sv.largest.length },
-  { id: 'duplicates', label: 'Duplicate candidates', what: 'duplicate-candidates', why: 'no files of 4 KB or more share a size', table: (sv, o) => dupRows(sv.dupGroups, o), count: (sv) => sv.dupGroups.reduce((a, g) => a + g.files.length, 0) },
-  { id: 'empty', label: 'Empty folders', what: 'empty-folders', why: 'every folder holds something', table: (sv, o) => nodeRows(sv.empty, o), count: (sv) => sv.empty.length },
-  { id: 'sealed', label: 'Sealed folders', what: 'sealed-folders', why: 'every folder was readable', table: (sv, o) => sealedRows(sv.sealed, o), count: (sv) => sv.sealed.length },
-  { id: 'links', label: 'Symbolic links', what: 'symbolic-links', why: 'there are no symbolic links', table: (sv, o) => nodeRows(sv.links, o), count: (sv) => sv.links.length },
+  { id: 'largest', label: 'Largest files', what: 'largest-files', why: 'the survey found no files', table: (sv, o) => nodeRows(sv.largest, o), count: (sv) => sv.largest.length, total: (sv) => sv.largest.length },
+  {
+    id: 'duplicates', label: 'Duplicate candidates', what: 'duplicate-candidates', why: 'no files of 4 KB or more share a size', table: (sv, o) => dupRows(sv.dupGroups, o),
+    count: (sv) => sv.dupGroups.reduce((a, g) => a + g.files.length, 0), total: (sv) => sv.dupGroups.reduce((a, g) => a + (g.count ?? g.files.length), 0),
+  },
+  { id: 'empty', label: 'Empty folders', what: 'empty-folders', why: 'every folder holds something', table: (sv, o) => nodeRows(sv.empty, o), count: (sv) => counted(sv, 'empty'), total: (sv) => counted(sv, 'empty') },
+  { id: 'sealed', label: 'Sealed folders', what: 'sealed-folders', why: 'every folder was readable', table: (sv, o) => sealedRows(sv.sealed, o), count: (sv) => counted(sv, 'sealed'), total: (sv) => counted(sv, 'sealed') },
+  { id: 'links', label: 'Symbolic links', what: 'symbolic-links', why: 'there are no symbolic links', table: (sv, o) => nodeRows(sv.links, o), count: (sv) => counted(sv, 'links'), total: (sv) => counted(sv, 'links') },
 ].map(Object.freeze));
 
 export function install(api) {
@@ -113,30 +119,39 @@ export function install(api) {
     return save(['contents', slug(api.relLabel(f))], nodeRows(api.listItems(), opts), why, said);
   }
 
-  /** The Findings of the search in Find, in the order shown. */
+  /**
+   * The Findings of the search in Find, in the order shown. In region mode
+   * the list holds the first 5,000 the service sent; when there are more,
+   * the notice says how many of how many were saved.
+   */
   function exportFindings() {
-    if (api.regionMode()) {
-      api.notice(`Nothing to export: ${api.notAtSize('Search')}`, { kind: 'info' });
-      return null;
-    }
     if (!S.search) {
       api.notice('Nothing to export: there is no search in Find.', { kind: 'info' });
       return null;
     }
-    return save(['findings', slug(S.query, 32)], nodeRows(api.listItems(), opts), 'nothing matches this search');
+    const total = S.search.total ?? S.search.list.length;
+    const said = S.search.regions ? (n, file) => (total > n
+      ? `Exported the first ${fmtCount(n)} of ${fmtCount(total)} matches to ${file}; the page does not hold the rest at this size.`
+      : `Exported ${fmtCount(n)} row${n === 1 ? '' : 's'} to ${file}.`) : null;
+    return save(['findings', slug(S.query, 32)], nodeRows(api.listItems(), opts), 'nothing matches this search', said);
   }
 
+  /**
+   * A Survey list. In region mode the service sent the first 1,000 of each
+   * (every file of a candidate group up to 12); when there are more, the
+   * notice says how many of how many were saved.
+   */
   function exportList(list) {
-    if (api.regionMode()) {
-      api.notice(`Nothing to export: ${api.notAtSize(`the ${list.label.toLowerCase()} list`)}`, { kind: 'info' });
-      return null;
-    }
     const sv = S.survey;
-    if (!sv || S.scanning) {
+    if (!sv || S.scanning || sv.pending) {
       api.notice('Nothing to export: the survey has not finished.', { kind: 'info' });
       return null;
     }
-    return save([list.what], list.table(sv, opts), list.why);
+    const all = list.total(sv);
+    const said = sv.regions ? (n, file) => (all > n
+      ? `Exported the first ${fmtCount(n)} of ${fmtCount(all)} ${list.label.toLowerCase()}; the page does not hold the rest at this size. Saved to ${file}.`
+      : `Exported ${fmtCount(n)} row${n === 1 ? '' : 's'} to ${file}.`) : null;
+    return save([list.what], list.table(sv, opts), list.why, said);
   }
 
   /** Shows a list tab, so its rows are the ones listed, then exports them. */
@@ -182,7 +197,7 @@ export function install(api) {
       { label: `Export the Contents of ${S.focus.n} as CSV`, detail: 'Export', run: () => fromTab('contents', exportContents) },
       { label: 'Export the Findings as CSV', detail: S.query.trim() || 'Export', off: S.search ? null : 'there is no search in Find', run: () => fromTab('findings', exportFindings) },
       ...LISTS.map((list) => ({
-        label: `Export ${list.label.toLowerCase()} as CSV`, detail: 'Survey', off: api.regionMode() ? 'not available at this size' : S.survey && !S.scanning ? null : 'once the survey has finished', run: () => exportList(list),
+        label: `Export ${list.label.toLowerCase()} as CSV`, detail: 'Survey', off: S.survey && !S.scanning && !S.survey.pending ? null : 'once the survey has finished', run: () => exportList(list),
       })),
     ],
   });

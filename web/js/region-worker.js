@@ -24,7 +24,10 @@
  *     cross back, their buffers transferred.
  *
  * ✒ Key Features:
- *     - { type: 'init', token } once, then { id, url } per request
+ *     - { type: 'init', token } once, then { id, url } per request, or
+ *       { id, url, json: true } for an answer that is not a region's (a
+ *       search, the survey, marks, sessions, places): it is parsed here and
+ *       crosses back as { id, ok: true, bytes, json }
  *     - Fetches with X-Terrane-Token, reads the text (its length is the
  *       answer's size), parses it and runs regions.js decode()
  *     - Answers { id, ok: true, bytes, v, anchor, regions, more, target,
@@ -62,7 +65,7 @@ self.onmessage = async (e) => {
     token = String(m.token || '');
     return;
   }
-  const { id, url } = m;
+  const { id, url, json } = m;
   try {
     const res = await fetch(url, { headers: { 'X-Terrane-Token': token } });
     const text = await res.text();
@@ -75,6 +78,10 @@ self.onmessage = async (e) => {
         id, ok: false, status: res.status, code: body.code || String(res.status), message: body.message || `The service answered ${res.status}.`,
         v: body.v ?? null, deepest: body.deepest ?? null,
       });
+      return;
+    }
+    if (json) {
+      self.postMessage({ id, ok: true, bytes: text.length, json: JSON.parse(text) });
       return;
     }
     const out = decode(JSON.parse(text));

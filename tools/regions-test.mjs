@@ -51,6 +51,13 @@
  *       mode, a link that leads outside refused, the warm cache written
  *     - Ceilings: a 300,000-entry tree built, and a 20,000-file folder's
  *       region answered, each timed and printed
+ *     - The whole-tree questions against the page's own, on one clock and
+ *       one 120,000-entry tree: find against runSearch for 21 queries (the
+ *       match set by path, total, bytes, matches beneath every folder, the
+ *       first 5,000 by size and by date), marks, the survey, dupfiles,
+ *       sessions with sessionOf and nearest, places against fuzzy.rank,
+ *       and their ceilings; through the service in snapshot mode, every
+ *       route, ESTALE, EQUERY, the caps, the token, the Host and POST
  *
  * ✒ Usage Instructions:
  *     node tools/regions-test.mjs
@@ -59,7 +66,7 @@
  *
  * ✒ Other Important Information:
  *     - Dependencies: Node.js 22.5+; web/js/columns.js, model.js,
- *       timeline.js; server/terrane.mjs, scan.mjs, snapshot.mjs;
+ *       timeline.js, questions.js, relations.js, fuzzy.js; server/terrane.mjs, scan.mjs, snapshot.mjs;
  *       tools/make-synthetic.mjs
  *     - Compatible platforms: Windows, macOS, Linux (the link check makes
  *       a junction on Windows and a symbolic link elsewhere)
@@ -81,11 +88,14 @@ import { fileURLToPath } from 'node:url';
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const SERVER = path.join(HERE, '..', 'server', 'terrane.mjs');
 const C = await import(new URL('../web/js/columns.js', import.meta.url).href);
-const { Model, relPath, isAncestor } = await import(new URL('../web/js/model.js', import.meta.url).href);
+const { Model, relPath, isAncestor, parseQuery, runSearch } = await import(new URL('../web/js/model.js', import.meta.url).href);
+const R = await import(new URL('../web/js/relations.js', import.meta.url).href);
+const { rank } = await import(new URL('../web/js/fuzzy.js', import.meta.url).href);
 const { buildAgeTable, STEPS } = await import(new URL('../web/js/timeline.js', import.meta.url).href);
 const { scan } = await import(new URL('../server/scan.mjs', import.meta.url).href);
 const { openSnapshots, readMeta, takeSnapshot, datasetHome, listSnapshots } = await import(new URL('../server/snapshot.mjs', import.meta.url).href);
 const G = await import(new URL('./make-synthetic.mjs', import.meta.url).href);
+const Q = await import(new URL('../web/js/questions.js', import.meta.url).href);
 const { ColumnTree, treeFrom, answer, D_NAME, D_S, D_FC, D_DC, D_H, D_MM, D_CN, D_ERR, D_KS, D_AB, D_AF, D_MD, D_LEN } = C;
 
 let passed = 0;
@@ -536,6 +546,8 @@ section('6. The routes in snapshot mode (30,000 synthetic entries)');
     const replay = [];
     for await (const batch of openSnapshots(dir).scan('')) replay.push(batch);
     const local = treeFrom(replay, { name: meta.name, anchor: tr.anchor });
+    // The service works its survey out before it serves, so its regions carry the survey's marks.
+    Q.prepare(local);
     const ids = [0, 1, 2, local.kidByName(0, 'Photos'), local.kidByName(0, 'Projects')].filter((x) => x >= 0);
     const r = await s.get(`/api/region${q({ v: 1, ids: ids.join(',') })}`);
     const want = await answer(local, 'region', { v: '1', ids: ids.join(',') }, { v: 1 });
@@ -546,7 +558,7 @@ section('6. The routes in snapshot mode (30,000 synthetic entries)');
     const fileRel = `${local.relOf(deep)}/${local.fname[local.file0[deep]]}`;
     const ch = await s.get(`/api/region${q({ v: 1, path: fileRel, skip: 2 })}`);
     check(`the chain to a file ${local.chainOf(deep).length - 1} levels down, skipping two`, ch.status === 200 && ch.body.regions.length === local.chainOf(deep).length - 2
-      && ch.body.target.name === local.fname[local.file0[deep]] && same(ch.body.regions, local.pathRegions(fileRel, 2).regions));
+      && ch.body.target.name === local.fname[local.file0[deep]] && same(ch.body.regions, (await answer(local, 'region', { v: '1', path: fileRel, skip: '2' }, { v: 1 })).json.regions));
     let e = await s.get(`/api/region${q({ v: 2, ids: '0' })}`);
     check('a wrong generation is 409 ESTALE with a sentence', e.status === 409 && e.body.code === 'ESTALE' && /surveyed again/.test(e.body.message));
     e = await s.get(`/api/region${q({ v: 1, ids: Array.from({ length: 65 }, (_, i) => i).join(',') })}`);
@@ -570,6 +582,38 @@ section('6. The routes in snapshot mode (30,000 synthetic entries)');
     check('a region request that names nothing is 400 EBADREQ', e.status === 400 && e.body.code === 'EBADREQ');
     e = await s.get(`/api/region${q({ v: 1, path: 'Photos/no-such' })}`);
     check('a path not in the tree is 404 ENOENT', e.status === 404 && e.body.code === 'ENOENT' && e.body.deepest === 'Photos');
+    // The whole-tree questions, through the service in snapshot mode.
+    let f = await s.get(`/api/find${q({ v: 1, q: 'IMG' })}`);
+    const lf = (await answer(local, 'find', { v: '1', q: 'IMG' }, { v: 1 })).json;
+    check(`GET /api/find in snapshot mode equals the answer in this process (${f.body?.total} matches), no-store`,
+      f.status === 200 && f.body.total === lf.total && f.body.total > 0 && same(f.body.hits, lf.hits) && f.headers['cache-control'] === 'no-store');
+    const qid = f.body.qid;
+    const statuses = [];
+    for (const route of [`/api/marks${q({ v: 1, q: qid, ids: '0,1,2' })}`, `/api/marks${q({ v: 1, dup: 1, ids: '0' })}`, `/api/survey${q({ v: 1 })}`, `/api/survey${q({ v: 1, dupfiles: 4000 })}`,
+      `/api/sessions${q({ v: 1 })}`, `/api/sessions${q({ v: 1, k: 1, files: 10 })}`, `/api/places${q({ v: 1, q: 'img', limit: 10 })}`]) statuses.push((await s.get(route)).status);
+    check('marks, survey, sessions and places answer in snapshot mode', statuses.every((x) => x === 200), statuses.join(' '));
+    e = await s.get(`/api/find${q({ v: 2, q: 'IMG' })}`);
+    check('a question for a wrong generation is 409 ESTALE', e.status === 409 && e.body.code === 'ESTALE');
+    e = await s.get(`/api/marks${q({ v: 1, q: 'q999', ids: '0' })}`);
+    check('marks of a query no longer kept is 404 EQUERY, with a sentence', e.status === 404 && e.body.code === 'EQUERY' && /run again/.test(e.body.message));
+    e = await s.get(`/api/find${q({ v: 1, q: 'is:benchmark', bench: JSON.stringify(Array.from({ length: 201 }, (_, i) => `b${i}`)) })}`);
+    check('201 benchmarks named are 413', e.status === 413 && e.body.code === 'ETOOMANY');
+    e = await s.get(`/api/marks${q({ v: 1, q: qid, ids: Array.from({ length: 1501 }, () => '0').join(',') })}`);
+    check('1,501 folders marked are 413', e.status === 413 && e.body.code === 'ETOOMANY');
+    e = await s.get(`/api/find${q({ v: 1, q: 'x', limit: 5001 })}`);
+    check('a limit over 5,000 is 413', e.status === 413);
+    e = await s.get(`/api/find${q({ v: 1, q: 'x', focus: '../up' })}`);
+    check('a focus that climbs is 400 EPATH', e.status === 400 && e.body.code === 'EPATH');
+    e = await s.get(`/api/sessions${q({ v: 1, path: 'Photos/no-such.jpg' })}`);
+    check('a file not in the tree asked of sessions is 404 ENOENT', e.status === 404 && e.body.code === 'ENOENT');
+    e = await s.request(`/api/find${q({ v: 1, q: 'IMG' })}`);
+    check('a question with no token is 401', e.status === 401 && e.body.code === 'ETOKEN');
+    e = await s.get(`/api/survey${q({ v: 1 })}`, { headers: { Host: `evil.example:${s.port}` } });
+    check('a question with a wrong Host is 403', e.status === 403 && e.body.code === 'EHOST');
+    e = await s.get(`/api/find${q({ v: 1, q: 'x' })}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
+    check('POST /api/find is 403 ESNAPSHOT', e.status === 403 && e.body.code === 'ESNAPSHOT');
+    e = await s.get(`/api/region${q({ v: 1, ids: '0', q: qid })}`);
+    check('a region asked with a search\'s qid carries its marks', e.status === 200 && e.body.regions[0].mk?.q === qid);
     e = await s.get('/api/tree?build=1');
     const t2 = await s.ready(20000, 2);
     check('build=1 reads the snapshot again, and the generation rises', t2?.v === 2 && t2.state === 'ready');
@@ -593,7 +637,9 @@ section('7. The routes in live mode (a small tree in the OS temp folder)');
   const scanTree = async (anchor) => {
     const recs = [];
     for await (const b of scan(fs.realpathSync(root), { isRoot: true })) recs.push(b);
-    return treeFrom(recs, { name: path.basename(root), anchor });
+    const t = treeFrom(recs, { name: path.basename(root), anchor });
+    Q.prepare(t);
+    return t;
   };
   let s = await boot([root, '--region-threshold', '0', '--no-warm'], 5227);
   try {
@@ -701,6 +747,232 @@ section('8. Ceilings');
   runs.sort((x, y) => x - y);
   check(`the region of a 20,000-file folder, chosen and written, answers in ${runs[2].toFixed(1)} ms, the median of five (ceiling 50)`, runs[2] <= 50);
   void ColumnTree;
+}
+
+/* ---------- 9. the whole-tree questions ---------- */
+
+section('9. The whole-tree questions, against the page\'s own (120,000 entries, one clock)');
+{
+  const { batches } = trees[120000];
+  // A model of the same records, surveyed as the page surveys, and a tree
+  // built afresh, so nothing either side worked out earlier is reused.
+  const model = modelFrom(batches, 'synthetic');
+  const tree = treeFrom(batches, { name: 'synthetic', anchor: NOW });
+  const realNow = Date.now;
+  Date.now = () => NOW;
+  try {
+    const sv = model.survey();
+    const sess = R.sessions(model.root);
+    // The extensions the page's features give parseQuery, over the model.
+    const deepDir = (() => {
+      const st = [model.root];
+      while (st.length) {
+        const n = st.pop();
+        if (n.d && n.c.length > 8 && relPath(n).split('/').length === 3) return n;
+        for (const c of n.c) if (c.d) st.push(c);
+      }
+      return model.root;
+    })();
+    const focus = deepDir.p;
+    const benchNodes = new Set(model.root.c.filter((c) => c.d).slice(0, 3));
+    const folderAt = (base, rel) => {
+      const parts = rel.split('/').filter(Boolean);
+      const exact = model.find([relPath(base), ...parts].filter(Boolean).join('/'));
+      if (exact?.d) return exact;
+      let dir = base;
+      for (const p of parts) {
+        const low = p.toLowerCase();
+        dir = dir.c.find((c) => c.d && c.n === p) || dir.c.find((c) => c.d && c.n.toLowerCase() === low);
+        if (!dir) return null;
+      }
+      return dir;
+    };
+    const ext = {
+      is: { benchmark: (n) => !!n.d && benchNodes.has(n) },
+      prefix: {
+        session: (v) => R.sessionPredicate(sess, /^\d+$/.test(v) ? Number(v) : 0),
+        in: (_v, raw) => {
+          const t = raw.trim();
+          const dir = t === '.' || t === './' ? focus : t.startsWith('./') ? folderAt(focus, t.slice(2)) : folderAt(model.root, t.replace(/^\/+/, ''));
+          return dir ? (n) => n !== dir && isAncestor(dir, n) : () => false;
+        },
+      },
+    };
+    const changedAt = (n) => (n.d ? n.mm : n.m);
+    // A session that holds JavaScript, for session:k ext:js.
+    const jsK = sess.findIndex((s) => s.files.some((f) => f.n.endsWith('.js'))) + 1 || 3;
+    const queries = ['report', '*.jpg', 'ext:psd >50mb', 'kind:video,audio', 'is:empty', 'is:hidden', 'is:link', 'is:sealed', 'is:dir', 'older:1y', 'newer:30d',
+      '"file 1"', '"report-20"', `in:${relPath(deepDir)}`, `in:./${deepDir.n}`, `in:${relPath(deepDir).toUpperCase()}`, 'session:1', 'session:3 ext:js', `session:${jsK} ext:js`, 'is:dup', 'is:benchmark'];
+    const benchRels = JSON.stringify([...benchNodes].map(relPath));
+    const bad = [];
+    let nonEmpty = 0;
+    for (const text of queries) {
+      const s = runSearch(model, parseQuery(text, ext));
+      const ask = (sort, dir) => answer(tree, 'find', { v: '1', q: text, focus: relPath(focus), bench: benchRels, sort, dir, limit: '5000' }, { v: 1 });
+      const a = (await ask('size', '-1')).json;
+      const b = (await ask('date', '1')).json;
+      const bits = Q.queryBits(tree, a.qid);
+      // The match set by path, from the hit bits of every entry.
+      const got = new Set();
+      for (let x = 1; x < tree.F; x++) if (bits.hit[x]) got.add(tree.relOf(x));
+      for (let j = 0; j < tree.N; j++) if (bits.hit[tree.F + j]) got.add(`${tree.relOf(tree.fdir[j])}/${tree.fname[j]}`.replace(/^\//, ''));
+      const want = new Set([...s.set].map(relPath));
+      const setOk = got.size === want.size && [...want].every((r) => got.has(r));
+      let withinOk = true;
+      const stack = [[model.root, 0]];
+      while (stack.length && withinOk) {
+        const [node, id] = stack.pop();
+        if ((s.within.get(node) || 0) !== bits.within[id]) withinOk = false;
+        for (const c of node.c) if (c.d) stack.push([c, tree.kidByName(id, c.n)]);
+      }
+      const bySize = s.list.slice(0, 5000).map(relPath);
+      const byDate = [...s.list].sort((x, y) => changedAt(x) - changedAt(y)).slice(0, 5000).map(relPath);
+      const ok = setOk && a.total === s.set.size && a.bytes === s.bytes && withinOk && same(a.hits.map((h) => h[0]), bySize) && same(b.hits.map((h) => h[0]), byDate) && b.total === a.total;
+      if (s.set.size) nonEmpty++;
+      if (!ok) bad.push(`${text}: set ${setOk} total ${a.total}/${s.set.size} bytes ${a.bytes === s.bytes} within ${withinOk} size ${same(a.hits.map((h) => h[0]), bySize)} date ${same(b.hits.map((h) => h[0]), byDate)}`);
+    }
+    check(`find equals runSearch for ${queries.length} queries (${nonEmpty} with matches): the match set by path, total, bytes, the matches beneath every folder, and the first 5,000 by size descending and by date ascending`, bad.length === 0, bad.join(' | '));
+    const inq = (await answer(tree, 'find', { v: '1', q: `in:./${deepDir.n} report`, focus: relPath(focus) }, { v: 1 })).json;
+    check('find says what in: resolved to, by path', same(inq.in, { raw: `./${deepDir.n}`, rel: relPath(deepDir) }));
+    const s1 = (await answer(tree, 'find', { v: '1', q: 'session:1' }, { v: 1 })).json;
+    const f1 = R.sessionFacts(sess[0]);
+    check('find names the session it evaluated, with its facts', s1.sess?.k === 1 && s1.sess.count === sess.length && s1.sess.facts.start === f1.start && s1.sess.facts.count === f1.count && s1.sess.facts.common === relPath(f1.common));
+    const again = (await answer(tree, 'find', { v: '1', q: 'report', qid: s1.qid, sort: 'date', dir: '1' }, { v: 1 })).json;
+    const kept = (await answer(tree, 'find', { v: '1', q: 'report' }, { v: 1 })).json;
+    const reorder = (await answer(tree, 'find', { v: '1', q: 'report', qid: kept.qid, sort: 'date', dir: '-1' }, { v: 1 })).json;
+    check('a query asked again in another order by its qid keeps its qid; another query\'s qid is not taken for it', reorder.qid === kept.qid && again.qid !== s1.qid && reorder.total === kept.total);
+    const empty = (await answer(tree, 'find', { v: '1', q: '   ' }, { v: 1 })).json;
+    check('an empty query answers no qid and nothing', empty.qid === null && empty.total === 0 && empty.hits.length === 0);
+    const counted = (await answer(tree, 'find', { v: '1', q: 'report', limit: '0' }, { v: 1 })).json;
+    check('limit 0 counts without keeping a query (the quick searches)', counted.qid === null && counted.total === kept.total && counted.hits.length === 0);
+
+    // marks: by name, against runSearch's set and within.
+    const rs = runSearch(model, parseQuery('report', ext));
+    const ids = [];
+    for (let id = 0; id < tree.F && ids.length < 1500; id++) if (tree.has(id)) ids.push(id);
+    const mk = (await answer(tree, 'marks', { v: '1', q: kept.qid, ids: ids.join(',') }, { v: 1 })).json;
+    let mOk = mk.marks.length === ids.length;
+    for (const m of mk.marks) {
+      const node = model.find(tree.relOf(m.id));
+      if ((rs.within.get(node) || 0) !== m.w) mOk = false;
+      if (node.c.length > C.REGION_MAX) continue;
+      const wantF = node.c.filter((c) => !c.d && rs.set.has(c)).map((c) => c.n);
+      const wantD = node.c.filter((c) => c.d && (rs.set.has(c) || rs.within.has(c))).map((c) => [c.n, rs.within.get(c) || 0, rs.set.has(c) ? 1 : 0]);
+      if (!same(wantF, m.f) || !same(wantD, m.d) || m.n !== wantF.length + wantD.length) mOk = false;
+    }
+    check(`marks of ${ids.length.toLocaleString('en-US')} folders equal runSearch's matches and counts beneath, by name`, mOk);
+    const reg = (await answer(tree, 'region', { v: '1', ids: '0', q: kept.qid }, { v: 1 })).json.regions[0];
+    const rootKids = model.root.c.filter((c) => c.d);
+    check('a region asked with q carries its marks by place', reg.mk?.q === kept.qid && reg.mk.w === rs.within.get(model.root)
+      && same(reg.mk.d.map(([i, w]) => [rootKids[i].n, w]), rootKids.filter((c) => rs.within.has(c) || rs.set.has(c)).map((c) => [c.n, rs.within.get(c) || 0])));
+
+    // The survey.
+    const t0 = performance.now();
+    const asv = (await answer(tree, 'survey', { v: '1' }, { v: 1 })).json;
+    const surveyMs = performance.now() - t0;
+    check('survey: the largest 80, in order', same(asv.largest.map((r) => r[0]), sv.largest.map(relPath)));
+    check(`survey: empty (${asv.empty.count}), sealed (${asv.sealed.count}) and links (${asv.links.count}), each the first 1,000 in the page's order and its count`,
+      asv.empty.count === sv.empty.length && same(asv.empty.list.map((r) => r[0]), sv.empty.slice(0, 1000).map(relPath))
+      && asv.sealed.count === sv.sealed.length && same(asv.sealed.list.map((r) => r[0]), sv.sealed.slice(0, 1000).map(relPath))
+      && asv.links.count === sv.links.length && same(asv.links.list.map((r) => r[0]), sv.links.slice(0, 1000).map(relPath)));
+    check(`survey: ${asv.dupGroups.length} duplicate groups, each its size, count and waste, in order, with its first 12 files`,
+      same(asv.dupGroups.map((g) => [g.size, g.count, g.waste]), sv.dupGroups.map((g) => [g.size, g.files.length, g.waste]))
+      && same(asv.dupGroups.map((g) => g.files.map((r) => r[0])), sv.dupGroups.map((g) => g.files.slice(0, 12).map(relPath))));
+    check('survey: heavyweights equal (none at 2% of this root)', same(asv.heavy.map((r) => r[0]), [...sv.heavy].map(relPath)));
+    const df = (await answer(tree, 'survey', { v: '1', dupfiles: '4000' }, { v: 1 })).json;
+    const dfWant = [];
+    for (const g of sv.dupGroups) {
+      if (dfWant.length + g.files.length > 4000) break;
+      dfWant.push(...g.files);
+    }
+    check(`dupfiles=4000: the top groups' files whole (${df.files}), as Verify reads them`, df.files === dfWant.length && same(df.groups.flatMap((g) => g.files.map((r) => r[0])), dfWant.map(relPath)));
+    const dupq = runSearch(model, parseQuery('is:dup'));
+    const dupa = (await answer(tree, 'find', { v: '1', q: 'is:dup' }, { v: 1 })).json;
+    check('is:dup reads the survey\'s groups', dupa.total === dupq.set.size && dupa.total > 0);
+    // Heavyweights on a tree that has them.
+    const hb = [[[0, -1, 'h', NOW, 0, ['big.bin', 9e9, NOW, 0, 'small.txt', 10, NOW, 0, 'mid.iso', 2e9, NOW - 1, 0]], [1, 0, 'in', NOW, 0, ['huge.mkv', 9e9, NOW - 5, 0]]]];
+    const hm = modelFrom(hb, 'h');
+    const ht = treeFrom(hb, { name: 'h', anchor: NOW });
+    const hsv = hm.survey();
+    const ha = (await answer(ht, 'survey', { v: '1' }, { v: 1 })).json;
+    check('survey: heavyweights equal where there are some (ties by the walk\'s order)', ha.heavy.length === 3 && same(ha.heavy.map((r) => r[0]), [...hsv.heavy].map(relPath)), JSON.stringify(ha.heavy.map((r) => r[0])));
+    const hreg = (await answer(ht, 'region', { v: '1', ids: '0' }, { v: 1 })).json.regions[0];
+    check('once the survey is worked out, regions carry their heavyweights and candidates by place', same(hreg.hv, [0, 2]));
+
+    // Working sessions.
+    const ts = performance.now();
+    const as = (await answer(tree, 'sessions', { v: '1' }, { v: 1 })).json;
+    const sessionsMs = performance.now() - ts;
+    const rows = sess.slice(0, 40).map((x, i) => {
+      const f = R.sessionFacts(x);
+      return { k: i + 1, start: f.start, end: f.end, count: f.count, bytes: f.bytes, bulk: f.bulk, places: f.places, runs: f.runs, common: relPath(f.common) };
+    });
+    check(`sessions: ${as.count.toLocaleString('en-US')} found, considered ${as.considered.toLocaleString('en-US')} and skipped ${as.skipped.toLocaleString('en-US')}, as relations.sessions finds them`,
+      as.count === sess.length && as.considered === sess.considered && as.skipped === sess.skipped && as.gapMs === sess.gapMs);
+    check('sessions: the newest 40 with their facts (start, end, count, bytes, bulk, places, runs, common folder)', same(as.list, rows));
+    let every = true;
+    for (let k = 1; k <= sess.length && every; k += Math.max(1, Math.floor(sess.length / 120))) {
+      const x = sess[k - 1];
+      const r = (await answer(tree, 'sessions', { v: '1', k: String(k), files: '1000' }, { v: 1 })).json;
+      every = r.facts.start === x.start && r.facts.end === x.end && r.facts.count === x.count && r.facts.bytes === x.bytes && r.facts.bulk === x.bulk
+        && r.total === x.count && same(r.files.map((f) => f[0]), x.files.slice(0, 1000).map(relPath));
+    }
+    check('sessions: a session\'s start, end, count, bytes, bulk and files in time order, across the list', every);
+    const files = [];
+    const st = [model.root];
+    while (st.length) for (const c of st.pop().c) (c.d ? st.push(c) : files.push(c));
+    let ofOk = true;
+    let inOne = 0;
+    for (let i = 0; i < 50; i++) {
+      const f = files[(i * 7919) % files.length];
+      const k = R.sessionOf(sess, f);
+      const r = (await answer(tree, 'sessions', { v: '1', path: relPath(f), near: '8' }, { v: 1 })).json;
+      if (r.k !== k) ofOk = false;
+      if (k) {
+        inOne++;
+        const near = R.nearest(sess[k - 1], f, 8);
+        const at = sess[k - 1].files.indexOf(f);
+        if (!same(r.near.map((x) => x[0]), near.map(relPath)) || r.before !== near.filter((x) => sess[k - 1].files.indexOf(x) < at).length) ofOk = false;
+      } else if (!['changed alone', 'in a folder whose name starts with a dot', 'its last change is not recorded'].includes(r.why)) ofOk = false;
+    }
+    check(`sessions: sessionOf and the 8 nearest for 50 files (${inOne} in a session) equal relations.js's`, ofOk);
+    const sq = (await answer(tree, 'find', { v: '1', q: `session:${jsK} ext:js` }, { v: 1 })).json;
+    const sf = (await answer(tree, 'sessions', { v: '1', k: String(jsK), files: '1000', q: sq.qid }, { v: 1 })).json;
+    check(`a session's files narrowed by a query (session:${jsK} ext:js, ${sf.total})`, sf.total === sq.total && sf.files.every((f) => f[0].endsWith('.js')));
+
+    // Places.
+    const dirs = [];
+    const fl = [];
+    const st2 = [model.root];
+    while (st2.length) for (const c of st2.pop().c) (c.d ? (dirs.push(c), st2.push(c)) : fl.push(c));
+    const nodes = dirs.concat(fl);
+    const lower = nodes.map((n) => n.n.toLowerCase());
+    let pOk = true;
+    for (const text of ['inv', 'img 48', 'node_mod', 'rep', 'photos/2019']) {
+      const byPath = text.includes('/');
+      const paths = byPath ? nodes.map(relPath) : null;
+      const want = rank(text, Array.from(nodes.keys()), { limit: 50, key: byPath ? (k) => paths[k] : (k) => nodes[k].n, lower: byPath ? (k) => paths[k].toLowerCase() : (k) => lower[k] }).map((r) => relPath(nodes[r.item]));
+      const got = (await answer(tree, 'places', { v: '1', q: text, limit: '50' }, { v: 1 })).json.places.map((r) => r[0]);
+      if (!same(want, got)) pOk = false;
+    }
+    check('places equal fuzzy.rank over the same names, folders first, and over paths when the query holds a slash', pOk);
+
+    // Ceilings, on a tree nothing was worked out for.
+    const fresh = treeFrom(batches, { name: 'synthetic', anchor: NOW });
+    let a = performance.now();
+    await answer(fresh, 'find', { v: '1', q: 'report' }, { v: 1 });
+    const findMs = performance.now() - a;
+    a = performance.now();
+    await answer(fresh, 'survey', { v: '1' }, { v: 1 });
+    const freshSurveyMs = performance.now() - a;
+    a = performance.now();
+    await answer(fresh, 'sessions', { v: '1' }, { v: 1 });
+    const freshSessionsMs = performance.now() - a;
+    check(`ceilings at 120,000 entries: find ${findMs.toFixed(0)} ms (300), survey ${freshSurveyMs.toFixed(0)} ms (600), sessions ${freshSessionsMs.toFixed(0)} ms (400)`,
+      findMs <= 300 && freshSurveyMs <= 600 && freshSessionsMs <= 400, `cached: survey ${surveyMs.toFixed(0)}, sessions ${sessionsMs.toFixed(0)}`);
+  } finally {
+    Date.now = realNow;
+  }
 }
 
 fs.rmSync(work, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 });

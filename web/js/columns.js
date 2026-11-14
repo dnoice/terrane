@@ -46,6 +46,13 @@
  *     - answer(): the pure logic of GET /api/tree and GET /api/region,
  *       errors carrying code, status and a sentence; refreshFrom() reads
  *       folders again through injected readers
+ *     - answer() hands the questions that walk the whole tree (find,
+ *       marks, survey, sessions, places) to questions.js; a region asked
+ *       with a search's qid (q), or once the survey is worked out, carries
+ *       its marks by place (region's mark hook)
+ *     - edits counts every build and change, so what questions.js works
+ *       out is kept until the tree changes; lowerNames() keeps every name
+ *       lower-cased once asked for; heldMask(id) is the held set by place
  *     - No DOM: the page, the demo, the service and Node import it alike
  *
  * ✒ Usage Instructions:
@@ -71,7 +78,8 @@
  *
  * ✒ Other Important Information:
  *     - Dependencies: model.js (kindOf, the record D's indices),
- *       timeline.js (LADDER_DAYS, STEPS, DAY)
+ *       timeline.js (LADDER_DAYS, STEPS, DAY), questions.js (the
+ *       whole-tree questions)
  *     - Compatible platforms: any browser with ES2022 modules; Node.js
  *       22.5+
  *     - Performance: about 103 bytes an entry with names, plus 253 bytes
@@ -87,6 +95,7 @@ import {
   kindOf, D_ID, D_NAME, D_MTIME, D_ERR, D_S, D_FC, D_DC, D_H, D_MM, D_CN, D_KS, D_AB, D_AF, D_MD, D_LEN,
 } from './model.js';
 import { LADDER_DAYS, STEPS, DAY } from './timeline.js';
+import { ask, markRegion, QUESTION_ROUTES } from './questions.js';
 
 // The record D's layout is model.js's, which the page's model reads it by.
 export { D_ID, D_NAME, D_MTIME, D_ERR, D_S, D_FC, D_DC, D_H, D_MM, D_CN, D_KS, D_AB, D_AF, D_MD, D_LEN };
@@ -206,6 +215,12 @@ export class ColumnTree {
     this.names = new Map();
     this.held = new Map();
     this.finished = false;
+    // Raised by every build and change: what questions.js worked out for
+    // an earlier value is worked out again.
+    this.edits = 0;
+    // Lower-cased names, made the first time a question needs them and
+    // kept up as names are written: { d: folders', f: files' }.
+    this.lower = null;
   }
 
   /* ---------- counts ---------- */
@@ -284,6 +299,7 @@ export class ColumnTree {
     this.#fit(this.F);
     this.parent[id] = p;
     this.name[id] = name;
+    if (this.lower) this.lower.d[id] = name.toLowerCase();
     this.mtime[id] = mtime || 0;
     this.err[id] = this.#code(err);
     this.kid0[id] = 0;
@@ -310,6 +326,7 @@ export class ColumnTree {
     for (let i = 0, j = at; i < packed.length; i += 4, j++) {
       const name = packed[i];
       this.fname[j] = name;
+      if (this.lower) this.lower.f[j] = name.toLowerCase();
       this.fsize[j] = packed[i + 1];
       this.fmtime[j] = packed[i + 2];
       this.fflags[j] = packed[i + 3];
@@ -408,6 +425,7 @@ export class ColumnTree {
     }
     for (let id = 0; id < this.F; id++) if (parent[id] !== REMOVED) this.#cumulate(id);
     this.finished = true;
+    this.edits++;
     return this;
   }
 
@@ -611,6 +629,7 @@ export class ColumnTree {
     for (const gone of had.values()) removed += this.#drop(gone);
     this.#setKids(id, list);
     this.#recomputeChain(id);
+    this.edits++;
     return { added, removed, changed, addedFiles };
   }
 
@@ -672,6 +691,7 @@ export class ColumnTree {
       this.held.delete(a);
     }
     this.held.delete(id);
+    this.edits++;
     return { folders: made.length + 1, files: this.fc[id] };
   }
 
@@ -686,6 +706,7 @@ export class ColumnTree {
     this.#setKids(p, list);
     const removed = this.#drop(id);
     this.#recomputeChain(p);
+    this.edits++;
     return { removed };
   }
 
@@ -847,12 +868,39 @@ export class ColumnTree {
   }
 
   /**
+   * Every name lower-cased, { d: folders', f: files' }, made once and then
+   * kept up as names are written. V8 hands back the same string for a name
+   * that is lower case already, so most cost one slot.
+   */
+  lowerNames() {
+    if (!this.lower) {
+      const d = new Array(this.F);
+      const f = new Array(this.N);
+      for (let i = 0; i < this.F; i++) d[i] = this.name[i] === undefined ? '' : this.name[i].toLowerCase();
+      for (let j = 0; j < this.N; j++) f[j] = this.fname[j] === undefined ? '' : this.fname[j].toLowerCase();
+      this.lower = { d, f };
+    }
+    return this.lower;
+  }
+
+  /**
+   * Which of id's children its region holds, as a mask over them in scan
+   * order (files, then folders), or null when it holds every one.
+   */
+  heldMask(id, max = REGION_MAX) {
+    this.#live(id);
+    return this.fileN[id] + this.kidN[id] > max ? this.#heldOf(id, max) : null;
+  }
+
+  /**
    * Folder id's region: { id, self: D, n, d: [D...], f: [name, size,
    * mtime, flags, ...], tail: [count, bytes] | null }. Every child when
    * it has max or fewer, else the max largest plus any named in `with`;
    * children in scan order, files then folders, never sorted again.
+   * mark(R, files, kids), when given, hears the held children's slots in
+   * the order sent, so the marks a question adds can name them by place.
    */
-  region(id, { with: names = null, max = REGION_MAX } = {}) {
+  region(id, { with: names = null, max = REGION_MAX, mark = null } = {}) {
     this.#live(id);
     const nf = this.fileN[id];
     const nk = this.kidN[id];
@@ -877,25 +925,33 @@ export class ColumnTree {
     }
     const f = [];
     const d = [];
+    const fj = mark ? [] : null;
+    const dk = mark ? [] : null;
     let tailN = 0;
     let tailB = 0;
     for (let i = 0; i < nf; i++) {
       const j = f0 + i;
-      if (!mask || mask[i]) f.push(this.fname[j], this.fsize[j], this.fmtime[j], this.fflags[j]);
-      else {
+      if (!mask || mask[i]) {
+        f.push(this.fname[j], this.fsize[j], this.fmtime[j], this.fflags[j]);
+        fj?.push(j);
+      } else {
         tailN++;
         tailB += this.fsize[j];
       }
     }
     for (let i = 0; i < nk; i++) {
       const c = this.kids[k0 + i];
-      if (!mask || mask[nf + i]) d.push(this.encodeD(c));
-      else {
+      if (!mask || mask[nf + i]) {
+        d.push(this.encodeD(c));
+        dk?.push(c);
+      } else {
         tailN++;
         tailB += this.s[c];
       }
     }
-    return { id, self: this.encodeD(id), n: nf + nk, d, f, tail: tailN ? [tailN, tailB] : null };
+    const R = { id, self: this.encodeD(id), n: nf + nk, d, f, tail: tailN ? [tailN, tailB] : null };
+    if (mark) mark(R, fj, dk);
+    return R;
   }
 
   /**
@@ -903,7 +959,7 @@ export class ColumnTree {
    * pass maxEntries held entries or about maxBytes of JSON; the rest are
    * listed in more. The first is always sent. with maps an id to names.
    */
-  regionsFor(ids, { with: withMap = null, maxEntries = REGION_ENTRIES_MAX, maxBytes = REGION_BYTES_MAX } = {}) {
+  regionsFor(ids, { with: withMap = null, maxEntries = REGION_ENTRIES_MAX, maxBytes = REGION_BYTES_MAX, mark = null } = {}) {
     for (const id of ids) this.#live(id);
     const regions = [];
     const more = [];
@@ -914,7 +970,7 @@ export class ColumnTree {
         more.push(id);
         continue;
       }
-      const r = this.region(id, { with: withMap?.get(id) || null });
+      const r = this.region(id, { with: withMap?.get(id) || null, mark });
       const e = 1 + r.d.length + r.f.length / 4;
       let b = 700 + r.self[D_NAME].length;
       for (const x of r.d) b += 700 + x[D_NAME].length;
@@ -937,7 +993,7 @@ export class ColumnTree {
    * left out. A path not in the tree is ENOENT, naming the deepest folder
    * found.
    */
-  pathRegions(rel, skip = 0) {
+  pathRegions(rel, skip = 0, { mark = null } = {}) {
     const parts = String(rel).split('/').filter(Boolean);
     const chain = [0];
     let cur = 0;
@@ -956,7 +1012,7 @@ export class ColumnTree {
     const regions = [];
     for (let j = Math.max(0, skip | 0); j < chain.length; j++) {
       const next = j + 1 < chain.length ? this.name[chain[j + 1]] : file;
-      regions.push(this.region(chain[j], { with: next === null ? null : [next] }));
+      regions.push(this.region(chain[j], { with: next === null ? null : [next], mark }));
     }
     const target = file === null ? { id: cur, name: this.name[cur], dir: true } : { id: cur, name: file, dir: false };
     return { regions, target, chain };
@@ -1073,6 +1129,7 @@ function treeInfo(tree, ctx) {
     root: tree ? tree.encodeD(0) : null,
     progress: ctx.progress ?? null,
     loadMs: ctx.loadMs ?? null,
+    prepMs: ctx.prepMs ?? null,
     warm: ctx.warm ?? null,
     mem: ctx.mem ?? null,
     error: ctx.error ?? null,
@@ -1091,25 +1148,36 @@ function idList(text, tree) {
   });
 }
 
+/** The routes answer() takes: the tree, its regions, and the questions that walk the whole of it. */
+export const ROUTES = Object.freeze(['tree', 'region', ...QUESTION_ROUTES]);
+
 /**
- * The route logic of GET /api/tree and GET /api/region, for the service,
- * the demo and the checks. ctx: { threshold, state, v, progress, loadMs,
- * mem, warm, entries, error, relParts (a path's segments, refused as the
- * guard refuses them), readers: { depth1(rel), deep(rel) } for a fresh
- * read, or none to answer fresh from the tree }. Resolves to { status,
- * json }; an error carries code, status and a sentence.
+ * The route logic of GET /api/tree, GET /api/region and the whole-tree
+ * questions (find, marks, survey, sessions, places: questions.js), for
+ * the service, the demo and the checks. ctx: { threshold, state, v,
+ * progress, loadMs, mem, warm, entries, error, relParts (a path's
+ * segments, refused as the guard refuses them), readers: { depth1(rel),
+ * deep(rel) } for a fresh read, or none to answer fresh from the tree }.
+ * Every route but tree names the generation it reads, v. A region request
+ * that names a search (q, its qid) carries its marks, and once the survey
+ * is worked out every region carries its candidates and heavyweights.
+ * Resolves to { status, json }; an error carries code, status and a
+ * sentence.
  */
 export async function answer(tree, route, params = {}, ctx = {}) {
   const q = reader(params);
   if (route === 'tree') return { status: 200, json: treeInfo(tree, ctx) };
-  if (route !== 'region') throw failure('EROUTE', 404, 'No such endpoint.');
+  if (!ROUTES.includes(route)) throw failure('EROUTE', 404, 'No such endpoint.');
   if (!tree) throw failure('ENOTREADY', 503, NOT_READY, { progress: ctx.progress ?? null });
   const vt = q.get('v');
-  if (vt === null || !/^\d{1,10}$/.test(vt)) throw failure('EBADREQ', 400, 'A region request names the generation of the tree it reads, v.');
+  if (vt === null || !/^\d{1,10}$/.test(vt)) throw failure('EBADREQ', 400, 'A request to the tree names the generation it reads, v.');
   const v = ctx.v ?? 1;
   if (Number(vt) !== v) throw failure('ESTALE', 409, STALE, { v });
   const parts = ctx.relParts || defaultParts;
+  if (route !== 'region') return { status: 200, json: ask(tree, route, q, { v, parts }) };
   const anchor = tree.anchor;
+  const qid = q.get('q');
+  if (qid !== null && !/^q\d{1,10}$/.test(qid)) throw failure('EBADREQ', 400, 'A search is named by its qid.');
 
   if (q.get('fresh') === '1') {
     let rels;
@@ -1139,9 +1207,10 @@ export async function answer(tree, route, params = {}, ctx = {}) {
     const live = ids.filter((id) => tree.has(id));
     const up = new Map();
     for (const id of live) for (const a of tree.chainOf(id).slice(0, -1)) if (!live.includes(a)) up.set(a, true);
+    const mark = markRegion(tree, qid);
     return {
       status: 200,
-      json: { v, anchor: tree.anchor, regions: live.map((id) => tree.region(id)), up: [...up.keys()].map((a) => tree.encodeD(a)), gone },
+      json: { v, anchor: tree.anchor, regions: live.map((id) => tree.region(id, { mark })), up: [...up.keys()].map((a) => tree.encodeD(a)), gone },
     };
   }
 
@@ -1157,7 +1226,7 @@ export async function answer(tree, route, params = {}, ctx = {}) {
       if (!withMap.has(id)) withMap.set(id, []);
       withMap.get(id).push(m[2]);
     }
-    const { regions, more } = tree.regionsFor(ids, { with: withMap });
+    const { regions, more } = tree.regionsFor(ids, { with: withMap, mark: markRegion(tree, qid) });
     return { status: 200, json: { v, anchor, regions, more } };
   }
 
@@ -1165,7 +1234,7 @@ export async function answer(tree, route, params = {}, ctx = {}) {
     const rel = parts(q.get('path')).join('/');
     const st = q.get('skip') ?? '0';
     if (!/^\d{1,4}$/.test(st)) throw failure('EBADREQ', 400, 'skip is a whole number of folders.');
-    const { regions, target } = tree.pathRegions(rel, Number(st));
+    const { regions, target } = tree.pathRegions(rel, Number(st), { mark: markRegion(tree, qid) });
     return { status: 200, json: { v, anchor, regions, target } };
   }
 
