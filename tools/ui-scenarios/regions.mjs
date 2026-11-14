@@ -62,7 +62,8 @@
  *       outside, and a tail folder selected (and, without WebGL, the one
  *       you are in) stays so; the status line's entries are the disk's;
  *       in:tailbox in Findings turns to its second page by the arrow on
- *       the count row, the tail there, and back;
+ *       the count row, the tail there, staying on it when a change asks
+ *       the search again, and back;
  *       a page opened again after a file was added and the folder removed
  *       with no page open shows both, and search agrees
  *     - regions-switch (read-only, threshold 1,000): the whole survey
@@ -691,6 +692,11 @@ export default [
       t.check(`Next lists the rest, the tail among them, says "${second.live}", and keeps focus on the arrow`,
         second.listed.length === 13 && second.listed.includes('tailbox/f-5005.dat') && second.listed.includes('tailbox/added-later.txt') && second.live === 'Matches 5,001 to 5,013 of 5,013.'
         && second.focus === 'page-next' && second.nextOff === 'true', JSON.stringify({ ...second, listed: second.listed.slice(0, 4) }));
+      // A change in the folder asks the search again, which stays on the page shown.
+      fs.writeFileSync(path.join(box, 'during-page-two.txt'), 'a change while the second page shows');
+      const again = await t.waitFor((T) => T.S.search?.total === 5014 && { from: T.S.search.from, listed: T.S.search.list.length }, { timeout: 30000, what: 'the search asked again after the change' });
+      t.check(`asked again after a change, the search stays on the page shown (${again.from}, ${again.listed} listed)`, again.from === 5000 && again.listed === 14, JSON.stringify(again));
+      await t.eval(() => document.querySelector('#ledger-sub [data-k="page-next"]')?.focus());
       await t.tabTo('#ledger-sub [data-k="page-prev"]', { back: true, max: 4 });
       await t.key('Enter');
       await t.waitFor((T) => T.S.search.from === 0 && T.list.items.length === 5000, { timeout: 20000, what: 'the first page again' });

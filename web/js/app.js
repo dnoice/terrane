@@ -1779,9 +1779,13 @@ async function runQueryRegions() {
   };
   if (!text.trim()) return none();
   const order = S.findSort || { key: 'size', dir: -1 };
+  // The same search asked again (after a change) stays on the page shown.
+  const was = S.search?.regions && S.search.text === text && S.search.order?.key === order.key && S.search.order?.dir === order.dir ? S.search.from || 0 : 0;
   let ans;
   try {
-    ans = await askTree('find', findParams(text, order));
+    ans = await askTree('find', findParams(text, order, was ? { from: String(was) } : {}));
+    // Fewer matches than the page started at: the last page there is.
+    if (was && !ans.hits.length && ans.total > 0) ans = await askTree('find', findParams(text, order, { from: String(Math.floor((ans.total - 1) / FIND_LIMIT) * FIND_LIMIT) }));
   } catch (err) {
     if (seq === querySeq && S.regions === R && err.code !== 'ESTALE') notice(`The search could not run: ${err.message}`, { kind: 'error' });
     return undefined;
@@ -1790,7 +1794,7 @@ async function runQueryRegions() {
   lastFindMs = Number(ans.ms) || 0;
   if (ans.qid === null) return none();
   const search = {
-    regions: true, qid: ans.qid, text, list: ans.hits.map(refFrom), order: ans.sort || order, total: ans.total, bytes: ans.bytes, from: 0,
+    regions: true, qid: ans.qid, text, list: ans.hits.map(refFrom), order: ans.sort || order, total: ans.total, bytes: ans.bytes, from: ans.from || 0,
     set: new WeakSet(), within: new WeakMap(), tail: new WeakMap(), in: ans.in, sess: ans.sess, note: '',
   };
   S.search = search;

@@ -254,7 +254,9 @@ short form is kept too.
   order, 5,000 to a page.", and findingsPager puts two 24 px icon buttons on the count row ahead
   of the features' tools, Previous and Next 5,000 matches (chevrons, data-k page-prev and
   page-next, aria-disabled with the reason at either end), which ask GET /api/find with from
-  (turnPage) and say "Matches A to B of N."; a new order starts at the first page. The Contents
+  (turnPage) and say "Matches A to B of N."; a new order starts at the first page, and the
+  same search asked again after a change stays on the page shown (the last page there is, when
+  fewer matches remain). Select all stops with a sentence when a region fails. The Contents
   sentence of a folder held in part ends "Find them with in:<path>: Findings turns through
   every match, 5,000 at a time." The status line's entries follow the root's figures, as the
   client now gives them. __terrane.evictSoon() lets regions go once the view settles, for a

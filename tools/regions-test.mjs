@@ -19,7 +19,10 @@
  *       dead slots packed away (4b), a search turned page by page (4c),
  *       the generator's moment as MM/DD/YYYY, and outside changes read
  *       into the kept tree with a page listening or not, the unwatched
- *       recheck, the stale survey and marks never worked out (11).
+ *       recheck, the stale survey and marks never worked out (11). The
+ *       hardening: 47 bad requests refused with a code and a sentence,
+ *       requests in flight while a snapshot is read again, and a folder
+ *       removed between a request and its answer listed in gone.
  *
  * ✒ Description:
  *     Checks the tree the service keeps in columns (web/js/columns.js)
@@ -49,7 +52,10 @@
  *     - The routes in snapshot mode: info.regions, the tree's load, ids,
  *       a chain, a stale generation, the caps, malformed ids, paths that
  *       climb or name the holding area, the token, the Host, POST refused,
- *       a fresh read answered from the tree
+ *       a fresh read answered from the tree, 47 bad requests to every
+ *       region route and question each refused with a code and a sentence,
+ *       and requests in flight while the snapshot is read again answered
+ *       or refused as stale
  *     - The routes in live mode: a build, a fresh read after a file is
  *       written and a folder removed, a new folder filled, read-only
  *       mode, a link that leads outside refused, the warm cache written
@@ -739,6 +745,28 @@ section('6. The routes in snapshot mode (30,000 synthetic entries)');
     check('POST /api/find is 403 ESNAPSHOT', e.status === 403 && e.body.code === 'ESNAPSHOT');
     e = await s.get(`/api/region${q({ v: 1, ids: '0', q: qid })}`);
     check('a region asked with a search\'s qid carries its marks', e.status === 200 && e.body.regions[0].mk?.q === qid);
+    // Bad input to every region route and question: each refused with a
+    // code and a sentence, never answered, never a failure of the service.
+    const bad = [
+      ['region', 'v=99999999999&ids=0'], ['region', 'v=-1&ids=0'], ['region', 'ids=0'], ['region', 'v=1&ids='], ['region', 'v=1&ids=-1'], ['region', 'v=1&ids=1e3'],
+      ['region', 'v=1&ids=4294967296'], ['region', 'v=1&ids=0&with=0:'], ['region', 'v=1&ids=0&with=:a'], ['region', 'v=1&ids=0&with=0:a%00b'], ['region', 'v=1&ids=0&with=0:..'],
+      ['region', `v=1&ids=0&${Array.from({ length: 101 }, () => 'with=0:a').join('&')}`], ['region', 'v=1&path=a%2F..%2F..%2Fx'], ['region', 'v=1&path=a%00b'],
+      ['region', 'v=1&path=&skip=-1'], ['region', 'v=1&path=&skip=99999'], ['region', 'v=1&path=&skip=abc'], ['region', 'v=1&fresh=1'], ['region', 'v=1&fresh=1&paths=notjson'],
+      ['region', `v=1&fresh=1&paths=${encodeURIComponent('{"a":1}')}`], ['region', `v=1&fresh=1&paths=${encodeURIComponent('[1,2]')}`], ['region', 'v=1&fresh=1&paths=%5B%5D'],
+      ['region', `v=1&fresh=1&kept=1&paths=${encodeURIComponent('["../x"]')}`], ['region', 'v=1&ids=0&q=zz'], ['region', 'v=1'],
+      ['find', `v=1&q=${'x'.repeat(2001)}`], ['find', 'v=1&q=a&limit=-5'], ['find', 'v=1&q=a&limit=1e9'], ['find', 'v=1&q=a&from=-1'], ['find', 'v=1&q=a&from=999999999'],
+      ['find', 'v=1&q=a&from=abc'], ['find', 'v=1&q=a&bench=notjson'], ['find', 'v=1&q=a&focus=a%00'],
+      ['marks', 'v=1&q=q1&ids=-1'], ['marks', 'v=1&dup=1&ids=99999999'], ['marks', 'v=1&q=q99999&ids=0'],
+      ['survey', 'v=1&dupfiles=-1'], ['survey', 'v=1&dupfiles=999999'], ['survey', 'v=1&dupfiles=abc'],
+      ['sessions', 'v=1&k=0'], ['sessions', 'v=1&k=-1'], ['sessions', 'v=1&k=99999999'], ['sessions', 'v=1&k=1&files=-1'], ['sessions', 'v=1&path=..%2Fx'], ['sessions', 'v=1&path=&near=999'],
+      ['places', 'v=1&q=a&limit=-1'], ['places', 'v=1&q=a&limit=99999'],
+    ];
+    const answered = [];
+    for (const [route, qs] of bad) {
+      const r = await s.get(`/api/${route}?${qs}`);
+      if (!(r.status >= 400 && r.status < 500 && r.body?.ok === false && r.body.code && r.body.message)) answered.push(`${route}?${qs.slice(0, 60)}: ${r.status} ${r.raw.slice(0, 80)}`);
+    }
+    check(`${bad.length} bad requests to the region routes and questions are each refused with a code and a sentence, none answered or failed`, answered.length === 0, answered.join(' | '));
     // The snapshot read again while regions and questions are in flight:
     // each is answered by the old tree or refused as stale, never failed.
     const flying = [];
@@ -807,9 +835,15 @@ section('7. The routes in live mode (a small tree in the OS temp folder)');
     const chain = await s.get(`/api/region${q({ v: 1, path: 'a/fresh/inner/six.txt' })}`);
     check('and its contents are in the tree', chain.status === 200 && chain.body.target.name === 'six.txt');
     // A folder gone on disk: its parent is read instead.
+    const cId = (await s.get(`/api/region${q({ v: 1, path: 'c' })}`)).body.regions.at(-1).id;
     fs.rmSync(path.join(root, 'c'), { recursive: true });
     r = await s.get(freshQ(['c']));
     check('a folder gone on disk is reported in gone and its parent read', r.status === 200 && same(r.body.gone, ['c']) && r.body.regions[0].self[D_NAME] === path.basename(root) && !r.body.regions[0].d.some((d) => d[D_NAME] === 'c'));
+    // Its id, asked for by a page that has not heard yet: listed in gone, the rest answered.
+    r = await s.get(`/api/region${q({ v: 1, ids: `0,${cId}` })}`);
+    const mk = await s.get(`/api/marks${q({ v: 1, dup: 1, ids: `0,${cId}` })}`);
+    check('a folder removed between a request from a page and its answer is listed in gone, the other ids answered, marks too', r.status === 200 && same(r.body.gone, [cId]) && r.body.regions.length === 1
+      && mk.status === 200 && same(mk.body.gone, [cId]) && mk.body.marks.length === 1, JSON.stringify([r.body.gone, mk.body?.gone]));
     // b/x becomes a link to a folder outside the root.
     fs.rmSync(path.join(root, 'b', 'x'), { recursive: true });
     let linked = true;
