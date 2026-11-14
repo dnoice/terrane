@@ -1,10 +1,10 @@
 <!--
 ✒ Metadata
-    - Title: Shipped File Changelogs (Terrane Edition - v1.12)
+    - Title: Shipped File Changelogs (Terrane Edition - v1.13)
     - File Name: CHANGELOG.md
     - Relative Path: CHANGELOG.md
     - Artifact Type: docs
-    - Version: 1.12.0
+    - Version: 1.13.0
     - Date: 11/14/2026
     - Update: Saturday, November 14, 2026
     - Author: Dennis 'dendogg' Smaltz
@@ -12,6 +12,11 @@
     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
 
 ✒ Changelog:
+    - 1.13.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — Records panel B's tab
+      strip: app.js 1.16.0, index.html 1.8.0 and layout.css 1.4.0, and the first sections for
+      web/css/components/inspector.css (1.3.0) and web/css/print.css (1.3.0), whose 1.0.0
+      entries leave their headers with these releases. app.js's header rolls its 1.13.0 entry
+      out, index.html's its 1.5.0 and layout.css's its 1.1.0; this file already holds them.
     - 1.12.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — Records Wave 4, merged
       with main's flavors and Guide window (app.js 1.15.0, floating.css 1.4.0). First, the
       polish of the panels:
@@ -127,6 +132,42 @@ entry's long form, the header's words are copied in to open it, so the
 short form is kept too.
 
 ## web/js/app.js
+
+- 1.16.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — Panel B's head is a tab strip
+  from B_TABS, the Inspector first and the default, the choice kept in this browser; both strips
+  take the arrows, Home and End. The Inspector draws only while chosen. The api gains B_TABS,
+  drawBTabs, showBTab, bTabShown, composition's title, contentsOrder and get's signal. In full:
+  B_TABS is a registry of { id, owner, order, label, icon, title, mount(host), show(host,
+  { focus }), hide(), focusTarget(host) }, frozen with the others, and the controller's own
+  entry is the Inspector (order 0, icon info, show draws it, focusTarget #inspector-body). S
+  gains bTab. drawBTabs rebuilds #b-tabs with the ledger's tabIcon and tabLabel, each button
+  role tab, id b-tab-<id>, data-btab (never data-tab, which names a ledger tab), aria-controls
+  its panel and every tab in the Tab order; it makes a missing feature panel
+  (div.b-panel#b-panel-<id>, role tabpanel, labelled by its tab, hidden) after #inspector-body
+  in registry order, removes the panel of a tab no longer registered, and falls back to the
+  Inspector without remembering when the chosen tab is gone; fitBTabs sets data-crowded when a
+  label no longer fits. chooseBTab calls the last tab's hide, marks the buttons, hides every
+  panel but the chosen one, mounts it once, shows it only while panel B is on screen, keeps
+  the choice under terrane.panel-b-tab, slides the underline, and moves focus to the tab
+  ('tab'), into the panel ('panel'), or to the tab when focus was left in a panel now hidden.
+  showBTab opens panel B quietly when ] hid it (or the drawer in a narrow window) and chooses
+  the tab, focus in it on request; bTabShown says whether a tab is on screen. togglePanel and
+  the 860 px breakpoint's change tell the chosen tab through followB (show when panel B comes
+  back, hide when it goes), and ] names panel B by the tab it shows. drawInspector only marks
+  the Inspector stale while another tab is chosen, so no GET /api/stat and no 16 KB read
+  happen for a panel no one sees; choosing it draws it, and beforeprint draws a stale one and
+  shows it for the print. start() restores the kept tab after installFeatures and drawTabs,
+  before the region branch, only when a feature still registers it, without rewriting the
+  storage. stripKeys gives the ledger's strip and panel B's ArrowLeft, ArrowRight (wrapping),
+  Home and End, the tab reached chosen and focused, kept from the window's handler (Home on a
+  tab no longer rises to the overview), Ctrl, Meta and Alt left alone. The class .tabs is now
+  shared, so slideIndicators, drawTabs, drawLedgerNow (which set aria-selected on every .tabs
+  button) and the ResizeObserver name #ledger-tabs and #b-tabs. A core Guide row, '← → on
+  tabs', 'Previous / next tab (Home, End: first, last)', follows '[  ]'. composition(dir,
+  title) draws Preview's By kind with the inspector's bar; contentsOrder(dir) is the folder's
+  held children in Contents' order, made from the comparator Contents lists with (sortedContents
+  is now contentsOrder(S.focus), the Untouched order by dir's own typical age); get(route,
+  params, { signal }) passes the signal to fetch.
 
 - 1.15.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — The sheet's polish: the ledger
   head in two rows (the count and its tools, then the keys over the columns; Select all an icon)
@@ -528,6 +569,13 @@ short form is kept too.
 - 1.0.0 (11/09/2026) [dendogg + Anthropic - Claude Fable 5.2] — Initial release.
 
 ## web/index.html
+
+- 1.8.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — Panel B's head is a tab strip
+  (#b-tabs, "Inspector views") where its heading stood, the Inspector its first tab;
+  #inspector-body is that tab's panel. The ledger's strip is named #ledger-tabs. The aside keeps
+  its name, Inspector; the strip stands after the B reference square, its buttons made by app.js
+  from B_TABS; #inspector-body keeps tabindex -1 and gains role tabpanel, labelled by
+  #b-tab-inspector.
 
 - 1.7.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — Every title block label holds its
   words in span.text after an icon (Legend and Status gain theirs), so a narrow cell ends them
@@ -983,6 +1031,10 @@ short form is kept too.
 
 ## web/css/layout.css
 
+- 1.4.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — A feature tab's panel in panel B
+  (.b-panel) fills the panel as #inspector-body does, beside it: position relative, flex 1,
+  min-height 0, so the tab's own pane scrolls inside it.
+
 - 1.3.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — The ledger's head is at most two
   30 px rows of one line: the count row (the count at A, a feature's tools as 24 px icons at its
   end) and the column heads (Name at B, Size on the size column), keeping the list's scroll
@@ -999,6 +1051,47 @@ short form is kept too.
   drawer slides in from the right edge and back out; a ledger caption wraps instead of losing
   its last words, and a count and its sort keys share the sub-line while both fit, the keys
   moving under the count when not.
+
+- 1.0.0 (11/12/2026) [dendogg + Anthropic - Claude Opus 5.5] — Initial release.
+
+## web/css/components/inspector.css
+
+- 1.3.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — Panel B's tab strip (#b-tabs,
+  drawn as the ledger's): once a label no longer fits (data-crowded), only the chosen tab keeps
+  its words. The others keep their label as their name and title, visually hidden as the
+  ledger's are in a narrow ledger; with two tabs it never comes into play.
+
+- 1.2.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — Facts in a 116 px label column,
+  each label on one line, each value on its baseline in parts that break only at a separator,
+  every row at least --row-h; section heads 34 px, one line, a mono figure at the right; the
+  path breaks after a slash, Copy on its first line; the key and item lists on the columns;
+  actions in one column at 300 px or narrower.
+
+- 1.1.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — The Reading the world glyphs take
+  plaster, clay and mass from tokens.css instead of raw colours; .actions-why, the line that
+  says why actions are unavailable. A fact's two-line label keeps its lines together; a path
+  fills each line of its block instead of breaking ragged at its hyphens; sizes come from the
+  type scale.
+
+- 1.0.0 (11/12/2026) [dendogg + Anthropic - Claude Opus 5.5] — Initial release.
+
+## web/css/print.css
+
+- 1.3.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — Paper carries the Inspector
+  whichever tab of panel B is chosen (app.js shows it for the print): a feature tab's panel
+  stays off it, and the strip keeps only the Inspector's tab, inked, as the panel's heading.
+  The base layer's [hidden] rule is important and wins over any later layer, so app.js takes
+  the hidden attribute off #inspector-body before printing and puts it back after.
+
+- 1.2.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — On paper the title block's first
+  cell takes its own width, not the ledger's, since the ledger is not printed.
+
+- 1.1.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — The unused .panel-tool leaves the
+  hidden list; the actions' note joins it. The title block follows the location bar, so the
+  first page carries it; the inspector breaks across pages inside its frame instead of running
+  under the title block; buttons and the Actions heading stay off the paper; the chosen lens is
+  inked without the screen's measured plate; the wordmark keeps its word and the status its
+  whole figures.
 
 - 1.0.0 (11/12/2026) [dendogg + Anthropic - Claude Opus 5.5] — Initial release.
 

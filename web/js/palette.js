@@ -1,11 +1,11 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Command Palette (Terrane Edition - v1.1)
+ *     - Title: Command Palette (Terrane Edition - v1.2)
  *     - File Name: palette.js
  *     - Relative Path: web/js/palette.js
  *     - Artifact Type: javascript
- *     - Version: 1.1.0
+ *     - Version: 1.2.0
  *     - Date: 11/14/2026
  *     - Update: Saturday, November 14, 2026
  *     - Author: Dennis 'dendogg' Smaltz
@@ -13,6 +13,10 @@
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
  *
  * ✒ Changelog:
+ *     - 1.2.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — Panel
+ *       B: "Show Inspector", "Show Preview" and one item for every tab a
+ *       feature adds (B_TABS), each opening panel B when it is hidden and
+ *       putting focus in the tab; the one shown now is marked so.
  *     - 1.1.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] —
  *       In region mode the service ranks the places over every name in the
  *       tree (GET /api/places), as here, and answers refs; a place chosen
@@ -56,6 +60,9 @@
  *       describes a place as the arrows reach it
  *     - An action runs after the sheet has closed and focus is back, so
  *       one that moves focus keeps it where it put it
+ *     - Panel B's tabs, one "Show <tab>" item each from B_TABS, so every
+ *       tab a feature adds is listed: panel B opens if it was hidden (the
+ *       drawer in a narrow window) and focus goes into the tab
  *
  * ✒ Usage Instructions:
  *     Listed in features.js and installed by app.js. A feature offers a
@@ -71,13 +78,14 @@
  *     Ctrl+K, "bulk", Enter       to the folder bulk-write; Contents shows it
  *     Ctrl+K, "docs/raw", Enter   to the best path through docs and raw
  *     Ctrl+K, "copy li", Enter    Copy link to here
+ *     Ctrl+K, "preview", Enter    panel B's Preview tab, focus in it
  *
  * ✒ Other Important Information:
  *     - Dependencies: ui.js (openSheet, el), fuzzy.js (rank), icons.js,
  *       model.js (KINDS, fmtBytes, fmtCount), theme.js (cssHex); app.js's
- *       api: S, KEYS, COMMANDS, AFTER_SURVEY, AFTER_REFRESH, setFocus,
- *       select, reveal, drawLedger, cursorTo, relPath, describe, say,
- *       notice
+ *       api: S, KEYS, COMMANDS, B_TABS, AFTER_SURVEY, AFTER_REFRESH,
+ *       setFocus, select, reveal, drawLedger, cursorTo, showBTab, relPath,
+ *       describe, say, notice
  *     - Compatible platforms: any browser with ES2022 modules and the
  *       dialog element
  *     - Performance: the list of places costs one walk of the tree and one
@@ -379,6 +387,16 @@ export function install(api) {
   api.COMMANDS.add({
     id: 'palette-guide', owner: OWNER, order: 90, section: 'Help',
     items: () => [{ label: 'Show the keys and the guide', hint: '?', run: () => api.KEYS.get('guide')?.run({ k: '?' }) }],
+  });
+
+  // Panel B's tabs, from B_TABS, so every tab a feature adds is listed:
+  // each opens panel B if it was hidden and puts focus in the tab.
+  api.COMMANDS.add({
+    id: 'palette-panel-b', owner: OWNER, order: 80, section: 'Panel B',
+    items: () => [...api.B_TABS].map((tab) => ({
+      label: `Show ${tab.label}`, detail: api.bTabShown(tab.id) ? 'Panel B · shown now' : 'Panel B',
+      run: () => { api.showBTab(tab.id, { focus: true }); },
+    })),
   });
 
   // The places are of the tree as it was surveyed; a survey or a refresh

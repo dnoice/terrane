@@ -5,12 +5,19 @@
  *     - File Name: landmarks.mjs
  *     - Relative Path: tools/ui-scenarios/landmarks.mjs
  *     - Artifact Type: test
- *     - Version: 1.0.0
- *     - Date: 11/13/2026
- *     - Update: Friday, November 13, 2026
+ *     - Version: 1.0.1
+ *     - Date: 11/14/2026
+ *     - Update: Saturday, November 14, 2026
  *     - Author: Dennis 'dendogg' Smaltz
  *     - A.I. Acknowledgement: Anthropic - Claude Opus 5.5
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
+ *
+ * ✒ Changelog:
+ *     - 1.0.1 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
+ *       Places tab is counted among the ledger's tabs by its strip's id
+ *       (#ledger-tabs), since panel B's strip shares the class .tabs.
+ *     - 1.0.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] —
+ *       Initial release.
  *
  * ✒ Description:
  *     Checks benchmarks and the return point in the real page, by
@@ -244,7 +251,7 @@ async function routes(t) {
   await t.app(listenNotices);
   const s0 = await t.app((T) => ({
     has: !!T.places && T.places === T.S.places, n: T.places?.benchmarks.length, key: T.places?.key, root: T.S.info.root, rootName: T.S.model.root.n,
-    tabs: [...document.querySelectorAll('.tabs [role=tab]')].map((b) => b.dataset.tab), noGL: !!T.S.noGL,
+    tabs: [...document.querySelectorAll('#ledger-tabs [role=tab]')].map((b) => b.dataset.tab), noGL: !!T.S.noGL,
   }));
   t.check('window.__terrane.places is the landmarks store, empty at the start', s0.has && s0.n === 0, JSON.stringify(s0));
   t.check('its storage key is terrane.places.v1|<root>', s0.key === `terrane.places.v1|${s0.root}`, s0.key);

@@ -1,11 +1,11 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Polish Scenario (Terrane Edition - v1.0)
+ *     - Title: Polish Scenario (Terrane Edition - v1.1)
  *     - File Name: polish.mjs
  *     - Relative Path: tools/ui-scenarios/polish.mjs
  *     - Artifact Type: test
- *     - Version: 1.0.0
+ *     - Version: 1.1.0
  *     - Date: 11/14/2026
  *     - Update: Saturday, November 14, 2026
  *     - Author: Dennis 'dendogg' Smaltz
@@ -13,6 +13,10 @@
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
  *
  * ✒ Changelog:
+ *     - 1.1.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — Panel
+ *       B's tab strip shares the class .tabs: C2 reads both strips' labels
+ *       by id, and at 800 px checks each strip's tabs inside their own
+ *       panel; clear() puts panel B back on the Inspector by its tab.
  *     - 1.0.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] —
  *       Initial release: the interface's alignment, wrapping and
  *       clipping invariants, measured in the demo world at three window
@@ -225,10 +229,14 @@ function INSTALL() {
         if (keys.length) test('C2', spread(keys.map((k) => R(k).top)) <= 0.5, { el: '.sorts .sort', tops: keys.map((k) => r2(R(k).top)) });
       }
     }
-    for (const l of $('.tabs .tab-label')) test('C2', l.scrollWidth <= l.clientWidth, { el: sel(l), text: txt(l), sw: l.scrollWidth, cw: l.clientWidth });
+    // Both strips (the ledger's and panel B's share the class .tabs): no
+    // label shown is cut, and in a small window every tab fits its panel.
+    for (const l of $('#ledger-tabs .tab-label, #b-tabs .tab-label')) test('C2', l.scrollWidth <= l.clientWidth, { el: sel(l), text: txt(l), sw: l.scrollWidth, cw: l.clientWidth });
     if (opts.size === 'small') {
-      const led = one('#ledger');
-      if (shown(led)) for (const b of $('.tabs [role=tab]')) test('C2', R(b).right <= R(led).right + 0.5, { el: sel(b), text: txt(b), right: r2(R(b).right), edge: r2(R(led).right) });
+      for (const [strip, side] of [['#ledger-tabs', '#ledger'], ['#b-tabs', '#inspector']]) {
+        const p = one(side);
+        if (shown(p)) for (const b of $(`${strip} [role=tab]`)) test('C2', R(b).right <= R(p).right + 0.5 && R(b).left >= R(p).left - 0.5, { el: sel(b), text: txt(b), right: r2(R(b).right), edge: r2(R(p).right) });
+      }
     }
     for (const e of $('#block .cell-label, .section-title, .rich summary:not(.bench > summary), .panel-head h2, .menu-title, .facts dt')) {
       test('C2', lines(e) <= 1, { el: sel(e), text: txt(e), lines: lines(e) });
@@ -546,6 +554,9 @@ async function clear(t) {
     if (S.lens !== 'kind') T.api.setLens('kind');
     S.tab = 'contents';
     T.api.drawLedger();
+    // Panel B back on the Inspector, as a pose expects it, by its tab
+    // (which leaves a closed drawer closed).
+    if (S.bTab !== 'inspector') document.getElementById('b-tab-inspector').click();
     document.querySelectorAll('#notices .notice').forEach((n) => n.remove());
     return true;
   });

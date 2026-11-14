@@ -1,11 +1,11 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Hardening Scenarios (Terrane Edition - v1.6)
+ *     - Title: Hardening Scenarios (Terrane Edition - v1.7)
  *     - File Name: hardening.mjs
  *     - Relative Path: tools/ui-scenarios/hardening.mjs
  *     - Artifact Type: test
- *     - Version: 1.6.0
+ *     - Version: 1.7.0
  *     - Date: 11/14/2026
  *     - Update: Saturday, November 14, 2026
  *     - Author: Dennis 'dendogg' Smaltz
@@ -13,6 +13,10 @@
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
  *
  * ✒ Changelog:
+ *     - 1.7.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
+ *       narrow window's tabs are the ledger's, read by their strip's id
+ *       (#ledger-tabs); with the drawer open at 800 px every tab of panel
+ *       B's strip fits it, the chosen one's label whole.
  *     - 1.6.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — A
  *       whole tree's sessions are now found in a quiet moment after its
  *       survey: after Rescan all the check asks that they are the new
@@ -378,7 +382,7 @@ const hardening = {
     await narrow(t, true);
     const n0 = await t.eval(() => {
       const r = (s) => document.querySelector(s)?.getBoundingClientRect();
-      const tabs = [...document.querySelectorAll('.tabs [role=tab]')].map((b) => b.getBoundingClientRect().right);
+      const tabs = [...document.querySelectorAll('#ledger-tabs [role=tab]')].map((b) => b.getBoundingClientRect().right);
       return {
         insp: getComputedStyle(document.getElementById('inspector')).visibility,
         pressed: document.getElementById('v-inspector').getAttribute('aria-pressed'),
@@ -392,8 +396,20 @@ const hardening = {
     await t.tabTo('#view', { max: 80 });
     await t.key(']');
     await t.sleep(400);
-    const n1 = await t.eval(() => ({ vis: getComputedStyle(document.getElementById('inspector')).visibility, w: document.getElementById('inspector').getBoundingClientRect().width, pressed: document.getElementById('v-inspector').getAttribute('aria-pressed') }));
+    const n1 = await t.eval(() => {
+      const box = document.getElementById('inspector').getBoundingClientRect();
+      const tabs = [...document.querySelectorAll('#b-tabs [role=tab]')].map((b) => {
+        const r = b.getBoundingClientRect();
+        const l = b.querySelector('.tab-label');
+        return { id: b.dataset.btab, left: r.left, right: r.right, cut: !!l && l.scrollWidth > l.clientWidth + 0.5 && b.getAttribute('aria-selected') === 'true' };
+      });
+      return {
+        vis: getComputedStyle(document.getElementById('inspector')).visibility, w: box.width, pressed: document.getElementById('v-inspector').getAttribute('aria-pressed'),
+        bTabsFit: tabs.length > 0 && tabs.every((x) => x.left >= box.left - 0.5 && x.right <= box.right + 0.5 && !x.cut), tabs,
+      };
+    });
     t.check(`] opens the inspector as a drawer (${Math.round(n1.w)} px wide) and its toggle says pressed`, n1.vis === 'visible' && n1.w > 150 && n1.pressed === 'true', JSON.stringify(n1));
+    t.check(`every tab of panel B's strip fits the drawer, the chosen one's label whole (${n1.tabs.map((x) => x.id).join(', ')})`, n1.bTabsFit, JSON.stringify(n1.tabs));
     await t.key(']');
     await t.sleep(400);
     const n2 = await t.eval(() => ({ vis: getComputedStyle(document.getElementById('inspector')).visibility, pressed: document.getElementById('v-inspector').getAttribute('aria-pressed') }));

@@ -1,11 +1,11 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Print Sheet (Terrane Edition - v1.2)
+ *     - Title: Print Sheet (Terrane Edition - v1.3)
  *     - File Name: print.css
  *     - Relative Path: web/css/print.css
  *     - Artifact Type: stylesheet
- *     - Version: 1.2.0
+ *     - Version: 1.3.0
  *     - Date: 11/14/2026
  *     - Update: Saturday, November 14, 2026
  *     - Author: Dennis 'dendogg' Smaltz
@@ -13,6 +13,11 @@
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
  *
  * ✒ Changelog:
+ *     - 1.3.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — Paper
+ *       carries the Inspector whichever tab of panel B is chosen (app.js
+ *       shows it for the print): a feature tab's panel stays off it, and
+ *       the strip keeps only the Inspector's tab, inked, as the panel's
+ *       heading.
  *     - 1.2.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — On paper
  *       the title block's first cell takes its own width, not the ledger's,
  *       since the ledger is not printed.
@@ -24,8 +29,7 @@
  *       the Actions heading stay off the paper; the chosen lens is inked
  *       without the screen's measured plate; the wordmark keeps its word
  *       and the status its whole figures.
- *     - 1.0.0 (11/12/2026) [dendogg + Anthropic - Claude Opus 5.5] —
- *       Initial release.
+ *     Earlier entries: see CHANGELOG.md
  *
  * ✒ Description:
  *     What Ctrl+P produces: a landscape survey sheet of the current view.
@@ -84,6 +88,10 @@ main { display: grid; grid-template-columns: 1fr 74mm; gap: 6mm; margin: 6mm 0; 
    of the frame and under the title block. */
 #inspector { display: block; visibility: visible !important; opacity: 1 !important; border: 1pt solid #000; overflow: visible; }
 #inspector-body { display: block; overflow: visible; }
+/* Panel B prints the Inspector, whichever tab is chosen: its tab stands
+   as the panel's heading, inked, and a feature tab's panel stays off. */
+.b-panel, #b-tabs button:not([data-btab='inspector']), #b-tabs::after { display: none !important; }
+#b-tabs button { color: var(--text); }
 
 .facts > div, .reading li, .comp-key li, .section-title { break-inside: avoid; }
 .section-title { break-after: avoid; }
