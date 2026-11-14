@@ -1,10 +1,10 @@
 <!--
 ✒ Metadata
-    - Title: Shipped File Changelogs (Terrane Edition - v1.11)
+    - Title: Shipped File Changelogs (Terrane Edition - v1.12)
     - File Name: CHANGELOG.md
     - Relative Path: CHANGELOG.md
     - Artifact Type: docs
-    - Version: 1.11.0
+    - Version: 1.12.0
     - Date: 11/14/2026
     - Update: Saturday, November 14, 2026
     - Author: Dennis 'dendogg' Smaltz
@@ -12,6 +12,34 @@
     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
 
 ✒ Changelog:
+    - 1.12.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — Records Wave 4, merged
+      with main's flavors and Guide window (app.js 1.15.0, floating.css 1.4.0). First, the
+      polish of the panels:
+      app.js 1.15.0, index.html 1.7.0, tokens.css 1.4.0 and landmarks.js 1.4.0. Adds the sections
+      for web/css/layout.css, web/css/components/ledger.css, web/css/components/traverse.css,
+      web/js/traverse.js, web/js/time.js, web/js/interior.js and web/js/icons.js, whose 1.0.0
+      entries left their headers with these releases. app.js's header rolls its 1.9.0 entry out,
+      and its header words now open the long form kept here. The title block, bar and
+      instruments that follow add the section for web/css/components/stage.css, whose 1.0.0
+      entry left its header with stage.css 1.3.0. app.js 1.15.0's long form adds that
+      sectionTitle takes a separator, so the Since head keeps reading "Since MM/DD/YYYY".
+      Scale's region mode extends the entries of app.js (1.15.0), landmarks.js (1.4.0),
+      time.js (1.3.0), traverse.js (1.3.0) and interior.js (1.3.0), and records model.js
+      1.6.0 and layout.js 1.5.0, whose 1.3.0 and 1.2.0 entries leave their headers; this
+      file already holds them. It adds the section for web/js/places.js, whose 1.0.0 entry
+      left its header with places.js 1.3.0. The whole-tree questions answered by the service
+      extend the entries of app.js (1.15.0), model.js (1.6.0) and traverse.js (1.3.0), and the
+      warm cache checked by folder modification times that of app.js again. The Stage 4 exit
+      test extends app.js's again and records ui.js 1.5.0, whose 1.2.0 entry leaves its
+      header; this file already holds it. The review's fixes extend the entries of app.js
+      (1.12.0), model.js (1.6.0), traverse.js (1.3.0) and landmarks.js (1.4.0): changes from
+      outside read into the service's tree and asked for as kept, entries held past a
+      folder's 5,000 kept through refills, the search and survey asked again at a pace the
+      service can bear, Findings turned page by page, the status line's entries from the root,
+      a whole tree's sessions found in a quiet moment, and a benchmark that cannot be read
+      said so. The docs and sweep of Wave 4 make time.js 1.3.0's long form open with its
+      header's words, as every other new entry here does, and extend app.js 1.15.0's entry: a
+      search's answer in region mode is painted and listed once as it lands.
     - 1.11.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — Records the Guide window:
       app.js 1.14.0 and the first section for web/css/components/floating.css (1.3.0), whose
       1.0.0 entry leaves its header with that release. app.js's header rolls its 1.11.0 entry
@@ -100,6 +128,161 @@ short form is kept too.
 
 ## web/js/app.js
 
+- 1.15.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — The sheet's polish: the ledger
+  head in two rows (the count and its tools, then the keys over the columns; Select all an icon)
+  with one-line captions; facts from parts, sectionTitle and the path broken after each slash;
+  the legend's whole chips behind +N; the status reads files, bytes, folders; the veil's error
+  on its own line. A tree above the region threshold, or one a survey finds past it, is drawn
+  from regions (regions.js) the page asks for as the eye nears them; a folder's region is held
+  before you go there or select it; changed folders are read again as fresh regions. Region
+  answers are decoded in a module worker, and regions are let go under a budget of held entries,
+  never a pinned folder or one standing open. The service answers search, the survey and Verify
+  there: Findings lists the first 5,000 of the true total as refs, each made a node when acted
+  on, and marks by name dim and pin what is held. A warm start is checked by folder modification
+  times (GET /api/check), and in region mode in place by the service while changes wait. What
+  follows a region landing, a layout's location and a reveal's panels run in tasks of their own
+  there; the Survey is not drawn again on select, and its closed sections of many rows build
+  them when first opened; a reveal paints its selection once. After the review: changes the
+  service read itself are asked for as kept, pinned children past a folder's 5,000 kept through
+  refills, the search and survey asked again at a pace the service bears, and Findings turned
+  page by page. A search's answer in region mode is painted and listed once as it lands, not
+  twice in one task. drawContents builds
+  div.sub-row.is-count
+  (span.sub-count with span.n "14 items" and span.b " · 199 GB", then the LEDGER_SUB tools) and
+  div.sub-row.is-columns with the sort keys in the order seen, Name, Changed, Untouched, Size;
+  drawFindings the count row, the
+  note as a row of its own (div.sub-row.sub-note), then Select all as an icon button named by
+  its words (span.sr) in the mark slot and the keys Changed and Size. #ledger-sub carries
+  data-tab, so the stylesheet can let the selection's total stand in for the bytes in Contents
+  and for the count in Findings. Captions are one line of 36 characters or fewer, their words
+  also their title: "Noteworthy conditions, every level", "Changes and the holding area", "Type
+  in Find to search every level.", "Compiled once the survey is done", "Runs again once the
+  survey is done". A disclosure's title is a span.t, so it can end in an ellipsis. In the
+  inspector fact() titles its label, and api.parts(...) builds a value from span.part nodes
+  joined by " · ", so a value breaks only after a separator: Size, Contains, Levels and the
+  selection's Size use it. api.sectionTitle(text, figure, sep) draws a section's head with its
+  figure in a mono span.n at the right, an .sr separator before it (" · " unless given) so its
+  text reads as before ("Preview · first 16 KB", and "Since MM/DD/YYYY", whose separator is a
+  space); every head the controller draws uses it. The fact "Of the archive" is "Of archive". A
+  path is text with a <wbr> after every "/". actionButton takes named, which marks a button
+  whose label carries a name (data-named) as one that may wrap. The legend's label words go
+  through setLabel into span.text, "Kind" with " · click to isolate" as a tail a narrow window
+  drops; fitLegend keeps the chips that fit whole and puts the rest behind a "+N" chip whose
+  menu (openMenu) isolates each kind as its chip does, steps Verify by content out when it does
+  not fit, and runs after each draw and on a ResizeObserver of #legend. The Duplicates legend
+  draws each group as a swatch and its words. The status line reads files, bytes, folders, so a
+  narrow cell's ellipsis takes folders first, and its label's words go into span.text beside the
+  lamp's icon. fatal() takes a detail: a quiet message is a sentence, and "3D view unavailable"
+  puts WebGL's error on a line of its own instead of in the middle of the sentence.
+  Region mode (Scale, Stage 4): GET /api/info's regions decides at the start, when the
+  threshold is 0 or the entries known are above it. When the service cannot say how large the
+  tree is, a whole survey counts root.fc + root.dc + 1 per batch and, once past the threshold,
+  stops (an AbortController through scanStream), drops the partial model and asks GET
+  /api/tree?build=1, the loading sheet and the veil saying "Large directory: reading it in
+  regions". startRegions opens the tree with a region client (createRegions), and takeRegions
+  puts the new model in place with nothing selected, the survey's placeholder ({ regions: true }
+  and empty lists), AFTER_SURVEY { full, regions } and a layout. relayout hands S.layout.want to
+  the client unless there is no WebGL, and a landed batch queues a layout in 30 ms; the
+  terrane:relayout, terrane:paint and terrane:ledger measures name a long task in a trace.
+  setFocus, select, stepSelection down into a folder, moveFocus and reveal hold the folder's
+  region first in region mode, with sequence numbers so a late answer never overrides a newer
+  action, and stay synchronous with a whole tree. refreshDirs reads folders again through
+  S.regions.refresh (fresh=1) and prunes as before, with no survey in the page; Rescan all and a
+  new generation (409 ESTALE) open the tree again and keep the folder you are in by its path.
+  kids() replaces c.length in paint's HOLLOW test, rowFor, the Contents count, nodeTitle, the
+  levels tip and the Travelling sentences, and Contents says "The largest 5,000 of 1,000,000
+  items are listed; the other 995,000, 1.2 GB, lie in the scree." of a folder held in part.
+  Search, the Survey and Verify are the service's in region mode (below). The api gains
+  regionMode, ensure, resolve, resolveAll, resolveRef, nearest, kids and notAtSize;
+  __terrane gains regions; the status line ends "Regions · N of M entries held". The
+  client's transport sends GET /api/region to a module worker (region-worker.js, made the
+  first time, given the token once): it fetches, parses and decodes there and posts the typed
+  arrays back with their buffers transferred, so the main thread builds nodes and never parses
+  an answer; the demo world, whose answers a worker's fetch never reaches, and a browser
+  without workers decode on the main thread, and a worker that fails hands what waits on it
+  to the main thread. __terrane.regionWorker says which. After a batch lands, once the entries
+  held pass the budget (200,000, down to 150,000) and the view is settled (no flight, no
+  transition, no layout waiting), the client lets go the least recently opened regions,
+  deepest first, except the folders regionPins names (the folder you are in, the folder of
+  everything selected and every selected folder's own, the trail, the forced chain, a held
+  flight's folder, every benchmark's and the return point's, an open archive's folder, with
+  every ancestor) and those standing open in the layout, then lays out again without
+  animation; prefetch stops once the floor is reached, so a view never loads what it would let
+  go. In region
+  mode runQuery asks GET /api/find through askTree (parsed in the worker) with the query, the
+  order, limit 5,000, the folder you are in and, for is:benchmark, the benchmarks' paths, and
+  returns a promise; a later query drops an earlier answer. S.search is then { regions, qid,
+  list (refs), order, total, bytes, set (a WeakSet), within and tail (WeakMaps), in, sess }, so
+  a search never keeps a region alive. The marks of every folder held are asked 1,500 at a time
+  (GET /api/marks), and every region asked while a search shows carries its own by place
+  (regionMarks, through the client's extra and onFilled). A sort key asks again with the
+  qid; the count, q-count and the Findings tab say the total, and "The first 5,000 of N
+  matches, in this order." when it is larger; Select all takes the first 1,000, holding each
+  folder's region once and finding its matches there by name (one in a tail is asked for
+  alone), and says "Select all takes the first 1,000 matches at this size."; screeHasMatch
+  reads the tail.
+  resolveRow makes a ref a node and puts it in its list's place; select, reveal, a row's
+  click, double-click and context menu and the list's keys do it first, so S.sel and
+  S.primary only ever hold nodes. The survey is asked of the service (debounced after a
+  refresh, as a page survey is) and lists refs with the whole tree's counts ("The first 300 of
+  N." where a list is longer); heavyweights are pinned from hv and candidates stamped as dup on
+  held files (GET /api/marks?dup=1). Verify reads the top groups' files (dupfiles=4000) and
+  hashes them by path, keeps what it proved by path (provedRel) and regroups later surveys
+  with it (dupMap); duplicate ties reach the held box nearest each copy. api.ask and
+  api.resolveRow serve the features, and __terrane.asked counts the questions and their times.
+  The warm start's catch-up becomes checkUp: GET /api/check is read whole (a line with error
+  fails it), then each folder listed again is taken on with Model.reconcile and each new one
+  with Model.ingest, parents first, so every node still there is kept; the settle sequence and
+  the eye's hold are as before, and the notice reads "Checked against the disk: N folders read
+  again; M files changed, A here now, R gone since the last session." or "Nothing changed since
+  the last session." A check that fails keeps its wording, and Survey again runs the old
+  catch-up (surveyAgain: a whole survey taken on with Model.adopt). The change stream's swept
+  event says "N files rewritten in place since the last session were read again." when the
+  sweep read any. In region mode a tree the service read from the cache arrives with
+  warm.checking: S.warm is set with the notice "... Checking it against the disk; changes wait
+  until then.", the page polls GET /api/tree?peek=1 each second (or hears checked), then reads
+  again what the check listed (warm.checked.dirs) with what the change stream asked for, clears
+  S.warm and says what the check found. For the Stage 4 exit test's frames: in region mode the
+  reveal, the go, the step into a folder and a ref's row act in the task after the one that
+  ingested the region they waited for (nextTask); a tab entry may say selection: false (the
+  Survey), and select() then leaves the ledger as it is; section() takes one function as its
+  body and builds it the first time the section is open, which Duplicate candidates, Empty
+  folders and Symbolic links do; revealNow sets the selection before the layout it forces, so
+  that layout's paint shows it and select({ painted: true }) does not paint again, and in region
+  mode that select (the inspector and the ledger) runs in the next task; in region mode relayout
+  updates the location in the next task too (queueWhere), since updateWhere can draw the ledger
+  and the inspector again; buildLayout is measured as terrane:layout and drawInspector as
+  terrane:inspector. The Contents sentence of a folder held in part ends "Find them with
+  in:<path>." (in:/ for the root, the path in quotes when it holds a space), now that the
+  service answers that search.
+  After the review of Wave 4. The service reads changes from outside into its own tree, so in
+  region mode a change event that says kept is asked for with kept=1 (refreshDirs' kept
+  option), which reads nothing; the regions refreshed are batched (refreshRegions): what
+  arrives while one refresh runs joins the next, fresh reads first, then kept ones. regionsChecked
+  asks for what the warm check read as kept. The region client is given pinned() (regionPins,
+  the selection, the primary, the folder you are in and an open archive's file), so a refill
+  names those children with with= and keeps them wherever they rank, and onGone, which reads
+  again the parent of a folder the service no longer has. The transport writes a list value as
+  its key repeated (regionQuery). After a refresh the search is asked again no sooner than six
+  times the service's last search took (queueQueryAgain, lastFindMs from the answer's ms), and
+  in region mode one survey waits at a time without being pushed back by later changes; a
+  survey answered stale keeps what is shown, asks no marks and is asked again after its retry.
+  Findings in region mode turns 5,000 at a time: the note reads "Matches A to B of N, in this
+  order, 5,000 to a page.", and findingsPager puts two 24 px icon buttons on the count row ahead
+  of the features' tools, Previous and Next 5,000 matches (chevrons, data-k page-prev and
+  page-next, aria-disabled with the reason at either end), which ask GET /api/find with from
+  (turnPage) and say "Matches A to B of N."; a new order starts at the first page, and the
+  same search asked again after a change stays on the page shown (the last page there is, when
+  fewer matches remain). Select all stops with a sentence when a region fails. The Contents
+  sentence of a folder held in part ends "Find them with in:<path>: Findings turns through
+  every match, 5,000 at a time." The status line's entries follow the root's figures, as the
+  client now gives them. __terrane.evictSoon() lets regions go once the view settles, for a
+  check that lowered the budget. The sweep of Wave 4 found the longest task of the exit test,
+  the task in which a search's answer arrives from the worker, painting the world and drawing
+  the ledger twice: runQueryRegions did both, and applyQuery's show did both again in the same
+  task. runQueryRegions now resolves true once it has drawn, and show then draws the ledger
+  again only when the search changed the tab,
+  which took that task from 16.3 ms of script at 2,000,000 entries to 13.0 ms.
 - 1.14.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — The Guide is one window in four
   tabs: Keys, Mouse, Reading the world and Settings, the last one opened kept. Reading the world
   leaves the inspector for it, so the inspector's space is free. In full: showGuide(tab) builds
@@ -293,6 +476,7 @@ short form is kept too.
   Contents and Findings sort keys sit in one group that moves under the count in a narrow
   ledger; the inspector's Copy, and New folder's Create and Rename's confirm buttons carry icons
   as their neighbours do. The header's 1.5.0 entry rolled out to keep it within 40 lines.
+
 - 1.6.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — Findings sorts by Size or
   Changed; a search opens in the order it asks for and keeps the one chosen until the query
   changes, and Select all follows the order shown. The Survey tab's sections are a registry
@@ -307,6 +491,7 @@ short form is kept too.
   anything is sent; the keys, menu and inspector say why. Paint walls it in the file's colour,
   hatches locked entries and half-bands twins, tied as the relation set 'twins'. The api gains
   hostOf and listCursor.
+
 - 1.5.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — Paint draws a box the layout marks
   AUX.CROSSED (the time view) in the crossed convention, its colour washed 60% toward paper unless
   it is selected; a Contents row whose entry is crossed carries a crossed swatch and says so to
@@ -314,14 +499,17 @@ short form is kept too.
   carried out (Undo included, with the paths it moved back) before the folders are re-read, and a
   change that stopped part way with what it finished; MENU entries add a group of context menu
   items; window.__terrane.places is the landmarks store.
+
 - 1.4.0 (11/12/2026) [dendogg + Anthropic - Claude Opus 5.5] — The loading sheet (splash.js)
   covers the page from start until the service answers and the first survey batch is drawn,
   naming each stage; it leaves early on either failure so the veil can explain.
+
 - 1.3.0 (11/12/2026) [dendogg + Anthropic - Claude Opus 5.5] — Icons on menus, tabs, sort keys,
   actions and operations; the north arrow and storage scale over the world (hud.js); tab and lens
   indicators that slide; status figures that count to their new values; the inspector settles in
   when its subject changes; the veil lifts away instead of vanishing; panel toggles and a Find
   clear button.
+
 - 1.2.0 (11/11/2026) [dendogg + Anthropic - Claude Opus 5.5] — Paint uses the STYLE table; the
   viewport's notices are shown; the title block says when a layout left blocks out to stay in
   budget. Keys, Escape, pins, hover lines, inspector sections, Reading rows, tabs, layout options
@@ -331,13 +519,24 @@ short form is kept too.
   Contents can go down levels. Every survey rebuilds a shared table of each folder's bytes and
   files by last change (S.ages), and Rescan all drops the old one. The Menu key opens the menu
   without WebGL instead of throwing.
+
 - 1.1.0 (11/11/2026) [dendogg + Anthropic - Claude Opus 5.5] — A progress panel with Cancel for
   copy, move and remove; snapshot mode (status, refusals, newer-snapshot notice); thumbnails in
   the inspector and the hover tip in place of original files; the journal tab marks
   earlier-session and purged entries.
+
 - 1.0.0 (11/09/2026) [dendogg + Anthropic - Claude Fable 5.2] — Initial release.
 
 ## web/index.html
+
+- 1.7.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — Every title block label holds its
+  words in span.text after an icon (Legend and Status gain theirs), so a narrow cell ends them
+  in an ellipsis. PER SQUARE takes the tight voice; the placing banner lists Cancel before Place
+  where I am, as they are seen. The Legend label draws swatch-book and the Status label
+  activity, so every cell label has an icon; app.js writes a label's words into its span.text,
+  so the icon stays. The storage scale's unit is span.caps-tight. In the placing banner Cancel
+  now comes first in the DOM, so Tab reaches the buttons in the order the eye does: the sentence
+  on its own row, then Cancel and Place where I am at the right.
 
 - 1.6.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — js/elsewhere.js, a classic script
   before the app, tells a page the service did not serve how to start Terrane. The altitude
@@ -346,19 +545,25 @@ short form is kept too.
   names; the ledger's rich panel and the inspector body take focus when a redraw removes the
   control that had it. The placing banner's buttons carry icons, and Cancel names its key;
   Find's example tokens are single-spaced, so the whole line fits the field at full width.
+
 - 1.5.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — An As of cell in the title block: a
   stepper for the date the world looks back to (earlier, the date or Now, later), reachable by Tab.
+
 - 1.4.0 (11/12/2026) [dendogg + Anthropic - Claude Opus 5.5] — The loading sheet's host, first in
   the body: the T is surveyed and laid down stratum by stratum while the service connects and the
   first survey arrives, then the sheet is excavated away.
+
 - 1.3.0 (11/12/2026) [dendogg + Anthropic - Claude Opus 5.5] — Icons on every tool, the survey
   frame and instruments over the world (north arrow, storage scale), panel toggles in the view
   tools, a clear button and key hint in Find, a strata favicon, and the vendored Motion and
   Floating UI scripts.
+
 - 1.2.0 (11/12/2026) [dendogg + Anthropic - Claude Opus 5.5] — The ledger's tab buttons are made
   by app.js from its tab registry, so a feature can add a tab without editing this page.
+
 - 1.1.0 (11/11/2026) [dendogg + Anthropic - Claude Opus 5.5] — Adds the panel that holds
   operations in progress, at the lower left of the world.
+
 - 1.0.0 (11/09/2026) [dendogg + Anthropic - Claude Fable 5.2] — Initial release.
 
 ## web/css/terrane.css
@@ -401,6 +606,19 @@ short form is kept too.
 - 1.0.0 (11/09/2026) [dendogg + Anthropic - Claude Fable 5.2] — Initial release.
 
 ## web/js/layout.js
+
+- 1.5.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — Region mode: a folder's count is
+  kids(dir), so one held in part puts its tail's entries and bytes in its scree; a folder whose
+  children are not held (u) stands as a closed mass and goes into layout.want when it would
+  open, and from 0.6 of that distance. With every folder held whole the layout is the same as
+  before. eps and the total weight use the count; the scree's count is the count less the
+  boxes drawn, its weight takes tail.s + eps × tail.n and its size tail.s, and a scree of one
+  stands on its own only when the page holds that one. The empty test is ch.e || kids(ch) ===
+  0. A folder with u never opens and keeps _open false; when it would open (forced, or a ratio
+  over OPEN_AT) it is wanted with pri ratio / OPEN_AT (8 at least when forced), and over
+  PREFETCH (0.6) of OPEN_AT with that lower priority. The final attempt's want is returned,
+  highest pri first. tools/partial-test.mjs lays out the regions loaded until want is empty and
+  finds the layout equal to the whole tree's, box for box.
 
 - 1.4.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — An open archive (options.inside)
   stands as a chamber on its file's footprint: four WALL boxes on the edges and, between them,
@@ -531,6 +749,12 @@ short form is kept too.
 
 ## web/js/ui.js
 
+- 1.5.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — The virtual list draws a new size
+  in a task of its own: drawn inside its ResizeObserver, it read its size while another observer
+  of the same frame had changed the page, and laid it all out again. The draw waits behind one
+  setTimeout (several resizes in a frame draw once); measured at a million entries in region
+  mode, the frame that held it had run 19.6 ms of script, most of it that forced layout.
+
 - 1.4.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — openSheet(build, {
   className, label, onKey }): a sheet in the shared dialog for something richer than ask(),
   first the command palette. build(body) fills it before it opens; it is modal, so the
@@ -603,6 +827,32 @@ short form is kept too.
 
 ## web/js/model.js
 
+- 1.6.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — Region mode: a Model made with {
+  regions: true } holds only the regions the page asked for, through fillRegion, refillRegion
+  (children kept by name and kind), dropRegion and setFigures, every figure the service's.
+  dirFrom makes a folder from a record D, whose layout (D_ID to D_LEN) is defined here; kids(n)
+  is a folder's count, the service's when it has one; relPath gives a ref its own path, and
+  refFrom makes a ref from the service's tuple for the lists. After the review, refillRegion
+  keeps a child a region with a tail does not list when keep(child) says so, and names the held
+  folders whose name now stands for another id (renewed). A record D is 62 values, [id,
+  name, mtime, err, s, fc, dc, h, mm, cn, k0..k8, b0..b20, f0..f20, md]; columns.js writes it
+  and re-exports the indices, and timeline.js reads its age row. A region folder is a Model
+  folder plus x (its service id), cn (its direct children), u (true while its children are not
+  held), tail ({ n, s } of the children a region does not hold) and g (its age row, a
+  Float64Array of 43). fillRegion takes a decoded region (regions.js decode) and makes files as
+  #addFiles does and folders through dirFrom, in the order sent; refillRegion keeps every node
+  still there, as reconcile does, a kept folder with its own region; dropRegion returns the
+  folders beneath that held their children; setFigures marks the parent to sort again when the
+  size changed. A model in region mode is never given to reconcile, recompute, survey or adopt.
+  refFrom(t) reads the tuple [rel, d, s, m (mm for a folder), k, f, fc, cn, e, x or -1, pid]
+  into { ref: true, n, d, s, m, mm, k, f, fc, cn, e, rel, pid, x, p }, p a ref of the parent's
+  path, so rowFor, itemButton, describe and the CSV rows draw it as they draw a node.
+  refillRegion(dir, R, keep) keeps a child the region does not list when the region has a tail
+  and keep(child) says so: it follows the region's own children, so the marks a region
+  carries by place still find theirs, and the tail no longer counts it. It returns { added,
+  removed, kept, renewed }, renewed the held folders whose name now stands for another id, whose
+  regions the client lets go.
+
 - 1.5.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — Camera RAW files are images:
   cr3, nrw, srf, sr2, raf, rw2, orf, pef, srw, 3fr, erf, kdc, mrw, x3f and iiq join cr2, nef,
   arw and dng. Canon's CR3 had counted as Other, so a photo library shot in it read as grey.
@@ -637,6 +887,24 @@ short form is kept too.
 
 ## web/js/landmarks.js
 
+- 1.4.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — The Places caption carries its
+  words as a title and its heads a span.t; Set benchmark on a named folder is data-named. The
+  inspector's Benchmark head carries its date as a figure, its text unchanged; Then and Now
+  break only at separators; Set benchmark stands in an actions grid. In region mode B reads the
+  folder's region before measuring, J finds the return point by its path, and the first survey
+  reads every benchmark's folder by its path before comparing; a region the service cannot
+  answer then says no benchmark was set. The head is
+  api.sectionTitle('Benchmark', date), whose text still reads "Benchmark · MM/DD/YYYY HH:MM".
+  measureText gave way to measureParts, the size, files and folders as api.parts. In the Places
+  tab the button that names a folder (Set benchmark on "x", Measure "x" again) is marked
+  data-named, the one kind of button that may wrap. With no benchmark the inspector says None in
+  p.bench-none and puts Set benchmark, full width, in an .actions-grid of its own, as Terminal
+  here is. In region mode the places hook asks api.resolveAll for the benchmarks' and the
+  return point's paths, then store.resolve finds them held and the page pins their folders; B
+  awaits api.ensure(dir) after reading the folder again; J calls api.resolve, and in a whole
+  tree goes on at once as before. When that region fails, B says "No benchmark was set: x could
+  not be read (why)." instead of leaving the failure unheard.
+
 - 1.3.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — The Places tab ends with the
   sections other features keep there (api.tabSections('places')), such as Saved searches,
   after the return point. A batch rename (body type 'renames') carries benchmarks along by
@@ -662,17 +930,33 @@ short form is kept too.
   finds the benchmarks on a full survey and on the catch-up's settled one; the notice of
   benchmarks that changed is given on a full survey that is not warm, or on the settled
   one, never of the tree from the last session itself.
+
 - 1.2.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — A Find that asks
   is:benchmark runs again whenever the benchmarks change, so Findings, its count, the pins
   and the dimming follow; J opens a folded return point through api.forceOpen, so the
   overview ends that unfold.
+
 - 1.1.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — A folder inside an open
   archive takes no benchmark: B says why, the menu item is unavailable and the inspector
   has no Benchmark section for it. H there marks the return point in the folder that holds
   the archive, and J there keeps that folder as the point J again comes back to.
+
 - 1.0.0 (11/12/2026) [dendogg + Anthropic - Claude Opus 5.5] — Initial release.
 
 ## web/css/tokens.css
+
+- 1.4.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — The sheet's grid as tokens:
+  --gutter, --mark-w and --mark-gap, and the text columns they make, --row-indent (B, 32 px, was
+  28) and --row-indent-2 (C); --row-pad-x is the gutter. --facts-label-w, --guide-key-w,
+  --readout-w, --cell-label-h, and the parts of the three uppercase voices. --guide-key-w is
+  104 px, so the Guide's longest key, Numpad 2 4 6 8, keeps one line. A side panel's text
+  stands on three columns measured from its inner edge: A at the gutter (12 px) for marks and
+  for text with no mark, B (32 px) for the text after a mark, C (52 px) for a nested row's text;
+  every place that used the old 28 px indent now reads B. --facts-label-w (116 px) gives every
+  inspector fact label one line; --guide-key-w (104 px) is the guide's shared key column;
+  --readout-w (25ch) holds the altitude readout to one width; --cell-label-h (12 px) is the
+  title block's label row. --caps-label-wdth, --caps-key-wdth, --caps-key-track and
+  --caps-tight-track are the voices' widths and tracking, read by base.css.
 
 - 1.3.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — --ink-3 darkened to #5a6661, so
   --text-3 reads at 4.5:1 or more on every surface; --signal-deep and --search-text for search
@@ -680,6 +964,7 @@ short form is kept too.
   THEME.plaster and THEME.clay); --z-drawer for the narrow inspector. --tool-h, --north,
   --hud-inset and --hud-lift set the instruments over the world on two rows, so the scale, the
   view tools, operations in progress and notices never stand on one another.
+
 - 1.2.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — The traverse in miniature:
   --tex-traverse (a dashed ink arc with its chevron, for the Reading glyph) and --tex-dash (a
   dashed ink stroke, for a working session's swatch). The Age lens ramp as primitives,
@@ -687,15 +972,208 @@ short form is kept too.
   three layers of it with a tick at half its height, for the typical-age glyph. --tex-chamber: a
   walled floor, the archive kind's colour around chalk, for the glyph of an archive looked
   inside.
+
 - 1.1.0 (11/12/2026) [dendogg + Anthropic - Claude Opus 5.5] — The crossed convention as tokens:
   --crossed-wash (the 60% paper wash the world gives a crossed block) and --tex-crossed (the two
   diagonals of a footprint). A role for benchmarks, --bench (verdigris, the colour of their
   survey marks), and its wash. Sizes the ledger and the world's labels use that the scales
   lacked: --fs-row and --fs-fig, the row padding and indent, and a tag's padding (11/13/2026).
+
 - 1.0.0 (11/12/2026) [dendogg + Anthropic - Claude Opus 5.5] — Initial release.
+
+## web/css/layout.css
+
+- 1.3.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — The ledger's head is at most two
+  30 px rows of one line: the count row (the count at A, a feature's tools as 24 px icons at its
+  end) and the column heads (Name at B, Size on the size column), keeping the list's scroll
+  gutter; a caption is one line ending in an ellipsis. Each scroller is its content's containing
+  block.
+
+- 1.2.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — The ledger's count row holds a
+  feature's controls (.sub-tools, such as Save search…) after its sort keys, and wraps them
+  under the keys in a narrow ledger.
+
+- 1.1.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — Below 860 px the inspector opens
+  as a drawer over the world (body.show-inspector) instead of being unreachable; the title
+  block's breakpoints moved to block.css, where they apply; the unused .panel-tool is gone. The
+  drawer slides in from the right edge and back out; a ledger caption wraps instead of losing
+  its last words, and a count and its sort keys share the sub-line while both fit, the keys
+  moving under the count when not.
+
+- 1.0.0 (11/12/2026) [dendogg + Anthropic - Claude Opus 5.5] — Initial release.
+
+## web/css/components/ledger.css
+
+- 1.3.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — Rows on the grid: the mark slot
+  at A, the name at B, name and size on one baseline, the share bar along the figure's foot. A
+  disclosure's triangle at A and title at B on one line, its figure at the right; nested items'
+  marks at B and text at C (A and B in the inspector), each mark centred on the name's line. The
+  head's icon tools.
+
+- 1.2.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — Four sort keys (Untouched joins
+  Name, Size and Changed) stand on one line in a narrow ledger, set a little tighter there; a
+  count row's feature controls that are all hidden take no room.
+
+- 1.1.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — A selected row is edged in ink as
+  well as highlighted, and its small text uses --text-2, which reads on yellow; the unused
+  .row-meta is gone. An empty list says so where its rows would be (.vl-empty); rows that run
+  edge to edge draw their focus ring inside; sizes come from the type scale.
+
+- 1.0.0 (11/12/2026) [dendogg + Anthropic - Claude Opus 5.5] — Initial release.
+
+## web/css/components/traverse.css
+
+- 1.3.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — The Findings sub-line moved to
+  the head rows in layout.css. A session's time breaks between its two dates, the dash kept with
+  the first, and is never clipped; WRITTEN AT ONCE takes the tight voice and goes under the time
+  before its words wrap.
+
+- 1.2.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — The inspector's Changed with it:
+  its sentence, and the file's nearest sessionmates with the file itself in their midst, marked
+  with the session's dashed swatch on a highlighter wash.
+
+- 1.1.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — The Findings sub-line wraps in a
+  narrow ledger: a note longer than the room beside the sort keys takes the whole width and the
+  keys stand under it, at the right. A session row's time that crosses midnight breaks between
+  its two dates instead of being cut off.
+
+- 1.0.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — Initial release.
+
+## web/js/traverse.js
+
+- 1.3.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — A session's time breaks between
+  its two dates outside their nowrap spans, its dash kept with the first; Changed with it
+  carries the session as its head's figure, the head's text unchanged; Working sessions' title
+  is a span.t. In region mode the service finds the sessions of the whole tree: S.sessions
+  reads its list, a session's facts and a file's session and neighbours, and the traverse joins
+  the held boxes nearest the session's files. A whole tree's sessions are found in a quiet
+  moment after its survey. S.sessions there is the service's: load() asks
+  GET /api/sessions the first time Working sessions is drawn, byK keeps each session's facts
+  (its common folder a ref) as they arrive, from the list or from a session: search's answer,
+  and ofFile each file's { k, why, facts, near, before } from ?path&near=8, which Changed with
+  it, the menu and the palette read; the menu and the palette look a file up first when it is
+  not known yet. The service evaluates session:N; the page keeps its note and its date order.
+  The traverse asks ?k&files=1000&q=<qid> once per search, the session's files narrowed by the
+  query, and routes each through the held node nearest it (api.nearest), a folder standing for
+  the files it hides. warmSessions finds them a second after the survey, in an idle callback,
+  unless something read them first or a newer survey replaced them, so the Survey tab or the
+  first file selected does not find them in its own task.
+
+- 1.2.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — Changed with it: the inspector
+  says which working session a selected file was changed in, lists the 8 files nearest to it in
+  time with the file in its place, and Show all puts session:N in Find; a file in none says why
+  (changed alone, a dot-folder, no time). The context menu and the command palette offer the
+  same.
+
+- 1.1.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — Working sessions are found when
+  something reads them (Working sessions, a session: search, the traverse), not after every
+  survey. The date and plural helpers come from model.js. A row for a session that crossed
+  midnight puts its second date under the first in a narrow ledger instead of cutting it off.
+
+- 1.0.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — Initial release.
+
+## web/js/time.js
+
+- 1.3.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — The Since head carries its date
+  as a figure and Where the change is its count (api.sectionTitle), their text unchanged;
+  Changed and Not changed break only at their separators (api.parts). crossedAt and Where the
+  change is read a folder's count through kids(), so a folder held in region mode answers as
+  in a whole tree. Where the change is lists the held children of the folder inspected.
+
+- 1.2.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — , . < > carry one label each for
+  the command palette: one date earlier or later, the earliest date, the present.
+
+- 1.1.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — Inside an open archive a folder
+  is counted from its own entries, in a table built from its listing on the same ladder
+  (tableOf), for the Since section, the hover line, the sentence, T and the layout's lowering; a
+  rebuilt table redraws the inspector and Contents. fmtDay comes from model.js.
+
+- 1.0.0 (11/12/2026) [dendogg + Anthropic - Claude Opus 5.5] — Initial release.
+
+## web/js/interior.js
+
+- 1.3.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — Its heads go through
+  api.sectionTitle, a count as a figure; Holds and Unpacked break only at separators; "In the
+  archive" is "Inside", so the label keeps one line; Close names the archive and is marked
+  data-named. In region mode twins are not looked for, and I's notice and Already here say so
+  with the tree's size; the age line reads kids(). withTwins makes empty maps there, and the
+  listing carries unlooked: "Twins are not looked for at this size: the page holds only the
+  parts of this 5,000,000-entry tree near you.", which openSentence puts in place of the
+  twins' count.
+
+- 1.2.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — The lock also reads a batch
+  rename's items: any item whose path is under the archive's is refused before anything is sent.
+
+- 1.1.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — Twins after a refresh are worked
+  out from the folders read again and any new since (twinIndex, addTwins), not the whole tree; a
+  whole walk only when a capped list loses a file. A Rescan all also forgets the file a change
+  closed. plural comes from model.js.
+
+- 1.0.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — Initial release.
+
+## web/js/icons.js
+
+- 1.3.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — exportCsv (download), legend
+  (swatch-book) and status (activity); Select all draws list-checks.
+
+- 1.2.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — withIcon, which nothing called,
+  is gone, and so are the names keys, root, status, north, folder and file, which named icons
+  nothing draws (the north arrow is drawn inline). ICON also names the icons web/index.html
+  draws by their Lucide names, so the same action has one icon wherever it appears.
+
+- 1.1.0 (11/12/2026) [dendogg + Anthropic - Claude Opus 5.5] — Names for the As of stepper: time
+  (calendar-clock), earlier and later (the left and right chevrons). Names for landmarks: places
+  (the tab, map-pinned), bench (set a benchmark, flag), remeasure (ruler), markReturn (bookmark)
+  and returnTo (arrow-left-right).
+
+- 1.0.0 (11/12/2026) [dendogg + Anthropic - Claude Opus 5.5] — Initial release.
+
+## web/css/components/stage.css
+
+- 1.3.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — The storage scale is 34 px, as
+  the view tools strip is; the placing banner sets its sentence on a row of its own and Cancel
+  and Place where I am on one line under it; the veil's quiet message is a balanced sentence
+  with its error on a mono line of its own.
+
+- 1.2.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — The file and folder tags are
+  gone: names are printed on the boxes by the world's own shader. The tag layer holds only mark
+  tags, which places.css draws.
+
+- 1.1.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — Without WebGL the travel tools
+  step aside; the explanation a page the service did not serve shows (#veil.is-elsewhere). The
+  instruments take their inset and sizes from tokens; the view tools drop their words before
+  they reach the storage scale, and in a narrow world the scale rises above them; the placing
+  banner wraps its words and keeps clear of the north arrow.
+
+- 1.0.0 (11/12/2026) [dendogg + Anthropic - Claude Opus 5.5] — Initial release.
+
+## web/js/places.js
+
+- 1.3.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — measure, summarize and the
+  detail's fingerprint read a folder's count through kids(); a folder held in part counts its
+  tail with the rest: its entries and bytes, and its files as the folder's less those of the
+  entries held. A benchmark of a folder of more than 5,000 entries in region mode therefore
+  measures the same totals, count and largest 64 entries as the whole tree gives.
+
+- 1.2.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — exportData() and
+  importData(data) for a places file: benchmarks matched by folder, added under new ids or
+  updated when newer, the malformed and those past 64 skipped, the return point added or
+  updated by the same rule, and undo() for the whole import.
+
+- 1.1.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — resolve(model) without dirs, a
+  whole survey, empties the detail cache, which held the old tree. plural comes from model.js.
+
+- 1.0.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — Initial release.
 
 ## web/css/components/floating.css
 
+- 1.4.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — Every menu row is --control-h
+  tall, its label and keycap or reason on one baseline; dialog fields stand at the buttons'
+  height; the guide shares one key column, its sections as many columns as the dialog holds;
+  notice words wrap pretty and the close is the action's size; the job title takes the label
+  voice. The Guide's tabs take the TIGHT voice, and the Mouse tab's keys columns of their own
+  width. Merged with the Guide's tabs and Mouse tab: the tab buttons carry caps-tight instead of
+  type of their own, and a flavor's longest drags (Ctrl+Alt+middle-drag) are not cut off.
 - 1.3.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — The Guide's tab strip and panels:
   Keys, Mouse, Reading the world and Settings, one panel shown at a time at one height.
 - 1.2.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — The guide's Mouse section: the Flavor

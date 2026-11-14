@@ -1,18 +1,23 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Controller Seams Scenario (Terrane Edition - v1.9)
+ *     - Title: Controller Seams Scenario (Terrane Edition - v1.10)
  *     - File Name: seams.mjs
  *     - Relative Path: tools/ui-scenarios/seams.mjs
  *     - Artifact Type: test
- *     - Version: 1.9.0
- *     - Date: 11/13/2026
- *     - Update: Friday, November 13, 2026
+ *     - Version: 1.10.0
+ *     - Date: 11/14/2026
+ *     - Update: Saturday, November 14, 2026
  *     - Author: Dennis 'dendogg' Smaltz
  *     - A.I. Acknowledgement: Anthropic - Claude Opus 5.5
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
  *
  * ✒ Changelog:
+ *     - 1.10.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — A
+ *       LEDGER_SUB control stands on the count row after the count, where the
+ *       polished head puts a feature's tools.
+ *       Duplicate candidates are opened before the DUP_GROUP rows are
+ *       counted: the section builds its rows the first time it is open.
  *     - 1.9.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — Reading the
  *       world is read from the Guide's tab, where it moved; the inspector's
  *       own sections end with Composition.
@@ -605,8 +610,8 @@ export default {
     t.check(`AFTER_FOCUS hears the folder you are in once it changes (${g1.heard.focus.join(', ')})`, g1.heard.focus.at(-1) === dirName, JSON.stringify(g1.heard.focus));
     t.check('AFTER_SELECT hears select() and selectAll() with S.sel and the primary',
       same(g1.heard.sel.slice(-2).map((x) => x.slice(0, 2)), [[true, 1], [true, 2]]) && g1.sel[0] === 2 && g1.sel[1] && g1.rows === 2, JSON.stringify({ heard: g1.heard.sel, sel: g1.sel, rows: g1.rows }));
-    t.check('a LEDGER_SUB control stands on the count row after the sort keys, told the rows shown and the folder; one that throws is reported and left out',
-      g1.tool === `Seam ${g1.n} true` && g1.before === 'sorts' && g1errs.some((e) => /LEDGER_SUB "seam-sub-broken" failed/.test(e)), JSON.stringify({ tool: g1.tool, before: g1.before, g1errs }));
+    t.check('a LEDGER_SUB control stands on the count row after the count, told the rows shown and the folder; one that throws is reported and left out',
+      g1.tool === `Seam ${g1.n} true` && g1.before === 'sub-count' && g1errs.some((e) => /LEDGER_SUB "seam-sub-broken" failed/.test(e)), JSON.stringify({ tool: g1.tool, before: g1.before, g1errs }));
     t.check('cursorTo moves the list\'s cursor to a listed node, and answers false for one not listed', g1.moved && g1.cursor && g1.notThere === false);
     t.check('a TAB_SECTIONS section is drawn in its tab, after the tab\'s own; one that throws is reported and left out',
       g1.built.includes('seam-tab') && g1.placed.at(-1) === 'seam-tab' && g1.placed.includes('places-return') && g1errs.some((e) => /TAB_SECTIONS "seam-tab-broken" failed/.test(e)), JSON.stringify(g1.placed));
@@ -714,6 +719,12 @@ export default {
       const inInspector = document.querySelector('#inspector-body .seam-dup')?.textContent ?? null;
       T.S.tab = 'survey';
       a.drawLedger();
+      // Duplicate candidates build their rows when the section is first open.
+      const dd = [...document.querySelectorAll('#ledger-rich > details')].find((x) => x.querySelector(':scope > summary .t')?.textContent === 'Duplicate candidates');
+      if (dd && !dd.open) {
+        dd.open = true;
+        dd.dispatchEvent(new Event('toggle'));
+      }
       const inSurvey = [...document.querySelectorAll('#ledger-rich .seam-dup')].map((p) => p.textContent);
       const first = document.querySelector('#ledger-rich .group-head');
       const firstDup = document.querySelector('#ledger-rich .seam-dup');

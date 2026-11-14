@@ -1,16 +1,25 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Demo Mode (Terrane Edition - v1.0)
+ *     - Title: Demo Mode (Terrane Edition - v1.1)
  *     - File Name: demo.js
  *     - Relative Path: web/js/demo.js
  *     - Artifact Type: javascript
- *     - Version: 1.0.0
- *     - Date: 11/13/2026
- *     - Update: Friday, November 13, 2026
+ *     - Version: 1.1.0
+ *     - Date: 11/14/2026
+ *     - Update: Saturday, November 14, 2026
  *     - Author: Dennis 'dendogg' Smaltz
  *     - A.I. Acknowledgement: Anthropic - Claude Opus 5.5
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
+ *
+ * ✒ Changelog:
+ *     - 1.1.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] —
+ *       ?regions in the address makes the demo service draw every tree in
+ *       regions (createDemoService({ regions: true }), threshold 0), so the
+ *       region path, its search and its survey included, runs with no
+ *       service.
+ *     - 1.0.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] —
+ *       Initial release.
  *
  * ✒ Description:
  *     Runs the whole interface on the demo world when the page was not
@@ -36,6 +45,8 @@
  *       film, where the page would load the original
  *     - One download-style arrival in Downloads after a minute, so the
  *       live refresh shows itself; ?still in the address turns it off
+ *     - ?regions draws the world in regions, as a tree above the
+ *       threshold is drawn, with every region answered in the page
  *     - A notice says this is the demo, that changes last until a reload,
  *       and where to get Terrane for real folders
  *
@@ -51,6 +62,7 @@
  *     https://dnoice.github.io/terrane/          the demo on GitHub Pages
  *     http://127.0.0.1:4180/web/                 npm run demo
  *     http://127.0.0.1:4180/web/?still           without the arrival
+ *     http://127.0.0.1:4180/web/?regions         drawn in regions
  *
  * ✒ Other Important Information:
  *     - Dependencies: demo-service.js, demo-world.js; a 2D canvas
@@ -430,7 +442,10 @@ const apiUrl = (input) => {
  */
 export function startDemo({ thumbs } = {}) {
   const listeners = new Set();
-  const svc = createDemoService({ emit: (msg) => listeners.forEach((fn) => fn(msg)) });
+  // ?regions draws even this small world in regions, so the region path
+  // runs with no service at all.
+  const regions = new URLSearchParams(location.search).has('regions');
+  const svc = createDemoService({ emit: (msg) => listeners.forEach((fn) => fn(msg)), regions });
   const realFetch = window.fetch.bind(window);
   const enc = new TextEncoder();
 

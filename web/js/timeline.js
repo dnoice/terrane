@@ -1,18 +1,22 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Age Table (Terrane Edition - v1.1)
+ *     - Title: Age Table (Terrane Edition - v1.2)
  *     - File Name: timeline.js
  *     - Relative Path: web/js/timeline.js
  *     - Artifact Type: javascript
- *     - Version: 1.1.0
- *     - Date: 11/13/2026
- *     - Update: Friday, November 13, 2026
+ *     - Version: 1.2.0
+ *     - Date: 11/14/2026
+ *     - Update: Saturday, November 14, 2026
  *     - Author: Dennis 'dendogg' Smaltz
  *     - A.I. Acknowledgement: Anthropic - Claude Opus 5.5
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
  *
  * ✒ Changelog:
+ *     - 1.2.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] —
+ *       RegionAges(anchor): AgeTable's interface over the row each folder
+ *       of a region carries from the service (node.g), for a page that
+ *       holds the tree in regions; ageRow(D) reads a record's row.
  *     - 1.1.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — Each
  *       folder's median step is found once, when the table is built, and
  *       kept beside its row, so medianStep() is one lookup: the Age lens
@@ -48,6 +52,9 @@
  *       counts as wholly changed at its newest change (mm); a file answers
  *       from its own date and size
  *     - DOM-free, so the same module runs in the browser and in Node tests
+ *     - RegionAges: the same answers from rows the service built for each
+ *       folder of a region (node.g: 21 bytes, 21 files, the median step),
+ *       for a page that holds only part of the tree
  *
  * ✒ Usage Instructions:
  *     import { buildAgeTable, LADDER_DAYS, STEPS } from './timeline.js';
@@ -67,9 +74,10 @@
  *     ages.T[ages.medianStep(dir)]              // half changed after this
  *     ages.stepOf(file.m)                       // first step a file counts at
  *     ages.has(dir)                             // false when newer than it
+ *     new RegionAges(tree.anchor).kept(dir, 3)  // from dir.g, region mode
  *
  * ✒ Other Important Information:
- *     - Dependencies: none
+ *     - Dependencies: model.js (the record D's layout, for ageRow)
  *     - Compatible platforms: any browser with ES2022 modules; Node.js
  *       22.5+ for the tests
  *     - Semantics: "changed after T" means a file's modification time is
@@ -84,6 +92,8 @@
  *       folder whose contents changed answers with its old figures
  * ----------------------------------------------------------------------------
  */
+
+import { D_AB, AGE_ROW } from './model.js';
 
 export const DAY = 86400000;
 
@@ -268,6 +278,132 @@ class AgeTable {
       files[j] = this.#files[o + k] - pf;
       pb = this.#bytes[o + k];
       pf = this.#files[o + k];
+    }
+    return { bytes, files };
+  }
+}
+
+/** A folder's age row from its region record D: Float64Array(43), [b0..b20, f0..f20, md]. */
+export function ageRow(D) {
+  const g = new Float64Array(AGE_ROW);
+  for (let k = 0; k < AGE_ROW; k++) g[k] = D[D_AB + k];
+  return g;
+}
+
+/**
+ * The age table of a page that holds only regions: AgeTable's interface
+ * over the row every folder of a region carries (node.g, from the
+ * service, built on the ladder from `anchor`), so Time, Strata, the Age
+ * lens and the Untouched order read it as they read the whole table. A
+ * folder without a row (one inside an open archive) answers as AgeTable
+ * answers a folder it does not hold; a file from its own date and size.
+ */
+export class RegionAges {
+  #T;
+
+  constructor(anchor) {
+    this.anchor = anchor;
+    const T = Object.freeze(LADDER_DAYS.map((d) => anchor - d * DAY));
+    this.T = T;
+    this.#T = Float64Array.from(T);
+    this.folders = null;
+    this.ms = 0;
+    Object.freeze(this);
+  }
+
+  #step(k) {
+    if (!Number.isInteger(k) || k < 0 || k >= STEPS) throw new RangeError(`An age-table step is a whole number from 0 to ${STEPS - 1}, not ${k}.`);
+    return k;
+  }
+
+  has(node) {
+    return !!node?.d && !!node.g;
+  }
+
+  stepOf(ms) {
+    return firstStep(this.#T, ms);
+  }
+
+  changedBytes(node, k) {
+    this.#step(k);
+    if (node.d && node.g) return node.g[k];
+    return (node.d ? node.mm : node.m) > this.#T[k] ? node.s : 0;
+  }
+
+  changedFiles(node, k) {
+    this.#step(k);
+    if (node.d && node.g) return node.g[W + k];
+    return (node.d ? node.mm : node.m) > this.#T[k] ? (node.d ? node.fc : 1) : 0;
+  }
+
+  totalBytes(node) {
+    return node.d && node.g ? node.g[STEPS] : node.s;
+  }
+
+  totalFiles(node) {
+    return node.d && node.g ? node.g[W + STEPS] : node.d ? node.fc : 1;
+  }
+
+  kept(node, k) {
+    this.#step(k);
+    if (node.d && node.g) {
+      const g = node.g;
+      const tb = g[STEPS];
+      if (tb > 0) return 1 - g[k] / tb;
+      const tf = g[W + STEPS];
+      if (tf > 0) return 1 - g[W + k] / tf;
+    }
+    return (node.d ? node.mm : node.m) > this.#T[k] ? 0 : 1;
+  }
+
+  #reach(node, share) {
+    if (!(node.d && node.g)) {
+      if (node.d && !node.fc) return -1;
+      return Math.min(firstStep(this.#T, node.d ? node.mm : node.m), STEPS - 1);
+    }
+    const g = node.g;
+    const tf = g[W + STEPS];
+    if (!tf) return -1;
+    const tb = g[STEPS];
+    const o = tb > 0 ? 0 : W;
+    const need = (tb > 0 ? tb : tf) * share;
+    for (let k = 0; k < STEPS; k++) if (g[o + k] >= need) return k;
+    return STEPS - 1;
+  }
+
+  medianStep(node) {
+    return node.d && node.g ? node.g[2 * W] : this.#reach(node, 0.5);
+  }
+
+  lastStep(node) {
+    if (!(node.d && node.g)) return this.#reach(node, 1);
+    const g = node.g;
+    const tf = g[W + STEPS];
+    if (!tf) return -1;
+    for (let k = 0; k < STEPS; k++) if (g[W + k] === tf) return k;
+    return STEPS - 1;
+  }
+
+  bands(node) {
+    const bytes = new Array(BANDS).fill(0);
+    const files = new Array(BANDS).fill(0);
+    if (!(node.d && node.g)) {
+      const s = firstStep(this.#T, node.d ? node.mm : node.m);
+      let j = 0;
+      while (j < BAND_STEPS.length && BAND_STEPS[j] < s) j++;
+      bytes[j] = node.s;
+      files[j] = node.d ? node.fc : 1;
+      return { bytes, files };
+    }
+    const g = node.g;
+    let pb = 0;
+    let pf = 0;
+    for (let j = 0; j < BANDS; j++) {
+      const k = j < BAND_STEPS.length ? BAND_STEPS[j] : STEPS;
+      bytes[j] = g[k] - pb;
+      files[j] = g[W + k] - pf;
+      pb = g[k];
+      pf = g[W + k];
     }
     return { bytes, files };
   }

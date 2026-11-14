@@ -1,18 +1,29 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Tree Model (Terrane Edition - v1.5)
+ *     - Title: Tree Model (Terrane Edition - v1.6)
  *     - File Name: model.js
  *     - Relative Path: web/js/model.js
  *     - Artifact Type: javascript
- *     - Version: 1.5.0
- *     - Date: 11/13/2026
- *     - Update: Friday, November 13, 2026
+ *     - Version: 1.6.0
+ *     - Date: 11/14/2026
+ *     - Update: Saturday, November 14, 2026
  *     - Author: Dennis 'dendogg' Smaltz
  *     - A.I. Acknowledgement: Anthropic - Claude Opus 5.5
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
  *
  * ✒ Changelog:
+ *     - 1.6.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] —
+ *       Region mode: a Model made with { regions: true } holds only the
+ *       regions the page asked for, through fillRegion, refillRegion
+ *       (children kept by name and kind), dropRegion and setFigures, every
+ *       figure the service's. dirFrom makes a folder from a record D, whose
+ *       layout (D_ID to D_LEN) is defined here; kids(n) is a folder's count,
+ *       the service's when it has one; relPath gives a ref its own path, and
+ *       refFrom makes a ref from the service's tuple for the lists. After
+ *       the review, refillRegion keeps a child a region with a tail does not
+ *       list when keep(child) says so, and names the held folders whose
+ *       name now stands for another id (renewed).
  *     - 1.5.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] —
  *       Camera RAW files are images: cr3, nrw, srf, sr2, raf, rw2, orf,
  *       pef, srw, 3fr, erf, kdc, mrw, x3f and iiq join cr2, nef, arw and
@@ -28,10 +39,6 @@
  *       keeps every node still there (matched by name and kind), with
  *       fresh's totals and every folder dirty; it returns kept, added,
  *       removed and changed, for the warm start's catch-up.
- *     - 1.3.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] —
- *       fmtDay (MM/DD/YYYY) and plural are the one date formatter and
- *       count wording every module imports; fmtDate builds on fmtDay.
- *       isDir, which nothing used, is gone.
  *     Earlier entries: see CHANGELOG.md
  *
  * ✒ Description:
@@ -53,6 +60,12 @@
  *       the identity of every entry still there, so a tree drawn from the
  *       last session can be brought up to date without losing the
  *       selection, the focus or anything else that holds a node
+ *     - Region mode: a partial tree filled region by region from the
+ *       service's records (fillRegion, refillRegion keeping nodes,
+ *       dropRegion, setFigures); a folder not held yet knows its figures,
+ *       its direct count (cn), its age row (g) and its tail
+ *     - kids(n), the one answer to "how many entries does this folder
+ *       hold", in both modes; the record D's layout for every module
  *     - Nine content kinds derived from the extension, and the one list
  *       of extensions a preview shows as a picture or reads as text
  *     - Search grammar: free text, glob, ext:, kind:, is:, size and age
@@ -71,6 +84,9 @@
  *     const { added } = model.reconcile(dir, records);  // after a change
  *     const { changed, added: here, removed } = model.adopt(freshModel);
  *     const hits = runSearch(model, parseQuery('ext:psd >50mb older:1y'));
+ *     const part = new Model('projects', { regions: true });
+ *     part.fillRegion(dir, region);                 // regions.js decode()
+ *     kids(dir)                                     // its count, held or not
  *     parseQuery('is:benchmark', { is: { benchmark: (n) => marked.has(n) } });
  *     parseQuery('session:2', { prefix: { session: (v) => inWindow(v) } });
  *
@@ -98,6 +114,31 @@
 export const FLAG_LINK = 1;
 export const FLAG_HIDDEN = 2;
 export const FLAG_SPECIAL = 4;
+
+/**
+ * A folder as the region routes send it (record D): an array of D_LEN
+ * values, [id, name, mtime, err, s, fc, dc, h, mm, cn, k0..k8, b0..b20,
+ * f0..f20, md]. b and f are its age row (timeline.js): bytes and files
+ * changed after each ladder step, then the totals; md is the median step.
+ * columns.js writes it and re-exports these indices.
+ */
+export const D_ID = 0;
+export const D_NAME = 1;
+export const D_MTIME = 2;
+export const D_ERR = 3;
+export const D_S = 4;
+export const D_FC = 5;
+export const D_DC = 6;
+export const D_H = 7;
+export const D_MM = 8;
+export const D_CN = 9;
+export const D_KS = 10;
+export const D_AB = 19;
+export const D_AF = 40;
+export const D_MD = 61;
+export const D_LEN = 62;
+/** Width of a folder's age row: 21 bytes, 21 files, the median step. */
+export const AGE_ROW = D_LEN - D_AB;
 
 export const KINDS = [
   { key: 'code', label: 'Code', color: 0x1f8a7d },
@@ -196,16 +237,62 @@ function newDir(name, parent) {
   };
 }
 
+/**
+ * How many entries a folder holds directly: in region mode its count from
+ * the service (cn), which a folder whose children are not held still
+ * knows; otherwise its children. Every "how many, or is it empty" read
+ * goes through it, so both modes answer alike.
+ */
+export const kids = (n) => n.cn ?? n.c.length;
+
+/**
+ * A folder from a region record D (an array, or a Float64Array view whose
+ * name and error travel beside it): a node as newDir makes one, with the
+ * service's figures, its id (x), its direct count (cn), its age row (g)
+ * and u set, since its own children are not held yet.
+ */
+export function dirFrom(D, parent, name = D[D_NAME], err = D[D_ERR]) {
+  const ks = new Float64Array(9);
+  for (let k = 0; k < 9; k++) ks[k] = D[D_KS + k];
+  const g = new Float64Array(AGE_ROW);
+  for (let k = 0; k < AGE_ROW; k++) g[k] = D[D_AB + k];
+  return {
+    n: name, p: parent, d: true, s: D[D_S], m: D[D_MTIME], f: name.startsWith('.') && parent ? FLAG_HIDDEN : 0,
+    c: [], fc: D[D_FC], dc: D[D_DC], ks, mm: D[D_MM], h: D[D_H], e: err || 0, dirty: true, stub: false,
+    x: D[D_ID], cn: D[D_CN], u: true, tail: null, g,
+  };
+}
+
 export function depthOf(node) {
   let d = 0;
   for (let a = node.p; a; a = a.p) d++;
   return d;
 }
 
+/** A node's path below the root, joined with '/'; a ref (a list's stand-in for a node not held) carries its own. */
 export function relPath(node) {
+  if (node.rel !== undefined) return node.rel;
   const parts = [];
   for (let a = node; a && a.p; a = a.p) parts.push(a.n);
   return parts.reverse().join('/');
+}
+
+/**
+ * A ref from the service's tuple [rel, d, s, m (mm for a folder), k, f,
+ * fc, cn, e, x or -1, pid]: what a list shows of an entry the page may not
+ * hold, drawn as a node is (name, path, kind, size, date, counts) and made
+ * a node by resolving its path. Its parent is a ref of the folder's path.
+ */
+export function refFrom(t) {
+  const rel = String(t[0]);
+  const cut = rel.lastIndexOf('/');
+  const up = cut < 0 ? '' : rel.slice(0, cut);
+  const d = !!t[1];
+  return {
+    ref: true, n: cut < 0 ? rel : rel.slice(cut + 1), d, s: t[2], m: t[3], mm: t[3], k: d ? undefined : t[4], f: t[5], fc: t[6], cn: d ? t[7] : undefined,
+    e: t[8] || 0, rel, pid: t[10], x: t[9] >= 0 ? t[9] : undefined,
+    p: { ref: true, d: true, n: up.slice(up.lastIndexOf('/') + 1), rel: up, p: null },
+  };
 }
 
 export function isAncestor(anc, node) {
@@ -214,10 +301,160 @@ export function isAncestor(anc, node) {
 }
 
 export class Model {
-  constructor(rootName) {
+  /**
+   * regions: true for a model that holds only the regions the page asked
+   * the service for (fillRegion and the rest below); its figures are the
+   * service's and are never recomputed here.
+   */
+  constructor(rootName, { regions = false } = {}) {
     this.root = newDir(rootName, null);
     this.now = Date.now();
     this.dupGroups = [];
+    this.regions = regions;
+  }
+
+  /* ---------- region mode: a partial tree ---------- */
+
+  /**
+   * Writes a folder's figures from a record: the record's own D (an array
+   * or a view), or a folder of a decoded region (figs at offset o, with
+   * name and error beside it). Its parent sorts its children again when
+   * its size changed.
+   */
+  setFigures(node, D, o = 0, err = D[o + D_ERR]) {
+    const s = D[o + D_S];
+    if (node.s !== s && node.p?.d) node.p.dirty = true;
+    node.s = s;
+    node.m = D[o + D_MTIME];
+    node.e = err || 0;
+    node.fc = D[o + D_FC];
+    node.dc = D[o + D_DC];
+    node.h = D[o + D_H];
+    node.mm = D[o + D_MM];
+    node.cn = D[o + D_CN];
+    for (let k = 0; k < 9; k++) node.ks[k] = D[o + D_KS + k];
+    if (!node.g) node.g = new Float64Array(AGE_ROW);
+    for (let k = 0; k < AGE_ROW; k++) node.g[k] = D[o + D_AB + k];
+    node.dirty = true;
+  }
+
+  /**
+   * Fills a folder from its decoded region R (regions.js decode): its own
+   * figures, then its children in the order sent, files as #addFiles makes
+   * them and folders through dirFrom, each still closed (u). The folder
+   * then holds its children (u false) and the count and bytes of those it
+   * does not hold (tail).
+   */
+  fillRegion(dir, R) {
+    const { dirs, files } = R;
+    this.setFigures(dir, dirs.figs, 0, dirs.errs[0]);
+    const c = new Array(files.names.length + dirs.names.length - 1);
+    let i = 0;
+    for (let j = 0; j < files.names.length; j++) {
+      const name = files.names[j];
+      c[i++] = { n: name, p: dir, s: files.size[j], m: files.mtime[j], f: files.flags[j], k: kindOf(name) };
+    }
+    for (let j = 1; j < dirs.names.length; j++) c[i++] = dirFrom(dirs.figs.subarray(j * D_LEN, (j + 1) * D_LEN), dir, dirs.names[j], dirs.errs[j]);
+    dir.c = c;
+    dir.cn = R.n;
+    dir.u = false;
+    dir.tail = R.tail ? { n: R.tail[0], s: R.tail[1] } : null;
+    dir.dirty = true;
+  }
+
+  /**
+   * Fills a held folder again from a newer region of it, as reconcile
+   * does: children are matched by name and kind and keep their nodes, so
+   * whatever holds one holds it still. A kept file takes its size, date
+   * and flags; a kept folder its figures, and keeps its own held region.
+   * New children are made and gone ones dropped. When the region holds
+   * only part of the folder (R.tail), a child it does not list may lie in
+   * the tail rather than be gone: keep(child) true keeps it, after the
+   * region's own children, and the tail no longer counts it. Returns {
+   * added, removed, kept, renewed }: the nodes made, dropped and kept so,
+   * and the held folders whose name now stands for another folder (a new
+   * id), whose regions the caller lets go.
+   */
+  refillRegion(dir, R, keep = null) {
+    const { dirs, files } = R;
+    const oldDirs = new Map();
+    const oldFiles = new Map();
+    for (const ch of dir.c) (ch.d ? oldDirs : oldFiles).set(ch.n, ch);
+    const next = [];
+    const added = [];
+    const renewed = [];
+    for (let j = 0; j < files.names.length; j++) {
+      const name = files.names[j];
+      let file = oldFiles.get(name);
+      if (file) oldFiles.delete(name);
+      else {
+        file = { n: name, p: dir, k: kindOf(name) };
+        added.push(file);
+      }
+      file.s = files.size[j];
+      file.m = files.mtime[j];
+      file.f = files.flags[j];
+      next.push(file);
+    }
+    for (let j = 1; j < dirs.names.length; j++) {
+      const name = dirs.names[j];
+      let child = oldDirs.get(name);
+      if (child) {
+        oldDirs.delete(name);
+        this.setFigures(child, dirs.figs, j * D_LEN, dirs.errs[j]);
+        // A folder of the same name under a new id is another folder: what
+        // it held belongs to the one that went.
+        const x = dirs.figs[j * D_LEN + D_ID];
+        if (child.x !== undefined && child.x !== x && !child.u) renewed.push(child);
+        child.x = x;
+      } else {
+        child = dirFrom(dirs.figs.subarray(j * D_LEN, (j + 1) * D_LEN), dir, name, dirs.errs[j]);
+        added.push(child);
+      }
+      next.push(child);
+    }
+    this.setFigures(dir, dirs.figs, 0, dirs.errs[0]);
+    const removed = [];
+    const kept = [];
+    let tn = R.tail ? R.tail[0] : 0;
+    let ts = R.tail ? R.tail[1] : 0;
+    for (const ch of [...oldFiles.values(), ...oldDirs.values()]) {
+      if (tn > 0 && keep && keep(ch)) {
+        kept.push(ch);
+        next.push(ch);
+        tn--;
+        ts -= ch.s || 0;
+      } else removed.push(ch);
+    }
+    dir.c = next;
+    dir.cn = R.n;
+    dir.u = false;
+    dir.tail = tn > 0 ? { n: tn, s: Math.max(0, ts) } : null;
+    dir.dirty = true;
+    return { added, removed, kept, renewed };
+  }
+
+  /**
+   * Lets a folder's children go: it is a closed folder again, with its
+   * figures. Returns the folders beneath it that held their own children,
+   * deepest last, so whoever keeps a registry of them can forget them.
+   */
+  dropRegion(dir) {
+    const held = [];
+    const stack = [dir];
+    while (stack.length) {
+      const d = stack.pop();
+      for (const ch of d.c) {
+        if (!ch.d || ch.u) continue;
+        held.push(ch);
+        stack.push(ch);
+      }
+    }
+    dir.c = [];
+    dir.u = true;
+    dir.tail = null;
+    dir._scree = undefined;
+    return held;
   }
 
   /** Streaming ingest. idMap maps the scan's ids to nodes; id 0 is `attach`. */

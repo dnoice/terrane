@@ -1,16 +1,22 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Archive Interiors (Terrane Edition - v1.0)
+ *     - Title: Archive Interiors (Terrane Edition - v1.1)
  *     - File Name: interior.css
  *     - Relative Path: web/css/components/interior.css
  *     - Artifact Type: stylesheet
- *     - Version: 1.0.0
- *     - Date: 11/13/2026
- *     - Update: Friday, November 13, 2026
+ *     - Version: 1.1.0
+ *     - Date: 11/14/2026
+ *     - Update: Saturday, November 14, 2026
  *     - Author: Dennis 'dendogg' Smaltz
  *     - A.I. Acknowledgement: Anthropic - Claude Opus 5.5
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
+ *
+ * ✒ Changelog:
+ *     - 1.1.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
+ *       archive's notes and its twins stand on the inspector's columns.
+ *     - 1.0.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — Initial
+ *       release.
  *
  * ✒ Description:
  *     An open archive's part of the sheet: the breadcrumb that stands for
@@ -57,7 +63,7 @@
 
 .interior-note {
   margin: 0;
-  padding: var(--s-2) var(--s-3);
+  padding: 0 var(--gutter) var(--s-2);
   color: var(--text-2);
   font-size: var(--fs-md);
   line-height: var(--lh-snug);
@@ -65,14 +71,13 @@
 }
 .interior-names {
   margin: 0;
-  padding: var(--s-1) var(--s-3) var(--s-2) var(--row-indent);
+  padding: var(--s-1) var(--gutter) var(--s-2) var(--row-indent);
   color: var(--text-2);
   font-size: var(--fs-row);
   overflow-wrap: anywhere;
 }
 .interior-names code { font: 400 var(--fs-fig) / var(--lh-snug) var(--mono); color: var(--text); }
 .interior-twins { padding-bottom: var(--s-2); border-bottom: var(--border-2); }
-.interior-twins .item { padding-left: var(--s-3); }
 .interior-facts code { font: inherit; }
 
 /* ---------- Reading the world ---------- */

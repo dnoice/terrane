@@ -1,18 +1,27 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Landmarks (Terrane Edition - v1.3)
+ *     - Title: Landmarks (Terrane Edition - v1.4)
  *     - File Name: landmarks.js
  *     - Relative Path: web/js/landmarks.js
  *     - Artifact Type: javascript
- *     - Version: 1.3.0
- *     - Date: 11/13/2026
- *     - Update: Friday, November 13, 2026
+ *     - Version: 1.4.0
+ *     - Date: 11/14/2026
+ *     - Update: Saturday, November 14, 2026
  *     - Author: Dennis 'dendogg' Smaltz
  *     - A.I. Acknowledgement: Anthropic - Claude Opus 5.5
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
  *
  * ✒ Changelog:
+ *     - 1.4.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
+ *       Places caption carries its words as a title and its heads a span.t;
+ *       Set benchmark on a named folder is data-named. The inspector's
+ *       Benchmark head carries its date as a figure, its text unchanged; Then
+ *       and Now break only at separators; Set benchmark stands in an actions
+ *       grid. In region mode B reads the folder's region before measuring,
+ *       J finds the return point by its path, and the first survey reads
+ *       every benchmark's folder by its path before comparing; a region the
+ *       service cannot answer then says no benchmark was set.
  *     - 1.3.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
  *       Places tab ends with the sections other features keep there
  *       (api.tabSections('places')), such as Saved searches. A batch
@@ -29,12 +38,6 @@
  *       change, so Findings, its count, the pins and the dimming
  *       follow; J opens a folded return point through api.forceOpen, so
  *       the overview ends that unfold.
- *     - 1.1.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — A
- *       folder inside an open archive takes no benchmark: B says why, the
- *       menu item is unavailable and the inspector has no Benchmark
- *       section for it. H there marks the return point in the folder
- *       that holds the archive, and J there keeps that folder as the
- *       point J again comes back to.
  *     Earlier entries: see CHANGELOG.md
  *
  * ✒ Description:
@@ -146,7 +149,8 @@ const IMPORT_MAX = 2 * 1024 * 1024;
 
 const files = (n) => `${fmtCount(n)} file${n === 1 ? '' : 's'}`;
 const folders = (n) => `${fmtCount(n)} folder${n === 1 ? '' : 's'}`;
-const measureText = (m) => `${fmtBytes(m.s)} · ${files(m.fc)} · ${folders(m.dc)}`;
+/** A measurement's size, files and folders, as parts that break only at their separators (api.parts). */
+const measureParts = (api, m) => api.parts(fmtBytes(m.s), files(m.fc), folders(m.dc));
 const MINUS = '−';
 const signedBytes = (v) => `${v < 0 ? MINUS : '+'}${fmtBytes(Math.abs(v))}`;
 
@@ -249,7 +253,17 @@ export function install(api) {
       api.say(WAIT);
       return;
     }
-    const node = S.model.find(path);
+    let node = S.model.find(path);
+    // In region mode the folder's children are held before it is measured;
+    // a region the service could not answer is said, and nothing is set.
+    if (node?.d && api.regionMode()) {
+      try {
+        node = await api.ensure(node);
+      } catch (err) {
+        api.notice(`No benchmark was set: ${named(dir)} could not be read (${err.message}).`, { kind: 'error' });
+        return;
+      }
+    }
     if (!node || !node.d) {
       api.notice(`${named(dir)} is no longer there, so no benchmark was set.`, { kind: 'error' });
       return;
@@ -429,7 +443,15 @@ export function install(api) {
       api.say('No return point yet. H marks one where you are.');
       return;
     }
-    const node = S.model.find(to.rel);
+    // In region mode the return point's folder is found by its path first.
+    if (api.regionMode()) {
+      api.resolve(to.rel).then((node) => { if (store.ret === to) goBackTo(to, node); });
+      return;
+    }
+    goBackTo(to, S.model.find(to.rel));
+  }
+
+  function goBackTo(to, node) {
     if (!node || !node.d) {
       api.say(`The return point's folder, ${to.rel || 'the root'}, is no longer there. H marks a new one.`);
       return;
@@ -546,8 +568,8 @@ export function install(api) {
 
   /* ---------- the Places tab ---------- */
 
-  const btn = (label, run, { icon: name, k, cls = '', title, danger, off = false } = {}) => el('button', {
-    class: `btn btn-small${danger ? ' btn-danger' : ''}${cls ? ` ${cls}` : ''}`, type: 'button', 'data-k': k, title, disabled: off, onclick: run,
+  const btn = (label, run, { icon: name, k, cls = '', title, danger, off = false, named = false } = {}) => el('button', {
+    class: `btn btn-small${danger ? ' btn-danger' : ''}${cls ? ` ${cls}` : ''}`, type: 'button', 'data-k': k, title, disabled: off, onclick: run, 'data-named': named ? '' : null,
   }, name ? icon(name) : null, label);
 
   function changes(b) {
@@ -590,8 +612,8 @@ export function install(api) {
     }
     out.push(el('dl', { class: 'facts bench-facts' },
       fact('Measured', snapshot ? `${fmtDate(b.m.at)}, when the snapshot was taken` : fmtDate(b.m.at)),
-      fact('Then', measureText(b.m)),
-      node ? fact('Now', measureText(node)) : null,
+      fact('Then', measureParts(api, b.m)),
+      node ? fact('Now', measureParts(api, node)) : null,
       node ? fact('Change', el('b', { text: sm.changed ? deltaText(sm) : 'none' })) : null));
     out.push(el('div', { class: 'actions' },
       node ? btn('Fly there', () => api.reveal(node), { icon: 'fly', k: `${b.id}:fly`, cls: 'fly' }) : null,
@@ -639,15 +661,13 @@ export function install(api) {
     const sums = list.map((b) => (live ? store.summary(b) : null));
     const changed = sums.filter((s) => s?.changed && !s.missing).length;
     const missing = sums.filter((s) => s?.missing).length;
-    sub.replaceChildren(el('span', {
-      class: 'grow',
-      text: list.length ? `${fmtCount(list.length)} benchmark${list.length === 1 ? '' : 's'} · ${fmtCount(changed)} changed${missing ? ` · ${fmtCount(missing)} missing` : ''}` : 'Benchmarks and the return point',
-    }));
+    const caption = list.length ? `${fmtCount(list.length)} benchmark${list.length === 1 ? '' : 's'} · ${fmtCount(changed)} changed${missing ? ` · ${fmtCount(missing)} missing` : ''}` : 'Benchmarks and the return point';
+    sub.replaceChildren(el('span', { class: 'grow', text: caption, title: caption }));
     const t = target();
     const has = t && (store.find(t) || store.findRel(rel(t)));
     host.replaceChildren(
       el('details', { open: true, class: 'places-bench' },
-        el('summary', {}, 'Benchmarks', el('span', { class: 'n', text: fmtCount(list.length) })),
+        el('summary', {}, el('span', { class: 't', text: 'Benchmarks' }), el('span', { class: 'n', text: fmtCount(list.length) })),
         el('p', {
           class: 'note places-scope',
           text: snapshot
@@ -658,7 +678,7 @@ export function install(api) {
         list.length ? list.map((b, k) => row(b, sums[k]))
           : el('p', { class: 'note', text: 'None yet. B measures the selected folder, or the folder you are in, so you can see later what changed in it.' }),
         el('div', { class: 'actions' },
-          t && !t.e ? btn(has ? `Measure "${t.n}" again` : `Set benchmark on "${t.n}"`, () => bench(t), { icon: has ? 'remeasure' : 'bench', k: 'set', title: live ? 'B' : WAIT, off: !live }) : null,
+          t && !t.e ? btn(has ? `Measure "${t.n}" again` : `Set benchmark on "${t.n}"`, () => bench(t), { icon: has ? 'remeasure' : 'bench', k: 'set', title: live ? 'B' : WAIT, off: !live, named: true }) : null,
           list.length || store.ret ? btn('Forget all…', forgetAll, { icon: 'remove', k: 'forget-all', danger: true }) : null)),
       returnSection(),
       fileSection(),
@@ -670,7 +690,7 @@ export function install(api) {
   function returnSection() {
     const r = store.ret;
     return el('details', { open: true, class: 'places-return' },
-      el('summary', {}, 'Return point', el('span', { class: 'n', text: r ? '1' : '0' })),
+      el('summary', {}, el('span', { class: 't', text: 'Return point' }), el('span', { class: 'n', text: r ? '1' : '0' })),
       r ? [
         el('div', { class: 'item is-static' }, el('span', { class: 'bench-mark is-return', 'aria-hidden': 'true' }),
           el('span', {}, el('span', { class: 'nm', text: r.name }), el('span', { class: 'path', text: `${r.rel || '/'} · marked ${fmtDate(r.at)}` })), el('span')),
@@ -803,7 +823,7 @@ export function install(api) {
       },
     });
     return el('details', { open: true, class: 'places-file' },
-      el('summary', {}, 'Export and import'),
+      el('summary', {}, el('span', { class: 't', text: 'Export and import' })),
       el('p', {
         class: 'note',
         text: `The benchmarks, the return point and the saved searches as a file, to keep or to take into another browser, profile or address on ${snapshot ? "this directory's snapshots" : 'this directory'}. Importing adds what is new, takes a newer measurement, and keeps the rest.`,
@@ -821,18 +841,17 @@ export function install(api) {
     const b = store.find(node);
     if (!b) {
       return [
-        el('div', { class: 'section-title', text: 'Benchmark' }),
-        el('div', { class: 'bench-none' },
-          el('p', { text: node.e ? 'This folder could not be read, so it cannot be measured.' : 'None. A benchmark keeps this folder\'s size and contents as they are now, so you can see later what changed.' }),
-          node.e ? null : api.actionButton('Set benchmark', () => bench(node), { icon: 'bench', title: 'B' })),
+        api.sectionTitle('Benchmark'),
+        el('p', { class: 'bench-none', text: node.e ? 'This folder could not be read, so it cannot be measured.' : 'None. A benchmark keeps this folder\'s size and contents as they are now, so you can see later what changed.' }),
+        node.e ? null : el('div', { class: 'actions-grid' }, api.actionButton('Set benchmark', () => bench(node), { icon: 'bench', title: 'B', wide: true })),
       ];
     }
     const sm = store.summary(b);
     return [
-      el('div', { class: 'section-title', text: `Benchmark · ${fmtDate(b.m.at)}` }),
+      api.sectionTitle('Benchmark', fmtDate(b.m.at)),
       el('dl', { class: 'facts bench-facts' },
-        fact('Then', measureText(b.m)),
-        fact('Now', measureText(node)),
+        fact('Then', measureParts(api, b.m)),
+        fact('Now', measureParts(api, node)),
         fact('Change', el('b', { text: sm.changed ? deltaText(sm) : 'none' }))),
       el('div', { class: 'actions-grid' },
         api.actionButton('Measure again', () => bench(node), { icon: 'remeasure', title: 'B' }),
@@ -945,14 +964,31 @@ export function install(api) {
   // in both, and what changed is said only of the checked tree.
   api.AFTER_SURVEY.add({
     id: 'places', order: 30, owner: OWNER,
-    run: (_sv, { full, warm, settled } = {}) => {
+    run: (_sv, { full, warm, settled, regions } = {}) => {
       if (!full && !settled) return;
-      store.resolve(S.model);
-      if (warm) return;
-      if (!announced) {
-        announced = true;
-        announce();
-      } else if (store.benchmarks.some((b) => !b.node && !b.noticed)) queueLost();
+      const found = () => {
+        store.resolve(S.model);
+        if (warm) return;
+        if (!announced) {
+          announced = true;
+          announce();
+        } else if (store.benchmarks.some((b) => !b.node && !b.noticed)) queueLost();
+      };
+      if (!regions) {
+        found();
+        return;
+      }
+      // Region mode: the benchmarks' folders and the return point's are
+      // read by their paths first, so the store finds them held (and the
+      // page pins them); then they are compared as after any survey.
+      const model = S.model;
+      const rels = [...store.benchmarks.map((b) => b.rel), ...(store.ret ? [store.ret.rel] : [])];
+      api.resolveAll(rels).then(() => {
+        if (S.model !== model) return;
+        found();
+        if (S.tab === 'places') api.drawLedger(true);
+        api.drawInspector();
+      }, (err) => api.notice(`Benchmarks could not be found: ${err.message}`, { kind: 'error' }));
     },
   });
 

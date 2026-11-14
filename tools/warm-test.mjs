@@ -2,18 +2,27 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Warm Start Test (Terrane Edition - v1.0)
+ *     - Title: Warm Start Test (Terrane Edition - v1.1)
  *     - File Name: warm-test.mjs
  *     - Relative Path: tools/warm-test.mjs
  *     - Artifact Type: test
- *     - Version: 1.0.0
- *     - Date: 11/13/2026
- *     - Update: Friday, November 13, 2026
+ *     - Version: 1.1.0
+ *     - Date: 11/14/2026
+ *     - Update: Saturday, November 14, 2026
  *     - Author: Dennis 'dendogg' Smaltz
  *     - A.I. Acknowledgement: Anthropic - Claude Opus 5.5
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
  *
  * ✒ Changelog:
+ *     - 1.1.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — GET
+ *       /api/check through the service: an unchanged tree reads no folder;
+ *       a file added and one removed read exactly that folder; a folder
+ *       removed goes with its subtree; a new subtree comes back as deep
+ *       records after its parent; a rewrite in place with its folder's
+ *       time put back is missed by the check and caught by the sweep's
+ *       change event; the cache is written again, its counts a new
+ *       survey's; ENOWARM before a survey and with --no-warm, 401 without
+ *       the token, ESNAPSHOT in snapshot mode.
  *     - 1.0.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] —
  *       Initial release.
  *
@@ -46,6 +55,9 @@
  *     - The cache holds names, sizes and dates, never a file's contents
  *     - The writer in-process: abort removes its temporary file, two
  *       commits in a row leave one data file and its meta
+ *     - GET /api/check and the sweep that follows it, step by step on a
+ *       small tree with its change stream read, each step after the last
+ *       one's sweep has written the cache
  *     - Model.adopt: kept nodes keep their identity, new ones hang from
  *       the old folders, gone ones are dropped, every folder's totals and
  *       every parent pointer equal a model built fresh, every folder is
@@ -429,6 +441,109 @@ section('warmInside, in-process');
   } else console.log('  note  no link or junction can be made here; the link case is left out');
 }
 
+section('GET /api/check: the kept tree checked by folder modification times');
+{
+  const croot = path.join(work, 'check-root');
+  const put = (rel, text) => {
+    fs.mkdirSync(path.dirname(path.join(croot, rel)), { recursive: true });
+    fs.writeFileSync(path.join(croot, rel), text);
+  };
+  for (const [rel, text] of [['a/one.txt', 'one'], ['a/two.txt', 'two two'], ['a/x/three.txt', 'three'], ['b/four.txt', 'four'], ['c/d/five.txt', 'five'], ['top.txt', 'top']]) put(rel, text);
+  // Whole seconds, so a time put back reads back exactly.
+  const T = new Date(Math.floor(Date.now() / 1000) * 1000 - 3600e3);
+  fs.utimesSync(path.join(croot, 'a'), T, T);
+  const home = newHome();
+  const c = await boot([croot], 5052, home);
+  // The change stream, for the sweep's events.
+  const said = [];
+  const sse = http.get({ host: '127.0.0.1', port: c.port, path: `/api/events?t=${c.token}&dirs=0` }, (res) => {
+    let buf = '';
+    res.on('data', (chunk) => {
+      buf += chunk;
+      let at;
+      while ((at = buf.indexOf('\n\n')) >= 0) {
+        const block = buf.slice(0, at);
+        buf = buf.slice(at + 2);
+        for (const line of block.split('\n')) if (line.startsWith('data: ')) said.push(JSON.parse(line.slice(6)));
+      }
+    });
+  });
+  sse.on('error', () => {});
+  // A check, then the sweep that follows it, which may write the cache
+  // again: the next step starts from the cache it leaves.
+  const check1 = async () => {
+    const from = said.length;
+    const res = await c.get('/api/check');
+    const lines = res.status === 200 ? res.raw.toString('utf8').trim().split('\n').filter(Boolean).map((l) => JSON.parse(l)) : [];
+    const swept = res.status === 200 ? await until(() => said.slice(from).find((m) => m.type === 'swept'), 10000) : null;
+    return { res, lines, swept, from, done: lines.at(-1)?.done ? lines.at(-1) : null, dirs: lines.filter((l) => l.records).map((l) => l.dir), deep: lines.filter((l) => l.deep) };
+  };
+  try {
+    let r = await c.get('/api/check');
+    check('before any survey, GET /api/check is 404 ENOWARM', r.status === 404 && r.body?.code === 'ENOWARM', `${r.status} ${r.raw}`);
+    await c.get('/api/scan?path=');
+    await until(async () => (await c.info()).warm);
+
+    let k = await check1();
+    check(`an unchanged tree: NDJSON, no-store, and its last line done with 0 folders read again (${k.done?.folders} folders, ${k.done?.ms} ms)`,
+      k.res.status === 200 && k.res.headers['content-type'] === 'application/x-ndjson' && k.res.headers['cache-control'] === 'no-store'
+      && k.done?.read === 0 && k.dirs.length === 0 && k.done.added === 0 && k.done.removed === 0 && k.done.changed === 0, JSON.stringify(k.lines).slice(0, 300));
+
+    put('b/added.txt', 'here now');
+    fs.rmSync(path.join(croot, 'b', 'four.txt'));
+    await wait(30);
+    k = await check1();
+    check(`a file added and one removed in b: exactly b is read again (${k.dirs.join(', ')}), 1 here now and 1 gone`,
+      same(k.dirs, ['b']) && k.done.read === 1 && k.done.added === 1 && k.done.removed === 1 && k.done.changed === 0, JSON.stringify(k.done));
+    const bRecords = k.lines.find((l) => l.dir === 'b')?.records || [];
+    check('its records are a depth-1 listing of b: its own record with added.txt and not four.txt', bRecords.length === 1 && bRecords[0][1] === -1 && bRecords[0][5].includes('added.txt') && !bRecords[0][5].includes('four.txt'));
+
+    fs.rmSync(path.join(croot, 'c'), { recursive: true });
+    await wait(30);
+    k = await check1();
+    check(`a folder removed: the root is read again and c is gone with its subtree (3 entries, ${k.done.removed})`,
+      same(k.dirs, ['']) && k.done.removed === 3 && !k.lines[0].records.some((rec) => rec[2] === 'c'), JSON.stringify(k.done));
+
+    put('e/f/six.txt', 'six six');
+    await wait(30);
+    k = await check1();
+    const deep = k.deep[0];
+    check(`a new folder comes back whole, as deep records, after its parent (${deep?.dir}: ${deep?.deep.length} folders)`,
+      same(k.dirs, ['']) && k.deep.length === 1 && deep.dir === 'e' && deep.deep.length === 2 && deep.deep[1][5].includes('six.txt') && k.lines.indexOf(deep) > k.lines.findIndex((l) => l.dir === '')
+      && k.done.added === 3, JSON.stringify(k.done));
+
+    // A file rewritten in place, its folder's time put back: the check
+    // cannot see it, the sweep that follows does.
+    put('a/one.txt', 'one, rewritten longer');
+    fs.utimesSync(path.join(croot, 'a'), T, T);
+    k = await check1();
+    check('a file rewritten in place with its folder\'s time put back is missed by the check (0 folders read again)', k.done?.read === 0 && k.dirs.length === 0, JSON.stringify(k.lines).slice(0, 300));
+    const change = said.slice(k.from).find((m) => m.type === 'change');
+    check(`and caught by the sweep: a change event for a (${JSON.stringify(change?.dirs)}), then swept with 1 file changed`,
+      same(change?.dirs, ['a']) && k.swept?.changed === 1 && k.swept.files >= 4 && said.slice(k.from).every((m) => m.type !== 'bulk'), JSON.stringify(said.slice(k.from)));
+    // The cache is the checked tree, the sweep's change in it.
+    const fresh = recordsOf((await c.get('/api/scan?path=')).raw.toString('utf8'));
+    await wait(300);
+    const kept = JSON.parse(fs.readFileSync(warmPaths((await c.info()).root, home).meta, 'utf8'));
+    const want = countsOf(fresh);
+    k = await check1();
+    check(`the cache is written again: its counts equal a new survey's (${kept?.folders} folders, ${kept?.files} files, ${kept?.bytes} bytes), and a check finds nothing`,
+      kept?.folders === want.folders && kept.files === want.files && kept.bytes === want.bytes && k.done.read === 0, JSON.stringify({ kept, want, done: k.done }));
+    r = await c.request('/api/check');
+    check('GET /api/check needs the token (401 without it)', r.status === 401 && r.body?.code === 'ETOKEN');
+  } finally {
+    sse.destroy();
+    await c.stop();
+  }
+  const nw = await boot([croot, '--no-warm'], 5052, newHome());
+  try {
+    const r = await nw.get('/api/check');
+    check('with --no-warm, GET /api/check is 404 ENOWARM with its sentence', r.status === 404 && r.body?.code === 'ENOWARM' && /--no-warm/.test(r.body?.message), `${r.status} ${r.raw}`);
+  } finally {
+    await nw.stop();
+  }
+}
+
 section('Snapshot mode');
 const snapDir = path.join(work, 'snaps');
 await takeSnapshot(root, snapDir);
@@ -437,6 +552,8 @@ const sm = await boot(['--snapshot', snapDir], 5056, home5);
 info = await sm.info();
 r = await sm.get('/api/warm');
 check('snapshot mode refuses GET /api/warm with ESNAPSHOT and a sentence', r.status === 403 && r.body?.code === 'ESNAPSHOT' && /snapshot/i.test(r.body?.message), `${r.status} ${r.raw}`);
+r = await sm.get('/api/check');
+check('and GET /api/check with ESNAPSHOT', r.status === 403 && r.body?.code === 'ESNAPSHOT', `${r.status} ${r.raw}`);
 check('and info.warm is null', info.warm === null && !!info.snapshot);
 await sm.get('/api/scan?path=');
 await wait(300);

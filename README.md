@@ -1,10 +1,10 @@
 <!--
 ✒ Metadata
-    - Title: Terrane Readme (Terrane Edition - v1.16)
+    - Title: Terrane Readme (Terrane Edition - v1.17)
     - File Name: README.md
     - Relative Path: README.md
     - Artifact Type: docs
-    - Version: 1.16.0
+    - Version: 1.17.0
     - Date: 11/14/2026
     - Update: Saturday, November 14, 2026
     - Author: Dennis 'dendogg' Smaltz
@@ -12,6 +12,22 @@
     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
 
 ✒ Changelog:
+    - 1.17.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] —
+      Wave 4's polish of the sheet: the project map lists polish.mjs,
+      and What was verified records its runs and those of every
+      scenario whose checks read what the polish changed. Wave 4's
+      Scale: Very large directories says what is drawn at once, what is
+      asked of the service and what is not available at that size, and
+      how outside changes reach a tree the service keeps; Launch covers
+      the warm start checked by folder modification times and
+      `--region-threshold`; Developing against real data adds synthetic
+      snapshots and the scale harness, the commands table their lines
+      and npm test's twelve checks; the safety model covers the region
+      routes, the whole-tree questions and the check; What was verified
+      records the Stage 4 exit test at five sizes and the final sweep of
+      Wave 4, merged into `main` as Terrane 1.5.0; Not verified adds
+      what Scale could not see; the project map lists the new modules
+      and checks.
     - 1.16.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] —
       Reading the world: the conventions are listed in the Guide's tab
       of that name, no longer in the inspector. What was verified
@@ -119,18 +135,23 @@
       you step inside rather than look at.
 
 ✒ Description:
-    How to launch Terrane, how to develop and check it against real data
-    without touching that data, how to read and travel its world and
-    find a place again, and what it shows beyond the ground plane: a
-    date scrub, landmarks, working sessions, strata, archive interiors
-    and a quick look at a file. Also what it can do to files, one or many
-    at a time, how those actions are kept safe, and where to start when
+    How to launch Terrane, how it draws a directory of millions of
+    entries, how to develop and check it against real data without
+    touching that data, how to read and travel its world and find a
+    place again, and what it shows beyond the ground plane: a date
+    scrub, landmarks, working sessions, strata, archive interiors and a
+    quick look at a file. Also what it can do to files, one or many at a
+    time, how those actions are kept safe, and where to start when
     continuing development.
 
 ✒ Key Features:
     - Launch instructions for Windows, macOS and Linux, and the warm
-      start that draws the last session's tree at once
-    - Development mode: snapshots and thumbnails of a real directory
+      start that draws the last session's tree at once and checks it by
+      folder modification times
+    - Very large directories: regions near the eye, the questions the
+      service answers, and what is not available at that size
+    - Development mode: snapshots and thumbnails of a real directory,
+      synthetic snapshots of millions of entries, and the scale harness
     - The visual language in one table, the features' conventions
       included
     - Travel, selection and operation controls
@@ -141,8 +162,8 @@
       their keys and where places and searches are kept
     - Acting on many: the batch rename, duplicate cleanup, copy as, lists
       saved as CSV and a terminal opened in a folder
-    - Safety model and its limits, the archive listing, the new routes
-      and the warm cache included
+    - Safety model and its limits, the archive listing, the new routes,
+      the warm cache and the region routes included
     - The checks (npm test, ui-check), what was verified, and what was
       not
     - Project map for continuing development
@@ -221,13 +242,20 @@ last complete survey of the directory (names, sizes, dates and flags,
 never what a file holds) in the dataset home, the folder described under
 Developing against real data, and the page draws that tree at once,
 with a notice that it shows the directory as the last
-session surveyed it. It then surveys the directory again in the
-background. Until that survey is in, changes wait and say so, while
-opening, revealing, copying and a terminal do not; then the world takes
-on what changed, keeping the folder you are in, the selection and the
-eye, and a notice says how many files changed, are here now and are
-gone. A kept tree that cannot be read whole is set aside, and the page
-surveys afresh and says so.
+session surveyed it. The service then checks that tree against the
+disk by folder modification times: it reads again only the folders
+whose time changed, each new folder whole, and a folder that is gone
+through its parent. Until the check is in, changes wait and say so,
+while opening, revealing, copying and a terminal do not; then the world
+takes on what changed, keeping the folder you are in, the selection and
+the eye, and a notice says how many folders were read again and how
+many files changed, are here now and are gone, or that nothing changed
+since the last session. A file rewritten in place leaves its folder's
+time as it was, so a sweep follows that reads every other file's size
+and time, a few at a time, and the world takes on what it finds as it
+takes on any outside change. A kept tree that cannot be read whole is
+set aside, and the page surveys afresh and says so; a check that fails
+keeps the last session's tree, says why and offers Survey again.
 
 | Option | Effect |
 | ------ | ------ |
@@ -236,11 +264,82 @@ surveys afresh and says so.
 | `--no-open` | Does not open the browser. |
 | `--no-watch` | Does not watch for outside changes; use Refresh. |
 | `--no-warm` | Keeps no tree of the last survey and serves none: every launch surveys before it draws, and the service writes nothing to the dataset home. |
+| `--region-threshold <n>` | Above n entries (folders and files) the service keeps the tree and the page draws it in regions; 100,000 unless `TERRANE_REGION_THRESHOLD` says otherwise, and 0 for every tree. See Very large directories. |
 
 ```bash
 node server/terrane.mjs "E:\digiSpace" --read-only
 npm start -- ~/Music --port 5050
 ```
+
+## Very large directories
+
+Up to 100,000 entries, folders and files together, the page holds the
+whole tree, as it always has. Above that the service keeps the tree and
+the page holds only the parts near you: the folders standing open in
+view, and those the eye is about to reach. A drive of millions of files
+is travelled as a small one is: with 5,000,000 entries the page's
+script heap peaked at 41.7 MB and no task ran more than
+12.1 ms of script (What was verified has the figures at every
+size).
+
+The page decides at the start. A snapshot or the warm cache says how
+many entries there are, and a tree above the threshold is drawn in
+regions from the first frame. A directory Terrane has not surveyed before is surveyed as usual
+until it passes the threshold; then the survey stops, the loading sheet
+says "Large directory: reading it in regions", and the service reads the
+directory itself. That reading becomes the warm cache, so the next
+launch draws at once and the service checks the tree in place by folder
+modification times while changes wait.
+
+What is the same as with a whole tree: travel, the lenses, Contents and
+the inspector for every folder you reach, the time view, strata,
+landmarks, the remembered view and the address, Quick look, and every
+operation on files. Each folder arrives with its figures (size, files,
+folders, kinds, bytes by last change and typical age), so a closed mass
+is drawn, coloured and lowered from them before anything inside it has
+been read.
+
+What is asked of the service, and arrives in a moment rather than at
+once:
+
+- A folder's contents, as you approach it or go there. Going to a
+  folder, selecting it or revealing a file waits for its folder first.
+  The status line ends "Regions · N of M entries held".
+- Find. The service searches the whole tree and counts every match.
+  Findings lists them 5,000 to a page in the order chosen, with
+  Previous and Next on its count row to turn through the rest, and the
+  world pins the matches it holds.
+- The Survey, Verify by content, Working sessions, Changed with it and
+  the traverse, the palette's folders and files, and the quick
+  searches' counts.
+
+What is cut to a size, and says so:
+
+- Select all in Findings takes the first 1,000 matches.
+- The Survey's empty folders, sealed folders and links show their first
+  300 rows, as with a whole tree, and say "The first 300 of N.". Export
+  CSV saves the first 1,000 of a Survey list and the page Findings
+  shows, and each notice says which.
+- A folder of more than 5,000 entries holds its 5,000 largest; the rest
+  lie in its scree, and Contents says how to find them with `in:`.
+
+What is not available at that size: the twins of an open archive. I
+still opens an archive, and its notice says twins are not looked for.
+
+Changes made outside Terrane reach the service's tree whether or not a
+page is open, so a page opened later shows them. Where the disk is not
+watched (`--no-watch`, or on Linux above 15,000 folders), the service
+checks its tree by folder times when a page connects. Regions the page
+no longer needs are let go once it holds 200,000 entries, down to
+150,000, but never the folder you are in, the selection, a benchmark,
+the return point or anything standing open in view.
+
+The service holds the tree in about 730 MB at 5,000,000 entries; for a
+tree that size, start it as
+`node --max-old-space-size=4096 server/terrane.mjs <directory>`, as the
+measurements did. A threshold above 100,000 keeps a larger tree whole in
+the page, at the cost of memory and frames: a whole tree of 400,000
+entries ran a task of 60 ms.
 
 ## Developing against real data
 
@@ -276,9 +375,11 @@ It does four things:
 | `npm run thumbs -- --huge` | Also thumbnail images over 80 megapixels, one at a time |
 | `npm run thumbs -- --heavy-svg` | Also render SVGs over 512 KB through Inkscape |
 | `node server/terrane.mjs --snapshot <folder>` | Serve a snapshot without the dev runner |
-| `npm test` | The service smoke test on a throwaway directory, then the Node checks of landmarks (`places-test`), working sessions (`relations-test`), strata (`strata-test`), archive interiors (`interior-test`), finding your way (`finding-test`), the batch rename (`rename-test`), CSV export (`export-test`), the warm start (`warm-test`) and the demo world and its service (`demo-test`) |
+| `npm test` | The service smoke test on a throwaway directory, then the Node checks of landmarks (`places-test`), working sessions (`relations-test`), strata (`strata-test`), archive interiors (`interior-test`), finding your way (`finding-test`), the batch rename (`rename-test`), CSV export (`export-test`), the warm start and its check (`warm-test`), the service's tree, its regions and questions (`regions-test`), the page's region mode against the whole model (`partial-test`) and the demo world and its service (`demo-test`) |
 | `npm run ui-check` | Drive the page in headless Edge or Chrome, keyboard only, with and without WebGL, on a fresh fixture in the OS temp folder; compares draw calls with the recorded baseline |
 | `npm run ui-check -- time --pass nogl` | One scenario in one pass; `npm run ui-check -- --list` names every scenario |
+| `node tools/make-synthetic.mjs --entries 1m --out <folder>` | A synthetic structure snapshot of a million entries; see Synthetic snapshots and the scale harness |
+| `node tools/scale.mjs` | Measure the page and the service over synthetic trees of 100k, 400k, 1M, 2M and 5M entries; `--nogl`, `--service-only` and `--points` choose the run |
 | `npm run vendor -- --check` | Verify the vendored browser libraries against their recorded digests |
 | `npm run wordmark` | Rebuild the framed wordmark from Dennis's `TER.svg` and `R-N.svg` (Python with svgelements and shapely) |
 | `npm run mark` | Rebuild `web/js/terrane-mark.js` from the T drawings and the framed wordmark; run it after `npm run wordmark` |
@@ -302,6 +403,47 @@ program. Every service `npm test` and `npm run ui-check` start keeps its
 data in a `TERRANE_DATA` folder of its own, and where a check asks for
 Open, Reveal or a terminal, the launch is written to a
 `TERRANE_LAUNCH_LOG` file as one line instead of being started.
+
+### Synthetic snapshots and the scale harness
+
+Very large trees are measured on directories that do not exist.
+`tools/make-synthetic.mjs` writes a structure snapshot of a made-up tree
+of 1,000 to 10,000,000 entries from one seed, without creating a file:
+code projects with `.git` and `node_modules`, photos, video, music,
+documents, data and archives, up to twelve levels deep, with working
+sessions, bulk writes, files of the same size, hidden names, links and
+folders that could not be read. The service serves it in snapshot mode
+as it serves a snapshot of a real directory. It refuses to write into
+the `projects` dataset or over a snapshot of a real directory, and a
+snapshot it writes into the dataset home (`synthetic-<size>`, unless
+`--out` names a folder) stays there until it is deleted.
+
+```bash
+node tools/make-synthetic.mjs --entries 1m --out C:\temp\synthetic-1m
+node server/terrane.mjs --snapshot C:\temp\synthetic-1m
+```
+
+`tools/scale.mjs` measures Terrane at several sizes, one heavy process
+at a time. It generates each point in the OS temp folder, drives the
+page over it through the `scale` scenario of the interface check (the
+overview, eight levels down from the keyboard, two searches and a
+reveal, the Survey and a reveal from it, then, in regions, half the
+budget of held entries and a walk down again), traces the page, and
+prints a table: the first box drawn cold and after a reload, the page's
+script heap settled, at its peak, after the tour and after a
+collection, the longest task's script and what ran in it, the regions
+held, and the service's search and survey times. `--service-only`
+measures the service alone. Before a point of a million entries or more
+it waits for 6 GB of free memory, before every browser for no other
+headless browser, and it gives each process an explicit heap. It deletes
+each dataset after measuring it and writes the figures as JSON to
+`terrane-scale` in the OS temp folder.
+
+```bash
+node tools/scale.mjs
+node tools/scale.mjs --points 5m --nogl
+node tools/scale.mjs --points 1m,2m,5m --service-only
+```
 
 ## Reading the world
 
@@ -679,6 +821,23 @@ that cannot be read.
   It extracts and writes nothing, and an entry's name is never joined to
   a path on disk. The read stops at 100,000 entries, a 64 MB directory or
   4 seconds, and says what it left out.
+- The tree the service keeps for a very large directory holds what the
+  warm cache holds, and its routes only read. `GET /api/tree`,
+  `GET /api/region` and the questions that walk the whole tree (`find`,
+  `marks`, `survey`, `sessions`, `places`) take the token and the Host
+  check like every route, are never stored by the browser, and answer
+  in read-only and snapshot mode. Every path a request names passes the
+  same lexical check as any other; reading a folder again lists it
+  through the guard, inside the root, as a survey does, and snapshot
+  mode reads nothing from disk. A name from the tree is never joined to
+  a path on disk except through the guard. Each list a request carries
+  has a cap (64 folders, 100 names, 50 folders read again, 1,500
+  folders' marks, a page of 5,000 matches), and a request past one, or
+  malformed, is refused with a code and a sentence.
+- Checking the warm cache (`GET /api/check`) reads folder and file
+  times only, inside the root and outside the holding area, through the
+  guard; it opens no file and runs nothing, and snapshot mode refuses
+  it.
 - The service listens on `127.0.0.1` only, checks the Host header, and
   requires a per-session token on every API call. The cookie that lets
   thumbnails load carries a secret of its own, named for the port, which
@@ -690,8 +849,14 @@ that cannot be read.
 Limits worth knowing: the journal keeps the latest 500 changes;
 `.terrane-trash` lives inside your directory, so on a OneDrive folder it
 will sync until purged; hidden items are detected by dot prefix only, not
-by the Windows hidden attribute; while a warm start checks its tree the
-browser holds two copies of it, about 300 MB per million entries.
+by the Windows hidden attribute; Survey again, after a warm start's
+check failed, holds two copies of the tree while it runs; until the
+sweep after a check reaches it, a file rewritten in place shows its old
+size and date. In regions, after a change the service works out the
+survey again and the page asks its search again; while either runs
+(about 0.4 s and 0.2 s at 5,000,000 entries) region answers wait, and
+they are paced to run at most about an eighth and a seventh of the
+time.
 
 ## What was verified
 
@@ -717,6 +882,10 @@ browser holds two copies of it, about 300 MB per million entries.
 | The final sweep of Wave 3 on Windows 11 (11/13/2026): `node --check` on every script outside `web/vendor/`, `npm test`, `npm run vendor -- --check`, and `node tools/ui-check.mjs --no-shots --port 5080` in both passes with Edge 157 on an RTX 5050 laptop GPU and the default fixture of 3,126 files: 37 scenarios, the earlier ones plus `palette`, `resume`, `searches`, `quicklook`, `presets`, `changed-with`, `batch-rename`, `dupes`, `copy-as`, `export`, `places-file`, `terminal` and `warm` | No syntax error in 81 scripts; 704 passed, none failed; every vendored file matches the manifest; 1369 passed, 0 failed, 6 skipped (744 and 2 with WebGL, 625 and 4 without: what needs `--snapshot`, the `splash` check for a sheet gone before the first look, and without WebGL two checks of the world); draw calls at the baseline. Not yet merged into `main` |
 | Terrane 1.4.0 on `main` (11/13/2026), Wave 3, the demo world and the blocks' look merged, on Windows 11 with Edge 157 on an RTX 5050 laptop GPU: `npm test` (ten suites, the demo test last), `npm run vendor -- --check`, and `node tools/ui-check.mjs --record-baseline`, both passes, on the default fixture; then the seven scenarios it failed (`baseline`, `interior`, `landmarks`, `relations`, `strata`, `time`, `transitions`, `seams`) again after three checks were brought in line with the new look | `npm test`: 797 passed, 0 failed. Vendored files match. The full run: 1400 passed, 11 failed, 6 skipped: seven draw-call checks still held the old baseline, which the run re-recorded one call higher (overview 7, selected 9, search 8, duplicate ties 10, the contact shadows), and the Closed mass reading row, a crossed file's colour (now its extension's tone) and the full-upload picture (the contact shadows' soft edges blend a hair differently from draw to draw, so the check sets them aside) had to follow the new look. The rerun: 525 passed, 0 failed, 2 skipped |
 | The names on the blocks on Windows 11 (11/14/2026), Edge 157 on an RTX 5050 laptop GPU: `npm test`, and `node tools/ui-check.mjs --no-shots`, both passes, on the default fixture, with `hardening` now checking that names are printed at the overview, each on a box that is drawn, and that no file or folder tag stands over the world | `npm test`: 797 passed, 0 failed. The interface check: 1412 passed, 0 failed, 6 skipped; draw calls at the baseline, since the names are drawn by the boxes' own shader |
+| Wave 4's polish on branch `wave-4`, Windows 11 (11/14/2026), Edge 157 on an RTX 5050 laptop GPU: `npm test`; the new `polish` scenario, which measures the sheet in the demo world in eighteen poses at 1600 by 1000, 1280 by 800 and 800 by 500 (one-line heads and labels, shared baselines, figure columns, clipping, control heights, the panels' columns, the three uppercase voices, icon centring, cells that keep their place, values that break only at their separators); and, one at a time in both passes, every scenario whose checks read text or layout the polish changed | `npm test`: 797 passed, 0 failed. `polish`: 497 passed with WebGL and 491 without, none failed, about 100 and 65 seconds a pass. With `hardening`, `finding`, `looking`, `many`, `exchange`, `time`, `landmarks`, `traverse`, `strata`, `interiors`, `demo`, `core`, `focus`, `seams`, `layout` and `warm`: 2,317 passed, 0 failed, 4 skipped; the first `time` run found the Since head reading "Since · MM/DD/YYYY", fixed and rerun. Draw calls at the baseline |
+| Wave 4's Scale on branch `wave-4`, Windows 11 (11/14/2026), Node 26.13: `npm test`, now twelve suites. `regions-test` holds the column tree's figures equal to `model.js` and `timeline.js` for every folder at 20,000 and 120,000 entries, its changes equal to the model's, Find equal to the page's search for 21 queries, the survey, sessions and places equal too, the generator, and the region routes and questions through the service in snapshot and live mode, 47 malformed requests refused, outside changes with a page listening and without, and a folder that keeps growing; `partial-test` holds a layout from regions equal box for box to the whole model's at twelve eye positions, the budget, and refills that keep held tail entries | 1,065 passed (255, 97, 57, 33, 60, 52, 54, 31, 80, 159, 68 and 119), none failed. In Node: a 300,000-entry tree built in 36 ms, a 20,000-file folder's region in 1.5 ms, and over 120,000 entries Find in 25 ms, the survey in 7 ms and sessions in 13 ms |
+| The Stage 4 exit test on Windows 11 (11/14/2026), 16 cores and 31.6 GB, Edge 157 on an RTX 5050 laptop GPU: `node tools/scale.mjs`, then the same with `--nogl`, on the final tree of Wave 4, over synthetic snapshots of seed 11 at five sizes, one point at a time with the service given an explicit heap; the tour from the overview eight levels down by keyboard, two searches, the Survey, and in regions the budget halved and a walk down again | Met at every size, with WebGL and without, every check passed. With WebGL, at 100,000 entries (held whole), 400,000, 1,000,000, 2,000,000 and 5,000,000 (in regions): peak script heap 28.6, 28.8, 42.1, 42.2, 41.7 MB; 26.8, 12.3, 13.1, 14.8, 12.6 MB after the tour; longest task 13.4, 12.6, 13.3, 13.0, 12.1 ms of script, none over 16 ms; first box 610, 529, 552, 1,162, 2,544 ms from a cold start. Without WebGL the peak was 19.1, 9.2, 7.1, 7.9, 7.9 MB. With the budget halved at 5,000,000 entries, letting regions go took 4.4 ms of script |
+| The final sweep of Wave 4 on Windows 11 (11/14/2026): `node --check` on every script outside `web/vendor/`, `npm test`, `npm run vendor -- --check`, the header of every file the branch touched, Markdown line lengths, and `node tools/ui-check.mjs --no-shots --port 5270` in both passes with Edge 157 on an RTX 5050 laptop GPU and the default fixture of 3,126 files: the earlier scenarios plus `views`, `polish`, `regions`, `regions-warm`, `regions-outside`, `regions-switch`, `demo-regions` and `scale` | No syntax error in 104 scripts; 1,142 passed, none failed; every vendored file matches the manifest; 85 headers in rule; no Markdown line over 100 columns; 2566 passed, 0 failed, 8 skipped (1,359 and 3 with WebGL, 1,207 and 5 without: what needs `--snapshot`, what needs a synthetic snapshot, the `splash` check for a sheet gone before the first look, and without WebGL two checks of the world); draw calls at the baseline. All of it after `main`'s steady conventions, flavors and Guide window were merged in; the first full run of the merged tree found ten `polish` failures in the Guide's tabs and key column, fixed first. Merged into `main` as Terrane 1.5.0 |
 
 | Steady conventions and Blender's view controls on Windows 11 (11/14/2026), Edge 157 on an RTX 5050 laptop GPU: `npm test`, and `node tools/ui-check.mjs --no-shots`, both passes, on the default fixture, with the new `views` scenario (hatching and bands drawn with the floating origin moved and moved back under the same eye; the middle button's orbit, grab and fly; the numpad views). With the old origin-relative coordinates put back, the same check finds 6,045 and 11,984 pixels moved | `npm test`: 797 passed, 0 failed. The interface check: 1424 passed, 0 failed, 6 skipped; 7 of 840,160 pixels differ with the fix |
 
@@ -741,7 +910,21 @@ the checks prove the requests and the fallback sentences); duplicate
 cleanup of a sampled group on real data (the fixture has no identical
 files over 16 MB); a places file carried between two browsers; the
 warm start beyond 15,126 files; the palette, Quick look and the batch
-rename with a screen reader.
+rename with a screen reader. From Wave 4: the sheet's alignment was
+measured in Edge only, in the demo world, at three window sizes; another
+browser's font metrics, the widths between those sizes and a real
+directory's names were not measured. From Wave 4's Scale: a real
+directory of millions of entries (every large tree was a synthetic
+snapshot, read in snapshot mode, where the tree does not change);
+a browser travelling a large tree while it changes on disk (changes
+under load were measured against the service alone, in Node, by a
+probe that was not kept); more than 5,000,000 entries; the browser's
+whole memory rather than the page's script heap; the regions on
+macOS, on Linux, in Firefox and Safari, on the 2-core software
+rasterizer, and with a screen reader; the budget reached in free
+travel rather than in the tour's halved step; the warm check of a
+large live directory on real disks; and the palette's path queries
+timed at 5,000,000 entries.
 
 ## Continuing development
 
@@ -757,7 +940,10 @@ server/snapshot.mjs  structure snapshots: write, replay, dataset home
 server/thumbs.mjs    serves the thumbnail dataset
 server/archive.mjs   reads a zip archive's directory, bounded (GET /api/inside)
 server/warm.mjs      the warm start's cache: teed from a whole survey, read
-                     back only when it checks out (GET /api/warm)
+                     back only when it checks out (GET /api/warm), checked
+                     by folder modification times and swept (GET /api/check)
+server/regions.mjs   the tree kept for a very large directory: GET /api/tree,
+                     GET /api/region and the whole-tree questions
 web/index.html       page structure
 web/css/terrane.css  stylesheet entry: cascade layers and module imports
 web/css/tokens.css   the colours, type and space scales, named sizes, shadows,
@@ -774,8 +960,18 @@ web/js/demo.js       the demo world in the page: answers /api/ and the event
                      stream, draws pictures, sounds and film
 web/js/demo-service.js  the service's routes and operations over the world
 web/js/demo-world.js the demo world: one seed, about 12,000 files, contents
-web/js/model.js      tree model, aggregation, search, survey, adopt
-web/js/layout.js     the spatial language and level of detail; BOX, STYLE, AUX
+web/js/model.js      tree model, aggregation, search, survey, adopt; in region
+                     mode the partial model the regions fill
+web/js/columns.js    the tree in typed columns, its regions and their answers,
+                     DOM-free (the service, the demo and the checks)
+web/js/questions.js  search, survey, sessions and places over the columns,
+                     DOM-free
+web/js/regions.js    the page's region client: asks, holds and lets go,
+                     DOM-free
+web/js/region-worker.js  fetches and decodes region answers off the main
+                     thread
+web/js/layout.js     the spatial language and level of detail; BOX, STYLE, AUX;
+                     the regions it wants opened
 web/js/viewport.js   3D world, camera, picking, transitions, relation lines
 web/js/lettering.js  the names on the blocks: a distance-field atlas
 web/js/flavors.js    the flavors: what each drag does, DOM-free
@@ -831,7 +1027,13 @@ tools/smoke-test.mjs the service, the layout, the age table and the archive
 tools/places-test.mjs, relations-test.mjs, strata-test.mjs, interior-test.mjs,
 tools/finding-test.mjs, rename-test.mjs, export-test.mjs
                      the features' DOM-free modules in Node (npm test)
-tools/warm-test.mjs  the warm cache through the service, and Model.adopt
+tools/warm-test.mjs  the warm cache and its check through the service, and
+                     Model.adopt
+tools/regions-test.mjs  the column tree, its regions and questions against
+                     the page's model, the generator, and the region
+                     routes through the service
+tools/partial-test.mjs  the page's region mode against the whole model, with
+                     no service
 tools/demo-test.mjs  the demo world and service in Node, against the real
                      scanner and model (last in npm test)
 tools/ui-check.mjs   headless browser check; scenarios in tools/ui-scenarios/,
@@ -839,10 +1041,16 @@ tools/ui-check.mjs   headless browser check; scenarios in tools/ui-scenarios/,
                      searches), looking.mjs (quicklook, presets,
                      changed-with), many.mjs (batch-rename, dupes, copy-as),
                      exchange.mjs (export, places-file, terminal), warm.mjs,
-                     demo.mjs, views.mjs (steady conventions, Blender's
-                     controls)
+                     demo.mjs, polish.mjs (alignment, wrapping and clipping
+                     in the demo world at three window sizes), regions.mjs
+                     (regions, regions-warm, regions-outside,
+                     regions-switch), scale.mjs (synthetic snapshots only)
+                     and views.mjs (steady conventions, Blender's controls)
 tools/flavors-test.mjs  every flavor in Node (in npm test)
 tools/make-fixture.mjs  the synthetic tree the checks run on (npm run fixture)
+tools/make-synthetic.mjs  synthetic structure snapshots, 1,000 to 10,000,000
+                     entries, written without a file
+tools/scale.mjs      the scale measurement over synthetic trees
 tools/vendor.mjs     fetch and verify the vendored browser libraries
 docs/                ARCHITECTURE.md, ROADMAP.md
 ```
@@ -859,7 +1067,10 @@ For GitHub Pages (deploy from the `main` branch, root folder), the root
 single page. Pages has no service, so there the page runs the demo
 world: `web/js/demo.js` answers every request to `/api/` in the page
 from `web/js/demo-service.js`, over the tree `web/js/demo-world.js`
-builds. Nothing a visitor does is sent anywhere.
+builds. Nothing a visitor does is sent anywhere. The demo answers the
+region routes and the whole-tree questions too, through the same
+`columns.js` the service uses, and `?regions` in the page's address
+draws the demo world in regions.
 
 ## License
 

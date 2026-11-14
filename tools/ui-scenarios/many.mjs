@@ -1,18 +1,21 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Acting on Many Scenarios (Terrane Edition - v1.0)
+ *     - Title: Acting on Many Scenarios (Terrane Edition - v1.1)
  *     - File Name: many.mjs
  *     - Relative Path: tools/ui-scenarios/many.mjs
  *     - Artifact Type: test
- *     - Version: 1.0.0
- *     - Date: 11/13/2026
- *     - Update: Friday, November 13, 2026
+ *     - Version: 1.1.0
+ *     - Date: 11/14/2026
+ *     - Update: Saturday, November 14, 2026
  *     - Author: Dennis 'dendogg' Smaltz
  *     - A.I. Acknowledgement: Anthropic - Claude Opus 5.5
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
  *
  * ✒ Changelog:
+ *     - 1.1.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] —
+ *       Verify by content finds Duplicate candidates by its title, since
+ *       the section builds its rows the first time it is open.
  *     - 1.0.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] —
  *       Initial release.
  *
@@ -383,7 +386,8 @@ async function verify(t, rel) {
   });
   // Focus starts on the section's heading (setup); Enter and Tab from there.
   const open = await t.eval(() => {
-    const s = document.querySelector('#ledger-rich details:has(.group-head) > summary');
+    // Found by its title: its rows are built the first time it is open.
+    const s = [...document.querySelectorAll('#ledger-rich > details > summary')].find((x) => x.querySelector('.t')?.textContent === 'Duplicate candidates');
     s.focus();
     return s.parentElement.open;
   });

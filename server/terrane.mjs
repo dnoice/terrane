@@ -2,18 +2,49 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Terrane Service (Terrane Edition - v1.6)
+ *     - Title: Terrane Service (Terrane Edition - v1.7)
  *     - File Name: terrane.mjs
  *     - Relative Path: server/terrane.mjs
  *     - Artifact Type: CLI
- *     - Version: 1.6.0
- *     - Date: 11/13/2026
- *     - Update: Friday, November 13, 2026
+ *     - Version: 1.7.0
+ *     - Date: 11/14/2026
+ *     - Update: Saturday, November 14, 2026
  *     - Author: Dennis 'dendogg' Smaltz
  *     - A.I. Acknowledgement: Anthropic - Claude Opus 5.5
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
  *
  * ✒ Changelog:
+ *     - 1.7.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
+ *       service keeps the tree and answers regions (server/regions.mjs,
+ *       over web/js/columns.js). GET /api/tree[?build=1] says the tree's
+ *       state, generation, counts, root record, progress, load time and
+ *       the process's memory, and with build=1 walks the root again (live)
+ *       or reads the newest snapshot again; GET /api/region answers a
+ *       folder's children by ids, the chain to a path, or a fresh read of
+ *       folders from disk (live mode, through guard.resolve and
+ *       assertDirInside; snapshot mode reads nothing). Both have the token
+ *       and Host checks, are answered in read-only and snapshot mode, and
+ *       are no-store. GET /api/info carries regions: { threshold, entries,
+ *       v, state }, entries from the snapshot's meta or the warm cache's.
+ *       --region-threshold <n> (else TERRANE_REGION_THRESHOLD, else
+ *       100,000; 0 for every tree) must be a whole number, or the usage is
+ *       printed; a snapshot above it is read into the tree once the service
+ *       listens. Ctrl+C stops a build that is running. The questions that
+ *       walk the whole tree are answered from it too (GET /api/find,
+ *       /api/marks, /api/survey, /api/sessions and /api/places, through
+ *       regions.handleAsk), with the same checks, in every mode. GET
+ *       /api/check checks the kept tree by folder modification times and
+ *       answers as NDJSON as it goes (ESNAPSHOT in snapshot mode, ENOWARM
+ *       without a cache), writes the cache from the checked tree and
+ *       sweeps for files rewritten in place, sending change events and
+ *       { type: 'swept' }; a live directory whose kept tree is above the
+ *       threshold is read from it at startup and checked in place
+ *       (TERRANE_CHECK_GATE, for checks, holds that check). The watcher's
+ *       changes are read into the kept tree whether or not a page listens
+ *       and announced as change events marked kept; while the disk is not
+ *       watched, a page that connects has the kept tree checked by folder
+ *       times (regions.recheck), at most once in ten seconds. Reports
+ *       version 1.5.0 in GET /api/info: Wave 4 is merged.
  *     - 1.6.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] —
  *       Reports version 1.4.0 in GET /api/info: Wave 3 is merged.
  *     - 1.5.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — GET
@@ -144,6 +175,13 @@
  *       served by GET /api/warm, so the next launch draws at once while
  *       the page surveys the directory again; --no-warm turns it off,
  *       and it is off while the dataset home is inside the directory
+ *     - Regions: the whole tree kept in typed columns, from a snapshot or a
+ *       walk of the root, and served a folder at a time (GET /api/tree,
+ *       GET /api/region) to a page that holds only what is near it; the
+ *       questions that walk the whole tree (find, marks, survey, sessions,
+ *       places) answered from the same tree
+ *     - GET /api/check: the warm cache checked by folder modification
+ *       times, then swept for files rewritten in place
  *     - Zero npm dependencies; three.js and the fonts are vendored in web/
  *
  * ✒ Usage Instructions:
@@ -159,6 +197,8 @@
  *     node server/terrane.mjs . --no-watch
  *     node server/terrane.mjs . --no-warm
  *     node server/terrane.mjs --snapshot "%LOCALAPPDATA%\terrane\datasets\projects"
+ *     node --max-old-space-size=4096 server/terrane.mjs --snapshot <synthetic> --no-open
+ *     node server/terrane.mjs . --region-threshold 0
  *
  * ✒ Command-Line Arguments:
  *     Input:
@@ -176,12 +216,17 @@
  *         --no-watch      Do not watch for outside changes (manual refresh).
  *         --no-warm       Keep no tree of the last survey and serve none: every
  *                         launch surveys the directory before it draws.
+ *         --region-threshold <n>
+ *                         Above n entries (folders and files) the tree is
+ *                         kept here and served in regions (default 100000;
+ *                         0 for every tree; or TERRANE_REGION_THRESHOLD).
  *     Output:
  *         --port <n>      Preferred port (default 4173; next free is used).
  *         --no-open       Do not open the browser automatically.
  *
  * ✒ Other Important Information:
- *     - Dependencies: Node.js built-ins only (node:sqlite for datasets)
+ *     - Dependencies: Node.js built-ins only (node:sqlite for datasets);
+ *       web/js/columns.js, model.js and timeline.js, which hold no DOM
  *     - Compatible platforms: Node.js 22.5+ on Windows, macOS, Linux
  *     - Security: the token defends against other web pages, not against
  *       other programs running as the same user, which already have the
@@ -214,9 +259,11 @@ import { makeOps } from './ops.mjs';
 import { openSnapshots, listSnapshots, datasetHome, slugOf } from './snapshot.mjs';
 import { openThumbs } from './thumbs.mjs';
 import { inspect } from './archive.mjs';
-import { warmWriter, readWarm, warmPaths, warmInside } from './warm.mjs';
+import { warmWriter, readWarm, warmPaths, warmInside, readWarmTree, checkWarm, sweepWarm, writeWarmTree } from './warm.mjs';
+import { makeRegions } from './regions.mjs';
+import { REGION_THRESHOLD } from '../web/js/columns.js';
 
-const VERSION = '1.4.0';
+const VERSION = '1.5.0';
 const WEB = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'web');
 
 const args = process.argv.slice(2);
@@ -225,23 +272,36 @@ const option = (name, fallback) => {
   const i = args.indexOf(name);
   return i >= 0 && args[i + 1] ? args[i + 1] : fallback;
 };
-const VALUED = ['--port', '--snapshot', '--thumbs'];
+const VALUED = ['--port', '--snapshot', '--thumbs', '--region-threshold'];
 const positional = args.filter((a, i) => !a.startsWith('--') && !VALUED.includes(args[i - 1]));
 const snapshotArg = option('--snapshot', null);
-const usageOk = snapshotArg ? positional.length === 0 : positional.length === 1;
+// Above this many entries (folders and files, the root counted) the tree
+// is kept here and the page asks for regions of it: --region-threshold,
+// else TERRANE_REGION_THRESHOLD, else REGION_THRESHOLD; 0 means always.
+const thresholdText = String(args.includes('--region-threshold')
+  ? option('--region-threshold', '')
+  : process.env.TERRANE_REGION_THRESHOLD || REGION_THRESHOLD).trim();
+const thresholdOk = /^\d{1,10}$/.test(thresholdText);
+const regionThreshold = thresholdOk ? Number(thresholdText) : REGION_THRESHOLD;
+const usageOk = (snapshotArg ? positional.length === 0 : positional.length === 1) && thresholdOk;
 
 if (!usageOk || flag('--help')) {
   console.error([
     '',
     '  Terrane ' + VERSION,
     '  Usage: node server/terrane.mjs <directory> [--read-only] [--port n] [--no-open] [--no-watch] [--no-warm]',
-    '         node server/terrane.mjs --snapshot <folder or .db> [--port n] [--no-open]',
+    '                                 [--region-threshold n]',
+    '         node server/terrane.mjs --snapshot <folder or .db> [--port n] [--no-open] [--region-threshold n]',
     '',
     '  Terrane only works inside the directory you name here. With --snapshot it',
     '  shows a recorded structure instead and touches no real files at all.',
     '  --read-only refuses every change to the directory. The tree of the last',
     '  survey is still kept in the dataset home outside it (TERRANE_DATA moves it;',
     '  --no-warm keeps none), and never when that home is inside the directory.',
+    '  --region-threshold n: above n entries the service keeps the tree and serves',
+    `  it a folder at a time (default ${REGION_THRESHOLD.toLocaleString('en-US')}; 0 for every tree; also`,
+    '  TERRANE_REGION_THRESHOLD).',
+    ...(thresholdOk ? [] : ['', `  The region threshold "${thresholdText}" is not a whole number of entries, 0 or more.`]),
     '',
   ].join('\n'));
   process.exit(usageOk ? 0 : 1);
@@ -403,6 +463,14 @@ const broadcast = (obj) => {
 
 const ops = snap ? null : makeOps(guard, { readOnly, onJob: (job) => broadcast({ type: 'job', ...job }) });
 
+// The tree kept here for a page that draws in regions (server/regions.mjs).
+// It takes the watcher's changes itself, listening page or not, and says
+// which folders it read as kept change events.
+const regions = makeRegions({
+  guard, snap, meta: () => snapMeta, threshold: regionThreshold, warmOn, version: VERSION, warmWriter,
+  onApplied: (dirs) => broadcast({ type: 'change', dirs, kept: true }),
+});
+
 /* ---------- snapshot mode ---------- */
 
 const SNAP_REFUSAL = 'Snapshot mode: Terrane is showing a recorded copy of the directory structure, so nothing on disk is read or changed. Start Terrane on the real directory to do this.';
@@ -426,6 +494,7 @@ const snapInfo = () => ({
   readOnly: true, watch: 'snapshot',
   snapshot: { takenAt: snapMeta.takenAt, folders: snapMeta.folders, files: snapMeta.files, bytes: snapMeta.bytes },
   warm: null,
+  regions: regions.info(),
 });
 
 async function snapshotApi(req, res, route, q) {
@@ -434,6 +503,10 @@ async function snapshotApi(req, res, route, q) {
     throw new GuardError('ESNAPSHOT', SNAP_REFUSAL, 403);
   }
   if (route === 'info') return json(res, 200, snapInfo());
+  // The tree and its regions come from the snapshot, never the disk.
+  if (route === 'tree') return regions.handleTree(req, res, q);
+  if (route === 'region') return regions.handleRegion(req, res, q);
+  if (regions.asks.includes(route)) return regions.handleAsk(req, res, q, route);
   if (route === 'scan') {
     const rel = relParts(q.get('path') || '').join('/');
     const depth = q.get('depth') ? Math.max(1, Number(q.get('depth'))) : Infinity;
@@ -482,7 +555,7 @@ async function snapshotApi(req, res, route, q) {
   if (route === 'journal') return json(res, 200, { journal: [], holding: [], snapshot: true });
   if (route === 'raw') throw new GuardError('ESNAPSHOT', 'Previews of the original file are not available in snapshot mode: a snapshot holds names, sizes and dates, not contents.', 403);
   if (route === 'inside') throw new GuardError('ESNAPSHOT', 'Looking inside an archive is not available in snapshot mode: a snapshot holds names, sizes and dates, not what a file contains. Start Terrane on the real directory to do this.', 403);
-  if (route === 'warm') throw new GuardError('ESNAPSHOT', 'Snapshot mode keeps no tree from an earlier session: the snapshot is itself a recorded tree.', 403);
+  if (route === 'warm' || route === 'check') throw new GuardError('ESNAPSHOT', 'Snapshot mode keeps no tree from an earlier session: the snapshot is itself a recorded tree.', 403);
   throw new GuardError('EROUTE', 'No such endpoint.', 404);
 }
 
@@ -516,13 +589,16 @@ async function* teeWarm(source, signal) {
  * the page accepts gzip, decompressed otherwise. The file is opened and
  * its size checked against the meta before anything is answered.
  */
+/** Why there is no kept tree: none kept yet, the dataset home inside the directory, or --no-warm. */
+const noWarm = () => new GuardError('ENOWARM', warmOn
+  ? 'No tree from an earlier session is kept for this directory.'
+  : warmBlocked
+    ? 'Terrane keeps no tree from an earlier session here: its dataset home is inside this directory, where the cache would change the tree it records. Set TERRANE_DATA to a folder outside it.'
+    : 'Terrane was started with --no-warm, so it keeps no tree from an earlier session.', 404);
+
 async function warmApi(req, res) {
   const m = warmOn ? await readWarm(guard.root) : null;
-  const none = () => new GuardError('ENOWARM', warmOn
-    ? 'No tree from an earlier session is kept for this directory.'
-    : warmBlocked
-      ? 'Terrane keeps no tree from an earlier session here: its dataset home is inside this directory, where the cache would change the tree it records. Set TERRANE_DATA to a folder outside it.'
-      : 'Terrane was started with --no-warm, so it keeps no tree from an earlier session.', 404);
+  const none = noWarm;
   if (!m) throw none();
   let fh;
   try {
@@ -544,6 +620,53 @@ async function warmApi(req, res) {
   return undefined;
 }
 
+/** The sweep that follows a check, while it runs; a new check stops it. */
+let sweeping = null;
+/** Whether a change Terrane makes is running: the sweep waits for it. */
+const changing = () => (ops?.jobs().length ?? 0) > 0;
+
+/**
+ * GET /api/check: the kept tree checked against the disk by folder
+ * modification times (warm.mjs checkWarm), answered as NDJSON as it goes,
+ * parents first: { dir, records } for a folder listed again, { dir, deep }
+ * for a new one, then { done, folders, read, added, removed, changed, ms }.
+ * A check that fails once it has begun ends with { error, code }. The
+ * cache is then written from the checked tree, and the sweep looks for
+ * files rewritten in place, sending what it finds as change events (100
+ * folders at a time, never bulk) and { type: 'swept' } at its end.
+ */
+async function checkApi(req, res) {
+  const m = warmOn ? await readWarm(guard.root) : null;
+  if (!m) throw noWarm();
+  sweeping?.abort();
+  const ac = new AbortController();
+  res.on('close', () => { if (!res.writableFinished) ac.abort(); });
+  const tree = await readWarmTree(guard.root, { signal: ac.signal });
+  if (!tree) throw noWarm();
+  res.writeHead(200, { 'Content-Type': 'application/x-ndjson', 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff' });
+  let r;
+  try {
+    r = await checkWarm(guard, tree, (msg) => res.write(`${JSON.stringify(msg)}\n`), { signal: ac.signal });
+  } catch (err) {
+    if (!ac.signal.aborted) res.write(`${JSON.stringify({ error: err.message, code: err.code || 'EIO' })}\n`);
+    res.end();
+    return undefined;
+  }
+  res.end();
+  await writeWarmTree(guard.root, tree, { version: VERSION });
+  const sw = new AbortController();
+  sweeping = sw;
+  sweepWarm(guard, tree, { skip: r.listed, signal: sw.signal, busy: changing, onChange: (dirs) => broadcast({ type: 'change', dirs }) })
+    .then(async (s) => {
+      if (sw.signal.aborted) return;
+      if (s.read) await writeWarmTree(guard.root, tree, { version: VERSION });
+      broadcast({ type: 'swept', folders: s.folders, files: s.files, changed: s.changed });
+    })
+    .catch(() => {})
+    .finally(() => { if (sweeping === sw) sweeping = null; });
+  return undefined;
+}
+
 function startWatch(dirCount) {
   if (watchState !== 'idle') return;
   if (process.platform === 'linux' && dirCount > 15000) {
@@ -562,6 +685,9 @@ function startWatch(dirCount) {
           const dirs = [...pendingDirs];
           pendingDirs = new Set();
           pendingTimer = null;
+          // A tree kept here reads them in itself and announces them;
+          // otherwise the page reads them.
+          if (regions.applyChanges(dirs)) return;
           broadcast(dirs.length > 300 ? { type: 'bulk', count: dirs.length } : { type: 'change', dirs });
         }, 450);
       }
@@ -661,12 +787,19 @@ async function api(req, res, url) {
 
   if (req.method === 'GET') {
     if (route === 'info') {
+      const kept = warmOn ? await readWarm(guard.root) : null;
       return json(res, 200, {
         version: VERSION, root: guard.root, name: path.basename(guard.root) || guard.root, sep: path.sep,
         platform: process.platform, readOnly, watch: watchState,
-        warm: warmOn ? warmInfo(await readWarm(guard.root)) : null,
+        warm: warmInfo(kept),
+        regions: regions.info({ warm: kept }),
       });
     }
+    // Answered in read-only mode too: both read the service's tree, and a
+    // fresh read lists folders through the guard as a scan does.
+    if (route === 'tree') return regions.handleTree(req, res, q);
+    if (route === 'region') return regions.handleRegion(req, res, q);
+    if (regions.asks.includes(route)) return regions.handleAsk(req, res, q, route);
     if (route === 'scan') {
       const rel = q.get('path') || '';
       const abs = guard.resolve(rel);
@@ -681,6 +814,7 @@ async function api(req, res, url) {
       return pump(res, whole && warmOn ? teeWarm(source, ac.signal) : source, ac.signal);
     }
     if (route === 'warm') return warmApi(req, res);
+    if (route === 'check') return checkApi(req, res);
     if (route === 'stat') {
       const abs = guard.resolve(q.get('path') || '');
       await guard.assertParentInside(abs);
@@ -754,6 +888,9 @@ async function api(req, res, url) {
     }
     if (route === 'events') {
       startWatch(Number(q.get('dirs')) || 0);
+      // Unwatched, a tree kept here is checked by folder times when a page
+      // arrives, as a page that surveys the whole tree reads it again.
+      if (watchState !== 'live') regions.recheck();
       res.writeHead(200, { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-store', Connection: 'keep-alive' });
       res.write(`data: ${JSON.stringify({ type: 'watch', state: watchState })}\n\n`);
       for (const job of ops.jobs()) res.write(`data: ${JSON.stringify({ type: 'job', ...job })}\n\n`);
@@ -905,6 +1042,19 @@ const listen = (attempt = 0) => {
       '  Ctrl+C to stop.',
       '',
     ].join('\n'));
+    // A snapshot above the threshold is read into the service's tree at
+    // once, so its regions are ready by the time the page asks for them.
+    const entries = regions.info().entries;
+    if (snap && entries !== null && (regionThreshold === 0 || entries > regionThreshold)) regions.startLoad();
+    // A live directory whose kept tree is above it is read from that tree
+    // at once and checked in place (TERRANE_CHECK_GATE, for checks, holds
+    // the check while the file it names exists).
+    if (!snap && warmOn) {
+      readWarm(guard.root).then((kept) => {
+        const n = kept ? kept.folders + kept.files : null;
+        if (n !== null && (regionThreshold === 0 || n > regionThreshold)) regions.loadWarm({ broadcast, busy: changing, gate: process.env.TERRANE_CHECK_GATE || null });
+      }, () => {});
+    }
     if (!flag('--no-open')) {
       const [cmd, a] = process.platform === 'win32' ? ['explorer.exe', [address]]
         : process.platform === 'darwin' ? ['open', [address]] : ['xdg-open', [address]];
@@ -920,6 +1070,8 @@ let stopping = false;
 const stop = async () => {
   if (stopping) process.exit(1);
   stopping = true;
+  regions.shutdown();
+  sweeping?.abort();
   watcher?.close();
   server.close();
   if (ops?.jobs().length) {

@@ -1,18 +1,21 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Session Traverse Scenario (Terrane Edition - v1.2)
+ *     - Title: Session Traverse Scenario (Terrane Edition - v1.3)
  *     - File Name: traverse.mjs
  *     - Relative Path: tools/ui-scenarios/traverse.mjs
  *     - Artifact Type: test
- *     - Version: 1.2.0
- *     - Date: 11/13/2026
- *     - Update: Friday, November 13, 2026
+ *     - Version: 1.3.0
+ *     - Date: 11/14/2026
+ *     - Update: Saturday, November 14, 2026
  *     - Author: Dennis 'dendogg' Smaltz
  *     - A.I. Acknowledgement: Anthropic - Claude Opus 5.5
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
  *
  * ✒ Changelog:
+ *     - 1.3.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — Select
+ *       all is an icon button found by its words, and the Findings keys read
+ *       Changed then Size, the order the polished head shows them in.
  *     - 1.2.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] —
  *       Closed sections a feature adds, such as Quick searches, may stand
  *       between Working sessions and Largest files in the Survey tab:
@@ -159,9 +162,9 @@ function findings(T) {
   };
 }
 
-/** In the page: presses a sort key of the Findings sub-line, as a click would. */
+/** In the page: presses a sort key of the Findings head, or Select all (an icon button named by its words), as a click would. */
 function press(T, label) {
-  const b = [...document.querySelectorAll('#ledger-sub .sort')].find((x) => x.textContent.trim() === label);
+  const b = [...document.querySelectorAll('#ledger-sub .sort, #ledger-sub .sub-select')].find((x) => x.textContent.trim() === label);
   b?.click();
   return !!b;
 }
@@ -431,7 +434,7 @@ const traverse = {
 
     let f = await t.app(findings);
     t.check(`Findings lists the session's files in ascending last change, Changed pressed (${f.first} first)`,
-      f.same && f.asc && f.n === want.files && f.pressed.join() === 'Size:false,Changed:true', JSON.stringify(f));
+      f.same && f.asc && f.n === want.files && f.pressed.join() === 'Changed:true,Size:false', JSON.stringify(f));
     t.check(`its sub-line names the session: "${f.note}"`,
       /^Session 1: \d\d\/\d\d\/\d{4} \d\d:\d\d(–\d\d:\d\d| – \d\d\/\d\d\/\d{4} \d\d:\d\d), \d+ files in \d+ places\.$/.test(f.note)
       && f.note.endsWith(`, ${want.files} files in ${want.places} places.`) && f.sub.includes(f.note), f.sub);
@@ -483,13 +486,13 @@ const traverse = {
     // The Size and Changed keys, and Select all in the order shown.
     await t.app(press, 'Changed');
     f = await t.app(findings);
-    t.check('Changed again lists the newest change first', f.desc && !f.asc && f.pressed.join() === 'Size:false,Changed:true', JSON.stringify(f));
+    t.check('Changed again lists the newest change first', f.desc && !f.asc && f.pressed.join() === 'Changed:true,Size:false', JSON.stringify(f));
     await t.app(press, 'Size');
     f = await t.app(findings);
-    t.check('Size lists the largest first', f.bySize && f.pressed.join() === 'Size:true,Changed:false', JSON.stringify(f));
+    t.check('Size lists the largest first', f.bySize && f.pressed.join() === 'Changed:false,Size:true', JSON.stringify(f));
     await t.app(press, 'Changed');
     f = await t.app(findings);
-    t.check('Changed from Size lists the oldest change first again', f.asc && f.pressed.join() === 'Size:false,Changed:true', JSON.stringify(f));
+    t.check('Changed from Size lists the oldest change first again', f.asc && f.pressed.join() === 'Changed:true,Size:false', JSON.stringify(f));
 
     // Stepping: ArrowDown then Enter in the time-ordered list reveals the next file.
     await t.app(() => { document.getElementById('ledger-list').focus(); return true; });

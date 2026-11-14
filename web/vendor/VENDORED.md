@@ -1,17 +1,21 @@
 <!--
 ✒ Metadata
-    - Title: Vendored Code Register (Terrane Edition - v1.2)
+    - Title: Vendored Code Register (Terrane Edition - v1.3)
     - File Name: VENDORED.md
     - Relative Path: web/vendor/VENDORED.md
     - Artifact Type: docs
-    - Version: 1.2.0
-    - Date: 11/13/2026
-    - Update: Friday, November 13, 2026
+    - Version: 1.3.0
+    - Date: 11/14/2026
+    - Update: Saturday, November 14, 2026
     - Author: Dennis 'dendogg' Smaltz
     - A.I. Acknowledgement: Anthropic - Claude Opus 5.5
     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
 
 ✒ Changelog:
+    - 1.3.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
+      sprite holds 59 icons: download, list-checks, swatch-book and
+      activity join the icon list, for the ledger head's Export CSV and
+      Select all and the title block's Legend and Status labels.
     - 1.2.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
       sprite holds 55 icons: command, compass, chevron-down, chevron-up,
       map, grip-vertical, circle-help, keyboard, hard-drive, radar, move,
@@ -55,7 +59,7 @@ needs at run time is in this repository.
 | Item | Location | Version | Source | Licence |
 | ---- | -------- | ------- | ------ | ------- |
 | three.js | `web/vendor/three/three.module.js`, `three.core.js` | 0.187.0 (r187) | npm package `three`, `build/` | MIT, see `web/vendor/three/LICENSE` |
-| Lucide icons (55, listed below) | `web/vendor/lucide/icons.svg` | 1.72.0 | jsDelivr, `lucide-static/icons/*.svg` | ISC, see `web/vendor/lucide/LICENSE` |
+| Lucide icons (59, listed below) | `web/vendor/lucide/icons.svg` | 1.72.0 | jsDelivr, `lucide-static/icons/*.svg` | ISC, see `web/vendor/lucide/LICENSE` |
 | Floating UI | `web/vendor/floating-ui/floating-ui.dom.browser.min.mjs`, `floating-ui.core.browser.min.mjs` | dom 1.8.0, core 1.8.0 | jsDelivr, `@floating-ui/dom`, `@floating-ui/core` | MIT, see `web/vendor/floating-ui/LICENSE` |
 | Motion | `web/vendor/motion/motion.js` | 14.12.0 | jsDelivr, `motion/dist/motion.js` (UMD) | MIT, see `web/vendor/motion/LICENSE.md` |
 | Archivo (variable, width and weight axes) | `web/fonts/archivo-latin-wdth-normal.woff2`, `archivo-latin-ext-wdth-normal.woff2` | Fontsource `@fontsource-variable/archivo` | Omnibus-Type | SIL OFL 1.1, see `web/fonts/LICENSE-archivo.txt` |
@@ -89,6 +93,7 @@ actions and states to these names. By purpose, as the list groups them:
 | Ledger, lenses and inspector | list-tree, list-filter, scroll-text, shapes, ruler-dimension-line, layers, arrow-down-wide-narrow, arrow-up-narrow-wide, folder-open, minus, plus, sparkles, scale, binoculars |
 | The title block's As of stepper (time) | calendar-clock, chevron-left, chevron-right |
 | Landmarks: the Places tab, benchmarks and the return point | map-pinned, flag, bookmark, arrow-left-right |
+| The ledger head's tools and the title block's cell labels | download, list-checks, swatch-book, activity |
 
 An icon names an action; it never stands for a drawing convention of the
 world.

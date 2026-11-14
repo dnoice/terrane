@@ -1,18 +1,22 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Strata (Terrane Edition - v1.1)
+ *     - Title: Strata (Terrane Edition - v1.2)
  *     - File Name: strata.js
  *     - Relative Path: web/js/strata.js
  *     - Artifact Type: javascript
- *     - Version: 1.1.0
- *     - Date: 11/13/2026
- *     - Update: Friday, November 13, 2026
+ *     - Version: 1.2.0
+ *     - Date: 11/14/2026
+ *     - Update: Saturday, November 14, 2026
  *     - Author: Dennis 'dendogg' Smaltz
  *     - A.I. Acknowledgement: Anthropic - Claude Opus 5.5
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
  *
  * ✒ Changelog:
+ *     - 1.2.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — Bytes by
+ *       last change's head goes through api.sectionTitle, so it keeps one
+ *       line at the inspector's head height. The typical-age hover line
+ *       reads a folder's count through kids(), as region mode needs.
  *     - 1.1.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] —
  *       fmtDay comes from model.js, the one MM/DD/YYYY formatter.
  *     - 1.0.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] —
@@ -75,7 +79,7 @@
  * ----------------------------------------------------------------------------
  */
 
-import { fmtBytes, fmtCount, fmtAge, fmtDay, freshness } from './model.js';
+import { fmtBytes, fmtCount, fmtAge, fmtDay, freshness, kids } from './model.js';
 import { THEME, mixHex, ramp, cssHex } from './theme.js';
 import { LADDER_DAYS, BAND_STEPS, BANDS, STEPS, DAY } from './timeline.js';
 import { BOX } from './layout.js';
@@ -235,7 +239,7 @@ export function install(api) {
   /** Fills the section's box for a folder from the current table. */
   function fill(box, node) {
     const A = S.ages;
-    const title = el('div', { class: 'section-title', text: 'Bytes by last change' });
+    const title = api.sectionTitle('Bytes by last change');
     if (!A) return box.replaceChildren(title, note('Counted once the survey has finished.'));
     if (!A.has(node)) return box.replaceChildren(title, note('This folder changed after the last count; its strata are counted again in a moment.'));
     const st = strataOf(A, node);
@@ -300,7 +304,7 @@ export function install(api) {
 
   api.TIP_LINES.add({
     id: 'strata', order: 15, owner: OWNER,
-    lines: (node, c) => (S.lens === 'age' && c.type === BOX.CAP && node.d && !node.e && node.c.length && !api.hostOf(node) ? typicalLine(S.ages, node) : null),
+    lines: (node, c) => (S.lens === 'age' && c.type === BOX.CAP && node.d && !node.e && kids(node) && !api.hostOf(node) ? typicalLine(S.ages, node) : null),
   });
 
   api.READING.add({

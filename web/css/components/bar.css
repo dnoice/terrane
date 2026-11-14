@@ -1,18 +1,23 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Location Bar (Terrane Edition - v1.1)
+ *     - Title: Location Bar (Terrane Edition - v1.2)
  *     - File Name: bar.css
  *     - Relative Path: web/css/components/bar.css
  *     - Artifact Type: stylesheet
- *     - Version: 1.1.0
- *     - Date: 11/13/2026
- *     - Update: Friday, November 13, 2026
+ *     - Version: 1.2.0
+ *     - Date: 11/14/2026
+ *     - Update: Saturday, November 14, 2026
  *     - Author: Dennis 'dendogg' Smaltz
  *     - A.I. Acknowledgement: Anthropic - Claude Opus 5.5
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
  *
  * ✒ Changelog:
+ *     - 1.2.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — Find
+ *       stands at the control height beside the bar's buttons, and the bar
+ *       starts at the gutter; with the side panels at full width the
+ *       wordmark's cell is the ledger's width, so the breadcrumbs start a
+ *       gutter in over the world.
  *     - 1.1.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] —
  *       Find's clear button is hidden, not only transparent, while Find
  *       is empty, so Tab passes it; the count and the clear button's
@@ -49,12 +54,20 @@
   position: relative;
   z-index: 2;
   display: grid;
+  --bar-gap: 18px;
   grid-template-columns: auto minmax(120px, 1fr) minmax(220px, 440px) auto;
   align-items: center;
-  gap: 18px;
-  padding: 0 14px;
+  gap: var(--bar-gap);
+  padding: 0 var(--gutter);
   border-bottom: var(--border);
   background: var(--surface-panel) var(--tex-grain);
+}
+
+/* With the side panels at full width and the ledger shown, the wordmark's
+   cell is the ledger's width, so the breadcrumbs start over the world, a
+   gutter in from its left ruler. */
+@media (min-width: 1321px) {
+  body:not(.no-ledger) #bar { grid-template-columns: calc(var(--side-w) - var(--gutter) - var(--bar-gap)) minmax(120px, 1fr) minmax(220px, 440px) auto; }
 }
 
 /* ---------- wordmark ---------- */
@@ -90,9 +103,12 @@
      view and the start goes under the fade, however the bar is resized. */
   justify-content: flex-end;
   min-width: 0;
+  /* The first crumb's words start a gutter in; only a path cut short
+     fades into that gutter. */
+  padding-left: calc(var(--gutter) - 5px);
   overflow: hidden;
   font: 500 var(--fs-md) / 1 var(--mono);
-  mask-image: linear-gradient(to right, transparent, #000 18px);
+  mask-image: linear-gradient(to right, transparent, #000 var(--gutter));
 }
 #crumbs .crumb {
   appearance: none;
@@ -137,7 +153,7 @@
 }
 .search input {
   width: 100%;
-  height: 32px;
+  height: var(--control-h);
   padding: 0 92px 0 31px;
   border: var(--border);
   border-radius: var(--radius);

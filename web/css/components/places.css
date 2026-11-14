@@ -1,16 +1,26 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Places (Terrane Edition - v1.0)
+ *     - Title: Places (Terrane Edition - v1.1)
  *     - File Name: places.css
  *     - Relative Path: web/css/components/places.css
  *     - Artifact Type: stylesheet
- *     - Version: 1.0.0
- *     - Date: 11/13/2026
- *     - Update: Friday, November 13, 2026
+ *     - Version: 1.1.0
+ *     - Date: 11/14/2026
+ *     - Update: Saturday, November 14, 2026
  *     - Author: Dennis 'dendogg' Smaltz
  *     - A.I. Acknowledgement: Anthropic - Claude Opus 5.5
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
+ *
+ * ✒ Changelog:
+ *     - 1.1.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — A
+ *       benchmark's row is a nested item that opens: its triangle at A, its
+ *       mark at B, its name at C, what changed on the name's baseline, and
+ *       its facts and actions at C. The inspector's None sentence, with Set
+ *       benchmark in the section's actions grid. Narrow tabs keep the tight
+ *       voice.
+ *     - 1.0.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — Initial
+ *       release.
  *
  * ✒ Description:
  *     Landmarks' part of the sheet: the benchmark tags that stand over
@@ -74,24 +84,31 @@
 /* A fifth tab: in a narrow ledger the five labels tighten to share the
    328 px side (about 65 px each) instead of pushing the last one out. */
 @container ledger (max-width: 420px) {
-  .tabs:has(> [data-tab='places']) button { padding: 0 calc(var(--s-1) / 2); font-stretch: var(--wdth-normal); letter-spacing: 0.03em; }
+  .tabs:has(> [data-tab='places']) button { padding: 0 calc(var(--s-1) / 2); }
 }
 
 .rich .bench { border-bottom: 0; border-top: var(--border-3); }
+/* A benchmark's row is a nested item that opens: its triangle in the
+   slot at A, its survey mark at B, its name over its folder at C, and
+   what changed at the right, on the name's baseline. */
 .rich .bench > summary {
+  align-items: baseline;
   height: auto;
   min-height: var(--row-h);
-  padding: var(--row-pad-y) var(--row-pad-x) var(--row-pad-y) var(--s-3);
+  padding: var(--row-pad-y) var(--gutter);
   font: 500 var(--fs-row) / 1.25 var(--sans);
   font-stretch: var(--wdth-condensed);
   letter-spacing: 0;
   text-transform: none;
 }
+.rich .bench > summary::before { align-self: start; margin-top: calc((1.25em - 9px) / 2); }
+.rich .bench > summary > .bench-mark { align-self: start; margin: calc((1.25em - 10px) / 2) calc((var(--mark-w) - 10px) / 2) 0; }
 .rich .bench[open] > summary { background-color: var(--bench-wash); }
 .bench-name { flex: 1; min-width: 0; }
 .bench-name .nm, .bench-name .path { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .bench-name .path { font: 400 var(--fs-xs) / 1.3 var(--mono); color: var(--text-3); }
 .bench > summary .fig {
+  flex: none;
   font: 400 var(--fs-fig) / 1 var(--mono);
   font-variant-numeric: tabular-nums;
   color: var(--text-2);
@@ -100,11 +117,13 @@
 .bench.is-changed > summary .fig { color: var(--text); font-weight: 500; }
 .bench.is-missing > summary .fig { color: var(--danger); }
 
-.rich .bench .facts { padding-left: var(--row-indent); border-bottom: 0; }
-.rich .bench .actions { padding-top: 0; }
-.bench-missing { margin: 0; padding: var(--s-2) var(--s-3) var(--s-1) var(--row-indent); color: var(--danger); font-size: var(--fs-row); text-wrap: pretty; }
+.rich .bench .facts { padding-left: var(--row-indent-2); border-bottom: 0; }
+/* An open benchmark's facts, notes and actions stand at C, under its name. */
+.rich .bench .actions { padding-top: 0; padding-left: var(--row-indent-2); }
+.rich .bench .note { padding-left: var(--row-indent-2); }
+.bench-missing { margin: 0; padding: var(--s-2) var(--gutter) var(--s-1) var(--row-indent-2); color: var(--danger); font-size: var(--fs-row); text-wrap: pretty; }
 .bench-head {
-  padding: var(--s-2) var(--row-pad-x) var(--s-1) var(--row-indent);
+  padding: var(--s-2) var(--gutter) var(--s-1) var(--row-indent-2);
   border-top: var(--border-3);
   font: 500 var(--fs-fig) / 1.2 var(--mono);
   color: var(--text-2);
@@ -113,6 +132,5 @@
 
 /* ---------- the inspector ---------- */
 
-.bench-none { display: grid; gap: var(--s-2); padding: 0 var(--s-3) var(--s-3); border-bottom: var(--border-2); }
-.bench-none p { margin: 0; color: var(--text-2); font-size: var(--fs-md); text-wrap: pretty; }
-.bench-none .btn { justify-self: start; }
+/* None yet: a sentence, then Set benchmark in the section's actions grid. */
+.bench-none { margin: 0; padding: 0 var(--gutter) var(--s-2); color: var(--text-2); font-size: var(--fs-md); text-wrap: pretty; }

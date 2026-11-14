@@ -1,18 +1,23 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Duplicate Cleanup (Terrane Edition - v1.0)
+ *     - Title: Duplicate Cleanup (Terrane Edition - v1.1)
  *     - File Name: dupes.js
  *     - Relative Path: web/js/dupes.js
  *     - Artifact Type: javascript
- *     - Version: 1.0.0
- *     - Date: 11/13/2026
- *     - Update: Friday, November 13, 2026
+ *     - Version: 1.1.0
+ *     - Date: 11/14/2026
+ *     - Update: Saturday, November 14, 2026
  *     - Author: Dennis 'dendogg' Smaltz
  *     - A.I. Acknowledgement: Anthropic - Claude Opus 5.5
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
  *
  * ✒ Changelog:
+ *     - 1.1.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — In
+ *       region mode a group's files are refs: the copy kept is told from
+ *       the others by its path, a ref is never asked whether it is held,
+ *       the hash read just before guards the move, and the kept copy is
+ *       found by its path (api.resolve) and selected.
  *     - 1.0.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] —
  *       Initial release.
  *
@@ -104,7 +109,9 @@ export function install(api) {
 
   async function clean(group, how, node = null) {
     const keep = keepOf(group, how, node);
-    const others = group.files.filter((f) => f !== keep);
+    // In region mode a group's files are refs: they are told apart by path.
+    const keepRel = keep ? api.relPath(keep) : null;
+    const others = group.files.filter((f) => f !== keep && api.relPath(f) !== keepRel);
     if (!keep || !others.length) return;
     if (!group.verified) {
       api.notice('Verify by content first: size alone is only a hint.', { kind: 'info' });
@@ -119,7 +126,7 @@ export function install(api) {
       api.notice(`${capital(ro)}: nothing can be moved to the holding area.`, { kind: 'info' });
       return;
     }
-    if (group.files.some((f) => !api.isAttached(f))) {
+    if (group.files.some((f) => !f.ref && !api.isAttached(f))) {
       api.notice('These copies changed on disk since the survey, so nothing was moved. Verify by content again.', { kind: 'info' });
       return;
     }
@@ -154,10 +161,10 @@ export function install(api) {
       api.notice(`${changed.n} changed since it was verified, so nothing was moved. Verify by content again.`, { kind: 'error' });
       return;
     }
-    const keepRel = api.relPath(keep);
     const res = await api.runOp({ type: 'trash', paths: others.map(api.relPath) });
     if (!res) return;
-    const kept = S.model.find(keepRel);
+    // The kept copy by its path: in region mode its region is read first.
+    const kept = await api.resolve(keepRel);
     if (kept) api.select(kept);
   }
 

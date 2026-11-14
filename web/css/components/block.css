@@ -1,18 +1,25 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Title Block (Terrane Edition - v1.1)
+ *     - Title: Title Block (Terrane Edition - v1.2)
  *     - File Name: block.css
  *     - Relative Path: web/css/components/block.css
  *     - Artifact Type: stylesheet
- *     - Version: 1.1.0
- *     - Date: 11/13/2026
- *     - Update: Friday, November 13, 2026
+ *     - Version: 1.2.0
+ *     - Date: 11/14/2026
+ *     - Update: Saturday, November 14, 2026
  *     - Author: Dennis 'dendogg' Smaltz
  *     - A.I. Acknowledgement: Anthropic - Claude Opus 5.5
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
  *
  * ✒ Changelog:
+ *     - 1.2.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — Each
+ *       cell is a 12 px label row over a 26 px control row, so labels share a
+ *       baseline and controls a top and height; the first cell is the
+ *       ledger's width and the status cell starts at the inspector's A. The
+ *       legend shows whole chips and +N, ramps keep both end labels, the
+ *       readout holds 25ch, and the altitude gives way at 1320 px and without
+ *       WebGL.
  *     - 1.1.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] —
  *       The narrow rules live here, in the components layer where they
  *       apply: below 1240 px the altitude gives way, below 1100 px the
@@ -32,7 +39,10 @@
  *
  * ✒ Key Features:
  *     - Ruled cells with a label line and a value line
- *     - Legend chips and data ramps with end labels
+ *     - Every label on one baseline and every control at one top and
+ *       height, each cell a label row over a control row
+ *     - Legend chips shown whole, the rest behind a "+N" chip, and data
+ *       ramps that keep both end labels
  *     - Status lamp: verdigris with a sonar ring when live, a blinking
  *       highlighter while surveying, hollow when off or in a snapshot
  *     - Counts in tabular figures, so they do not jitter as they change
@@ -52,52 +62,93 @@
   border-top: var(--border);
   background: var(--surface-panel) var(--tex-grain);
 }
+/*
+ * A cell: a 12 px label row aligned to its foot, then a 26 px control
+ * row, so every label shares one baseline and every control one top and
+ * one height across the block.
+ */
 .cell {
-  display: flex;
+  display: grid;
   flex: none;
-  flex-direction: column;
-  justify-content: center;
-  gap: 6px;
+  grid-template-rows: var(--cell-label-h) var(--control-h-sm);
+  align-content: center;
+  row-gap: 6px;
   min-width: 0;
-  padding: 0 14px;
+  padding: 0 var(--gutter);
   border-right: var(--border);
 }
 .cell-grow { flex: 1; }
-.cell-status { width: var(--side-w); padding-right: 10px; border-right: 0; }
-.cell-label { display: flex; align-items: center; gap: 5px; color: var(--text-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* The status cell starts at the inspector's edge, its words on the
+   inspector's column A. */
+.cell-status { width: var(--side-w); padding-left: calc(var(--hair) + var(--gutter)); border-right: 0; }
+.cell-label { display: flex; align-self: end; align-items: center; gap: 5px; min-width: 0; color: var(--text-3); white-space: nowrap; }
 .cell-label .icon { width: 11px; height: 11px; stroke-width: 2; }
+/* The words cut short with an ellipsis, which cannot draw on the flex label itself. */
+.cell-label .text { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.cell > :not(.cell-label) { align-self: center; min-width: 0; }
+
+/* With the ledger shown the first cell is exactly the ledger's width, so
+   its rule meets the ledger's border. */
+@media (min-width: 1101px) {
+  body:not(.no-ledger) #block .cell:first-child { width: var(--side-w); }
+}
 
 /*
  * Narrower windows (and 200% zoom): the title block gives way from its
  * least needed cell up, so the legend and the status cell stay on screen.
- * The altitude is also the storage scale over the world; the lens keeps
- * its names for assistive technology when it shows only icons.
+ * The altitude is also the storage scale over the world, and without
+ * WebGL it has nothing to report; the lens keeps its names for assistive
+ * technology when it shows only icons.
  */
-@media (max-width: 1240px) {
+body.no-gl .cell-alt { display: none; }
+@media (max-width: 1320px) {
   .cell-alt { display: none; }
+  /* "Kind · click to isolate" says only "Kind". */
+  #legend-label .more { display: none; }
+}
+@media (min-width: 1101px) and (max-width: 1320px) {
+  /* The lens keeps its names and drops its icons, to fit the ledger's width. */
+  #lens .icon { display: none; }
 }
 @media (max-width: 1100px) {
   #lens .label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
   .cell { padding: 0 var(--s-2); }
+  .cell-status { padding-left: calc(var(--hair) + var(--s-2)); }
 }
 @media (max-width: 860px) {
   .cell-status { width: calc(var(--side-w) * 0.8); }
 }
 
-#legend { display: flex; align-items: center; gap: 4px; height: 26px; overflow: hidden; mask-image: linear-gradient(to left, transparent, #000 24px); }
-#legend > * { animation: fade-in var(--dur-base) var(--ease-out) both; }
+/* Whole chips only: those that do not fit stand behind "+N" (app.js
+   fitLegend), so nothing is cut and nothing needs a fade. */
+#legend { display: flex; align-items: center; gap: 4px; height: var(--control-h-sm); overflow: hidden; }
+#legend > * { flex: none; animation: fade-in var(--dur-base) var(--ease-out) both; }
+#legend .chip-more { padding-inline: var(--s-2); font-family: var(--mono); font-variant-numeric: tabular-nums; }
 /* A folder with nothing to colour says so instead of leaving the cell blank. */
 .legend-none { padding: 0 var(--s-1); color: var(--text-2); font: 400 var(--fs-sm) / 1 var(--sans); white-space: nowrap; }
+/* A ramp gives way before its end labels do: both always show. */
+#legend > .rampbar { flex: 0 1 auto; min-width: 0; }
 .rampbar { display: flex; align-items: center; gap: 8px; font: 400 var(--fs-fig) / 1 var(--mono); color: var(--text-2); white-space: nowrap; }
-.rampbar i { display: block; width: 180px; height: 12px; border: var(--border); transform-origin: left; animation: grow-x var(--dur-slow) var(--ease-out-expo) both; }
+.rampbar i { display: block; flex: 1 1 180px; min-width: 48px; max-width: 180px; height: 12px; border: var(--border); transform-origin: left; animation: grow-x var(--dur-slow) var(--ease-out-expo) both; }
+/* Duplicates: each group a swatch and its words, held together. */
+.rampbar.is-units { gap: var(--s-3); }
+.rampbar .unit { display: inline-flex; align-items: center; gap: 6px; }
+/* In a narrow window the ramp may narrow further, and the duplicate
+   groups keep their swatch and figure, their words in their title. */
+@media (max-width: 860px) {
+  .rampbar { gap: var(--s-1); }
+  .rampbar i { min-width: var(--s-6); }
+  .rampbar .unit .w { display: none; }
+}
 
-.readout { display: block; min-width: 150px; height: 26px; font: 500 var(--fs-row) / 26px var(--mono); white-space: nowrap; }
+/* A fixed width, so the cells beside it never move as its words change. */
+.readout { display: block; width: var(--readout-w); height: var(--control-h-sm); overflow: hidden; font: 500 var(--fs-row) / var(--control-h-sm) var(--mono); text-overflow: ellipsis; white-space: nowrap; }
 
 #status {
   display: flex;
   align-items: center;
-  gap: 8px;
-  height: 26px;
+  gap: 6px;
+  height: var(--control-h-sm);
   overflow: hidden;
   font: 400 var(--fs-sm) / 1.3 var(--mono);
   font-variant-numeric: tabular-nums;

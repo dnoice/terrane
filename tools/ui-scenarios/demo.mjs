@@ -1,18 +1,26 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Demo Scenario (Terrane Edition - v1.1)
+ *     - Title: Demo Scenario (Terrane Edition - v1.2)
  *     - File Name: demo.mjs
  *     - Relative Path: tools/ui-scenarios/demo.mjs
  *     - Artifact Type: test
- *     - Version: 1.1.0
- *     - Date: 11/13/2026
- *     - Update: Friday, November 13, 2026
+ *     - Version: 1.2.0
+ *     - Date: 11/14/2026
+ *     - Update: Saturday, November 14, 2026
  *     - Author: Dennis 'dendogg' Smaltz
  *     - A.I. Acknowledgement: Anthropic - Claude Opus 5.5
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
  *
  * ✒ Changelog:
+ *     - 1.2.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] —
+ *       pages(port), the stand-in GitHub Pages, is exported, so the
+ *       polish scenario serves the demo world the same way. demo-regions
+ *       opens it with ?regions: the world drawn from regions answered in
+ *       the page, a folder's region read, a rename and its Undo read again
+ *       through fresh regions, a search answered in the page whose first
+ *       match Enter reveals, the Survey listed, and still no request to
+ *       /api/ leaving it.
  *     - 1.1.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] —
  *       Quick look in the demo world: a README's text, a photo drawn in
  *       the page, a sound for an audio file and the film recorded in the
@@ -42,9 +50,12 @@
  *       by the event stream
  *     - Quick look on a text file, a photo, an audio file and a film
  *     - Not one request to /api/ reaches the network
+ *     - demo-regions: the same world in regions (?regions), with the
+ *       status saying so, a folder read by its path, a rename and Undo
+ *       read again, and not one request to /api/ leaving the page
  *
  * ✒ Usage Instructions:
- *     node tools/ui-check.mjs demo [--pass webgl|nogl]
+ *     node tools/ui-check.mjs demo demo-regions [--pass webgl|nogl]
  *
  * ✒ Other Important Information:
  *     - Dependencies: tools/ui-check.mjs (the context t); node:http for the
@@ -61,8 +72,8 @@ import { fileURLToPath } from 'node:url';
 const REPO = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
 const TYPES = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.svg': 'image/svg+xml', '.woff2': 'font/woff2' };
 
-/** The repository served as GitHub Pages serves it. */
-function pages(port) {
+/** The repository served as GitHub Pages serves it (the polish scenario serves it too). */
+export function pages(port) {
   const server = http.createServer((req, res) => {
     let rel = decodeURIComponent(new URL(req.url, 'http://x').pathname);
     if (rel.endsWith('/')) rel += 'index.html';
@@ -252,4 +263,82 @@ const demo = {
   },
 };
 
-export default demo;
+/**
+ * The demo world drawn in regions (?regions): the demo service answers the
+ * region routes in the page from its own world, so the region path runs
+ * with no service, decoded on the main thread, and still asks nothing of
+ * the network.
+ */
+const demoRegions = {
+  name: 'demo-regions',
+  title: 'The demo world in regions (?regions), with no service',
+  data: 'any',
+  timeout: 120000,
+  async run(t) {
+    const port = Number(new URL(t.url).port) + 6;
+    const server = await pages(port);
+    try {
+      const mark = t.mark();
+      await t.page.send('Page.navigate', { url: `http://127.0.0.1:${port}/?still&regions` });
+      const ready = await t.until(() => {
+        const T = window.__terrane;
+        return !!T && !T.S.scanning && !!T.S.regions && document.getElementById('splash').hidden && {
+          href: location.pathname + location.search, entries: T.S.regions.entries, held: T.S.regions.held, files: T.S.model.root.fc, want: T.S.info.demo.files,
+          rootHeld: T.S.model.root.u === false, boxes: T.S.layout?.n ?? 0, status: document.getElementById('status').textContent, label: document.getElementById('status-label').textContent,
+        };
+      }, { timeout: 30000 });
+      t.check(`?regions draws the demo world in regions: the root's region held, ${ready?.held} of ${ready?.entries} entries`, !!ready && ready.rootHeld && ready.held < ready.entries && ready.files === ready.want, JSON.stringify(ready));
+      t.check('the status line says Demo world and Regions', /Demo world/.test(ready?.label || '') && /Regions/.test(ready?.status || ''), JSON.stringify(ready));
+      if (t.gl) t.check(`the overview drew boxes (${ready?.boxes})`, ready?.boxes > 10);
+      await t.settle();
+
+      // A folder by its path, its region asked for and listed.
+      await t.app((T) => { T.api.resolve('Projects/harbor-api').then((n) => T.api.setFocus(n, { remember: false })); return true; });
+      const there = await t.until((T) => {
+        const f = T.api.relPath(T.S.focus);
+        return (f === 'Projects/harbor-api' || f.startsWith('Projects/harbor-api/')) && T.S.focus.u === false && T.list.items.length === T.api.kids(T.S.focus) && { f, n: T.list.items.length };
+      }, { timeout: 15000 });
+      t.check(`going to Projects/harbor-api reads its region and lists it (${there?.f}, ${there?.n} items)`, !!there);
+
+      // A rename and its undo, read again through the region routes.
+      const renamed = await t.app(async (T) => {
+        const res = await T.api.runOp({ type: 'rename', path: 'Projects/harbor-api/README.md', name: 'README-renamed.md' });
+        const dir = T.S.model.find('Projects/harbor-api');
+        return { ok: !!res, names: dir ? dir.c.map((c) => c.n) : [] };
+      });
+      t.check('a rename is read again in its region: the new name, not the old', renamed.ok && renamed.names.includes('README-renamed.md') && !renamed.names.includes('README.md'), JSON.stringify(renamed).slice(0, 300));
+      const undone = await t.app(async (T) => {
+        const res = await T.api.post('undo');
+        await T.api.refreshDirs(res.affected);
+        return T.S.model.find('Projects/harbor-api').c.map((c) => c.n);
+      });
+      t.check('Undo puts the old name back in the region', undone.includes('README.md') && !undone.includes('README-renamed.md'));
+
+      // A search, answered in the page by the demo's own column tree, and Enter reveals.
+      await t.eval(() => document.getElementById('q').focus());
+      await t.type('invoice');
+      const found = await t.until((T) => T.S.query === 'invoice' && T.S.search?.regions && T.S.tab === 'findings' && T.list.items.length > 0
+        && { total: T.S.search.total, first: T.api.relPath(T.list.items[0]) }, { timeout: 15000 });
+      t.check(`Find answers in regions: ${found?.total} matches for invoice`, found?.total >= 4, JSON.stringify(found));
+      await t.eval(() => document.getElementById('ledger-list').focus());
+      await t.key('Enter');
+      const shown = await t.until((T, r) => T.S.primary && !T.S.primary.ref && T.api.relPath(T.S.primary) === r && T.api.isAttached(T.S.primary), { args: [found?.first], timeout: 15000 });
+      t.check(`and Enter reveals the first, ${found?.first}`, !!shown);
+      await t.app((T) => { T.api.setQuery(''); return true; });
+      // The Survey lists, from the same tree.
+      await t.app((T) => { T.S.tab = 'survey'; T.api.drawLedger(); return true; });
+      const listed = await t.until((T) => T.S.survey && !T.S.survey.pending && document.querySelectorAll('#ledger-rich .item').length > 0
+        && { largest: T.S.survey.largest.length, groups: T.S.survey.dupGroups.length, items: document.querySelectorAll('#ledger-rich .item').length }, { timeout: 15000 });
+      t.check(`the Survey lists in regions: ${listed?.largest} largest files, ${listed?.groups} candidate groups`, listed?.largest > 0 && listed.groups > 0, JSON.stringify(listed));
+
+      const asked = t.requests(mark).filter((r) => /\/api\//.test(r.url));
+      t.check(`not one request to /api/ left the page (${asked.length})`, asked.length === 0, JSON.stringify(asked.slice(0, 3)));
+    } finally {
+      await new Promise((r) => server.close(r));
+    }
+    await t.page.send('Page.navigate', { url: t.url });
+    await t.until((T) => !!T && !T.S.scanning && document.getElementById('splash').hidden, { timeout: 30000 });
+  },
+};
+
+export default [demo, demoRegions];

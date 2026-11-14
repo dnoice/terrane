@@ -1,10 +1,10 @@
 <!--
 ✒ Metadata
-    - Title: Package Manifest (Terrane Edition - v1.12)
+    - Title: Package Manifest (Terrane Edition - v1.14)
     - File Name: package.json
     - Relative Path: package.json
     - Artifact Type: config
-    - Version: 1.12.0
+    - Version: 1.14.0
     - Date: 11/14/2026
     - Update: Saturday, November 14, 2026
     - Author: Dennis 'dendogg' Smaltz
@@ -12,6 +12,17 @@
     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
 
 ✒ Changelog:
+    - 1.14.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] —
+      Raises the package version to 1.5.0: Wave 4, Scale and the
+      interface polish, is merged.
+    - 1.13.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
+      test script runs tools/regions-test.mjs after the warm test and
+      before the demo test: the tree the service keeps in columns, its
+      regions and changes against the page's model, the generator of
+      synthetic trees, and the region routes through the service. It then
+      runs tools/partial-test.mjs, before the demo test: the page's region
+      mode (regions.js, the partial model, the layout's wants, RegionAges,
+      the budget) against the whole model, with no service.
     - 1.12.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
       test script ends with tools/flavors-test.mjs, the Node check of
       the flavors.
@@ -98,7 +109,11 @@
       and name checks), the export test (CSV quoting, the byte order
       mark, CRLF and the columns, over a fresh fixture) and the warm
       test (the cache of the last survey, GET /api/warm, --no-warm and
-      Model.adopt) and the demo test (the demo world and the demo
+      Model.adopt), the regions test (the column tree, regions and
+      changes against the model, the synthetic tree generator, the
+      region routes and the whole-tree questions through the service),
+      the partial test (the page's region mode against the whole model,
+      no service) and the demo test (the demo world and the demo
       service), each in Node
     - vendor: fetches the pinned third-party browser files into
       web/vendor/ from jsDelivr; --check verifies them offline

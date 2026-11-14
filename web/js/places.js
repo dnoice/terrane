@@ -1,18 +1,23 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Places Store (Terrane Edition - v1.2)
+ *     - Title: Places Store (Terrane Edition - v1.3)
  *     - File Name: places.js
  *     - Relative Path: web/js/places.js
  *     - Artifact Type: javascript
- *     - Version: 1.2.0
- *     - Date: 11/13/2026
- *     - Update: Friday, November 13, 2026
+ *     - Version: 1.3.0
+ *     - Date: 11/14/2026
+ *     - Update: Saturday, November 14, 2026
  *     - Author: Dennis 'dendogg' Smaltz
  *     - A.I. Acknowledgement: Anthropic - Claude Opus 5.5
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
  *
  * ✒ Changelog:
+ *     - 1.3.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] —
+ *       measure, summarize and the detail's fingerprint read a folder's
+ *       count through kids(); a folder held in part counts its tail with
+ *       the rest: its entries and bytes, and its files as the folder's
+ *       less those of the entries held.
  *     - 1.2.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] —
  *       exportData() and importData(data) for a places file: benchmarks
  *       matched by folder, added under new ids or updated when newer,
@@ -21,8 +26,7 @@
  *     - 1.1.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] —
  *       resolve(model) without dirs, a whole survey, empties the detail
  *       cache, which held the old tree. plural comes from model.js.
- *     - 1.0.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] —
- *       Initial release.
+ *     Earlier entries: see CHANGELOG.md
  *
  * ✒ Description:
  *     The memory behind landmarks: benchmarks (a folder's size, counts and
@@ -92,7 +96,7 @@
  * ----------------------------------------------------------------------------
  */
 
-import { relPath, fmtBytes, fmtCount, plural } from './model.js';
+import { relPath, fmtBytes, fmtCount, plural, kids } from './model.js';
 
 /** The most benchmarks one directory keeps. */
 export const MAX_BENCHMARKS = 64;
@@ -113,13 +117,21 @@ export const storageKey = (root, source = '') => `terrane.places.v1|${root}${sou
 
 const byName = (a, b) => (a.n < b.n ? -1 : a.n > b.n ? 1 : 0);
 
-/** A folder measured now: totals, newest change and its largest direct entries. */
+/**
+ * A folder measured now: totals, newest change and its largest direct
+ * entries. A folder held in region mode with a tail (the children the
+ * page does not hold) counts the tail with the rest: its entries and
+ * bytes as the service gives them, its files as the folder's files less
+ * those of the entries held.
+ */
 export function measure(dir, at = Date.now()) {
-  const kids = dir.c.slice().sort((a, b) => b.s - a.s || byName(a, b));
+  const list = dir.c.slice().sort((a, b) => b.s - a.s || byName(a, b));
   const top = [];
   const rest = { n: 0, s: 0, f: 0 };
-  kids.forEach((ch, k) => {
+  let heldFiles = 0;
+  list.forEach((ch, k) => {
     const f = ch.d ? ch.fc : 1;
+    heldFiles += f;
     if (k < KEEP_ENTRIES) top.push([ch.n, ch.d ? 1 : 0, ch.s, f]);
     else {
       rest.n++;
@@ -127,7 +139,12 @@ export function measure(dir, at = Date.now()) {
       rest.f += f;
     }
   });
-  return { at, s: dir.s, fc: dir.fc, dc: dir.dc, items: kids.length, mm: dir.mm, top, rest };
+  if (dir.tail) {
+    rest.n += dir.tail.n;
+    rest.s += dir.tail.s;
+    rest.f += Math.max(0, dir.fc - heldFiles);
+  }
+  return { at, s: dir.s, fc: dir.fc, dc: dir.dc, items: kids(dir), mm: dir.mm, top, rest };
 }
 
 /**
@@ -140,7 +157,7 @@ export function summarize(m, node) {
   const ds = node.s - m.s;
   const df = node.fc - m.fc;
   const dd = node.dc - m.dc;
-  const di = node.c.length - m.items;
+  const di = kids(node) - m.items;
   const later = node.mm > m.mm;
   return { missing: false, ds, df, dd, di, later, changed: !!(ds || df || dd || di || later) };
 }
@@ -678,7 +695,7 @@ export class Places {
   detail(b) {
     const node = b.node;
     if (!node) return null;
-    const fp = `${node.s}|${node.fc}|${node.dc}|${node.c.length}|${node.mm}|${node.m}`;
+    const fp = `${node.s}|${node.fc}|${node.dc}|${kids(node)}|${node.c.length}|${node.mm}|${node.m}`;
     const hit = this.cache.get(b.id);
     if (hit && hit.fp === fp && hit.node === node && hit.m === b.m) return hit.res;
     const res = compare(b.m, node);

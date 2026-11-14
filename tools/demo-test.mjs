@@ -2,16 +2,34 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Demo Test (Terrane Edition - v1.0)
+ *     - Title: Demo Test (Terrane Edition - v1.1)
  *     - File Name: demo-test.mjs
  *     - Relative Path: tools/demo-test.mjs
  *     - Artifact Type: test
- *     - Version: 1.0.0
- *     - Date: 11/13/2026
- *     - Update: Friday, November 13, 2026
+ *     - Version: 1.1.0
+ *     - Date: 11/14/2026
+ *     - Update: Saturday, November 14, 2026
  *     - Author: Dennis 'dendogg' Smaltz
  *     - A.I. Acknowledgement: Anthropic - Claude Opus 5.5
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
+ *
+ * ✒ Changelog:
+ *     - 1.1.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
+ *       region routes: info.regions; the root region equals a column tree
+ *       built from the demo's own records; every folder's record equals
+ *       the browser model's node and the age table's row; a path's chain
+ *       with skip; a fresh read after a new folder shows it, with the
+ *       parent's new count in up; a stale generation and too many ids
+ *       refused in the service's words. The whole-tree questions: with
+ *       regions: true the threshold is 0; find equals runSearch for 14
+ *       queries on one clock, the survey model.survey(), the sessions
+ *       relations.sessions; places and marks answer; check is refused with
+ *       its sentence; a wrong generation is ESTALE. An arrival read into
+ *       the tree and said kept; a kept fresh read; with= on a fresh read;
+ *       a with= name that climbs refused; find's second page continues the
+ *       first.
+ *     - 1.0.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] —
+ *       Initial release.
  *
  * ✒ Description:
  *     Checks the demo world and the demo service in Node, without a page:
@@ -42,6 +60,9 @@
  *     - Jobs: a large copy reports queued, counting, copying and end, and
  *       a cancel part way keeps what it finished and says so
  *     - Hashes: duplicates match, the decoy does not, large files sampled
+ *     - Regions: GET tree and region answered by columns.js over the
+ *       demo's own tree, figure for figure with the browser's model, and
+ *       a fresh read that takes a change on
  *
  * ✒ Usage Instructions:
  *     node tools/demo-test.mjs
@@ -49,7 +70,8 @@
  *
  * ✒ Other Important Information:
  *     - Dependencies: Node.js 22+; web/js/demo-world.js,
- *       web/js/demo-service.js, web/js/model.js, server/scan.mjs
+ *       web/js/demo-service.js, web/js/model.js, web/js/columns.js,
+ *       web/js/timeline.js, server/scan.mjs
  *     - Compatible platforms: Windows, macOS, Linux
  *     - Writes a small throwaway folder in the OS temp folder for the
  *       scan parity check and removes it
@@ -63,7 +85,10 @@ import path from 'node:path';
 
 const W = await import(new URL('../web/js/demo-world.js', import.meta.url).href);
 const { createDemoService } = await import(new URL('../web/js/demo-service.js', import.meta.url).href);
-const { Model } = await import(new URL('../web/js/model.js', import.meta.url).href);
+const { Model, relPath, parseQuery, runSearch, isAncestor } = await import(new URL('../web/js/model.js', import.meta.url).href);
+const R = await import(new URL('../web/js/relations.js', import.meta.url).href);
+const C = await import(new URL('../web/js/columns.js', import.meta.url).href);
+const { buildAgeTable, STEPS } = await import(new URL('../web/js/timeline.js', import.meta.url).href);
 const { scan } = await import(new URL('../server/scan.mjs', import.meta.url).href);
 
 let passed = 0;
@@ -353,6 +378,141 @@ check('large files are sampled, and a shared copy of a render matches it', big[0
 events.length = 0;
 check('a download arrives and the change is announced', svc.arrive() && events.at(-1)?.type === 'change' && events.at(-1).dirs[0] === 'Downloads');
 check('only once', svc.arrive() === false);
+
+section('Regions');
+{
+  const told = [];
+  const rs = createDemoService({ now: NOW, clock: () => NOW, emit: (m) => told.push(m) });
+  const rh = (r, q) => rs.handle('GET', r, q);
+  const q = (o) => new URLSearchParams(o);
+  const info = (await rh('info')).json;
+  check('info carries regions: the threshold, the entries, generation 1, ready', info.regions.threshold === C.REGION_THRESHOLD
+    && info.regions.entries === world.stats.folders + world.stats.files && info.regions.v === 1 && info.regions.state === 'ready', JSON.stringify(info.regions));
+  check('a demo made with threshold 0 says so', createDemoService({ now: NOW, threshold: 0 }).info().regions.threshold === 0);
+  const tree = (await rh('tree')).json;
+  check('GET tree: ready, the world\'s entries, the root record', tree.state === 'ready' && tree.entries === info.regions.entries
+    && tree.root.length === C.D_LEN && tree.root[C.D_FC] === world.stats.files);
+  const batches = (await rs.handle('GET', 'scan', { path: '' })).batches;
+  const local = C.treeFrom(batches, { name: rs.world.root.name, anchor: tree.anchor });
+  let r = await rh('region', q({ v: 1, ids: '0' }));
+  check('the root region equals a column tree built from the demo\'s records', r.status === 200 && JSON.stringify(r.json.regions[0]) === JSON.stringify(local.region(0)));
+  const model = new Model(rs.world.root.name);
+  const idMap = [];
+  for (const b of batches) model.ingest(b, idMap, model.root);
+  const ages = buildAgeTable(model.root, tree.anchor);
+  const nodes = [];
+  const stack = [model.root];
+  while (stack.length) {
+    const n = stack.pop();
+    nodes.push(n);
+    for (const c of n.c) if (c.d) stack.push(c);
+  }
+  const ids = nodes.map((n) => local.idOf(relPath(n)));
+  const got = new Map();
+  for (let i = 0; i < ids.length; i += 64) {
+    const part = ids.slice(i, i + 64);
+    const a = await rh('region', q({ v: 1, ids: part.join(',') }));
+    for (const reg of a.json.regions) got.set(reg.id, reg.self);
+    for (const id of a.json.more) got.set(id, (await rh('region', q({ v: 1, ids: String(id) }))).json.regions[0].self);
+  }
+  const bad = [];
+  nodes.forEach((n, i) => {
+    const D = got.get(ids[i]);
+    const want = [n.s, n.fc, n.dc, n.h, n.mm, n.c.length, n.e || 0, ...n.ks];
+    const have = D && [D[C.D_S], D[C.D_FC], D[C.D_DC], D[C.D_H], D[C.D_MM], D[C.D_CN], D[C.D_ERR], ...D.slice(C.D_KS, C.D_KS + 9)];
+    let ok = !!D && JSON.stringify(want) === JSON.stringify(have) && D[C.D_MD] === ages.medianStep(n);
+    for (let k = 0; ok && k < STEPS; k++) ok = D[C.D_AB + k] === ages.changedBytes(n, k) && D[C.D_AF + k] === ages.changedFiles(n, k);
+    if (!ok) bad.push(relPath(n) || '(root)');
+  });
+  check(`every folder's record equals the browser model's node and its age row (${nodes.length} folders)`, bad.length === 0, bad.slice(0, 3).join(', '));
+  r = await rh('region', q({ v: 1, path: 'Projects/harbor-api/README.md', skip: 1 }));
+  check('a path\'s chain with skip leaves out the root and ends at the file\'s folder', r.status === 200 && r.json.regions.length === 2
+    && r.json.regions[0].self[C.D_NAME] === 'Projects' && r.json.regions[1].f.includes('README.md') && r.json.target.name === 'README.md' && r.json.target.dir === false);
+  const dcBefore = local.encodeD(local.idOf('Documents'))[C.D_DC];
+  await rs.handle('POST', 'op', {}, { type: 'mkdir', parent: 'Documents', name: 'Plans' });
+  r = await rh('region', q({ v: 1, fresh: 1, paths: JSON.stringify(['Documents']) }));
+  check('a fresh read after a new folder shows it', r.status === 200 && r.json.regions[0].d.some((d) => d[C.D_NAME] === 'Plans') && r.json.regions[0].self[C.D_DC] === dcBefore + 1);
+  check('and up carries the parent\'s new count', r.json.up.length === 1 && r.json.up[0][C.D_DC] === tree.root[C.D_DC] + 1);
+  await rs.arrive();
+  check('once the tree in columns is built, an arrival is read into it and the change says so (kept)', told.at(-1)?.type === 'change' && told.at(-1).kept === true && told.at(-1).dirs[0] === 'Downloads');
+  r = await rh('region', q({ v: 1, fresh: 1, kept: 1, paths: JSON.stringify(['Downloads']) }));
+  check('a kept fresh read answers it from the tree', r.status === 200 && r.json.regions[0].f.includes('tide-tables-2027.pdf'));
+  r = await rh('region', q({ v: 1, fresh: 1, paths: JSON.stringify(['Downloads', 'Gone/away']) }));
+  check('an arrival is read in, and a path not in the tree is reported gone', r.json.regions[0].f.includes('tide-tables-2027.pdf') && JSON.stringify(r.json.gone) === '["Gone/away"]');
+  const dl = local.idOf('Downloads');
+  r = await rh('region', q([['v', '1'], ['fresh', '1'], ['kept', '1'], ['paths', '["Downloads"]'], ['with', `${dl}:tide-tables-2027.pdf`]]));
+  check('a fresh read takes with= names, as the service does', r.status === 200 && r.json.regions[0].f.includes('tide-tables-2027.pdf'));
+  r = await rh('region', q([['v', '1'], ['ids', `0,${dl}`], ['with', `${dl}:..`]]));
+  check('a with= name that climbs is EBADREQ 400', r.status === 400 && r.json.code === 'EBADREQ');
+  r = await rh('region', q({ v: 2, ids: '0' }));
+  check('a stale generation is ESTALE 409 in the service\'s words', r.status === 409 && r.json.code === 'ESTALE' && r.json.message === 'The directory was surveyed again; its regions are read afresh.');
+  r = await rh('region', q({ v: 1, ids: Array.from({ length: 65 }, (_, i) => i).join(',') }));
+  check('more than 64 ids are ETOOMANY 413', r.status === 413 && r.json.code === 'ETOOMANY');
+  r = await rh('region', q({ v: 1, path: 'Projects/nope' }));
+  check('a path not in the tree is ENOENT 404, naming the deepest folder found', r.status === 404 && r.json.code === 'ENOENT' && r.json.deepest === 'Projects');
+  r = await rh('region', q([['v', '1'], ['ids', '0'], ['with', '0:a/b']]));
+  check('a name with a slash is EBADREQ 400', r.status === 400 && r.json.code === 'EBADREQ');
+}
+
+section('The whole-tree questions');
+{
+  const rs = createDemoService({ now: NOW, clock: () => NOW, regions: true });
+  check('createDemoService({ regions: true }) draws every tree in regions: threshold 0', rs.info().regions.threshold === 0);
+  const ask = async (route, o) => rs.handle('GET', route, new URLSearchParams({ v: '1', ...o }));
+  const model = new Model(rs.world.root.name);
+  const idMap = [];
+  for (const b of (await rs.handle('GET', 'scan', { path: '' })).batches) model.ingest(b, idMap, model.root);
+  const realNow = Date.now;
+  Date.now = () => NOW;
+  try {
+    const sv = model.survey();
+    const sess = R.sessions(model.root);
+    const ext = {
+      is: { benchmark: () => false },
+      prefix: { session: (v) => R.sessionPredicate(sess, /^\d+$/.test(v) ? Number(v) : 0), in: (_v, raw) => {
+        const dir = model.find(raw.trim().replace(/^\/+/, ''));
+        return dir?.d ? (n) => n !== dir && isAncestor(dir, n) : () => false;
+      } },
+    };
+    const queries = ['invoice', '*.jpg', 'kind:video,audio', 'ext:pdf >100kb', 'is:empty', 'is:hidden', 'is:link', 'is:sealed', 'is:dup', 'newer:30d', 'older:1y', 'in:Projects', 'session:1', '"harbor"'];
+    const bad = [];
+    for (const text of queries) {
+      const s = runSearch(model, parseQuery(text, ext));
+      const a = (await ask('find', { q: text })).json;
+      const b = (await ask('find', { q: text, sort: 'date', dir: '1' })).json;
+      const bySize = s.list.slice(0, 5000).map(relPath);
+      const byDate = [...s.list].sort((x, y) => ((x.d ? x.mm : x.m) - (y.d ? y.mm : y.m))).slice(0, 5000).map(relPath);
+      if (a.total !== s.set.size || a.bytes !== s.bytes || JSON.stringify(a.hits.map((h) => h[0])) !== JSON.stringify(bySize) || JSON.stringify(b.hits.map((h) => h[0])) !== JSON.stringify(byDate)) bad.push(`${text}: ${a.total}/${s.set.size}`);
+    }
+    check(`find over the demo world equals the page's runSearch for ${queries.length} queries: totals, bytes and the order by size and by date`, bad.length === 0, bad.join(' | '));
+    // Pages of a search: from, as the service answers it.
+    const every = runSearch(model, parseQuery('*', ext)).list.map(relPath);
+    const p1 = (await ask('find', { q: '*', limit: '3000' })).json;
+    const p2 = (await ask('find', { q: '*', limit: '3000', from: '3000', qid: p1.qid })).json;
+    check(`find turns page by page (from): the second page of ${p2.total} continues the first, in the page's own order`,
+      p2.from === 3000 && p2.total === every.length && JSON.stringify(p1.hits.concat(p2.hits).map((h) => h[0])) === JSON.stringify(every.slice(0, 6000)));
+    const a = (await ask('survey', {})).json;
+    check(`survey equals model.survey(): largest, empty, sealed, links and ${a.dupGroups.length} candidate groups`,
+      JSON.stringify(a.largest.map((r) => r[0])) === JSON.stringify(sv.largest.map(relPath))
+      && a.empty.count === sv.empty.length && a.sealed.count === sv.sealed.length && a.links.count === sv.links.length
+      && JSON.stringify(a.dupGroups.map((g) => [g.size, g.count, g.waste])) === JSON.stringify(sv.dupGroups.map((g) => [g.size, g.files.length, g.waste])));
+    const se = (await ask('sessions', {})).json;
+    check(`sessions equal relations.sessions (${se.count} sessions, ${se.considered} files considered)`, se.count === sess.length && se.considered === sess.considered && se.skipped === sess.skipped
+      && se.list.every((r, i) => r.start === sess[i].start && r.end === sess[i].end && r.count === sess[i].count && r.bytes === sess[i].bytes && r.bulk === sess[i].bulk));
+    const pl = (await ask('places', { q: 'harbor', limit: '5' })).json;
+    check(`places ranks the demo's names (${pl.places.map((p) => p[0]).join(', ')})`, pl.places.length > 0 && /harbor/i.test(pl.places[0][0]));
+    const f = (await ask('find', { q: 'invoice' })).json;
+    const mk = (await ask('marks', { q: f.qid, ids: '0' })).json;
+    check('marks answer for a search the demo keeps', mk.marks.length === 1 && mk.marks[0].w === f.total);
+  } finally {
+    Date.now = realNow;
+  }
+  const c = await rs.handle('GET', 'check', {});
+  check('GET check is refused: ENOWARM, with the demo\'s sentence', c.status === 404 && c.json.code === 'ENOWARM'
+    && c.json.message === 'The demo world is built afresh on every visit, so there is no tree kept from an earlier session to check.', JSON.stringify(c.json));
+  const st = await rs.handle('GET', 'find', new URLSearchParams({ v: '2', q: 'x' }));
+  check('a question for a wrong generation is ESTALE 409', st.status === 409 && st.json.code === 'ESTALE');
+}
 
 console.log(`\n${passed} passed, ${failed} failed\n`);
 process.exit(failed ? 1 : 0);

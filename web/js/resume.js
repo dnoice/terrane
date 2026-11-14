@@ -1,18 +1,22 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Remembered View and Links (Terrane Edition - v1.0)
+ *     - Title: Remembered View and Links (Terrane Edition - v1.1)
  *     - File Name: resume.js
  *     - Relative Path: web/js/resume.js
  *     - Artifact Type: javascript
- *     - Version: 1.0.0
- *     - Date: 11/13/2026
- *     - Update: Friday, November 13, 2026
+ *     - Version: 1.1.0
+ *     - Date: 11/14/2026
+ *     - Update: Saturday, November 14, 2026
  *     - Author: Dennis 'dendogg' Smaltz
  *     - A.I. Acknowledgement: Anthropic - Claude Opus 5.5
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
  *
  * ✒ Changelog:
+ *     - 1.1.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] —
+ *       In region mode the paths the kept view and the address name are
+ *       read first (api.resolveAll), and a changed address by api.resolve;
+ *       then they are put back as in a whole tree.
  *     - 1.0.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] —
  *       Initial release.
  *
@@ -195,9 +199,10 @@ export function install(api) {
     api.select(node);
   }
 
+  let restoring = false;
   function restore() {
-    if (restored) return;
-    restored = true;
+    if (restored || restoring) return;
+    restoring = true;
     let view = null;
     try {
       view = readView(store().getItem(key));
@@ -206,6 +211,22 @@ export function install(api) {
     }
     const hash = startHash && startHash !== '#' ? startHash : '';
     const rel = hash ? relOfHash(hash) : null;
+    if (!api.regionMode()) {
+      putBack(view, hash, rel);
+      return;
+    }
+    // Region mode: the page holds only what is near the eye, so every
+    // path the view and the address name is read first; then they are
+    // put back as in a whole tree.
+    const model = S.model;
+    const rels = [rel, view?.focus, ...(view?.sel || []), view?.primary].filter((r) => r !== null && r !== undefined);
+    api.resolveAll(rels).then(() => {
+      if (S.model === model) putBack(view, hash, rel);
+    }, () => putBack(view, hash, rel));
+  }
+
+  function putBack(view, hash, rel) {
+    restored = true;
     const named = hash ? find(rel) : null;
     if (hash && !named) api.notice(`Nothing at ${rel ?? shown(hash)} in ${S.model.root.n}.`, { kind: 'info' });
     const kept = view ? find(view.focus) : null;
@@ -280,13 +301,17 @@ export function install(api) {
       return;
     }
     const rel = relOfHash(location.hash);
-    const node = find(rel);
-    if (!node) {
-      api.notice(`Nothing at ${rel ?? shown(location.hash)} in ${S.model.root.n}.`, { kind: 'info' });
-      setHash(S.focus);
-      return;
-    }
-    follow(node);
+    const go = (node) => {
+      if (!node) {
+        api.notice(`Nothing at ${rel ?? shown(location.hash)} in ${S.model.root.n}.`, { kind: 'info' });
+        setHash(S.focus);
+        return;
+      }
+      follow(node);
+    };
+    // Region mode reads the path first; a whole tree finds it at once.
+    if (api.regionMode() && rel !== null) api.resolve(rel).then(go, () => go(null));
+    else go(find(rel));
   });
 
   /* ---------- Copy link ---------- */

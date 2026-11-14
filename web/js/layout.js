@@ -1,18 +1,24 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Terrace Layout (Terrane Edition - v1.4)
+ *     - Title: Terrace Layout (Terrane Edition - v1.5)
  *     - File Name: layout.js
  *     - Relative Path: web/js/layout.js
  *     - Artifact Type: javascript
- *     - Version: 1.4.0
- *     - Date: 11/13/2026
- *     - Update: Friday, November 13, 2026
+ *     - Version: 1.5.0
+ *     - Date: 11/14/2026
+ *     - Update: Saturday, November 14, 2026
  *     - Author: Dennis 'dendogg' Smaltz
  *     - A.I. Acknowledgement: Anthropic - Claude Opus 5.5
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
  *
  * ✒ Changelog:
+ *     - 1.5.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] —
+ *       Region mode: a folder's count is kids(dir), so one held in part
+ *       puts its tail's entries and bytes in its scree; a folder whose
+ *       children are not held (u) stands as a closed mass and goes into
+ *       layout.want when it would open, and from 0.6 of that distance.
+ *       With every folder held whole the layout is the same as before.
  *     - 1.4.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — An
  *       open archive (options.inside) stands as a chamber on its file's
  *       footprint: four WALL boxes on the edges and, between them, the
@@ -26,12 +32,6 @@
  *       down to a crossed slab when nothing was kept. Footprints, the box
  *       count and key order stay those of the present. AUX names the
  *       per-box marks.
- *     - 1.2.0 (11/11/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
- *       box budget is checked before every box, so a layout never holds
- *       more than 70,000 and cannot overflow the viewport. Options reach
- *       the layout as one object; a per-box aux byte, an optional plateau
- *       key and index aliases are added; BOX and STYLE codes are allocated
- *       here, with WALL and CROSSED reserved.
  *     Earlier entries: see CHANGELOG.md
  *
  * ✒ Description:
@@ -71,6 +71,9 @@
  *       floor between the walls, at any depth and any scale
  *     - One table of box types (BOX) and one of drawing conventions
  *       (STYLE), so every code has a single owner
+ *     - Regions by approach: a folder whose children the page does not
+ *       hold is drawn closed and asked for (layout.want) as the eye nears
+ *       it, a little before it would open
  *
  * ✒ Usage Instructions:
  *     const layout = buildLayout(root, { cam: { x, y, z }, grain: 0.006 });
@@ -100,9 +103,17 @@
  *     layout.coarsened  the grain was raised to fit the budget
  *     layout.over       even the coarsest grain did not fit: the boxes
  *                       past the budget were left out
+ *     layout.want       region mode: [{ node, pri }], highest pri first,
+ *                       the folders whose children are not held (u) that
+ *                       this layout would open (pri = ratio / OPEN_AT, over
+ *                       1; a forced one 8 at least) or nearly would (from
+ *                       0.6); [] when every folder is held
+ *     A folder held in part (dir.tail = { n, s }, the children a region
+ *     does not hold) counts them through kids(dir) and lays them in its
+ *     scree, so its layout is the one the whole tree gives.
  *
  * ✒ Other Important Information:
- *     - Dependencies: model.js (freshness)
+ *     - Dependencies: model.js (freshness, kids)
  *     - Compatible platforms: any browser with ES2022 modules
  *     - Performance: cost is proportional to boxes drawn plus one sort per
  *       changed folder, not to the size of the tree
@@ -112,7 +123,7 @@
  * ----------------------------------------------------------------------------
  */
 
-import { freshness } from './model.js';
+import { freshness, kids } from './model.js';
 
 /**
  * Box types. Codes are allocated here and nowhere else, so two features
@@ -141,6 +152,9 @@ export const WORLD = 1000;
 export const RISER_MAX = 9;
 const RISER_RATIO = 0.045;
 const OPEN_AT = 0.135;
+// A closed folder whose children are not held is asked for a little
+// before it would open: from this share of the distance it opens at.
+const PREFETCH = 0.6;
 const PER_FOLDER_MAX = 5000;
 // A crossed slab: a share of its plateau's step, or of its own short side
 // when that is smaller, so it reads the same at every scale.
@@ -234,6 +248,9 @@ function attempt(root, opts) {
   const top = [];
   const aux = [];
   const scree = new Map();
+  // Region mode: folders whose children the page does not hold yet, which
+  // this layout would open ({ node, pri }, pri the ratio over OPEN_AT).
+  const want = [];
   let over = false;
   let chamberAt = null;
 
@@ -263,42 +280,52 @@ function attempt(root, opts) {
     if (idx < 0) return y;
     const base = y + riser;
     let peak = base;
-    const kids = dir.c;
-    if (!kids.length || over) return peak;
-    const eps = (dir.s / kids.length) * 0.12 + 1;
+    const items = dir.c;
+    if (!items.length || over) return peak;
+    // How many entries the folder holds: in region mode the service's
+    // count, which takes in the children not held (dir.tail).
+    const count = kids(dir);
+    const tail = dir.tail;
+    const eps = (dir.s / count) * 0.12 + 1;
     if (dir.dirty) {
-      kids.sort((a, b) => b.s - a.s);
+      items.sort((a, b) => b.s - a.s);
       dir.dirty = false;
     }
     const pad = Math.min(w, d) * 0.035;
     const iw = w - pad * 2;
     const id = d - pad * 2;
-    const total = dir.s + eps * kids.length;
+    const total = dir.s + eps * count;
     const perWeight = (iw * id) / total;
     // Smallest side worth drawing here, from how far away the eye is.
     const reach = Math.max(distToRect(cam, x, z, w, d, base), Math.min(w, d) * 0.02);
     const minSide = reach * grain;
     const minArea = minSide * minSide;
     let big = 0;
-    const cap = Math.min(kids.length, PER_FOLDER_MAX);
-    while (big < cap && (kids[big].s + eps) * perWeight >= minArea) big++;
-    if (force && big < kids.length) {
-      for (let i = big; i < Math.min(kids.length, PER_FOLDER_MAX * 2); i++) if (force.has(kids[i])) big = i + 1;
+    const cap = Math.min(items.length, PER_FOLDER_MAX);
+    while (big < cap && (items[big].s + eps) * perWeight >= minArea) big++;
+    if (force && big < items.length) {
+      for (let i = big; i < Math.min(items.length, PER_FOLDER_MAX * 2); i++) if (force.has(items[i])) big = i + 1;
     }
-    let screeCount = kids.length - big;
-    if (screeCount === 1 && big > 0) {
+    let screeCount = count - big;
+    // One left over stands on its own, when the page holds it.
+    if (screeCount === 1 && big > 0 && big < items.length) {
       big++;
       screeCount = 0;
     }
     const n = big + (screeCount ? 1 : 0);
     const weights = new Float64Array(n);
-    for (let i = 0; i < big; i++) weights[i] = kids[i].s + eps;
+    for (let i = 0; i < big; i++) weights[i] = items[i].s + eps;
     let screeSize = 0;
     if (screeCount) {
       let wsum = 0;
-      for (let i = big; i < kids.length; i++) {
-        wsum += kids[i].s + eps;
-        screeSize += kids[i].s;
+      for (let i = big; i < items.length; i++) {
+        wsum += items[i].s + eps;
+        screeSize += items[i].s;
+      }
+      // The children a region does not hold lie in the scree too.
+      if (tail) {
+        wsum += tail.s + eps * tail.n;
+        screeSize += tail.s;
       }
       // Scree never shrinks below a readable tile.
       weights[big] = Math.max(wsum, (minArea * 2.5) / perWeight);
@@ -325,7 +352,7 @@ function attempt(root, opts) {
         if (si >= 0) scree.set(si, { count: screeCount, size: screeSize, from: big });
         continue;
       }
-      const ch = kids[i];
+      const ch = items[i];
       let t;
       if (!ch.d && inside && ch === inside.host) {
         // The open archive's file stands as its chamber (below).
@@ -342,7 +369,7 @@ function attempt(root, opts) {
         }
         t = base + h;
         push(ch, ch, BOX.FILE, lvl + 1, cx, base + h / 2, cz, rw, h, rd, ax);
-      } else if (ch.e || ch.c.length === 0) {
+      } else if (ch.e || kids(ch) === 0) {
         let h = Math.min(ch.e ? riser : riser * 0.3, side);
         let ax = AUX.NONE;
         if (asOf && !ch.e && ch.m > asOfT) {
@@ -355,7 +382,15 @@ function attempt(root, opts) {
         // A folder opens when the eye is near enough for its contents to
         // read; it closes again a little further out, so it cannot flicker.
         const ratio = side / Math.max(distToRect(cam, rx, rz, rw, rd, base), 1e-6);
-        const open = (force && force.has(ch)) || ratio > (ch._open ? OPEN_AT * 0.72 : OPEN_AT);
+        const forced = !!force && force.has(ch);
+        let open = forced || ratio > (ch._open ? OPEN_AT * 0.72 : OPEN_AT);
+        if (ch.u) {
+          // Its children are not held: it stands closed and is asked for,
+          // first when it would open, and a little before.
+          if (open) want.push({ node: ch, pri: forced ? Math.max(ratio / OPEN_AT, 8) : ratio / OPEN_AT });
+          else if (ratio > PREFETCH * OPEN_AT) want.push({ node: ch, pri: ratio / OPEN_AT });
+          open = false;
+        }
         ch._open = open;
         if (open) t = place(ch, rx, rz, rw, rd, base, lvl + 1);
         else {
@@ -409,7 +444,7 @@ function attempt(root, opts) {
   };
 
   place(root, -WORLD / 2, -WORLD / 2, WORLD, WORLD, 0, 0);
-  return { over, key, node, type, level, geo, top, aux, scree, chamber: chamberAt };
+  return { over, key, node, type, level, geo, top, aux, scree, chamber: chamberAt, want };
 }
 
 /**
@@ -440,5 +475,6 @@ export function buildLayout(root, options = {}) {
     n: r.key.length, key: r.key, node: r.node, type: Uint8Array.from(r.type), level: Uint8Array.from(r.level),
     geo: Float64Array.from(r.geo), top: Float64Array.from(r.top), aux: Uint8Array.from(r.aux), scree: r.scree, index, root,
     coarsened: opts.grain !== grain, over: r.over, chamber: r.chamber,
+    want: r.want.sort((a, b) => b.pri - a.pri),
   };
 }

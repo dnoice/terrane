@@ -1,18 +1,25 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Search History, Saved Searches and in: (Terrane Edition - v1.0)
+ *     - Title: Search History, Saved Searches and in: (Terrane Edition - v1.1)
  *     - File Name: searches.js
  *     - Relative Path: web/js/searches.js
  *     - Artifact Type: javascript
- *     - Version: 1.0.0
- *     - Date: 11/13/2026
- *     - Update: Friday, November 13, 2026
+ *     - Version: 1.1.0
+ *     - Date: 11/14/2026
+ *     - Update: Saturday, November 14, 2026
  *     - Author: Dennis 'dendogg' Smaltz
  *     - A.I. Acknowledgement: Anthropic - Claude Opus 5.5
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
  *
  * ✒ Changelog:
+ *     - 1.1.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — Save
+ *       search… is a 24 px icon tool on the Findings count row, Saved
+ *       searches' title a span.t, and the in: note reads "In X: at any
+ *       depth." so it keeps one line; the guide's "↑ ↓ in Find" is the key ↑
+ *       ↓ and its words. In region mode the in: note reads what the service
+ *       resolved in: to (the find answer's in), and a saved search says its
+ *       count once the service has answered.
  *     - 1.0.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] —
  *       Initial release.
  *
@@ -197,15 +204,22 @@ export function install(api) {
   api.AFTER_QUERY.add({
     id: 'searches-in', order: 60, owner: OWNER,
     run: (search) => {
-      const r = lastIn;
+      let r = lastIn;
       lastIn = null;
+      // Region mode: the service resolved in: and says what it found, by path.
+      if (search?.regions) {
+        r = null;
+        const got = search.in;
+        if (got && got.rel === null && api.hostOf(S.focus) && (got.raw === '.' || got.raw.startsWith('./'))) r = inArchive(got.raw);
+        else if (got) r = { raw: got.raw, dir: got.rel === null ? null : { rel: got.rel, n: got.rel ? got.rel.slice(got.rel.lastIndexOf('/') + 1) : S.model.root.n } };
+      }
       if (!search || !r) return;
       if (!r.dir) {
         search.note = r.why || `No folder ${r.raw} in this directory.`;
         return;
       }
       const where = api.relPath(r.dir) || `${r.dir.n}, the root`;
-      search.note = `In ${where}: ${search.note || 'what lies inside it, at any depth.'}`;
+      search.note = `In ${where}: ${search.note || 'at any depth.'}`;
     },
   });
 
@@ -223,10 +237,11 @@ export function install(api) {
 
   const named = (s) => `"${s.name}"`;
 
-  function run(s) {
-    api.setQuery(s.query);
+  async function run(s) {
+    // Region mode: the service answers, and the count is said once it has.
+    await api.setQuery(s.query);
     document.getElementById('ledger-list')?.focus();
-    const n = S.search ? S.search.list.length : 0;
+    const n = S.search ? S.search.total ?? S.search.list.length : 0;
     api.say(`Saved search ${named(s)}: ${fmtCount(n)} match${n === 1 ? '' : 'es'}.`);
   }
 
@@ -272,7 +287,7 @@ export function install(api) {
   function savedSection() {
     const list = store.saved;
     const d = el('details', { class: 'places-searches', open: sectionOpen },
-      el('summary', {}, 'Saved searches', el('span', { class: 'n', text: fmtCount(list.length) })),
+      el('summary', {}, el('span', { class: 't', text: 'Saved searches' }), el('span', { class: 'n', text: fmtCount(list.length) })),
       list.length ? list.map((s) => el('div', { class: 'item is-static saved-search' },
         el('span', { class: 'saved-mark', 'aria-hidden': 'true' }, icon('bookmark')),
         el('span', {}, el('span', { class: 'nm', text: s.name }), el('code', { class: 'path', text: s.query })),
@@ -288,8 +303,9 @@ export function install(api) {
   api.LEDGER_SUB.add({
     id: 'save-search', owner: OWNER, tab: 'findings',
     build: ({ search }) => (search ? el('button', {
-      class: 'sort', type: 'button', 'data-k': 'save-search', title: 'Keep this search under a name, in the Places tab and the command palette', onclick: saveSearch,
-    }, icon('bookmark'), 'Save search…') : null),
+      class: 'btn btn-icon sub-tool', type: 'button', 'data-k': 'save-search', 'aria-label': 'Save search…',
+      title: 'Save search: keep it under a name, in the Places tab and the command palette', onclick: saveSearch,
+    }, icon('bookmark')) : null),
   });
 
   api.TAB_SECTIONS.add({ id: 'saved-searches', order: 30, owner: OWNER, tab: 'places', build: savedSection });
@@ -302,5 +318,5 @@ export function install(api) {
     ],
   });
 
-  api.KEYS.add({ id: 'search-history', owner: OWNER, guide: ['Finding your way', '↑ ↓ in Find', 'Earlier / later searches'] });
+  api.KEYS.add({ id: 'search-history', owner: OWNER, guide: ['Finding your way', '↑ ↓', 'In Find: earlier / later searches'] });
 }
