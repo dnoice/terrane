@@ -1,18 +1,21 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Demo Scenario (Terrane Edition - v1.1)
+ *     - Title: Demo Scenario (Terrane Edition - v1.2)
  *     - File Name: demo.mjs
  *     - Relative Path: tools/ui-scenarios/demo.mjs
  *     - Artifact Type: test
- *     - Version: 1.1.0
- *     - Date: 11/13/2026
- *     - Update: Friday, November 13, 2026
+ *     - Version: 1.2.0
+ *     - Date: 11/14/2026
+ *     - Update: Saturday, November 14, 2026
  *     - Author: Dennis 'dendogg' Smaltz
  *     - A.I. Acknowledgement: Anthropic - Claude Opus 5.5
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
  *
  * ✒ Changelog:
+ *     - 1.2.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] —
+ *       pages(port), the stand-in GitHub Pages, is exported, so the
+ *       polish scenario serves the demo world the same way.
  *     - 1.1.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] —
  *       Quick look in the demo world: a README's text, a photo drawn in
  *       the page, a sound for an audio file and the film recorded in the
@@ -61,8 +64,8 @@ import { fileURLToPath } from 'node:url';
 const REPO = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
 const TYPES = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.svg': 'image/svg+xml', '.woff2': 'font/woff2' };
 
-/** The repository served as GitHub Pages serves it. */
-function pages(port) {
+/** The repository served as GitHub Pages serves it (the polish scenario serves it too). */
+export function pages(port) {
   const server = http.createServer((req, res) => {
     let rel = decodeURIComponent(new URL(req.url, 'http://x').pathname);
     if (rel.endsWith('/')) rel += 'index.html';
