@@ -27,7 +27,7 @@
  *       are no-store. GET /api/info carries regions: { threshold, entries,
  *       v, state }, entries from the snapshot's meta or the warm cache's.
  *       --region-threshold <n> (else TERRANE_REGION_THRESHOLD, else
- *       400,000; 0 for every tree) must be a whole number, or the usage is
+ *       100,000; 0 for every tree) must be a whole number, or the usage is
  *       printed; a snapshot above it is read into the tree once the service
  *       listens. Ctrl+C stops a build that is running. The questions that
  *       walk the whole tree are answered from it too (GET /api/find,
@@ -39,7 +39,11 @@
  *       sweeps for files rewritten in place, sending change events and
  *       { type: 'swept' }; a live directory whose kept tree is above the
  *       threshold is read from it at startup and checked in place
- *       (TERRANE_CHECK_GATE, for checks, holds that check).
+ *       (TERRANE_CHECK_GATE, for checks, holds that check). The watcher's
+ *       changes are read into the kept tree whether or not a page listens
+ *       and announced as change events marked kept; while the disk is not
+ *       watched, a page that connects has the kept tree checked by folder
+ *       times (regions.recheck), at most once in ten seconds.
  *     - 1.6.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] —
  *       Reports version 1.4.0 in GET /api/info: Wave 3 is merged.
  *     - 1.5.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — GET
@@ -172,7 +176,11 @@
  *       and it is off while the dataset home is inside the directory
  *     - Regions: the whole tree kept in typed columns, from a snapshot or a
  *       walk of the root, and served a folder at a time (GET /api/tree,
- *       GET /api/region) to a page that holds only what is near it
+ *       GET /api/region) to a page that holds only what is near it; the
+ *       questions that walk the whole tree (find, marks, survey, sessions,
+ *       places) answered from the same tree
+ *     - GET /api/check: the warm cache checked by folder modification
+ *       times, then swept for files rewritten in place
  *     - Zero npm dependencies; three.js and the fonts are vendored in web/
  *
  * ✒ Usage Instructions:

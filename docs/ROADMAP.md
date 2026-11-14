@@ -15,7 +15,15 @@
     - 1.11.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — Where
       things stand and the build waves record Wave 4's polish of the
       sheet, under way on branch `wave-4`, with its commits and its
-      check lines; Next is the rest of the wave.
+      check lines; Next is the rest of the wave. Wave 4 is then
+      recorded as complete on branch `wave-4`, Scale and the interface
+      polish, with every commit, the review, the fixes and the final
+      check lines, waiting to be merged into `main`. Stage 4's four
+      planned items that are done move to done on 11/14/2026; layout
+      in a worker stays under Next with why, beside what the stage
+      still lacks; and the exit test's result is stated: met at
+      5,000,000 entries, on synthetic snapshots, and not measured
+      beyond. The datasets add synthetic snapshots.
     - 1.10.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — Build
       waves record the names on the blocks; where things stand says so.
     - 1.9.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — Build
@@ -79,23 +87,25 @@
     The plan behind Terrane: the exploration loop the world is designed
     around, the minimum viable filesystem scope, the practical filesystem
     interaction requirements, a staged implementation roadmap, the build
-    waves that carry it out (what is complete on `main`, what is under
-    way on a branch, and what comes next),
+    waves that carry it out (what is complete on `main`, what is
+    complete on a branch and waits to be merged, and what comes next),
     and the datasets that let development run against real data
     without touching it.
 
 ✒ Key Features:
-    - Where things stand, dated, in three lines
+    - Where things stand, dated, a line for each piece of work
     - Exploration loop with the system that serves each step
     - Minimum filesystem scope: in, out, and why
     - Interaction requirements written as checkable statements
     - Six stages, each with an exit test; stages 1 to 3 are complete,
-      and stages 4 to 6 are under way
+      stage 4's exit test is met on branch `wave-4`, and stages 5 and 6
+      are under way
     - Stage 5's first increment: what was delivered, by which wave,
       what was deferred, and the question each feature answers
-    - Build waves: complete on `main`, under way on a branch, and next,
-      with commits and checks
-    - Development datasets: how to build against real data safely
+    - Build waves: complete on `main`, complete on a branch and waiting
+      to be merged, and next, with commits and checks
+    - Development datasets: how to build against real data safely, and
+      synthetic snapshots for scale
 
 ✒ Other Important Information:
     - Dependencies: none
@@ -137,13 +147,19 @@ As of 11/14/2026:
 - **Complete, on `main`:** the names on the blocks. A name is
   printed on its box by the box's own shader, lit and shadowed with it,
   instead of standing over it as a tag.
-- **Under way, on branch `wave-4`:** Wave 4, the polish of the sheet
-  around the world: its text on one grid of columns and heights, three
-  uppercase voices, labels and heads on one line, values that break only
-  at their separators, nothing cut off without an ellipsis, and the
-  `polish` check that measures all of it.
-- **Next:** the rest of Wave 4; after it, the open ground is the rest of
-  Stage 4, the rest of Stage 6, and the Stage 5 deferrals in section 4.
+- **Complete on branch `wave-4`, waiting to be merged:** Wave 4, Scale
+  and the interface polish. Scale: above 100,000 entries the service
+  keeps the tree and the page draws it from the regions near the eye,
+  letting them go under a budget; search, the survey and working
+  sessions are answered by the service; the warm cache is checked by
+  folder modification times; and the Stage 4 exit test is met at
+  5,000,000 entries. The polish: the sheet's text on one grid of
+  columns and heights, three uppercase voices, labels and heads on one
+  line, values that break only at their separators, nothing cut off
+  without an ellipsis, and the `polish` check that measures all of it.
+- **Next:** merging Wave 4 into `main`. After it, the open ground is
+  what Stage 4 still lacks (section 4), the rest of Stage 6, and the
+  Stage 5 deferrals in section 4.
 
 Section 5 has the detail for every wave.
 
@@ -153,7 +169,7 @@ One pass through the loop, and what serves each step today.
 
 | Step | The visitor | Served by |
 | ---- | ----------- | --------- |
-| 1. Arrive | Sees the whole directory from above as a hundred or so masses: where the bytes are, what kind they are | Overview vantage; area is bytes; masses tinted by dominant kind; heavyweight pins; a warm start that draws the last session's tree at once; a reload or a link that lands where it names |
+| 1. Arrive | Sees the whole directory from above as a hundred or so masses: where the bytes are, what kind they are | Overview vantage; area is bytes; masses tinted by dominant kind; heavyweight pins; a warm start that draws the last session's tree at once; a directory of millions drawn from the regions in view; a reload or a link that lands where it names |
 | 2. Notice | Something stands out: a large mass, a tall fresh block, a pin, a colour | Lenses (kind, age, size, duplicates), with closed masses at their typical age under the Age lens; survey tab, working sessions and quick searches included; search pins; benchmark tags that say what changed; the time view, where what changed since a date lies flat |
 | 3. Approach | Flies toward it. It opens as it gets close | Wheel flies to the cursor; distance-driven unfolding; contents rise out of the plateau |
 | 4. Orient | Knows where they are without thinking about it | Breadcrumbs, ledger and the address follow the camera; tags on nearby plateaus; benchmarks as survey marks; horizon and haze |
@@ -266,31 +282,86 @@ location derived from the camera.
 Exit test: fly from the overview to a file twelve levels down in a
 400,000-file tree, with stable geometry and correct location at each end.
 
-### Stage 4. Streaming the data, not only the geometry. Under way
+### Stage 4. Streaming the data, not only the geometry. Exit test met, on branch `wave-4`
 
-The browser currently holds the whole tree. The plan for trees in the
-millions has one item done.
+Above 100,000 entries the browser no longer holds the whole tree. Five
+of the plan's six items are done; layout in a worker is not, because
+the measurements gave it nothing to do.
 
 Done on 11/13/2026 (Wave 3):
 
 - A cache of the last scan on disk, so a second launch draws at once:
-  the warm start. Its first form is validated by a full survey in the
-  background rather than by folder modification times, and while that
-  survey runs the page holds two trees.
+  the warm start. Its first form was validated by a full survey in the
+  background, and while that survey ran the page held two trees.
+
+Done on 11/14/2026 (Wave 4, on branch `wave-4`, waiting to be merged):
+
+- The service keeps the tree and serves regions: above the region
+  threshold, 100,000 entries, it holds the tree in typed columns, from
+  a snapshot, the warm cache or a walk of the root, and answers a
+  folder's children with every figure the page reads, the chain of
+  folders to any path, and folders read again, with changes from
+  outside read in whether or not a page listens.
+- The browser requests regions as the eye approaches and drops them as
+  it leaves: the layout names the folders it would open, a module
+  worker fetches and decodes the answers, and regions are let go under
+  a budget of 200,000 held entries once the view is settled.
+- Search, survey and duplicate grouping move to the service: Find,
+  search marks, the Survey and its duplicate candidates, the files
+  Verify by content reads, working sessions and the palette's places,
+  each equal to what the page gives over a whole tree.
+- The cache validated by folder modification times, so the check after
+  a warm start reads only what changed, with a sweep after it for files
+  rewritten in place.
+- Synthetic snapshots of up to 10,000,000 entries and a harness that
+  measures the page and the service over them, so the exit test is
+  measured rather than argued.
 
 Next:
 
-- The service keeps the tree and serves regions: children of a folder,
-  with aggregates, on request.
-- The browser requests regions as the eye approaches and drops them as
-  it leaves, the same way it already does for geometry.
-- Search, survey and duplicate grouping move to the service.
-- The cache validated by folder modification times, so the check after
-  a warm start reads only what changed.
-- Layout in a worker.
+- Layout in a worker. Not done, by decision: once what follows a region
+  landing, the location's update and a reveal's panels ran in tasks of
+  their own, the longest relayout at 5,000,000 entries took
+  @@RELAYOUT-5M@@ ms and no task passed 16 ms of script, so a worker
+  would add the cost of copying what layout reads for no frame saved.
+  It stays the remedy should a heavier layout or a slower machine need
+  it.
+- More margin on the frame. The longest task at 400,000 entries and
+  above is the one in which a region answer arrives from the worker and
+  the page paints and draws the ledger twice: @@5M-SCRIPT@@ ms at
+  5,000,000 entries in the final run, and 14.1 to 14.9 ms in three
+  earlier ones. Finding why that task paints twice, and splitting it,
+  is the next remedy should a slower machine pass 16 ms.
+- A survey and search the service works out without holding region
+  answers, by an incremental survey or a worker thread. After a change
+  a recompute holds the service about 0.4 s at 5,000,000 entries, paced
+  to at most an eighth of the time.
+- The exit test on a real directory of millions of entries, and with
+  the tree changing while a browser travels it. Only synthetic
+  snapshots were measured in a browser, in snapshot mode, where the
+  tree does not change; changes under load were measured against the
+  service alone, in Node.
+- The twins of an open archive at this size, which the page says are
+  not looked for.
 
 Exit test: five million entries with browser memory under 300 MB and no
 frame over 16 ms from script.
+
+Result, 11/14/2026: **met at 5,000,000 entries**, the largest size
+measured, on a synthetic snapshot in regions, with WebGL and without,
+on Windows 11 with Edge 157 and an RTX 5050 laptop GPU. With WebGL the
+page's script heap peaked at @@5M-PEAK@@ MB and held @@5M-AFTER@@ MB
+after the tour, and the longest task ran @@5M-SCRIPT@@ ms of script,
+none over 16 ms; with the budget halved, letting regions go took
+@@5M-EVICT@@ ms. It was met at 400,000, 1,000,000 and 2,000,000 entries
+too, and 100,000 entries, held whole below the threshold, ran
+@@100K-SCRIPT@@ ms (section 5 and ARCHITECTURE section 4 have every
+figure). What it does not show: memory is the page's script heap
+(`JSHeapUsedSize`), not the browser's whole process; nothing above
+5,000,000 entries was measured, though the generator writes up to ten
+million, and the service held about 730 MB for five; and the trees
+were generated, read in snapshot mode, and walked by one tour on one
+machine.
 
 ### Stage 5. Beyond the ground plane. Under way
 
@@ -380,9 +451,10 @@ to take a second.
 
 ## 5. Build waves
 
-Stage 5 is built in waves, and Wave 3 took the same method across
-Stages 4 to 6. Each wave runs on its own branch (`wave-1`, `wave-2`,
-then `qol`) in a separate worktree: its build steps one after
+Stage 5 is built in waves, Wave 3 took the same method across
+Stages 4 to 6, and Wave 4 to Stage 4 and the polish of the sheet. Each
+wave runs on its own branch (`wave-1`, `wave-2`, `qol`, then `wave-4`)
+in a separate worktree: its build steps one after
 another, then an adversarial review, a fix step, and a docs and header
 pass. A wave is merged into `main` and pushed only when `npm test`,
 `node tools/vendor.mjs --check` and the full `node tools/ui-check.mjs`
@@ -396,7 +468,8 @@ features and Wave 4 for the docs. In practice the client half of
 Interiors (planned as Wave 3) and the docs (planned as Wave 4) ran as the
 last steps of Wave 2, so the original plan's Waves 3 and 4 ran inside
 Wave 2. Wave 3 below, quality of life, is therefore the first wave
-numbered 3 to run on its own, and not the Wave 3 of that plan.
+numbered 3 to run on its own, and not the Wave 3 of that plan; Wave 4,
+Scale and the interface polish, is likewise not the plan's docs wave.
 
 ### Complete
 
@@ -646,19 +719,26 @@ failed"; `node tools/ui-check.mjs --no-shots`, both passes, "1412
 passed, 0 failed, 6 skipped". It was merged into `main` in the commit
 titled "Merge labels: the names on the blocks".
 
-### Under way: Wave 4, the polish
+### Complete on branch `wave-4`: Wave 4, Scale and the interface polish
 
 Wave 4 runs on its own branch, `wave-4`, made from `main` at the names
-on the blocks (`d6d6601`), in a separate worktree. Its polish step began
-from an audit of the interface in the demo world: 232 screenshots at
-1600 by 1000, 1280 by 800, 1920 by 1080 and 800 by 500 (200% zoom), with
-and without WebGL, measured in the page for wrapped labels, baselines,
-clipping, control heights, uppercase styles and left edges. It made
-32 findings, among them a ledger head that took three lines at every
-size, fact labels that wrapped beside one-line values, values that
-broke between a figure and its unit, and ten uppercase styles where
-three would do. The polish fixed them as alignment, rhythm and type,
-not a redesign, and added no draw call:
+on the blocks (`d6d6601`), in a separate worktree, and waits to be
+merged into `main`. It had two parts, built one after the other: the
+polish of the sheet around the world, then Scale, the rest of Stage 4.
+An adversarial review of Scale, a fix step, and a docs and sweep step
+followed.
+
+#### The polish
+
+The polish began from an audit of the interface in the demo world: 232
+screenshots at 1600 by 1000, 1280 by 800, 1920 by 1080 and 800 by 500
+(200% zoom), with and without WebGL, measured in the page for wrapped
+labels, baselines, clipping, control heights, uppercase styles and left
+edges. It made 32 findings, among them a ledger head that took three
+lines at every size, fact labels that wrapped beside one-line values,
+values that broke between a figure and its unit, and ten uppercase
+styles where three would do. The polish fixed them as alignment, rhythm
+and type, not a redesign, and added no draw call:
 
 1. **The panels** (`9ea7b3d`): tokens for a grid of three text columns
    (A at 12 px, B at 32, C at 52) and three uppercase voices defined
@@ -693,7 +773,8 @@ not a redesign, and added no draw call:
    the README's project map and verification table, and the visual
    identity's grid and alignment in ARCHITECTURE.
 
-Checks, on Windows 11 with Edge 157 on an RTX 5050 laptop GPU:
+Checks of the polish, on Windows 11 with Edge 157 on an RTX 5050 laptop
+GPU:
 
 - `npm test`: "797 passed, 0 failed" across its ten suites;
 - the `polish` scenario: "497 passed, 0 failed" with WebGL and
@@ -709,6 +790,137 @@ Checks, on Windows 11 with Edge 157 on an RTX 5050 laptop GPU:
 - draw calls at the baseline (overview 7, selected 9, search 8,
   duplicate ties 10).
 
+#### Scale
+
+Scale built Stage 4 in three increments, each measured, then measured
+the exit test at five sizes. Every step ran `npm test` and its
+interface scenarios in both passes before it committed, and every large
+tree was a synthetic snapshot, generated in the OS temp folder and
+deleted once measured.
+
+1. **The service keeps the tree** (`3240bad`): `web/js/columns.js`
+   holds a tree in typed columns with every figure the page's model
+   gives a folder, and answers regions; `server/regions.mjs` keeps one,
+   from a snapshot or a walk of the root, and serves `GET /api/tree` and
+   `GET /api/region` behind the token and Host checks;
+   `--region-threshold`; `snapshotWriter`; and
+   `tools/make-synthetic.mjs`, whose trees the parity checks are built
+   on. `tools/regions-test.mjs` joined `npm test`.
+2. **The scale harness** (`7c9a717`): `ui-check` runs a scenario that
+   asks for a synthetic snapshot only on one, and gains `--service-heap`,
+   `--no-baseline`, `--ready-ms` and `--min-free`; the `scale` scenario
+   tours, traces and reports; `tools/scale.mjs` runs the points one
+   heavy process at a time. The service alone took a 5,000,000-entry
+   tree in 2.9 s, held 699 MB and answered a region in 0.4 ms median.
+3. **The page draws from regions** (`473d0e2`): the partial model, the
+   layout's wants, `web/js/regions.js`, region mode chosen at the start
+   or once a survey passes the threshold, and every move that reaches a
+   folder holding its region first. `tools/partial-test.mjs` joined
+   `npm test`, and the scenarios `regions`, `regions-switch` and
+   `demo-regions` are new.
+4. **The budget and the worker** (`d6ed77f`): region answers decoded in
+   a module worker, and regions let go under a budget once the view is
+   settled.
+5. **The whole-tree questions** (`0c9f8c1`): `web/js/questions.js`
+   answers Find, search marks, the Survey, Verify's files, working
+   sessions and the palette's places over the columns, equal to the
+   page's own answers; the "not available at this size" sentences went,
+   but for twins.
+6. **The warm cache checked by folder modification times** (`ef16b92`):
+   `GET /api/check` and its sweep; the whole-tree page takes on what the
+   check read, and the service checks a large tree in place; the
+   scenario `regions-warm` is new.
+7. **The demo** (`1903c7e`): the demo service answers every region
+   route and question through the same code as the service, and
+   `?regions` draws the demo world in regions.
+8. **The exit test at five sizes** (`43c3e61`). The first run failed at
+   1,000,000 entries (a task of 18.9 ms) and 5,000,000 (17.3 ms); the
+   work around layout was split into tasks of its own, and layout stayed
+   on the main thread. Then: met at 5,000,000 entries, with a peak of
+   46.3 MB, 29.0 MB after the tour and a longest task of 14.8 ms.
+9. **The review.** An adversarial review measured the exit test at
+   5,000,000 entries again (a peak of 44.3 MB, 30.5 MB after the tour,
+   14.9 ms, within run-to-run variation of the claim) and made ten
+   findings: the service's tree went stale while no page listened
+   (high); a refill dropped the tail entries a page held, the survey was
+   worked out again on every change, and file slots grew without limit
+   (medium); a Contents sentence that pointed at 5,000 matches, a status
+   count that did not follow changes, an ISO date in the generator's
+   summary, whole-tree frames just under the threshold, an exit test
+   that never reached the budget, and the docs (low). The review
+   changed no file, so it has no commit of its own.
+10. **The fixes** (`25c9884`, `2314d2e`, `c694e96`). The nine code
+    findings, each with a check that would have caught it: changes from
+    outside read into the service's tree whether or not a page listens;
+    held tail entries kept through refills; the survey and search paced;
+    the columns packed; Findings turned 5,000 at a time; the status
+    count from the root; the generator's date as MM/DD/YYYY; the tour
+    lowering the budget and letting regions go; and the region
+    threshold lowered from 400,000 to 100,000, since a whole tree ran
+    tasks of 36 ms at 200,000 entries and 60 ms at 400,000, and 12.5 ms
+    at 100,000 once its working sessions were found in an idle moment
+    after the survey rather than when the inspector first read them. A directory of
+    about 230,000 entries, like the one the first measurements used,
+    now draws in regions; `--region-threshold 400000` keeps such a tree
+    whole. Then a hardening of the region routes: 47 bad requests each
+    refused with a code and a sentence, requests in flight across a new
+    snapshot, removed folders listed as gone, and Findings kept on its
+    page. The full interface check found one check whose assumption the
+    idle-time sessions had broken, and it was put right.
+11. **Docs and sweep**, in the commit titled "Wave 4 docs and sweep":
+    README, ARCHITECTURE, this roadmap, `CHANGELOG.md` and every header
+    the wave touched, checked against the code; the exit test measured
+    again at five sizes, with WebGL and without; and the sweep. Measuring
+    again found two faults, fixed in the same commit. Without WebGL the
+    tour's budget check failed at every size in regions: it counted as
+    pinned less than the page pins, leaving out the selection's folders,
+    benchmarks, the return point and an open archive, while the page had
+    let go everything it may. With WebGL the first measurement of the
+    final tree ran one task of 16.3 ms of script at 2,000,000 entries,
+    0.3 ms over the limit: the task in which a search's answer arrives
+    from the worker painted the world and drew the ledger twice, once as
+    the answer was read and once more as it was shown. It now does each
+    once, and the exit test was measured again after the fix.
+
+The exit test on the final tree, `node tools/scale.mjs` and then the
+same with `--nogl`, on Windows 11 with Edge 157 on an RTX 5050 laptop
+GPU, seed 11 (ARCHITECTURE section 4 has the full table):
+
+@@EXIT-LINES@@
+
+Final check lines, on Windows 11 with Edge 157 on an RTX 5050 laptop
+GPU and the default fixture of 3,126 files:
+
+- `node --check` on all 101 script files outside `web/vendor/`: no
+  error;
+- `npm test`: "255 passed, 0 failed", "97 passed, 0 failed",
+  "57 passed, 0 failed", "33 passed, 0 failed", "60 passed, 0 failed",
+  "52 passed, 0 failed", "54 passed, 0 failed", "31 passed, 0 failed",
+  "80 passed, 0 failed", "159 passed, 0 failed", "68 passed, 0 failed"
+  and "119 passed, 0 failed", 1,065 in all, `regions-test` and
+  `partial-test` among them;
+- `node tools/vendor.mjs --check`:
+  "Every vendored file matches the manifest.";
+- the headers of the 78 files the branch touched (the digiSpace header
+  in full, the version raised once with the date and the tag, shipped
+  headers within three entries and 40 lines) and the long form in
+  `CHANGELOG.md` of every new entry of a file it tracks: in rule, once
+  the service's 1.7.0 entry gave the threshold as 100,000 and
+  `time.js` 1.3.0's long form opened with its header's words;
+- Markdown: no line over 100 columns outside tables and fences in the
+  README, ARCHITECTURE, this roadmap, `CHANGELOG.md`,
+  `package.metadata.md` and `VENDORED.md`;
+- `node tools/ui-check.mjs --no-shots --port 5270`, both passes, 45
+  scenarios: "2539 passed, 0 failed, 8 skipped" (1,332 and 3 skipped
+  with WebGL, 1,207 and 5 without). The skips are, in each pass, what
+  needs `--snapshot`, what needs a synthetic snapshot and the `splash`
+  check for a sheet gone before the first look, and without WebGL two
+  checks of what is drawn in the world. Draw calls at the baseline
+  (overview 7, selected 9, search 8, duplicate ties 10). The check ran
+  on port 5270 rather than 5279 because it also takes the ports one,
+  two, six, eight and nine above its own, which from 5279 would leave
+  the range of ports this step was given.
+
 ## 6. Development datasets
 
 Building Terrane against a real directory without risk to it.
@@ -717,6 +929,7 @@ Building Terrane against a real directory without risk to it.
 | ------- | ------- | ----- | ------- |
 | Structure snapshot | `npm run snapshot -- <dir>` | Every folder and file: name, size, dates, type. No contents | `terrane --snapshot`, which touches no real file |
 | Thumbnails | `npm run thumbs` | Per image: average colour, 4×4 colour grid, 160 and 480 px WebP, or the source of a light SVG | `/api/thumbs`, `/api/thumb`, in both modes |
+| Synthetic snapshot | `node tools/make-synthetic.mjs --entries <n>` | A structure snapshot of a made-up tree of 1,000 to 10,000,000 entries from one seed; no file is created | `terrane --snapshot`, `tools/scale.mjs` and the `scale` scenario, for the Stage 4 exit test |
 
 `npm run dev` ties them together: it refreshes a stale snapshot, starts the
 service in snapshot mode, keeps thumbnails current in the background, and
@@ -728,6 +941,13 @@ contains, so in snapshot mode an archive cannot be looked inside. The
 warm start's cache, the last complete survey of any directory Terrane
 is started on, sits in the same folder, and `TERRANE_DATA` moves all of
 them; the checks give every service they start a folder of its own.
+
+A synthetic snapshot holds no real name, so it can go anywhere: the
+generator writes to `synthetic-<size>` in the dataset home unless
+`--out` names a folder, and `tools/scale.mjs` writes each point to the
+OS temp folder and deletes it once measured. The generator refuses the
+`projects` dataset and any folder holding a snapshot of a real
+directory, so a real snapshot is never written over.
 
 The rules the image work follows, set by the shape of the real data
 (19,181 images, 35.7 GB, a largest file of 443 MB):

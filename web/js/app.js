@@ -37,7 +37,8 @@
  *       review: changes the service read itself are asked for as kept,
  *       pinned children past a folder's 5,000 kept through refills, the
  *       search and survey asked again at a pace the service bears, and
- *       Findings turned page by page.
+ *       Findings turned page by page. A search's answer in region mode is
+ *       painted and listed once as it lands, not twice in one task.
  *     - 1.11.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] —
  *       Paint gives each file its kind's colour in a tone of its own
  *       extension, a closed mass a richer tint and, on its sides, strata
@@ -1804,7 +1805,8 @@ async function runQueryRegions() {
   markSearch(search);
   repaint();
   drawLedger(true);
-  return undefined;
+  // Painted and listed: applyQuery need not do either again in this task.
+  return true;
 }
 
 /** The search's first 5,000 asked again in another order (a sort key, or the order a feature gives a search). */
@@ -4267,7 +4269,8 @@ function drawStatus() {
 /**
  * Runs the query in Find. In whole-tree mode at once, over the model; in
  * region mode the service runs it and this returns a promise that settles
- * once the answer is shown (a later query drops an earlier answer).
+ * once the answer is shown (a later query drops an earlier answer), true
+ * when it painted the world and drew the ledger.
  */
 function runQuery() {
   if (S.regions) return runQueryRegions();
@@ -4287,10 +4290,17 @@ function applyQuery() {
   if (text !== S.query) S.findSort = null;
   S.query = text;
   const had = !!S.search;
-  const show = () => {
+  const show = (drawn) => {
     if (S.query !== text) return;
+    const tab = S.tab;
     if (S.search && S.tab !== 'findings') S.tab = 'findings';
     else if (!S.search && had && S.tab === 'findings') S.tab = 'contents';
+    // Region mode: the answer was painted and listed as it landed, in this
+    // same task; only a change of tab draws the ledger again.
+    if (drawn === true) {
+      if (S.tab !== tab) drawLedger();
+      return;
+    }
     repaint();
     drawLedger();
   };

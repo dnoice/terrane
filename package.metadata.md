@@ -104,9 +104,11 @@
       mark, CRLF and the columns, over a fresh fixture) and the warm
       test (the cache of the last survey, GET /api/warm, --no-warm and
       Model.adopt), the regions test (the column tree, regions and
-      changes against the model, the synthetic tree generator, GET
-      /api/tree and /api/region) and the demo test (the demo world and
-      the demo service), each in Node
+      changes against the model, the synthetic tree generator, the
+      region routes and the whole-tree questions through the service),
+      the partial test (the page's region mode against the whole model,
+      no service) and the demo test (the demo world and the demo
+      service), each in Node
     - vendor: fetches the pinned third-party browser files into
       web/vendor/ from jsDelivr; --check verifies them offline
     - ui-check: drives the page in headless Edge or Chrome, keyboard

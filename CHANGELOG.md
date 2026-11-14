@@ -35,7 +35,9 @@
       folder's 5,000 kept through refills, the search and survey asked again at a pace the
       service can bear, Findings turned page by page, the status line's entries from the root,
       a whole tree's sessions found in a quiet moment, and a benchmark that cannot be read
-      said so.
+      said so. The docs and sweep of Wave 4 make time.js 1.3.0's long form open with its
+      header's words, as every other new entry here does, and extend app.js 1.12.0's entry: a
+      search's answer in region mode is painted and listed once as it lands.
     - 1.8.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — Records the names on the blocks:
       viewport.js 1.7.0. viewport.js's header rolls its 1.4.0 entry out; this file already
       holds it.
@@ -129,7 +131,8 @@ short form is kept too.
   them when first opened; a reveal paints its selection once. After the review: changes the
   service read itself are asked for as kept, pinned children past a folder's 5,000 kept through
   refills, the search and survey asked again at a pace the service bears, and Findings turned
-  page by page. drawContents builds
+  page by page. A search's answer in region mode is painted and listed once as it lands, not
+  twice in one task. drawContents builds
   div.sub-row.is-count
   (span.sub-count with span.n "14 items" and span.b " · 199 GB", then the LEDGER_SUB tools) and
   div.sub-row.is-columns with the sort keys in the order seen, Name, Changed, Untouched, Size;
@@ -260,7 +263,11 @@ short form is kept too.
   sentence of a folder held in part ends "Find them with in:<path>: Findings turns through
   every match, 5,000 at a time." The status line's entries follow the root's figures, as the
   client now gives them. __terrane.evictSoon() lets regions go once the view settles, for a
-  check that lowered the budget.
+  check that lowered the budget. The sweep of Wave 4 found the longest task of the exit test,
+  the task in which a search's answer arrives from the worker, painting the world and drawing
+  the ledger twice: runQueryRegions did both, and applyQuery's show did both again in the same
+  task. runQueryRegions now resolves true once it has drawn, and show then draws the ledger
+  again only when the search changed the tab, which took that task from 16.3 ms of script at 2,000,000 entries to @@FIX-2M@@ ms.
 
 - 1.11.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — Paint gives each file its
   kind's colour in a tone of its own extension (extTone): five steps from 22 % darker to 24 %
@@ -979,7 +986,7 @@ short form is kept too.
   as a figure and Where the change is its count (api.sectionTitle), their text unchanged;
   Changed and Not changed break only at their separators (api.parts). crossedAt and Where the
   change is read a folder's count through kids(), so a folder held in region mode answers as
-  in a whole tree; Where the change is lists the held children of the folder inspected.
+  in a whole tree. Where the change is lists the held children of the folder inspected.
 
 - 1.2.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — , . < > carry one label each for
   the command palette: one date earlier or later, the earliest date, the present.

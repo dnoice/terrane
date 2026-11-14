@@ -18,7 +18,19 @@
       uppercase voices, and the rules for wrapping and truncation), and
       the stylesheet structure names the tokens that hold them. Section
       7 names api.parts, api.sectionTitle and actionButton's named, and
-      a count row's tool as a 24 px icon button.
+      a count row's tool as a 24 px icon button. Wave 4's Scale: the
+      stack names the tree kept in columns, region answers decoded in a
+      worker and the warm cache checked by folder modification times;
+      world streaming is done in the open-world table. The service
+      section adds the routes, a Regions section (what the service
+      keeps, the threshold, the region protocol, changes from outside,
+      the whole-tree questions) and the check in Warm start. Scale adds
+      the page in region mode (the partial model, the layout's wants,
+      the worker, the budget, the frame budget's remedies) and the
+      Stage 4 exit test measured at five sizes, the service alone and
+      under changes; the datasets add synthetic snapshots; the known
+      limitations follow the code. Section 7 adds the api's region
+      calls and region mode among the hazards.
     - 1.10.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — Visual
       identity: names are printed on the boxes by their own shader from
       a distance-field atlas (lettering.js), and the measured table says
@@ -111,14 +123,19 @@
     - The spatial model and why it was rebuilt
     - World management: level of detail, budgets, coordinates
     - Service design and data flow, archive listing included
-    - The warm start: the cache, its checks and the catch-up
+    - Regions: the tree the service keeps, the threshold, the protocol,
+      changes from outside and the questions that walk the whole tree
+    - The warm start: the cache, the check by folder modification times
+      and the sweep
+    - The page in region mode: the partial model, the worker, the budget
     - Datasets for development against real data, and the warm cache
     - The visual identity and every drawing convention, and the grid,
       voices and wrapping rules the sheet's text keeps
     - Feature modules and their seams: registries, the api, sheets,
       browser storage, key allocation, relation sets, code tables, the
       shared age table
-    - Measurements and known limitations
+    - Measurements, the Stage 4 exit test at five sizes among them, and
+      known limitations
 
 ✒ Other Important Information:
     - Dependencies: none
@@ -142,7 +159,9 @@
 | Scan transport | NDJSON over a streamed HTTP response | Progressive, backpressured, cancellable, no protocol code | WebSocket |
 | Change transport | Server-sent events | One-way, auto-reconnecting, built in | WebSocket, polling |
 | Archive reading | The zip central directory parsed in the service with Node built-ins | A listing needs only the directory at the end of the file; nothing is extracted, so no decompressor and no library touch untrusted bytes beyond it | An unzip library; extracting to a temporary folder |
-| Warm start | The page's own whole survey copied as it streams into a gzipped NDJSON file in the dataset home, drawn at once on the next launch and checked by a full survey in the background | No second walk of the disk; the cache is the scan's own stream, so the page reads it with the code that reads a survey; gzip is a Node built-in | Validating the cache by folder modification times, as Stage 4 planned: a full survey in the background is simpler to make correct, and the world can be read and travelled meanwhile |
+| Warm start | The page's own whole survey copied as it streams into a gzipped NDJSON file in the dataset home, drawn at once on the next launch, then checked in the service by folder modification times and swept for files rewritten in place | No second walk of the disk to write it; the cache is the scan's own stream, so the page reads it with the code that reads a survey; the check lists again only the folders whose time changed, so the page takes on a few folders rather than a second tree; gzip is a Node built-in | A full survey in the background, the first form (Wave 3): simpler to make correct, but it read every folder again and held two trees in the page while it ran |
+| Large trees | Above 100,000 entries the service keeps the tree in typed columns (`columns.js`) and answers regions, a folder's children with every figure the page reads, and the questions that walk the whole tree; the page holds only the regions near the eye | Measured: a page holding a whole tree ran a 36 ms task at 200,000 entries and 60 ms at 400,000, where its script heap settled at 54 MB; in regions every size measured, up to 5,000,000, stayed under 16 ms of script and 50 MB | Every tree whole in the page; one object per entry in the service, where the columns cost about 103 bytes an entry with its name |
+| Region answers | JSON over GET, fetched, parsed and decoded in a module worker into typed arrays whose buffers are transferred; nodes built on the main thread, one region per task; layout on the main thread | An answer may reach 4 MB, and parsing it in a worker costs the main thread nothing; the layout's own tasks stay well inside a frame | Layout in a worker, which the measurements do not call for (section 4); the main thread decodes only where there is no worker, and in the demo world |
 | Fuzzy ranking | A scorer of its own (`fuzzy.js`): a subsequence pre-test, dynamic programming in typed arrays, a top-k buffer | About 6 ms a query over 200,000 names, in a page that runs only vendored code | A fuzzy-search library |
 | CSV export | Written in the page (`csv.js`) and saved through a Blob | No service route, so it works in snapshot and read-only mode | A service endpoint; a CSV library |
 
@@ -208,7 +227,7 @@ above were replaced.
 | Multiple navigation scales | Done: scale-proportional flight, plus jumps from breadcrumbs, ledger, search and survey |
 | Coordinate management | Done: floating origin. Layout is computed in 64-bit; instance positions are sent to the GPU relative to the eye, re-based at every layout. A file twelve levels down, four orders of magnitude smaller than the world, renders without jitter |
 | Procedural generation | Done in the sense that matters: all geometry is generated from data at run time |
-| World streaming of data | Not done. The service streams the scan, but the browser then holds the whole tree. A warm start draws the last complete survey at once and checks it against the disk in the background. See Roadmap stage 4 |
+| World streaming of data | Done above 100,000 entries: the service keeps the tree, the page asks for the regions near the eye as it approaches them and lets them go under a budget as it leaves, and search, the survey and working sessions are answered by the service. Below it the browser holds the whole tree. A warm start draws the last complete survey at once and checks it by folder modification times. Measured to 5,000,000 entries (section 4); see Roadmap stage 4 |
 | Regions that are not confined to a ground plane | Partly. Elevation carries nesting, so the world has real relief, but it is a landscape, not a volume. A zip archive can be entered as a walled floor on its own file's footprint. Bridges between related regions and vertical organisation are not attempted. See Roadmap stage 5 |
 | Landmarks and waypoints | A first form: benchmarks stand as survey marks that say what changed since they were set, and one return point can be marked and flown back to. A reload comes back to where you stood, and the address names the folder. No trail of where you have been |
 | Paths through the world | A first form: the traverse draws a working session from file to file in the order they changed |
@@ -217,11 +236,18 @@ above were replaced.
 
 ```text
 browser                              service (127.0.0.1)
-  GET  /api/info                ->   the root, its name, the mode, the watcher's state, the warm cache
+  GET  /api/info                ->   the root, its name, the mode, the watcher's state, the warm cache,
+                                     the regions (threshold, entries, generation, state)
   GET  /api/scan?path=&depth=   ->   scan.mjs      NDJSON, one record per folder; a whole survey is
                                                    also copied into the warm cache (warm.mjs)
   GET  /api/warm                ->   warm.mjs      the last complete survey, as the scan's NDJSON
-  GET  /api/events              ->   fs.watch      SSE: folders that changed, job progress
+  GET  /api/check               ->   warm.mjs      the warm cache checked by folder times, as NDJSON
+  GET  /api/tree | region       ->   regions.mjs   the tree kept in columns: its state; a folder's
+                                                   children, a path's chain, folders read again
+  GET  /api/find | marks | survey | sessions | places
+                                ->   questions.js  the questions that walk the whole tree
+  GET  /api/events              ->   fs.watch      SSE: folders that changed (kept: read into the
+                                                   service's tree), job progress
   GET  /api/journal             ->   ops.mjs       the journal and the holding area
   POST /api/op                  ->   ops.mjs       mkdir rename renames move copy trash open reveal
   POST /api/cancel              ->   ops.mjs       stop a running or queued job
@@ -234,8 +260,9 @@ browser                              service (127.0.0.1)
            every path  ->  guard.mjs  (root-relative, lexical check, realpath check)
 
 snapshot mode (--snapshot):  info, scan, stat, events, an empty journal  ->  snapshot.mjs
+                             tree, region and the questions  ->  regions.mjs, from the snapshot
                              every change, open, reveal, terminal, raw, inside, hash,
-                             warm  ->  refused
+                             warm, check  ->  refused
 ```
 
 - **One mutation at a time**, through a queue. A batch is validated in
@@ -303,6 +330,9 @@ snapshot mode (--snapshot):  info, scan, stat, events, an empty journal  ->  sna
 - **After a change, only the affected folders are re-read** (depth-1
   scan), reconciled into the model by name so selection survives, and
   any new child folder is deep-scanned. The watcher feeds the same path.
+  When the service keeps the tree (Regions, below), it reads the
+  watcher's folders into that tree itself, and the page asks for them
+  as regions.
 - **The holding area is refused by where it is.** A path segment that
   names it is refused in any case on Windows and macOS, and on Windows
   with trailing dots or as an NTFS stream; a real location in or under
@@ -351,7 +381,9 @@ snapshot mode (--snapshot):  info, scan, stat, events, an empty journal  ->  sna
   function of layout and session state. Nothing is patched in place
   across those boundaries. An open archive's listing is a second model,
   read whole and only then hung from the archive's file, so no total in
-  the tree changes; it is never written back.
+  the tree changes; it is never written back. In region mode the
+  service's column tree is the cache the page's partial model reads
+  from, and the page's model holds only the regions it asked for.
 
 ### Archive listing
 
@@ -396,9 +428,10 @@ on every side.
 ### Warm start
 
 `server/warm.mjs` keeps the last complete survey of the root, and the
-page draws it before it reads anything from disk.
+page draws it before it reads anything from disk; the service then
+checks it against the disk by folder modification times.
 
-- **A copy, never a walk of its own.** When the page surveys the whole
+- **A copy, never a walk for its own sake.** When the page surveys the whole
   root (`GET /api/scan` with path `''` and no depth), the records are
   gzipped into a temporary file of this process as they stream, one JSON
   line per batch, while folders, files and bytes are counted. The copy
@@ -410,7 +443,9 @@ page draws it before it reads anything from disk.
   nothing. Commits run one at a time, a rename Windows refuses (`EPERM`,
   `EBUSY`, `EACCES`) is tried again, and temporary files another process
   left more than ten minutes ago are swept. Nothing the writer does can
-  fail the survey it copies.
+  fail the survey it copies. The walk the service makes to keep a tree
+  above the region threshold is teed into the cache in the same way,
+  and a check writes the checked tree back as the cache.
 - **Read back only when it checks out.** `readWarm` accepts a meta only
   of format 1, naming exactly this root, with finite counts, and only
   while the data file has the size the meta records. `GET /api/info`
@@ -437,23 +472,47 @@ page draws it before it reads anything from disk.
   notice that the tree is shown as the last session surveyed it. A
   stream that breaks, or counts that differ, set the tree aside with a
   notice, and the page surveys from nothing. The change stream connects
-  as soon as the warm tree is drawn, so a change made during the
-  catch-up is noted rather than lost.
-- **The catch-up.** `catchUp()` streams `GET /api/scan` into a model of
-  its own, touching nothing in `S`, and notes the eye relative to the
-  box of the folder you are in. `Model.adopt` then takes the new tree
-  on: each folder's children are matched by name and kind, and every
-  node still there is kept, so the selection, the focus, benchmarks and
-  every feature's references stay valid. What left is pruned;
-  `AFTER_REFRESH(null)` runs, then the survey and `AFTER_SURVEY` with
-  `{ full: false, settled: true }`; `S.warm` is cleared and the search
-  runs again. The world is laid out with the location held and, if the
-  folder's box moved, the eye is put back where it stood relative to
-  it. The folders the change stream asked for meanwhile are read again,
-  and a notice says how many files changed, are here now and are gone. A
-  catch-up that fails keeps the warm tree, says so with Survey again,
-  and the status reads "Last session · not surveyed"; a Rescan all
-  stops it.
+  as soon as the warm tree is drawn, so a change made during the check
+  is noted rather than lost.
+- **The check.** `checkUp()` streams `GET /api/check`. The service reads
+  the cache into a column tree (`readWarmTree`, null unless it reads
+  whole with its meta's counts), lstats every folder, 12 at a time and
+  breadth first, and lists again only a folder whose modification time
+  changed (depth 1), each new folder in it whole, and a folder that is
+  gone or no longer a folder through its parent. It answers parents
+  first, then a line with the counts, writes the cache again from the
+  checked tree (`writeWarmTree`) and starts the sweep. The page reads
+  the answer whole, notes the eye relative to the box of the folder you
+  are in, and takes each folder on with `Model.reconcile` and
+  `Model.ingest`: children are matched by name and kind, and every node
+  still there is kept, so the selection, the focus, benchmarks and
+  every feature's references stay valid. `AFTER_REFRESH(null)` runs,
+  then the survey and `AFTER_SURVEY` with `{ full: false, settled: true
+  }`; `S.warm` is cleared and the search runs again. The world is laid
+  out with the location held and, if the folder's box moved, the eye is
+  put back where it stood relative to it. The folders the change stream
+  asked for meanwhile are read again, and a notice says how many folders
+  were read again and how many files changed, are here now and are
+  gone, or "Nothing changed since the last session.". A check that
+  fails keeps the warm tree and says so with Survey again, which runs
+  the first form's catch-up (a whole survey into a model of its own,
+  taken on by `Model.adopt`, two trees held while it runs); the status
+  reads "Last session · not surveyed", and a Rescan all stops it.
+- **The sweep.** A file rewritten in place leaves its folder's time as
+  it was. `sweepWarm` then lstats the files of every folder the check
+  did not list again, 8 at a time and waiting while a change runs; a
+  folder holding a file whose size or rounded time differs goes out as
+  an ordinary change event, at most 100 folders to an event and never
+  as bulk, and `{ type: 'swept', changed }` ends it, which the page
+  says when it found any.
+- **Above the region threshold.** In live mode, a cache whose meta
+  holds more entries than the threshold is read into the service's
+  column tree at startup and served at once, with `warm.checking`; the
+  service checks it in place through its mutation chain, sends the
+  folders it read as change events, then `{ type: 'checked' }`, writes
+  the cache again and sweeps. The page holds changes until then.
+  `TERRANE_CHECK_GATE`, a file whose presence holds that check, exists
+  only so the checks can see the waiting state.
 - **Changes wait, and say why.** While `S.warm` is set, `writable()`
   names the wait, so every change control shows unavailable with that
   reason, and `runOp` (Open and Reveal aside), Undo, Restore, Purge and
@@ -461,6 +520,132 @@ page draws it before it reads anything from disk.
   anything is sent. `readOnlyMode()` gives the service's own mode
   without the wait, for what Terrane does not change itself, such as a
   terminal.
+
+### Regions
+
+Above the region threshold the service keeps the whole tree and the
+page asks for it a folder at a time. `server/regions.mjs` keeps the
+tree; `web/js/columns.js` holds it and answers the routes, and
+`web/js/questions.js` answers the questions that walk the whole tree.
+The two modules hold no DOM, so the service, the demo service and the
+Node checks answer through the same code.
+
+- **What the service keeps.** One `ColumnTree`: folder columns
+  (parent, name, modification time, error, child and file ranges) and
+  file columns (name, size, modification time, flags, kind, folder),
+  each a typed array, with every figure the page's model gives a folder
+  (size, files, folders, height, newest change, kinds, direct children)
+  and every folder's row of bytes and files by last change at the 20
+  ladder steps, as `timeline.js` builds it, with its median step. That
+  is about 103 bytes an entry with its name, plus 325 a folder for the
+  rows and kinds. Figures are equal to `model.js` node for node, which
+  `regions-test` checks for every folder of a 120,000-entry tree.
+- **Where it comes from.** In snapshot mode, from the snapshot: two
+  ordered reads merged into scanner batches, loaded once the service
+  listens when the snapshot is above the threshold. In live mode, from
+  the warm cache when its meta is above the threshold (checked in place,
+  as Warm start says), or else from a walk of the root with the scanner
+  (`GET /api/tree?build=1`), teed into the warm cache. The state is
+  `none`, `loading`, `building`, `ready` or `failed` with a sentence; a
+  build already running is the one a second request gets, the old tree
+  answers until the new one is ready, and then its generation `v`
+  rises. Ctrl+C stops a build.
+- **The threshold.** `REGION_THRESHOLD` is 100,000 entries, folders and
+  files with the root counted; `--region-threshold n`, else
+  `TERRANE_REGION_THRESHOLD`, replaces it, and 0 draws every tree in
+  regions. `GET /api/info` carries `regions: { threshold, entries, v,
+  state }`, where `entries` comes from the snapshot's meta or the warm
+  cache's, or is null when neither says. With null the page surveys as
+  usual and, once the survey passes the threshold, aborts it, drops its
+  partial model and asks for the walk. The measurements in section 4
+  set the number: a whole tree in the page ran 12.5 ms tasks at
+  100,000 entries, 36 ms at 200,000 and 60 ms at 400,000.
+- **`GET /api/tree`** gives the state, the generation, the counts, the
+  root's record, the progress of a load, how long the load and the
+  survey's preparation took, and the process's memory in MB; `build=1`
+  starts a walk (live) or reads the newest snapshot again, and `peek=1`
+  reads all this without starting a load.
+- **`GET /api/region?v=`** names the generation it reads and asks in
+  one of three ways. `ids` (at most 64) asks for folders' regions,
+  sent in order until the next would pass 40,000 entries or about 4 MB,
+  the rest named in `more`, and the ids of folders removed since in
+  `gone`. `path` (with `skip`, the folders of the chain already held)
+  asks for the chain of regions from the root to any path, a file in a
+  folder's tail included, and names its `target`. `fresh=1` with
+  `paths` (at most 50) reads folders again: in live mode from disk,
+  each listed at depth 1 and any new folder whole, through
+  `guard.resolve` and `guard.assertDirInside`; with `kept=1` nothing is
+  read, because the service has read them already; in snapshot mode
+  nothing is read at all. A fresh answer adds `up`, the new figures of
+  the ancestors, and `gone`. `with=<id>:<name>` (at most 100) joins
+  named children to a folder's region, and `q=<qid>` carries a search's
+  marks. Every answer carries `v` and the age rows' anchor.
+- **A region** is `{ id, self, n, d, f, tail }`: the folder's record,
+  its child count, its child folders' records and its files as name,
+  size, time and flags, in scan order, files then folders. A folder of
+  5,000 children or fewer (`REGION_MAX`, the layout's own per-folder
+  limit) sends every one; a larger one sends its 5,000 largest, ties by
+  scan order, plus any named, and the rest as a tail, `[count, bytes]`.
+  A record is an array of 62 values (`D_LEN`, indices shared with
+  `model.js`): id, name, time, error code, size, files, folders,
+  height, newest change, child count, the nine kinds' bytes, bytes and
+  files changed after each of the 20 ladder steps with their totals,
+  and the median step.
+- **Refusals** carry a code, a status and a sentence: `ESTALE` (409,
+  with the current `v`) for an old generation, `ENOTREADY` (503, with
+  the progress) while the tree is loading, `EBADREQ` and `EPATH` (400)
+  for a malformed request or a path the guard refuses, `ETOOMANY` (413)
+  past a cap, `ENOENT` (404, naming the deepest folder found) for a
+  path that is not there, and `EQUERY` (404) for a search no longer
+  kept. Forty-seven malformed requests in `regions-test` are each
+  refused this way.
+- **One change at a time.** Mutations run on one promise chain that
+  reads wait for: a folder listed again (`replace`), a new folder
+  filled (`graft`) and a folder removed, every figure and age row kept
+  exact along the chain to the root. A folder written again at the end
+  of the columns gets a quarter more room and then grows in place; the
+  file and child columns are packed once their dead slots outnumber the
+  live ones and pass 65,536. A removed folder's slot is never reused,
+  so an id never names another folder within a tree's life.
+- **Changes from outside.** The service reads the watcher's folders
+  into its tree whether or not a page listens, one folder per step of
+  the chain, and announces them as change events marked `kept`, 300
+  folders to an event; folders seen during a walk are read into the new
+  tree too. A page asks for kept folders with `fresh=1&kept=1`, naming
+  the deepest folder it holds on each path. Where the disk is not
+  watched (`--no-watch`, a failed watcher, Linux above 15,000 folders),
+  a page that connects has the tree checked by folder times, at most
+  once in ten seconds.
+- **The questions that walk the whole tree**, each behind the same `v`
+  check, after any change under way and after the region answers
+  already asked. `find` takes the query, the order (`sort` size or
+  date, `dir`), the folder you are in for `in:.`, the benchmarks' paths
+  for `is:benchmark` (at most 200) and `from` (up to 200,000); it runs
+  `model.js` `parseQuery` over one lightweight entry per item, counts
+  every match and sends 5,000 in the order asked, with matches beneath
+  every folder kept for marks. The last four queries are kept by `qid`
+  as a hit bit per entry, so asking again for another order or page
+  reads no name. Ties follow the page's own walk, so the answers equal
+  `runSearch` and the Findings sort, which `regions-test` checks over
+  21 queries. `marks` gives, for up to 1,500 held folders, what matches
+  and what holds matches, or with `dup=1` the survey's candidates and
+  heavyweights. `survey` gives the largest 80 files, 24 heavyweights,
+  counts and the first 1,000 of the empty, sealed and link lists, and
+  400 duplicate groups of up to 12 files (`dupfiles`, up to 4,000, adds
+  the files of the top groups by path for Verify by content). `sessions`
+  lists the newest 40 working sessions, or a session's files (`k`, up to
+  1,000, filtered by `q`), or a file's session and neighbours (`path`,
+  `near`). `places` ranks every name with `fuzzy.js`, folders first, or
+  every path when the query holds a slash, at most 200.
+- **The survey's pace.** The survey is worked out before a tree is
+  served (`prepMs`), so every region carries its candidates (`dup`) and
+  heavyweights (`hv`) from the first. After a change it is worked out
+  again at most once in eight times its last length and never within a
+  second of the last; between, the last one is answered with `stale`
+  and `retry`, and the page asks again then. Shared sizes are found in
+  65,536 buckets, each sorted, rather than one sort of every size. A
+  region never works a stale query or survey out again on its own
+  account. Dates in a query are read on the service's clock.
 
 ## 4. Scale
 
@@ -485,15 +670,97 @@ page draws it before it reads anything from disk.
 | Fuzzy ranking: a subsequence pre-test rejects most names, the best placement by one pass per query character over preallocated typed arrays, the best few kept in a small sorted buffer | `fuzzy.js` |
 | The palette's places built when it opens and kept until the next survey or refresh; ranked 60 ms after the last key | `palette.js` |
 | Quick searches counted in one walk that tests all four, the first time the section is open after a survey | `presets.js` |
+| Above 100,000 entries the tree kept in the service in typed columns, every figure kept exact along a change's chain, a large folder's held set cached until it changes | `columns.js`, `regions.mjs` |
+| The page holds only the regions near the eye: the layout names the folders it would open, a prefetch from 0.6 of that distance, highest priority first | `layout.js`, `regions.js` |
+| Regions batched under 64 folders, 40,000 entries and about 4 MB an answer, at most two requests in flight, one region's nodes built per task | `columns.js`, `regions.js` |
+| Region answers fetched, parsed and decoded in a module worker, their typed arrays transferred | `region-worker.js` |
+| Regions let go under a budget of 200,000 held entries, down to 150,000, only while the view is settled, never one pinned or standing open | `regions.js`, `app.js` |
+| A search kept by `qid` as a hit bit per entry for the last four queries, so another order, page or folder's marks reads no name; the survey worked out once per change, at most an eighth of the time | `questions.js`, `regions.mjs` |
+| The warm cache checked by folder times: every folder lstat'ed, 12 at a time, and only the changed ones read; files swept 8 at a time while no change runs | `warm.mjs` |
+| In region mode, what follows a region landing, a layout's location update and a reveal's panels each run in a task of their own; the Survey is not drawn again on select and builds its long sections when first opened; a list draws a new size in a task of its own | `app.js`, `ui.js` |
+| A whole tree's working sessions found in an idle moment after its survey | `traverse.js` |
 
 Cognitive scale is handled by the same mechanism as rendering scale: you
 see at most a few thousand things, chosen by where you are. From the
 overview a 400,000-file tree is about a hundred masses.
 
 The age table is rebuilt after each survey, inside the survey's
-debounce; working sessions are found the first time the Survey tab, a
-`session:` search or the traverse reads them after it; an archive is
-listed only when asked for. None of them runs on the frame path.
+debounce; a whole tree's working sessions are found in an idle moment
+after it, or the first time the Survey tab, a `session:` search or the
+traverse reads them; an archive is listed only when asked for. None of
+them runs on the frame path. In region mode the service answers all of
+these but the archive's listing.
+
+### The page in region mode
+
+`web/js/regions.js` is the page's side of the protocol, with no DOM:
+the page, the demo and `partial-test` run it alike.
+
+- **The partial model.** `new Model(name, { regions: true })` holds
+  only the regions it was given. A folder whose children are not held
+  carries `u`; its record gives it every figure (size, counts, height,
+  newest change, kinds, age row and typical age), so it is drawn,
+  coloured and lowered as a closed mass before it is read. `kids(n)`,
+  `n.cn ?? n.c.length`, is the one answer to how many entries a folder
+  holds, so the layout, paint, Contents and every feature read a whole
+  tree exactly as before. A folder held in part keeps its tail's count
+  and bytes, and the layout adds them to its scree. `fillRegion`,
+  `refillRegion` (children matched by name and kind, nodes kept),
+  `dropRegion` and `setFigures` are the model's only changes from a
+  region; `RegionAges` gives `AgeTable`'s whole interface over the rows
+  every folder carries.
+- **Asked for as the eye nears.** A layout over a folder with `u` never
+  opens it: it stands closed and joins `layout.want`, with a priority
+  of its width over its distance against the opening ratio, and a
+  prefetch from 0.6 of that ratio. After each layout `want()` sends the
+  highest first, two requests at most in flight, and each landed batch
+  queues a layout 30 ms later. Loading every want at twelve eye
+  positions over a 120,000-entry tree gives a layout equal box for box
+  to the whole model's (`partial-test`).
+- **Before a feature acts.** In region mode going to a folder,
+  selecting it, stepping into it, the location settling on it and a
+  reveal hold its region first, with sequence numbers so a later step
+  wins; with a whole tree they stay synchronous. `ensure`, `resolve`
+  (the chain to any path, a file in a tail included), `resolveAll`,
+  `resolveRef` and `nearest` are the api's way in (section 7). A list
+  from the service holds refs, which become nodes in their list's place
+  before anything acts on them, so the selection only ever holds nodes.
+- **Kept through a refill.** A folder read again keeps its nodes. One
+  past 5,000 names its pinned children (the selection, the primary, the
+  folder you are in, an open archive's file, every region pin) with
+  `with=`, at most 100; the rest are kept while they are asked for by
+  name and dropped only once they are gone from disk. A folder held
+  another way meanwhile keeps every child it holds that the region does
+  not list.
+- **The worker.** `region-worker.js` is given the token once, then
+  fetches each region request, parses and decodes it into columns and
+  posts the typed arrays back with their buffers transferred, so the
+  main thread never parses an answer; the other answers are parsed
+  there too. The demo world, whose answers a worker's fetch would never
+  reach, and a browser without workers decode on the main thread, and a
+  worker that fails hands what waits on it to the main thread. The
+  decision was made on Node figures over a 1,000,000-entry tree: a
+  batch of 35,007 entries, 1.47 MB, parses in 2.04 ms, decodes in
+  0.43 ms and builds its nodes in 1.32 ms, one region per task; layout
+  stays on the main thread, because its tasks fit a frame once the
+  panels around it run in tasks of their own.
+- **The budget.** Once more than 200,000 entries are held and the view
+  is settled (no flight, no transition, no layout waiting), the least
+  recently opened regions are let go, deepest first, down to 150,000,
+  then the page lays out again without animation. Never let go: the
+  folder you are in, the folders of the selection and every selected
+  folder's own, the trail, a forced chain, a held flight's folder, every
+  benchmark's and the return point's, an open archive's folder, every
+  ancestor of those, and every folder standing open in the layout.
+  Prefetch stops at the floor, so a view never loads what it would let
+  go.
+- **A new generation.** A 409 `ESTALE` stops every request and opens
+  the tree again, keeping the folder you are in by its path; Rescan all
+  does the same. A failed request rests its folders from one second,
+  doubling to 16; a folder the service lists in `gone` is never asked
+  for again, and its parent is read instead.
+- **The status line** ends "Regions · N of M entries held", outside the
+  role=status label, so the held count is never announced.
 
 ### Measured (Linux container, 2 cores, software rasterizer)
 
@@ -547,6 +814,52 @@ Linux container above was not measured for them.
 | First box drawn, cold then warm, 3,126 files, Edge 157 | 231 then 185 ms with WebGL; 185 then 119 ms without (another run: 273 then 205, and 227 then 143) |
 | First box drawn, cold then warm, 15,126 files, Edge 157 | 321 then 203 ms with WebGL; 279 then 120 ms without |
 
+### Measured (Windows 11, RTX 5050 laptop GPU, Edge 157, 11/14/2026, the Stage 4 exit test)
+
+`node tools/scale.mjs`, then the same with `--nogl`, on the final tree
+of Wave 4: Windows 11, 16 cores, 31.6 GB, Node 26.13, synthetic
+snapshots of seed 11, one point at a time with @@FREE-GB@@ GB free or more
+and no other headless browser, the service at `--max-old-space-size`
+1024 (100k, 400k), 2048 (1M), 3072 (2M) and 4096 (5M). The tour goes
+from the overview eight levels down by keyboard, searches twice and
+reveals a match, opens the Survey and reveals from it, and in regions
+halves the budget of held entries and walks three levels down again.
+Heap is the page's script heap (`JSHeapUsedSize`); a task's script is
+read from a trace of the tour, which costs a little itself.
+
+@@EXIT-TABLE@@
+
+The longest task at 400,000 entries and above is the one in which a
+region answer arrives from the worker and the page paints and draws the
+ledger twice; at 5,000,000 it ran @@5M-SCRIPT@@ ms, @@5M-MARGIN@@ ms
+inside the limit. Earlier runs at 5,000,000 gave 14.8 ms (the first
+exit run), 14.9 ms (the review's) and 14.1 ms (after the fixes), so the
+margin is real but thin. A whole task ran longer only where the
+scenario's own forced collection, made to read the heap, fell in it.
+
+Without WebGL the page draws no world and the scenario makes no trace,
+so only memory and the first box are read:
+
+@@NOGL-TABLE@@
+
+The service alone (`--service-only`: the tree loaded, eight levels
+walked down by the folder with most folders beneath, each region timed,
+50 chains to random deep files):
+
+@@SVC-TABLE@@
+
+### Measured (Windows 11, 16 cores, 11/14/2026, region mode in Node)
+
+| Measure | Result |
+| ------- | ------ |
+| A 300,000-entry column tree built from scanner records (`regions-test`) | 36 ms (the test's ceiling is 1,500 ms) |
+| A 20,000-file folder's region chosen and serialised | 1.5 ms, the median of five (ceiling 50 ms) |
+| Find, the survey and sessions over 120,000 entries | 25, 7 and 13 ms (ceilings 300, 600 and 400 ms) |
+| Loading the wants of twelve eye positions over a 120,000-entry tree (`partial-test`) | 17 layouts, 18 requests, 153 regions, 15,180 entries held |
+| The decoder's choice, over a 1,000,000-entry tree: a batch of the 64 largest folders (7 regions, 35,007 entries, 1.47 MB) | parsed in 2.04 ms, decoded in 0.43 ms, nodes built in 1.32 ms, one region per task |
+| The survey of 5,000,000 entries, worked out by bucket rather than one sort | about 410 ms, against about 730 ms |
+| Region answers while the tree changes, 5,000,000 entries, a request every 100 ms timed from when it was due, with the page's refresh, search and survey asked as the page asks them (a probe, not kept) | one change a second: median 10.8 ms, 95th percentile 211 ms, 56 of 406 over 100 ms, against 155 ms, 559 ms and 242 of 413 before the survey was paced; one change every 450 ms: 11 ms, 193 ms and 51 of 404, against 16 ms, 269 ms and 139 of 406, when the survey was never asked again |
+
 ## 5. Datasets
 
 Two SQLite files per mirrored directory, kept in
@@ -558,7 +871,8 @@ started on. `TERRANE_DATA` names another place for all of them.
 | ------- | ---------- | ------- | ----- |
 | `structure-<time>.db` | `snapshot.mjs`, through the live scanner | snapshot mode | `folders` (path-indexed, breadth-first ids), `files`, an `entries` view, `meta` |
 | `thumbs.db` | `tools/thumbs.py` | `thumbs.mjs`, both modes | one row per image: version, status, size in pixels, average colour, 4×4 grid, 160 and 480 px WebP or gzipped SVG source |
-| `warm-<hash>.ndjson.gz`, `warm-<hash>.json` | `warm.mjs`, from the page's whole survey | `GET /api/warm`, live mode only | the scanner's records, one gzipped JSON line per batch; a meta with the format, root, time taken, counts and the data file's size |
+| `warm-<hash>.ndjson.gz`, `warm-<hash>.json` | `warm.mjs`, from the page's whole survey, the service's walk for regions, or a check | `GET /api/warm` and `GET /api/check`, and the service's tree above the threshold; live mode only | the scanner's records, one gzipped JSON line per batch; a meta with the format, root, time taken, counts and the data file's size |
+| `synthetic-<size>/structure-<time>.db` | `tools/make-synthetic.mjs`, through `snapshotWriter`, from a seed; no file is created | snapshot mode, `tools/scale.mjs` and the `scale` scenario | a structure snapshot whose meta carries `synthetic` (seed, entries, the moment its dates are relative to) |
 
 Choices and their reasons:
 
@@ -590,6 +904,20 @@ Choices and their reasons:
   kind, path, size, totals beneath a folder, UTC time and flags, and the
   same entries as a nested JSON tree. Both are streamed to disk, so a
   quarter of a million entries export in a few seconds.
+- **Large trees are generated as snapshots, never as files.**
+  `tools/make-synthetic.mjs` writes the rows of a tree that does not
+  exist straight into a snapshot database through `snapshotWriter`,
+  the writer real snapshots use: exact counts with about 9% folders,
+  breadth-first ids, a skeleton up to twelve levels deep in themes
+  (code projects with `.git` and `node_modules`, photos, video, music,
+  documents, data, archives), files shared out by Pareto weights with a
+  few folders of 5,000 to 30,000 files, sizes log-normal by kind with
+  2% sharing a size, dates in working sessions and a few bulk writes,
+  hidden names, links, special files and unreadable folders. A seed and
+  a day give the same rows. Five million entries take about 6.5 s and
+  319 MB on disk; the service serves them as a real snapshot, so scale
+  is measured without millions of files. It refuses the `projects`
+  dataset and a folder holding a snapshot of a real directory.
 
 ### The demo world
 
@@ -630,16 +958,41 @@ Choices and their reasons:
 
 ### Known limitations
 
-- The browser holds the whole tree: about 150 MB per million entries.
-  While a warm start's catch-up runs it holds two, about 300 MB per
-  million; `--no-warm` avoids that.
-- The warm cache is the last complete survey, taken when a session
-  started or at a Rescan all. A session's later refreshes are not in
-  it, so the warm notice dates the tree by that survey, and the
-  catch-up, a full survey, is what checks it; folder times are not
-  used to skip what did not change.
+- Up to the region threshold the browser holds the whole tree, about
+  54 MB of script heap at 400,000 entries; Survey again, after a warm
+  start's check failed, holds two while it runs.
+- The warm cache is the last complete survey, walk or check, taken when
+  a session started or at a Rescan all. A session's later refreshes
+  are not in it, so the warm notice dates the tree by that moment. The
+  check by folder times misses a file rewritten in place, which keeps
+  its folder's time, until the sweep reaches it; the re-check on a
+  page's arrival while the disk is not watched has no sweep.
 - One folder draws at most 5,000 entries individually; the rest are scree
-  until you are close enough for the largest of them to matter.
+  until you are close enough for the largest of them to matter. In
+  region mode the page holds only those 5,000 and the children it asks
+  for by name; Contents says so and how to find the rest. A folder of
+  exactly 5,001 children whose 5,000 held are all drawn leaves the
+  5,001st in the scree, where a whole tree draws it.
+- In region mode the twins of an open archive are not looked for, and
+  the notice says so. Select all in Findings takes the first 1,000
+  matches, Findings lists 5,000 to a page up to 200,000, and a Survey
+  list holds the service's first 1,000.
+- The service's survey after a change holds region answers while it
+  runs, about 0.4 s at 5,000,000 entries, and a search asked again
+  about 0.2 s; they are paced to at most about an eighth and a seventh
+  of the time. There is no incremental survey and no worker thread in
+  the service.
+- A fresh read of 50 large folders can answer about 250,000 entries at
+  once; a refresh names at most 100 pinned children a request and asks
+  for the rest by name.
+- A removed folder's slot in the columns is never reused within a
+  tree's life, so ids stay stable and a tree with much churn grows
+  until it is built again.
+- A search's marks by name use each folder's default held set; a
+  matching file joined to a region only by `with=` is marked when the
+  region is next asked with the search's qid.
+- Places queries with a slash build each entry's path as they rank; they
+  were checked for parity at 120,000 entries but not timed at 5,000,000.
 - On Linux the recursive watcher is skipped above 15,000 folders.
 - Sizes are logical sizes. Sparse files and hard links are not detected.
 - Duplicate candidates are files of identical size until verified;
@@ -931,11 +1284,11 @@ and the rest still run.
 | `DUP_GROUP` | `{ build(group, ctx) }`, ctx `{ node, where, ro }`: under a group of duplicate candidates, in the inspector's copies (`where: 'inspector'`) and after each group in the Survey (`'survey'`) | Duplicate cleanup |
 | `QUERY.is`, `QUERY.prefix` | `is:<word>` and `<name>:<value>` search tokens; built-in tokens cannot be replaced | Landmarks (`is:benchmark`), Session traverse (`session:N`), Search history (`in:`) |
 | `AFTER_LAYOUT` | `run(L)` at the end of every relayout | Landmarks, Session traverse, Remembered view |
-| `AFTER_REFRESH` | `run(dirs)` once a refresh has pruned selection, focus and trail; `null` after a warm start's catch-up | Landmarks, Interiors, Palette |
-| `AFTER_SURVEY` | `run(survey, { full, warm, settled })` after every survey: `full` for a whole survey, `warm` for one of the last session's tree, `settled` for the catch-up's; the age table is rebuilt first, at 10, and the kept view is put back at 80 | the controller and every Stage 5 feature, Palette, Remembered view |
+| `AFTER_REFRESH` | `run(dirs)` once a refresh has pruned selection, focus and trail; `null` after a warm start's check (or its Survey again) | Landmarks, Interiors, Palette |
+| `AFTER_SURVEY` | `run(survey, { full, warm, settled })` after every survey: `full` for a whole survey, `warm` for one of the last session's tree, `settled` for the check's; the age table is rebuilt first, at 10, and the kept view is put back at 80 | the controller and every Stage 5 feature, Palette, Remembered view |
 | `AFTER_OP` | `run(body, res)` once the service has carried out a change, before the affected folders are re-read: Undo included (`res.moved`), a batch rename (`res.renamed`, the pairs), and a change or an Undo that stopped part way (`res.partial`, with `res.results` or `res.moved`) | Landmarks |
 | `AFTER_QUERY` | `run(search, query)` whenever the search runs; it may set `search.sort` and `search.note` for Findings | Session traverse, Search history |
-| `AFTER_FOCUS` | `run(dir)` once the folder you are in has changed: `moveFocus`, and a refresh, a catch-up or Rescan all that moved it (`focusMoved`) | Remembered view |
+| `AFTER_FOCUS` | `run(dir)` once the folder you are in has changed: `moveFocus`, and a refresh, a warm start's check or Rescan all that moved it (`focusMoved`) | Remembered view |
 | `AFTER_SELECT` | `run(sel, primary)` at the end of every selection change, quiet ones and `selectAll` included | Remembered view, Totals |
 
 `AFTER_OP` is what lets Landmarks follow Terrane's own renames and moves,
@@ -963,6 +1316,18 @@ by " · ", so it breaks only at a separator, and `sectionTitle(text,
 figure)`, a section's head with its figure at the right whose text
 still reads "Title · figure"; `actionButton` takes `named` for a label
 that carries a name, the one kind of button label that may wrap.
+
+Wave 4's Scale added what a feature needs to work on a tree it may not
+hold: `regionMode()`; `kids(n)`, how many entries a folder holds in
+either mode; `ensure(dir)`, a folder's children held; `resolve(rel)`,
+`resolveAll(rels)` and `resolveRef(ref)`, a path, several or a list's
+ref made a node; `nearest(rel)`, the deepest node held on a path; each
+of these but `kids` and `nearest` is a promise, and with a whole tree
+answers at once. `ask(route, params)` puts a whole-tree question to the
+service (`find`, `marks`, `survey`, `sessions`, `places`) and resolves
+to its answer; `resolveRow(ref)` makes a listed ref a node in its
+list's place; `notAtSize(what)` is the sentence for what the service
+does not answer at that size.
 
 `ui.js` gains `openSheet(build, { className, label, onKey })`, a sheet
 in the shared dialog for what is richer than `ask()`: the palette,
@@ -1083,10 +1448,20 @@ the first survey.
   settled survey (`AFTER_SURVEY` with `settled`): B waits, and the
   benchmarks' notice of what changed is never given of the last
   session's tree.
+- **Region mode.** Above the threshold the page holds only regions, so
+  a feature never assumes it holds the whole tree. It reads a folder's
+  count with `api.kids(n)`, never `n.c.length`; holds a folder's region
+  with `api.ensure` before it reads the children, and turns a path into
+  a node with `api.resolve` before it acts; keeps a path rather than a
+  node across time, or its folder among the region pins, since a region
+  let go drops its nodes; asks the service (`api.ask`) for anything
+  that walks the whole tree; and makes a listed ref a node before it
+  selects, reveals or measures it. B reads the folder's region before
+  measuring, and J and the first survey resolve their paths first.
 - **Focus by its hook.** The address and the kept view follow
   `AFTER_FOCUS`, so code that moves `S.focus` other than through
   `moveFocus` calls `focusMoved(was)` once it has pruned the tree, as a
-  refresh, a catch-up and Rescan all do.
+  refresh, a warm start's check and Rescan all do.
 - **Wording.** Features that read modification times say "changed",
   never "created", "added" or "arrived".
 

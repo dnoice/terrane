@@ -23,7 +23,11 @@
  *       so a long task is named by its terrane:* measure. After the
  *       review: the exit criteria are checked at 400,000 entries or more,
  *       either way the page holds the tree, and in regions the tour lowers
- *       the budget, lets regions go and walks down again over it.
+ *       the budget, lets regions go and walks down again over it. The
+ *       budget check counts as pinned what the page pins (the selection's
+ *       folders, benchmarks, the return point and an open archive's folder
+ *       too), so a tour without WebGL, which holds few regions, is judged
+ *       by the page's own rule.
  *
  * ✒ Description:
  *     Measures the page over a synthetic snapshot: how soon the first box
@@ -408,13 +412,22 @@ export default {
         }, budget);
         await t.waitFor((T, d) => T.S.regions.stats.dropped > d, { args: [before.dropped], timeout: 60000, what: 'regions let go under the lowered budget' });
         await t.settle({ timeout: 60000 });
-        // What may not be let go: folders standing open in the layout, and the
-        // folder you are in, the trail and the forced chain with every ancestor.
+        // What may not be let go, as the page pins it (app.js regionPins):
+        // folders standing open in the layout, and with every ancestor the
+        // folder you are in, the folders of the selection and every selected
+        // folder's own, the trail, the forced chain, every benchmark's
+        // folder, the return point's and an open archive's.
         const evicted = await t.app((T) => {
           const keep = new Set();
           const L = T.S.layout;
           for (let i = 0; i < (L?.n || 0); i++) if (L.type[i] === 0) keep.add(L.node[i]);
-          for (const n of [T.S.focus, ...T.S.trail, ...(T.S.force || [])]) for (let a = n; a; a = a.p) keep.add(a);
+          const S = T.S;
+          const pinned = [S.focus, ...S.trail, ...(S.force || [])];
+          for (const n of [...S.sel, S.primary]) if (n) pinned.push(n.d ? n : n.p);
+          for (const b of S.places?.benchmarks || []) if (b.node) pinned.push(b.node);
+          if (S.places?.ret) pinned.push(S.regions.nearest(S.places.ret.rel));
+          if (S.interior) pinned.push(S.interior.host.p);
+          for (const n of pinned) for (let a = n; a; a = a.p) keep.add(a);
           let loose = 0;
           const walk = [T.S.model.root];
           while (walk.length) {
