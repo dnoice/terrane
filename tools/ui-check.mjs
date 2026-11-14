@@ -2,18 +2,30 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Interface Check (Terrane Edition - v1.5)
+ *     - Title: Interface Check (Terrane Edition - v1.6)
  *     - File Name: ui-check.mjs
  *     - Relative Path: tools/ui-check.mjs
  *     - Artifact Type: test
- *     - Version: 1.5.0
- *     - Date: 11/13/2026
- *     - Update: Friday, November 13, 2026
+ *     - Version: 1.6.0
+ *     - Date: 11/14/2026
+ *     - Update: Saturday, November 14, 2026
  *     - Author: Dennis 'dendogg' Smaltz
  *     - A.I. Acknowledgement: Anthropic - Claude Opus 5.5
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
  *
  * ✒ Changelog:
+ *     - 1.6.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — For
+ *       the scale measurements: a snapshot's data carries its meta (the
+ *       newest structure-*.db in the folder, or the .db given), offered
+ *       to scenarios as t.meta, and a scenario with data 'synthetic' runs
+ *       only on a generated snapshot (meta.synthetic), else it is skipped
+ *       with "needs a synthetic snapshot (tools/make-synthetic.mjs)".
+ *       --service-heap <MB> gives every service it starts
+ *       --max-old-space-size; --no-baseline leaves the draw-call baseline
+ *       out; --ready-ms <ms> sets how long a page may take to be ready
+ *       (120,000 by default); --min-free <GB> waits, polling every 20 s
+ *       for up to 120 s, for that much free memory before the service and
+ *       before each browser, and stops with a sentence when it never is.
  *     - 1.5.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — A
  *       tab's first page forgets the view and the searches the page keeps
  *       (the localStorage keys starting terrane.view. and
@@ -87,7 +99,11 @@
  *       and offered to every scenario as t.baseline
  *     - Data: a fresh fixture from tools/make-fixture.mjs in the OS temp
  *       folder (default), an existing fixture, or a structure snapshot;
- *       the fixture's manifest gives scenarios exact paths and times
+ *       the fixture's manifest gives scenarios exact paths and times, and
+ *       a snapshot's meta says whether it was generated
+ *       (tools/make-synthetic.mjs), which synthetic scenarios need
+ *     - Heavy runs: a heap for the service, a longer wait for the page,
+ *       and a floor of free memory before the service and each browser
  *     - Scenarios that change files each get their own fresh fixture and a
  *       writable service; everything else runs against a read-only one
  *     - Network log, page errors and screenshots per scenario; uncaught
@@ -116,10 +132,10 @@
  *             t.check('the date shows', /\d\d\/\d\d\/\d{4}/.test(await t.text('#time-val')));
  *           },
  *         };
- *     Fields: name, title, data ('any' or 'fixture'), write (true for a
+ *     Fields: name, title, data ('any', 'fixture' or 'synthetic'), write (true for a
  *     writable service on a fresh fixture), warm (true for the same, with
  *     the warm start on), passes (['webgl', 'nogl']), timeout (ms). The
- *     context t offers: pass, gl, data, manifest, root, dataDir,
+ *     context t offers: pass, gl, data, manifest, meta, root, dataDir,
  *     abs(rel), baseline, recorded, check, skip, note, key, keys, type,
  *     tabTo, focused, eval, app, waitFor, until, poll, settle, text,
  *     live, notices, mark, requests, shot, drawCalls, sleep, url,
@@ -138,6 +154,8 @@
  *     node tools/ui-check.mjs --fixture C:\temp\terrane-fixture core
  *     node tools/ui-check.mjs --record-baseline --by "dendogg"
  *     node tools/ui-check.mjs --list
+ *     node tools/ui-check.mjs scale --snapshot <synthetic> --no-shots --no-baseline
+ *         --pass webgl --service-heap 2048 --ready-ms 600000 --min-free 6
  *
  * ✒ Command-Line Arguments:
  *     Input:
@@ -155,12 +173,19 @@
  *         --port <n>             First port to serve on (4710); write
  *                                scenarios use the next one, the browser's
  *                                DevTools endpoint the ninth after it.
+ *         --service-heap <MB>    --max-old-space-size for every service.
+ *         --ready-ms <ms>        How long a page may take to be ready
+ *                                (120000).
+ *     Safety:
+ *         --min-free <GB>        Free memory needed before the service and
+ *                                before each browser; waits up to 120 s.
  *     Output:
  *         --shots <dir>          Where screenshots go (a new folder under
  *                                the OS temp folder by default).
  *         --no-shots             Take no screenshots.
  *         --record-baseline      Write the measured draw calls to
  *                                tools/ui-scenarios/baseline.json.
+ *         --no-baseline          Measure no draw-call baseline.
  *         --by <tag>             Changelog tag for that recording
  *                                (default dendogg).
  *         --keep                 Keep the temp fixtures.
@@ -168,7 +193,8 @@
  *
  * ✒ Other Important Information:
  *     - Dependencies: Node.js 22.5+ (global WebSocket); Microsoft Edge or
- *       Google Chrome; server/terrane.mjs, tools/make-fixture.mjs
+ *       Google Chrome; server/terrane.mjs, server/snapshot.mjs,
+ *       tools/make-fixture.mjs
  *     - Compatible platforms: Windows, macOS, Linux
  *     - Safety: the services it starts are read-only, except for scenarios
  *       marked write or warm, which get a throwaway fixture of their own;
@@ -184,6 +210,7 @@ import path from 'node:path';
 import { spawn } from 'node:child_process';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { makeFixture, readManifest, unseal } from './make-fixture.mjs';
+import { listSnapshots, readMeta } from '../server/snapshot.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const SERVER = path.join(HERE, '..', 'server', 'terrane.mjs');
@@ -195,7 +222,7 @@ const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 /* ---------- arguments ---------- */
 
 const argv = process.argv.slice(2);
-const VALUED = new Set(['--snapshot', '--fixture', '--files', '--seed', '--pass', '--browser', '--port', '--shots', '--by']);
+const VALUED = new Set(['--snapshot', '--fixture', '--files', '--seed', '--pass', '--browser', '--port', '--shots', '--by', '--service-heap', '--ready-ms', '--min-free']);
 const opt = {};
 const names = [];
 for (let i = 0; i < argv.length; i++) {
@@ -211,6 +238,17 @@ const PASSES = opt.pass ? [opt.pass === 'no-webgl' ? 'nogl' : opt.pass] : ['webg
 if (PASSES.some((p) => p !== 'webgl' && p !== 'nogl')) {
   console.error('  --pass takes webgl or nogl.');
   process.exit(2);
+}
+// A service holding a large tree is given its own heap; a page that reads
+// one may take minutes to be ready; a heavy run waits for free memory.
+const SERVICE_HEAP = opt['service-heap'] ? Number(opt['service-heap']) : null;
+const READY_MS = opt['ready-ms'] ? Number(opt['ready-ms']) : 120000;
+const MIN_FREE = opt['min-free'] ? Number(opt['min-free']) : null;
+for (const [flagName, v] of [['--service-heap', SERVICE_HEAP], ['--ready-ms', READY_MS], ['--min-free', MIN_FREE]]) {
+  if (v !== null && !(Number.isFinite(v) && v > 0)) {
+    console.error(`  ${flagName} takes a number greater than 0.`);
+    process.exit(2);
+  }
 }
 
 /* ---------- results ---------- */
@@ -258,7 +296,8 @@ let DATA = null;
  * after the first would start from the last one's tree.
  */
 async function startService(args, port, launchLog, { warm = false } = {}) {
-  const child = spawn(process.execPath, [SERVER, ...args, ...(warm ? [] : ['--no-warm']), '--no-open', '--port', String(port)], {
+  const heap = SERVICE_HEAP ? [`--max-old-space-size=${Math.round(SERVICE_HEAP)}`] : [];
+  const child = spawn(process.execPath, [...heap, SERVER, ...args, ...(warm ? [] : ['--no-warm']), '--no-open', '--port', String(port)], {
     stdio: ['ignore', 'pipe', 'pipe'], env: { ...process.env, TERRANE_LAUNCH_LOG: launchLog, TERRANE_DATA: DATA },
   });
   let out = '';
@@ -287,6 +326,26 @@ async function startService(args, port, launchLog, { warm = false } = {}) {
   });
   cleanups.push(stop);
   return { port: actual, url: `http://127.0.0.1:${actual}/`, stop, launchLog };
+}
+
+/**
+ * Waits until at least MIN_FREE GB of memory is free, polling every 20 s
+ * for up to 120 s; resolves to false (with a sentence printed) when it
+ * never is. Without --min-free it resolves at once.
+ */
+async function enoughMemory(before) {
+  if (!MIN_FREE) return true;
+  const end = Date.now() + 120000;
+  for (;;) {
+    const free = os.freemem() / 1024 ** 3;
+    if (free >= MIN_FREE) return true;
+    if (Date.now() + 20000 > end) {
+      console.error(`  Only ${free.toFixed(1)} GB of memory is free, and ${before} needs ${MIN_FREE} GB; stopped without starting it.`);
+      return false;
+    }
+    print(`  note  ${free.toFixed(1)} GB free; waiting for ${MIN_FREE} GB before ${before}`);
+    await wait(20000);
+  }
 }
 
 function findBrowser() {
@@ -578,6 +637,8 @@ function context(page, env) {
     gl: pass === 'webgl',
     data: env.data.kind,
     manifest: env.data.manifest,
+    // A snapshot's meta (meta.synthetic for a generated one), or null.
+    meta: env.data.meta ?? null,
     root: env.root,
     url: env.url,
     // The read-only service's address; in a write scenario url is its own writable one.
@@ -796,13 +857,13 @@ const READY = `(() => {
 
 /** Waits until the page's survey is done and its loading sheet has gone. */
 async function untilReady(page) {
-  const end = Date.now() + 120000;
+  const end = Date.now() + READY_MS;
   for (;;) {
     const r = await page.send('Runtime.evaluate', { expression: READY, returnByValue: true })
       .catch(() => ({ result: { value: '' } }));
     if (r.result?.value === 'ready') break;
     if (/Not connected|survey stopped/i.test(r.result?.value || '')) throw new Error(`The page could not start: ${r.result.value}`);
-    if (Date.now() > end) throw new Error(`The page did not finish its survey in 120 s (${r.result?.value || 'no message'})`);
+    if (Date.now() > end) throw new Error(`The page did not finish its survey in ${Math.round(READY_MS / 1000)} s (${r.result?.value || 'no message'})`);
     await wait(100);
   }
   await page.send('Runtime.evaluate', { expression: 'document.fonts.ready.then(() => true)', awaitPromise: true });
@@ -1012,7 +1073,7 @@ async function loadScenarios() {
 async function main() {
   const all = await loadScenarios();
   if (opt.list) {
-    for (const s of all) print(`  ${s.name.padEnd(16)} ${s.file.padEnd(16)} ${s.data === 'fixture' ? 'fixture' : 'any data'}${s.write ? ', writes' : ''}${s.warm ? ', warm' : ''}, ${s.passes.join(' + ')}  ${s.title || ''}`);
+    for (const s of all) print(`  ${s.name.padEnd(16)} ${s.file.padEnd(16)} ${s.data === 'fixture' || s.data === 'synthetic' ? s.data : 'any data'}${s.write ? ', writes' : ''}${s.warm ? ', warm' : ''}, ${s.passes.join(' + ')}  ${s.title || ''}`);
     return 0;
   }
   const chosen = names.length ? all.filter((s) => names.includes(s.name) || names.includes(s.file) || names.includes(s.file.replace(/\.mjs$/, ''))) : all;
@@ -1038,7 +1099,15 @@ async function main() {
 
   let data;
   if (opt.snapshot) {
-    data = { kind: 'snapshot', args: ['--snapshot', path.resolve(opt.snapshot)], manifest: null, root: null };
+    // The snapshot's meta: a generated one says so (meta.synthetic), and
+    // only then do the synthetic scenarios run.
+    const target = path.resolve(opt.snapshot);
+    const file = target.endsWith('.db') ? target : listSnapshots(target)[0];
+    let meta = null;
+    try {
+      meta = file ? readMeta(file) : null;
+    } catch { /* no meta to read */ }
+    data = { kind: 'snapshot', args: ['--snapshot', target], manifest: null, root: null, meta };
   } else if (opt.fixture) {
     const root = path.resolve(opt.fixture);
     const manifest = readManifest(root);
@@ -1051,15 +1120,19 @@ async function main() {
     data = { kind: 'fixture', args: [root, '--read-only'], manifest, root, files: FILES, seed: SEED, madeIn: Date.now() - t0 };
   }
 
+  if (!(await enoughMemory('the service'))) return 3;
   const service = await startService(data.args, PORT, path.join(work, `launch-${PORT}.log`));
   print('\nTerrane interface check');
   print(`  Browser   : ${exe}`);
-  print(`  Data      : ${data.kind === 'snapshot' ? `snapshot ${opt.snapshot}` : `fixture, ${data.manifest.files.toLocaleString('en-US')} files, seed ${data.seed} (${data.root}${data.madeIn ? `, made in ${(data.madeIn / 1000).toFixed(1)} s` : ''})`}`);
-  print(`  Service   : ${service.url} (read-only)`);
+  const syn = data.meta?.synthetic;
+  print(`  Data      : ${data.kind === 'snapshot' ? `snapshot ${opt.snapshot}${syn ? ` (synthetic, ${Number(syn.entries).toLocaleString('en-US')} entries, seed ${syn.seed})` : ''}` : `fixture, ${data.manifest.files.toLocaleString('en-US')} files, seed ${data.seed} (${data.root}${data.madeIn ? `, made in ${(data.madeIn / 1000).toFixed(1)} s` : ''})`}`);
+  print(`  Service   : ${service.url} (read-only${SERVICE_HEAP ? `, heap ${SERVICE_HEAP} MB` : ''})`);
   print(`  Passes    : ${PASSES.join(', ')}`);
   print(`  Shots     : ${shots || 'off'}`);
+  if (opt['no-baseline']) print('  Baseline  : not measured (--no-baseline)');
 
   for (const pass of PASSES) {
+    if (!(await enoughMemory('the browser'))) return 3;
     const browser = await launchBrowser(exe, pass);
     const probe = await Page.open(browser.cdp, 'about:blank');
     const gl = await probe.send('Runtime.evaluate', {
@@ -1076,7 +1149,7 @@ async function main() {
       continue;
     }
     const env = { pass, data, root: data.root, url: service.url, launchLog: service.launchLog, shots, shotSeq: 0, baseline: null, recorded: null, prefix: pass };
-    if (pass === 'webgl') {
+    if (pass === 'webgl' && !opt['no-baseline']) {
       const b = await measureBaseline(browser, { ...env, prefix: `${pass} baseline` });
       env.baseline = b.states;
       env.recorded = b.recorded;
@@ -1087,6 +1160,11 @@ async function main() {
       if (s.data === 'fixture' && data.kind !== 'fixture') {
         skipped++;
         print(`\n[${prefix}] ${s.title || s.name}\n  skip  needs the fixture`);
+        continue;
+      }
+      if (s.data === 'synthetic' && !data.meta?.synthetic) {
+        skipped++;
+        print(`\n[${prefix}] ${s.title || s.name}\n  skip  needs a synthetic snapshot (tools/make-synthetic.mjs)`);
         continue;
       }
       if (s.write || s.warm) {
