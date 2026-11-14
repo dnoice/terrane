@@ -1,17 +1,21 @@
 <!--
 ✒ Metadata
-    - Title: Terrane Architecture (Terrane Edition - v1.9)
+    - Title: Terrane Architecture (Terrane Edition - v1.10)
     - File Name: ARCHITECTURE.md
     - Relative Path: docs/ARCHITECTURE.md
     - Artifact Type: docs
-    - Version: 1.9.0
-    - Date: 11/13/2026
-    - Update: Friday, November 13, 2026
+    - Version: 1.10.0
+    - Date: 11/14/2026
+    - Update: Saturday, November 14, 2026
     - Author: Dennis 'dendogg' Smaltz
     - A.I. Acknowledgement: Anthropic - Claude Opus 5.5
     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
 
 ✒ Changelog:
+    - 1.10.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — Visual
+      identity: names are printed on the boxes by their own shader from
+      a distance-field atlas (lettering.js), and the measured table says
+      how they are placed.
     - 1.9.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — Visual
       identity: boxes read as made objects (rounded edges, a satin
       finish, contact shade and shadows, strata), and ink in the world
@@ -460,7 +464,7 @@ page draws it before it reads anything from disk.
 | One instanced mesh, one draw call, and the contact shadows one more over the same matrices; drawing conventions and the boxes' finish in the fragment shader | `viewport.js` |
 | Buffer uploads cover only the boxes, pins and line vertices drawn; while boxes travel the shadow map is redrawn on every fourth frame at most | `viewport.js` |
 | Every relation set in one preallocated line buffer and one draw call, drawn only while it holds a line | `viewport.js` |
-| Labels placed again only when the eye, the layout, the marks or the canvas change | `viewport.js` |
+| Names printed by the boxes' own shader from one distance-field atlas: no element and no draw call per name, at most six new names set a frame; placed again only when the eye, the layout, the marks or the canvas change | `viewport.js`, `lettering.js` |
 | Render on demand | `viewport.js` `invalidate` |
 | Picking by direct ray and box tests on typed arrays | `viewport.js` `#cast` |
 | Virtual list for folders with tens of thousands of rows | `ui.js` |
@@ -681,8 +685,9 @@ direction is a survey sheet around a plaster world.
   the drawing textures (stipple, hatch, grid, a faint paper grain).
 - **Line**: 1px ink rules, square corners, hard offset shadows on what
   floats, on the sheet around the world. In the world the same ink draws
-  the conventions (hatch, hollow, the crossed footprint), the selection
-  and the labels, which is what ties the two halves together.
+  the conventions (hatch, hollow, the crossed footprint) and the
+  selection, and the names are set in the sheet's own two faces, which
+  is what ties the two halves together.
 - **Material**: the boxes are a model's pieces, not a diagram's cells.
   Their fragment shader rounds every edge (the normal leans into a bevel
   that never falls under about a pixel and a half), shades each side
@@ -692,6 +697,17 @@ direction is a survey sheet around a plaster world.
   matrices, lays a soft contact shadow under each, and the sun keeps a
   three-quarter angle to the view so its shadows fall in sight. Within a
   kind, each extension takes a tone of the kind's colour.
+- **Names on the blocks**: a name is part of its box, not a tag over
+  it. The same shader prints a file's name on its lid in DM Mono and a
+  folder's in Archivo expanded capitals: on a closed mass's lid, along
+  an open plateau's rim or cut into the riser that faces the eye,
+  whichever reads larger. The scree's tile carries its count. Names are
+  signed distance fields in one atlas (`lettering.js`), so they stay
+  sharp at any size and angle; they are lit, shadowed, dimmed and hazed
+  with their surface, cut a hair into it, read upright from the eye
+  along the box axes nearest the view, and fade in as they grow
+  legible. Boxes in front hide what they cover, so names need no
+  overlap test. Only the benchmarks' mark tags are still HTML.
 - **Colour is semantic only**: highlighter yellow is selection and hover
   everywhere; vermilion is search; garnet is duplicates and destructive
   actions; verdigris is destinations, live state and benchmarks; nine
@@ -756,8 +772,9 @@ direction is a survey sheet around a plaster world.
   archive, which the table does not hold, a closed mass keeps its newest
   change, and the legend and hover line say that too.
 - **Type**: Archivo, one variable family used across its width axis
-  (expanded capitals for reference labels, normal for reading, condensed
-  for dense rows), with DM Mono for paths and figures in tabular numbers.
+  (expanded capitals for reference labels and folder names in the
+  world, normal for reading, condensed for dense rows), with DM Mono for
+  paths, figures in tabular numbers and file names in the world.
 - **Layout motifs** from drawing sheets: lettered panel references, a
   title block along the bottom edge carrying lens, legend, the As of
   date, grain, altitude and status, and instruments around the world:

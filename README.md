@@ -1,17 +1,21 @@
 <!--
 ✒ Metadata
-    - Title: Terrane Readme (Terrane Edition - v1.12)
+    - Title: Terrane Readme (Terrane Edition - v1.13)
     - File Name: README.md
     - Relative Path: README.md
     - Artifact Type: docs
-    - Version: 1.12.0
-    - Date: 11/13/2026
-    - Update: Friday, November 13, 2026
+    - Version: 1.13.0
+    - Date: 11/14/2026
+    - Update: Saturday, November 14, 2026
     - Author: Dennis 'dendogg' Smaltz
     - A.I. Acknowledgement: Anthropic - Claude Opus 5.5
     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
 
 ✒ Changelog:
+    - 1.13.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] —
+      Reading the world: names are printed on the blocks themselves,
+      and the scree's tile says how many it holds. The project map
+      lists lettering.js; What was verified records the runs.
     - 1.12.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] —
       Reading the world: a file's tone within its kind follows its
       extension, and a closed mass's sides show its strata. What was
@@ -294,7 +298,7 @@ Open, Reveal or a terminal, the launch is written to a
 | Height of a file block | Recency. Fresh files stand tall; untouched ones wear down over ten years |
 | Colour of a file block | The lens: kind, age (last change), size, or duplicates. Under the Kind lens each extension takes a tone of its kind's colour, so .tsx and .css read as two families of code |
 | Tinted closed mass | A folder seen from too far to read. Its sides show its strata, what it holds by kind with the largest at the foot. Taller means more levels inside. It opens as you approach. Under the Age lens its colour is its typical age: half its bytes have not changed since then |
-| Stippled tile (scree) | Items too small to see from here, with their count and size |
+| Stippled tile (scree) | Items too small to see from here, with their count and size. Its lid says how many |
 | Hatched mass | Sealed: the folder could not be read |
 | Hollow tile | An empty folder |
 | Diagonal light bands | A symbolic link (shown, never followed) |
@@ -311,6 +315,12 @@ Open, Reveal or a terminal, the launch is written to a
 | Arcs in the archive colour | Tie a selected archive entry to its twins in the directory, or a twin to its entries |
 | North arrow (top right) | Turns with the camera; click it to face north again |
 | Storage scale (bottom left) | How much storage a square that size holds at this height |
+
+Names are printed on the blocks themselves, lit and shadowed with them:
+a file's on its lid, a folder's in capitals on a closed mass's lid, or
+along an open plateau's rim, or cut into the riser that faces you. They
+read upright from where you stand and come into view as they grow large
+enough to read.
 
 The inspector's Reading the world section lists the same conventions,
 the features' rows included.
@@ -662,6 +672,7 @@ browser holds two copies of it, about 300 MB per million entries.
 | `npm test` on Windows 11 (11/13/2026), after Wave 3: the smoke test adds quoted search terms and comma lists, byte ranges on `/api/raw`, the batch rename whole and part way, an Undo that resumes after a restart, the terminal route and its refusals, source checks that nothing reaches a shell, and a check that every entry a `web/` header rolled out is in `CHANGELOG.md`; then the module checks, now with `finding-test` (the palette's ranking, 200,000 names in about 6 ms a query; the kept view; the address; search history and saved searches), `rename-test`, `export-test` (every name of a fresh fixture read back by a strict RFC 4180 parser) and `warm-test` (the cache through the service, a cache inside the root refused, `Model.adopt` of 200,000 files in 23 ms) | 704 passed (255, 97, 57, 33, 57, 52, 54, 31 and 68), none failed |
 | The final sweep of Wave 3 on Windows 11 (11/13/2026): `node --check` on every script outside `web/vendor/`, `npm test`, `npm run vendor -- --check`, and `node tools/ui-check.mjs --no-shots --port 5080` in both passes with Edge 157 on an RTX 5050 laptop GPU and the default fixture of 3,126 files: 37 scenarios, the earlier ones plus `palette`, `resume`, `searches`, `quicklook`, `presets`, `changed-with`, `batch-rename`, `dupes`, `copy-as`, `export`, `places-file`, `terminal` and `warm` | No syntax error in 81 scripts; 704 passed, none failed; every vendored file matches the manifest; 1369 passed, 0 failed, 6 skipped (744 and 2 with WebGL, 625 and 4 without: what needs `--snapshot`, the `splash` check for a sheet gone before the first look, and without WebGL two checks of the world); draw calls at the baseline. Not yet merged into `main` |
 | Terrane 1.4.0 on `main` (11/13/2026), Wave 3, the demo world and the blocks' look merged, on Windows 11 with Edge 157 on an RTX 5050 laptop GPU: `npm test` (ten suites, the demo test last), `npm run vendor -- --check`, and `node tools/ui-check.mjs --record-baseline`, both passes, on the default fixture; then the seven scenarios it failed (`baseline`, `interior`, `landmarks`, `relations`, `strata`, `time`, `transitions`, `seams`) again after three checks were brought in line with the new look | `npm test`: 797 passed, 0 failed. Vendored files match. The full run: 1400 passed, 11 failed, 6 skipped: seven draw-call checks still held the old baseline, which the run re-recorded one call higher (overview 7, selected 9, search 8, duplicate ties 10, the contact shadows), and the Closed mass reading row, a crossed file's colour (now its extension's tone) and the full-upload picture (the contact shadows' soft edges blend a hair differently from draw to draw, so the check sets them aside) had to follow the new look. The rerun: 525 passed, 0 failed, 2 skipped |
+| The names on the blocks on Windows 11 (11/14/2026), Edge 157 on an RTX 5050 laptop GPU: `npm test`, and `node tools/ui-check.mjs --no-shots`, both passes, on the default fixture, with `hardening` now checking that names are printed at the overview, each on a box that is drawn, and that no file or folder tag stands over the world | `npm test`: 797 passed, 0 failed. The interface check: 1412 passed, 0 failed, 6 skipped; draw calls at the baseline, since the names are drawn by the boxes' own shader |
 
 Not verified: running on macOS; frame rate at street level in the largest
 trees on a hardware GPU; Open and Reveal reaching a desktop application on
@@ -716,6 +727,7 @@ web/js/demo-world.js the demo world: one seed, about 12,000 files, contents
 web/js/model.js      tree model, aggregation, search, survey, adopt
 web/js/layout.js     the spatial language and level of detail; BOX, STYLE, AUX
 web/js/viewport.js   3D world, camera, picking, transitions, relation lines
+web/js/lettering.js  the names on the blocks: a distance-field atlas
 web/js/theme.js      colours shared with the stylesheet
 web/js/thumbs.js     the only way the page shows an image
 web/js/ui.js         menu, dialog, sheets, notices, tip, indicators, virtual

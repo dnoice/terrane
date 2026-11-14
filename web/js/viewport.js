@@ -1,18 +1,25 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: 3D Viewport (Terrane Edition - v1.6)
+ *     - Title: 3D Viewport (Terrane Edition - v1.7)
  *     - File Name: viewport.js
  *     - Relative Path: web/js/viewport.js
  *     - Artifact Type: javascript
- *     - Version: 1.6.0
- *     - Date: 11/13/2026
- *     - Update: Friday, November 13, 2026
+ *     - Version: 1.7.0
+ *     - Date: 11/14/2026
+ *     - Update: Saturday, November 14, 2026
  *     - Author: Dennis 'dendogg' Smaltz
  *     - A.I. Acknowledgement: Anthropic - Claude Opus 5.5
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
  *
  * ✒ Changelog:
+ *     - 1.7.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] —
+ *       Names are part of the boxes: the box shader prints a file's name
+ *       on its lid and a folder's in capitals, on a closed mass's lid or
+ *       along an open plateau's rim or cut into its riser, from
+ *       lettering.js's distance-field atlas. They are lit, shadowed and
+ *       hazed with their surface and read upright from the eye; the HTML
+ *       file and folder tags are gone, and only mark tags stay in HTML.
  *     - 1.6.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] —
  *       Boxes look made, not drawn: a satin finish whose shader rounds
  *       every edge, shades each side toward its foot, gives a closed mass
@@ -27,17 +34,13 @@
  *       measures the tag as drawn (LABEL_BOX: a folder's expanded
  *       capitals and its leader line, a mark's pin), so no tag stands
  *       across another or over another's line.
- *     - 1.4.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
- *       walls of an open archive's chamber (BOX.WALL) carry no label; its
- *       floor is labelled with the archive's name, as a folder is. The
- *       header no longer calls the labels readable by assistive
- *       technology: their layer is hidden from it.
  *     Earlier entries: see CHANGELOG.md
  *
  * ✒ Description:
  *     Draws a layout as a world you travel through and handles everything
  *     spatial: the free camera, flight, picking, transitions between
- *     layouts, labels, pins, relation lines and selection frames. It
+ *     layouts, the names on the boxes, pins, mark tags, relation lines
+ *     and selection frames. It
  *     knows nothing about the filesystem; it is handed boxes and paint and
  *     reports pointer events as box indices.
  *
@@ -65,10 +68,14 @@
  *     - Render on demand: nothing is drawn while nothing changes
  *     - Picking by direct ray/box tests over the layout arrays, no scene
  *       graph traversal
- *     - HTML labels placed by projected size with collision rejection, so
- *       text is real text, selectable and crisp; the label layer is hidden
- *       from assistive technology, which reads the same names in the
- *       ledger and the inspector
+ *     - Names printed in the boxes' own shader, so they are part of the
+ *       surface: a file's on its lid, a folder's in capitals on a closed
+ *       mass's lid, along an open plateau's rim or cut into the riser
+ *       facing the eye, the scree's count on its tile; lit, shadowed,
+ *       dimmed and hazed with it, read upright from the eye, sharp at any
+ *       size (distance fields), faded in as they grow legible, the 96
+ *       largest at once, and no extra draw call; the ledger and the
+ *       inspector read the same names to assistive technology
  *     - Honors prefers-reduced-motion by cutting flights and transitions
  *     - A layout with more boxes than the buffers hold draws as many as
  *       fit and states how many were left out; it never throws
@@ -77,7 +84,7 @@
  *       on screen at any depth, with optional direction chevrons
  *     - Pins share one draw call too: pointing down at a box, or upright
  *       on the peak of everything standing on it; mark tags (at most 12)
- *       outrank every other label
+ *       are the only labels still set in HTML, over the world
  *
  * ✒ Usage Instructions:
  *     const view = new Viewport({ canvas, labelLayer });
@@ -89,19 +96,23 @@
  *     view.clearRelation(key);             // legs: ax ay az bx by bz, world
  *     view.setTies(from, toIndices);       // the set 'dup', garnet arcs
  *     view.setPins([{ i, color, peak, upright }]);
- *     view.setMarks([{ i, text, cls }]);   // tags first in line, up to 12
+ *     view.setMarks([{ i, text, cls }]);   // HTML tags over peaks, up to 12
+ *     view.letterCount;                    // names printed on boxes now
  *     view.frame(index);  view.overview();  view.eye;  view.look();
  *     view.flyTo(view.pose());             // the eye and heading, and back
  *
  * ✒ Other Important Information:
  *     - Dependencies: three.js r187 (vendored at web/vendor/three),
- *       layout.js, theme.js
+ *       layout.js, lettering.js, theme.js
  *     - Compatible platforms: browsers with WebGL2
  *     - Performance: 70,000 boxes is the layout budget; transitions write
  *       matrices directly into the instance buffer, and every buffer
  *       upload covers only the boxes, pins and line vertices drawn; the
  *       4096 x 4096 shadow map is redrawn on every fourth frame of a
- *       transition; relation lines hold 40,000 vertices in all
+ *       transition; relation lines hold 40,000 vertices in all; the
+ *       names cost one 2048 x 4096 single-channel atlas, a few texture
+ *       reads on a lettered surface, and at most six new names set a
+ *       frame
  *     - Limitations: touch gestures are limited to one-finger slide and
  *       tap; shadows soften at very small scales
  * ----------------------------------------------------------------------------
@@ -109,6 +120,7 @@
 
 import * as THREE from '../vendor/three/three.module.js';
 import { BOX, STYLE, WORLD } from './layout.js';
+import { Lettering, FACE, SLOT, ATLAS, PAD } from './lettering.js';
 
 const FOV = 44;
 const HORIZON = 0xe9eeea;
@@ -119,23 +131,28 @@ import { THEME } from './theme.js';
 // which is below this.
 const CAPACITY = 72000;
 const PIN_CAPACITY = 3000;
-// Mark tags placed before every other label, so they win every collision.
+// Mark tags, the only labels still set in HTML, at most this many.
 const MARKS_MAX = 12;
 /**
- * How much room a label takes on screen, from its text, for the overlap
- * test (stage.css and places.css draw them): a width per character and the
+ * How much room a mark's tag takes on screen, from its text, for the
+ * overlap test (places.css draws it): a width per character and the
  * padding and borders around it, and how far it reaches above and below
- * its anchor. A folder's tag is expanded capitals with a leader line 9 px
- * long under it; a file's is mono, close to its anchor; a mark's is a
- * bordered sentence over its upright pin, which no other tag may cover.
- * LABEL_GAP keeps a hair of paper between two tags.
+ * its anchor, a bordered sentence over its upright pin. MARK_GAP keeps a
+ * hair of paper between two tags.
  */
-const LABEL_BOX = {
-  dir: { ch: 8.8, pad: 14, up: 19, down: 11 },
-  file: { ch: 6.3, pad: 8, up: 15, down: 1 },
-  mark: { ch: 6.6, pad: 14, up: 19, down: 24 },
-};
-const LABEL_GAP = 2;
+const MARK_BOX = { ch: 6.6, pad: 14, up: 19, down: 24 };
+const MARK_GAP = 2;
+/**
+ * Names printed on the boxes (lettering.js sets them): at most
+ * LETTERS_MAX at once, none whose capitals would stand under LETTER_MIN_PX
+ * on screen (the shader fades them in from there to LETTER_FULL_PX), and
+ * at most LETTER_EVAL candidates measured exactly in a pass, the largest
+ * first.
+ */
+const LETTERS_MAX = 96;
+const LETTER_MIN_PX = 4.5;
+const LETTER_FULL_PX = 6.5;
+const LETTER_EVAL = 360;
 // The sun's 4096 x 4096 shadow map costs more to draw than the view does.
 // While boxes travel it is redrawn on every fourth frame at most, and again
 // on the frame where they arrive.
@@ -320,6 +337,11 @@ function linear(hex) {
  * The boxes' material: a satin finish (MeshStandardMaterial) whose shader
  * gives every box the look of a made object instead of a diagram's cell,
  * from its own dimensions and with no extra geometry:
+ * - lettering: a box's name printed on its lid, or for an open plateau
+ *   along its rim or carved into the riser that faces the eye, read from
+ *   lettering.js's distance-field atlas (uLetters) through aLetter; it is
+ *   lit, shadowed, dimmed and hazed as the surface it is on, and fades in
+ *   as its capitals pass LETTER_MIN_PX on screen
  * - rounded edges: within a bevel the normal leans toward the edge, so a
  *   rim catches the sun and the far side falls into shade; the bevel is a
  *   share of the box's short side, never under about a pixel and a half
@@ -333,13 +355,26 @@ function linear(hex) {
  *   empty folder's outline, hatching, stipple, bands, the crossed
  *   footprint)
  */
-function boxMaterial() {
+function boxMaterial(letters) {
   const mat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.46, metalness: 0 });
+  // The reading frame every name shares: the box axes nearest the view's
+  // right and its way ahead on the ground (right x z, then ahead x z).
+  mat.userData.letterAxes = { value: new THREE.Vector4(1, 0, 0, -1) };
+  // Toward the sun, in world axes, so a cut letter's walls take its light.
+  mat.userData.sunDir = { value: new THREE.Vector3(0.6, 0.7, 0.3).normalize() };
+  const lin = (hex) => new THREE.Vector3(...linear(hex));
   mat.onBeforeCompile = (shader) => {
     shader.uniforms.uInk = { value: srgb(THEME.ink) };
     shader.uniforms.uPaper = { value: srgb(THEME.chalk) };
+    shader.uniforms.uInkL = { value: lin(THEME.ink) };
+    shader.uniforms.uPaperL = { value: lin(THEME.chalk) };
+    shader.uniforms.uLetters = { value: letters.texture };
+    shader.uniforms.uLetterAxes = mat.userData.letterAxes;
+    shader.uniforms.uSunDir = mat.userData.sunDir;
     shader.vertexShader = shader.vertexShader
       .replace('#include <common>', `#include <common>
+        attribute vec4 aLetter;
+        flat varying vec4 vLetter;
         attribute float aStyle;
         attribute float aDim;
         attribute float aRole;
@@ -359,6 +394,7 @@ function boxMaterial() {
         varying vec2 vShare;`)
       .replace('#include <begin_vertex>', `#include <begin_vertex>
         vBoxLocal = position;
+        vLetter = aLetter;
         vBoxScale = vec3(length(instanceMatrix[0].xyz), length(instanceMatrix[1].xyz), length(instanceMatrix[2].xyz));
         vWorldP = (instanceMatrix * vec4(position, 1.0)).xyz;
         vStyle = aStyle;
@@ -372,6 +408,12 @@ function boxMaterial() {
       .replace('#include <common>', `#include <common>
         uniform vec3 uInk;
         uniform vec3 uPaper;
+        uniform vec3 uInkL;
+        uniform vec3 uPaperL;
+        uniform sampler2D uLetters;
+        uniform vec4 uLetterAxes;
+        uniform vec3 uSunDir;
+        flat varying vec4 vLetter;
         varying vec3 vBoxLocal;
         varying vec3 vBoxScale;
         varying vec3 vWorldP;
@@ -405,6 +447,60 @@ function boxMaterial() {
           return min(max(min(smn * 0.16, foot * 0.06), px * 1.6), smn * 0.34);
         }`)
       .replace('#include <color_fragment>', `#include <color_fragment>
+        // Lettering. aLetter is (code, slot height, slot left, slot foot):
+        // code is (slot + 1) * 4 + 2 on a riser, with where the name ends
+        // in its slot (0 to 1) as its fraction; the rest are in the box's
+        // short footprint side, or its height on a riser, so a name scales
+        // with its box while the box travels.
+        float letterCov = 0.0;
+        float letterShade = 0.0;
+        float letterLit = 0.0;
+        {
+          float code = floor(vLetter.x);
+          float textEnd = vLetter.x - code;
+          float slot = floor(code / 4.0) - 1.0;
+          float riser = step(1.5, mod(code, 4.0));
+          vec2 lp = vBoxLocal.xz * vBoxScale.xz;
+          float xr = dot(lp, uLetterAxes.xy);
+          float yr = mix(dot(lp, uLetterAxes.zw), vBoxLocal.y * vBoxScale.y, riser);
+          float unit = mix(min(vBoxScale.x, vBoxScale.z), vBoxScale.y, riser);
+          float slotH = max(vLetter.y * unit, 1e-30);
+          float lu = (xr - vLetter.z * unit) / (slotH * ${SLOT.w / SLOT.h}.0);
+          float lv = (yr - vLetter.w * unit) / slotH;
+          vec2 st = vec2((mod(slot, ${ATLAS.w / SLOT.w}.0) + lu) * ${SLOT.w / ATLAS.w}, (floor(slot / ${ATLAS.w / SLOT.w}.0) + 1.0 - lv) * ${SLOT.h / ATLAS.h});
+          // Gradients outside any branch, so every pixel of a quad has them.
+          vec2 gx = dFdx(st);
+          vec2 gy = dFdy(st);
+          vec3 lf = boxFace();
+          bool onFace = riser > 0.5 ? dot(lf.xz, uLetterAxes.zw) < -0.5 : lf.y > 0.5;
+          if (code > 3.5 && onFace && lu > 0.0 && lu < textEnd + 0.004 && lv > 0.0 && lv < 1.0) {
+            float d = textureGrad(uLetters, st, gx, gy).r;
+            // The field's change per pixel: texels per pixel over its reach.
+            vec2 tpp = vec2(length(gx * vec2(${ATLAS.w}.0, ${ATLAS.h}.0)), length(gy * vec2(${ATLAS.w}.0, ${ATLAS.h}.0)));
+            float aa = clamp(max(tpp.x, tpp.y) / ${2 * PAD}.0 * 0.6, 0.008, 0.3);
+            // Capitals this many pixels tall: the slot's cap share over v's rate.
+            float capPx = 0.4375 / max(length(vec2(gx.y, gy.y)) * ${ATLAS.h / SLOT.h}.0, 1e-12);
+            // Small type is set a little heavier, as print is: the outline
+            // moves out by up to a twentieth of the field's reach.
+            float edge = 0.5 - 0.05 * (1.0 - smoothstep(8.0, 22.0, capPx));
+            letterCov = smoothstep(edge - aa, edge + aa, d);
+            // Letters are cut a hair into the surface: beside the wall
+            // nearer the sun the floor lies in its shadow, and the far wall
+            // catches the light. Walls a sixteenth of the capitals deep.
+            vec2 sun = riser > 0.5 ? vec2(dot(uSunDir.xz, uLetterAxes.xy), uSunDir.y) : vec2(dot(uSunDir.xz, uLetterAxes.xy), dot(uSunDir.xz, uLetterAxes.zw));
+            sun = normalize(sun + vec2(1e-6)) * 0.4375 / 16.0;
+            vec2 toSun = vec2(sun.x / ${SLOT.w / SLOT.h}.0 * ${SLOT.w / ATLAS.w}, -sun.y * ${SLOT.h / ATLAS.h});
+            float near = smoothstep(edge - aa, edge + aa, textureGrad(uLetters, st + toSun, gx, gy).r);
+            float far = smoothstep(edge - aa, edge + aa, textureGrad(uLetters, st - toSun, gx, gy).r);
+            letterShade = letterCov * (1.0 - near);
+            letterLit = letterCov * (1.0 - far);
+            // Capitals fade in as they grow legible.
+            float legible = smoothstep(${LETTER_MIN_PX}, ${LETTER_FULL_PX}, capPx);
+            letterCov *= legible;
+            letterShade *= legible;
+            letterLit *= legible;
+          }
+        }
         {
           vec3 face = boxFace();
           float side = 1.0 - abs(face.y);
@@ -437,6 +533,18 @@ function boxMaterial() {
             vec2 gi = floor(g / cell);
             float n = fract(sin(dot(gi, vec2(12.9898, 78.233))) * 43758.5453);
             diffuseColor.rgb *= 1.0 + (n - 0.5) * 0.03 * (1.0 - smoothstep(0.0, 0.06, px / max(smn0(), 1e-6)));
+          }
+          // A name in the surface's own ink: a deep tone of a light or
+          // mid surface, a pale one of a dark surface.
+          if (letterCov > 0.0) {
+            vec3 base = diffuseColor.rgb;
+            float lum = dot(base, vec3(0.2126, 0.7152, 0.0722));
+            vec3 ink = lum > 0.11 ? mix(base * 0.14, uInkL, 0.5) : mix(base, uPaperL, 0.82);
+            diffuseColor.rgb = mix(base, ink, letterCov * 0.92);
+            // The cut's walls: the shaded floor deeper, the lit wall the
+            // surface's own colour, a little brighter.
+            diffuseColor.rgb *= 1.0 - 0.5 * letterShade;
+            diffuseColor.rgb = mix(diffuseColor.rgb, min(base * 1.18 + 0.02, vec3(1.0)), letterLit * 0.85);
           }
           // Tops are faintly pillowed: a breath darker toward their rims.
           if (face.y > 0.5) {
@@ -483,22 +591,23 @@ function boxMaterial() {
           float crossInk = 0.0;
           if ${styleIs(STYLE.HATCH)} {
             float t = abs(fract(hc / per) - 0.5);
-            col = mix(col, uInk, (1.0 - smoothstep(0.09, 0.09 + hw / per, t)) * 0.7);
+            col = mix(col, uInk, (1.0 - smoothstep(0.09, 0.09 + hw / per, t)) * 0.7 * (1.0 - letterCov));
             inked = 1.0;
           } else if ${styleIs(STYLE.HOLLOW)} {
             col = mix(uPaper, col, 0.1);
+            col = mix(col, uInk, letterCov * 0.8);
             edgeW = 2.0;
             inked = 1.0;
           } else if ${styleIs(STYLE.STIPPLE)} {
             vec2 cell = fract(vWorldP.xz / per) - 0.5;
-            col = mix(col, uInk, (1.0 - smoothstep(0.14, 0.14 + hw / per, length(cell))) * 0.5);
+            col = mix(col, uInk, (1.0 - smoothstep(0.14, 0.14 + hw / per, length(cell))) * 0.5 * (1.0 - letterCov));
           } else if ${styleIs(STYLE.BANDS)} {
             float h2 = vWorldP.x - vWorldP.z + vWorldP.y;
             float t = abs(fract(h2 / (per * 2.0)) - 0.5);
-            col = mix(col, uPaper, (1.0 - smoothstep(0.12, 0.12 + hw / per, t)) * 0.85);
+            col = mix(col, uPaper, (1.0 - smoothstep(0.12, 0.12 + hw / per, t)) * 0.85 * (1.0 - letterCov));
           } else if ${styleIs(STYLE.HALF_BANDS)} {
             float t = fract(hc / (per * 2.0));
-            col = mix(col, uPaper, smoothstep(0.5 - hw / per, 0.5, t) * (1.0 - smoothstep(1.0 - hw / per, 1.0, t)) * 0.6);
+            col = mix(col, uPaper, smoothstep(0.5 - hw / per, 0.5, t) * (1.0 - smoothstep(1.0 - hw / per, 1.0, t)) * 0.6 * (1.0 - letterCov));
           } else if ${styleIs(STYLE.CROSSED)} {
             // The footprint's two diagonals on the top and bottom faces, in
             // the box's own coordinates: the floating origin never moves
@@ -634,6 +743,12 @@ export class Viewport {
     renderer.toneMapping = THREE.NeutralToneMapping;
     renderer.toneMappingExposure = 1.0;
     this.renderer = renderer;
+    // The names printed on the boxes, set into one atlas.
+    this.letters = new Lettering(renderer);
+    this.letters.ready.then(() => {
+      this.labelState = null;
+      this.invalidate();
+    });
 
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(HORIZON);
@@ -708,6 +823,10 @@ export class Viewport {
     this.aBandB = new THREE.InstancedBufferAttribute(new Float32Array(CAPACITY * 3), 3);
     this.aBandC = new THREE.InstancedBufferAttribute(new Float32Array(CAPACITY * 3), 3);
     this.aShare = new THREE.InstancedBufferAttribute(new Float32Array(CAPACITY * 2), 2);
+    // A printed name per box: (code, slot height, slot left, slot foot),
+    // zero for none. See boxMaterial.
+    this.aLetter = new THREE.InstancedBufferAttribute(new Float32Array(CAPACITY * 4), 4);
+    geo.setAttribute('aLetter', this.aLetter);
     geo.setAttribute('aStyle', this.aStyle);
     geo.setAttribute('aDim', this.aDim);
     geo.setAttribute('aRole', this.aRole);
@@ -715,7 +834,7 @@ export class Viewport {
     geo.setAttribute('aBandB', this.aBandB);
     geo.setAttribute('aBandC', this.aBandC);
     geo.setAttribute('aShare', this.aShare);
-    const mesh = new THREE.InstancedMesh(geo, boxMaterial(), CAPACITY);
+    const mesh = new THREE.InstancedMesh(geo, boxMaterial(this.letters), CAPACITY);
     mesh.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(CAPACITY * 3).fill(1), 3);
     mesh.count = 0;
     mesh.frustumCulled = false;
@@ -761,7 +880,7 @@ export class Viewport {
     // three.js makes each buffer from the whole array on first use but
     // leaves a range marked before then in place; clearing it there keeps
     // the next upload to what changed since.
-    for (const a of [mesh.instanceMatrix, mesh.instanceColor, this.aStyle, this.aDim, this.aRole, this.aBandA, this.aBandB, this.aBandC, this.aShare, pins.instanceMatrix, pins.instanceColor]) {
+    for (const a of [mesh.instanceMatrix, mesh.instanceColor, this.aStyle, this.aDim, this.aRole, this.aBandA, this.aBandB, this.aBandC, this.aShare, this.aLetter, pins.instanceMatrix, pins.instanceColor]) {
       a.onUpload(() => a.clearUpdateRanges());
     }
 
@@ -813,6 +932,11 @@ export class Viewport {
     this.raf = 0;
     this.raycaster = new THREE.Raycaster();
     this.labelPool = [];
+    // Boxes that carry a printed name now, and the frames drawn so far
+    // (the lettering's slots are kept by the frame they were last used in).
+    this.lettered = new Map();
+    this.frameNo = 0;
+    this.lettersNow = 0;
 
     this.#bindPointer();
     this.#bindKeys();
@@ -1451,63 +1575,221 @@ export class Viewport {
   /**
    * Tags that outrank every other label: [{ i, text, cls }], at most
    * MARKS_MAX, in priority order. Each stands above the peak of box i (a
-   * peak pin's anchor), is placed before the folder and file labels so it
-   * wins any overlap, and is never left out for being wider than its box.
-   * cls adds classes to the tag. An empty list removes them.
+   * peak pin's anchor) in HTML, the only labels that still do, and is
+   * never left out for being wider than its box. cls adds classes to the
+   * tag. An empty list removes them.
    */
   setMarks(list) {
     this.marks = (list || []).slice(0, MARKS_MAX);
     this.invalidate();
   }
 
+  /** How many names are printed on the boxes now. */
+  get letterCount() {
+    return this.lettersNow;
+  }
+
   #updateLabels() {
     const L = this.layout;
-    // Labels stand where the eye, the layout, the marks and the canvas put
-    // them: a frame redrawn only for a hover changes none of those, so the
-    // labels placed last stay as they are.
+    // Names and marks stand where the eye, the layout, the marks and the
+    // canvas put them: a frame redrawn only for a hover changes none of
+    // those, so the names printed last stay as they are. Names still
+    // waiting for their slot bring the pass back on the next frame.
     const c = this.cam;
     const state = this.labelState;
-    if (state && state.layout === L && state.n === this.n && state.marks === this.marks && state.transition === !!this.transition
-      && state.w === this.w && state.h === this.h && state.x === c.x && state.y === c.y && state.z === c.z && state.yaw === c.yaw && state.pitch === c.pitch) return;
-    this.labelState = { layout: L, n: this.n, marks: this.marks, transition: !!this.transition, w: this.w, h: this.h, x: c.x, y: c.y, z: c.z, yaw: c.yaw, pitch: c.pitch };
-    this.labelPasses = (this.labelPasses || 0) + 1;
+    const same = state && state.layout === L && state.n === this.n && state.marks === this.marks && state.transition === !!this.transition
+      && state.w === this.w && state.h === this.h && state.x === c.x && state.y === c.y && state.z === c.z && state.yaw === c.yaw && state.pitch === c.pitch;
+    if (same && !this.letterWait) return;
+    if (!same) {
+      this.labelState = { layout: L, n: this.n, marks: this.marks, transition: !!this.transition, w: this.w, h: this.h, x: c.x, y: c.y, z: c.z, yaw: c.yaw, pitch: c.pitch };
+      this.labelPasses = (this.labelPasses || 0) + 1;
+    }
+    this.camera.updateMatrixWorld();
+    this.#placeLetters();
+    if (!same) this.#placeMarks();
+  }
+
+  /**
+   * Prints names onto the boxes. A file, a closed mass, a scree tile and
+   * a plateau with nothing on it carry theirs on the lid; an open plateau
+   * carries its name along the rim before its contents, or carved into
+   * the riser that faces the eye, whichever reads larger from here. Every
+   * name reads upright from the eye, along the box axes nearest the view,
+   * and turns a quarter only once the view has turned about eleven degrees
+   * past the diagonal. The largest LETTERS_MAX names whose capitals reach
+   * LETTER_MIN_PX are printed; boxes in front hide what they cover, so no
+   * overlap test is needed.
+   */
+  #placeLetters() {
+    const L = this.layout;
+    const letters = this.letters;
+    const frame = ++this.frameNo;
+    const want = new Map();
+    let waiting = 0;
+    if (L && letters.isReady) {
+      letters.drop();
+      const c = this.cam;
+      const qf = c.yaw / (Math.PI / 2);
+      if (this.letterQ === undefined || Math.abs(qf - this.letterQ) > 0.62) this.letterQ = Math.round(qf);
+      const q = ((this.letterQ % 4) + 4) % 4;
+      const rx = [1, 0, -1, 0][q];
+      const rz = [0, 1, 0, -1][q];
+      const ux = [0, 1, 0, -1][q];
+      const uz = [-1, 0, 1, 0][q];
+      this.mesh.material.userData.letterAxes.value.set(rx, rz, ux, uz);
+      const g = L.geo;
+      const hazeLimit = this.scene.fog.far * 0.55;
+      // Every box that could carry legible capitals from here, by the
+      // largest it could carry.
+      const cand = [];
+      for (let i = 0, o = 0; i < this.n; i++, o += 6) {
+        const t = L.type[i];
+        if (t === BOX.WALL || (t === BOX.SCREE && !L.scree?.has(i))) continue;
+        const dist = this.#distTo(g[o], g[o + 1], g[o + 2]);
+        if (dist > hazeLimit) continue;
+        const foot = Math.min(g[o + 3], g[o + 5]);
+        const open = t === BOX.DIR && L.top[i] - (g[o + 1] + g[o + 4] / 2) > g[o + 4] * 1e-6;
+        const most = open ? Math.max(foot * 0.035 * 0.6, g[o + 4] * 0.5) : foot * 0.17;
+        const px = most * this.#scaleAt(dist);
+        if (px >= LETTER_MIN_PX) cand.push([px, i, open]);
+      }
+      cand.sort((p, r) => r[0] - p[0]);
+      const P = [new THREE.Vector3(), new THREE.Vector3(), new THREE.Vector3(), new THREE.Vector3()];
+      const W = this.w;
+      const Hh = this.h;
+      // Capital height and character width on screen for a name set in a
+      // box at a centre, along the reading frame or upright on a riser.
+      const seen = (x, y, z, cap, half, vertical, chars) => {
+        P[0].set(x - rx * half, y, z - rz * half);
+        P[1].set(x + rx * half, y, z + rz * half);
+        if (vertical) {
+          P[2].set(x, y - cap / 2, z);
+          P[3].set(x, y + cap / 2, z);
+        } else {
+          P[2].set(x - ux * cap / 2, y, z - uz * cap / 2);
+          P[3].set(x + ux * cap / 2, y, z + uz * cap / 2);
+        }
+        let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
+        for (const p of P) {
+          p.project(this.camera);
+          if (p.z < -1 || p.z > 1) return 0;
+          p.x = (p.x * 0.5 + 0.5) * W;
+          p.y = (-p.y * 0.5 + 0.5) * Hh;
+          x0 = Math.min(x0, p.x); x1 = Math.max(x1, p.x); y0 = Math.min(y0, p.y); y1 = Math.max(y1, p.y);
+        }
+        // Most of the name on screen, or none of it: letters cut off at the
+        // canvas's edge, or wider than it, read as marks, not as a name.
+        const fx = (Math.min(x1, W) - Math.max(x0, 0)) / Math.max(x1 - x0, 1);
+        const fy = (Math.min(y1, Hh) - Math.max(y0, 0)) / Math.max(y1 - y0, 1);
+        if (fx < 0.75 || fy < 0.75 || x1 - x0 > W * 0.9) return 0;
+        const capS = Math.hypot(P[3].x - P[2].x, P[3].y - P[2].y);
+        const wide = Math.hypot(P[1].x - P[0].x, P[1].y - P[0].y);
+        return Math.min(capS, (wide / chars) * 1.3);
+      };
+      const chosen = [];
+      for (let k = 0; k < cand.length && k < LETTER_EVAL && chosen.length < LETTERS_MAX; k++) {
+        const [, i, open] = cand[k];
+        const o = i * 6;
+        const cx = g[o], cy = g[o + 1], cz = g[o + 2], sx = g[o + 3], sy = g[o + 4], sz = g[o + 5];
+        const t = L.type[i];
+        const wr = Math.abs(rx) * sx + Math.abs(rz) * sz;
+        const dr = Math.abs(ux) * sx + Math.abs(uz) * sz;
+        const foot = Math.min(sx, sz);
+        const face = t === BOX.FILE || t === BOX.SCREE ? FACE.FILE : FACE.DIR;
+        const name = t === BOX.SCREE ? `${fmtCount(L.scree.get(i).count)} more` : L.node[i].n;
+        if (!name) continue;
+        const m = letters.measure(name, face);
+        const capPx = letters.cap[face];
+        const per = capPx / m.tw;
+        const top = cy + sy / 2;
+        let best = null;
+        const consider = (mode, cap, cxr, cyr, unit) => {
+          if (!(cap > 0)) return;
+          const vertical = mode === 2;
+          const x = cx + rx * cxr + ux * cyr;
+          const z = cz + rz * cxr + uz * cyr;
+          if (vertical && (c.x - x) * -ux + (c.z - z) * -uz <= 0) return;
+          const score = seen(x, vertical ? cy : top, z, cap, (cap / per) / 2, vertical, m.chars);
+          if (score >= LETTER_MIN_PX && (!best || score > best.score)) best = { mode, cap, cxr, cyr, unit, score };
+        };
+        if (open) {
+          const pad = foot * 0.035;
+          const room = (wr - pad * 4) * per;
+          // Along the rim, in the band between the edge and the contents.
+          // A folder's name is set in capitals, which have no descenders,
+          // so it can fill more of the band, and of the riser.
+          consider(0, Math.min(pad * 0.6, room), 0, -dr / 2 + pad / 2, foot);
+          // Carved into the riser that faces the eye.
+          consider(2, Math.min(sy * 0.5, room), 0, -dr / 2, sy);
+        } else {
+          const mg = Math.min(wr, dr) * 0.1;
+          consider(0, Math.min(Math.min(wr, dr) * 0.17, (wr - mg * 2) * per, (dr - mg * 2) * 0.5), 0, 0, foot);
+        }
+        if (best) chosen.push({ i, m, ...best });
+      }
+      chosen.sort((p, r) => r.score - p.score);
+      // The names on the boxes now, then the ones set this frame.
+      const write = (e) => {
+        const slot = letters.slot(e.m, frame);
+        if (slot < 0) return false;
+        const s = e.cap / letters.cap[e.m.face];
+        const slotH = SLOT.h * s;
+        const xs = (e.mode === 2 ? 0 : e.cxr) - (e.m.tw * s) / 2 - PAD * s;
+        const ys = (e.mode === 2 ? 0 : e.cyr) - slotH / 2;
+        want.set(e.i, [(slot + 1) * 4 + e.mode + (PAD + e.m.tw) / SLOT.w, slotH / e.unit, xs / e.unit, ys / e.unit]);
+        return true;
+      };
+      const later = chosen.filter((e) => !write(e));
+      if (later.length) {
+        letters.flush(frame);
+        for (const e of later) if (!write(e)) waiting++;
+      }
+    }
+    // Write what changed: names gone, then names new or moved.
+    const A = this.aLetter.array;
+    let changed = false;
+    for (const i of this.lettered.keys()) {
+      if (want.has(i) || i >= CAPACITY) continue;
+      A.fill(0, i * 4, i * 4 + 4);
+      this.aLetter.addUpdateRange(i * 4, 4);
+      changed = true;
+    }
+    for (const [i, v] of want) {
+      const o = i * 4;
+      if (A[o] === Math.fround(v[0]) && A[o + 1] === Math.fround(v[1]) && A[o + 2] === Math.fround(v[2]) && A[o + 3] === Math.fround(v[3])) continue;
+      A[o] = v[0]; A[o + 1] = v[1]; A[o + 2] = v[2]; A[o + 3] = v[3];
+      this.aLetter.addUpdateRange(o, 4);
+      changed = true;
+    }
+    if (changed) this.aLetter.needsUpdate = true;
+    this.lettered = want;
+    this.lettersNow = want.size;
+    this.letterWait = waiting > 0;
+    if (this.letterWait) this.invalidate();
+  }
+
+  #placeMarks() {
+    const L = this.layout;
     const pool = this.labelPool;
     let used = 0;
     if (L && !this.transition) {
       const g = L.geo;
-      const dirs = [];
-      const files = [];
-      const limit = this.w * 1.6;
-      const hazeLimit = this.scene.fog.far * 0.55;
-      for (let i = 1, o = 6; i < this.n; i++, o += 6) {
-        // Scree has no name, and a chamber's walls would repeat the name
-        // its floor already carries.
-        if (L.type[i] === BOX.SCREE || L.type[i] === BOX.WALL) continue;
-        const dist = this.#distTo(g[o], g[o + 1], g[o + 2]);
-        if (dist > hazeLimit) continue;
-        const px = Math.max(g[o + 3], g[o + 5]) * this.#scaleAt(dist);
-        if (L.type[i] === BOX.FILE) {
-          if (px > 64) files.push([px, i]);
-        } else if (px > 86 && px < limit) dirs.push([px, i]);
-      }
-      dirs.sort((a, b) => b[0] - a[0]);
-      files.sort((a, b) => b[0] - a[0]);
       const v = new THREE.Vector3();
       const taken = [];
-      const tryPlace = (i, px, cls, text, y, lift) => {
-        const o = i * 6;
-        const box = cls === 'tag-file' ? LABEL_BOX.file : cls.startsWith('tag-dir') ? LABEL_BOX.dir : LABEL_BOX.mark;
-        const width = text.length * box.ch + box.pad;
-        if (width > px * 1.2 + 24) return false;
-        v.set(g[o], y, g[o + 2]).project(this.camera);
-        if (v.z < -1 || v.z > 1) return false;
+      for (const mk of this.marks) {
+        if (!(mk.i >= 0 && mk.i < this.n)) continue;
+        const o = mk.i * 6;
+        const text = mk.text;
+        const width = text.length * MARK_BOX.ch + MARK_BOX.pad;
+        // Above the peak and its upright pin (about 22 px).
+        v.set(g[o], Math.max(L.top[mk.i], g[o + 1] + g[o + 4] / 2), g[o + 2]).project(this.camera);
+        if (v.z < -1 || v.z > 1) continue;
         const sx = (v.x * 0.5 + 0.5) * this.w;
-        const sy = (-v.y * 0.5 + 0.5) * this.h - lift;
-        if (sx < 20 || sx > this.w - 20 || sy < 14 || sy > this.h - 8) return false;
-        // The whole tag, its shadow and a folder's leader line included,
-        // so no tag is drawn across another or over another's line.
-        const rect = [sx - width / 2 - LABEL_GAP, sy - box.up - LABEL_GAP, sx + width / 2 + LABEL_GAP, sy + box.down + LABEL_GAP];
-        for (const t of taken) if (rect[0] < t[2] && rect[2] > t[0] && rect[1] < t[3] && rect[3] > t[1]) return false;
+        const sy = (-v.y * 0.5 + 0.5) * this.h - 26;
+        if (sx < 20 || sx > this.w - 20 || sy < 14 || sy > this.h - 8) continue;
+        // The whole tag and its shadow, so no tag is drawn across another.
+        const rect = [sx - width / 2 - MARK_GAP, sy - MARK_BOX.up - MARK_GAP, sx + width / 2 + MARK_GAP, sy + MARK_BOX.down + MARK_GAP];
+        if (taken.some((r) => rect[0] < r[2] && rect[2] > r[0] && rect[1] < r[3] && rect[3] > r[1])) continue;
         taken.push(rect);
         let el = pool[used];
         if (!el) {
@@ -1516,27 +1798,10 @@ export class Viewport {
           pool.push(el);
         }
         used++;
-        el.className = `tag ${cls}`;
+        el.className = `tag tag-mark${mk.cls ? ` ${mk.cls}` : ''}`;
         if (el.textContent !== text) el.textContent = text;
         el.style.transform = `translate(${Math.round(sx)}px, ${Math.round(sy)}px) translate(-50%, -100%)`;
         el.hidden = false;
-        return true;
-      };
-      // Marks first, above their peak and its upright pin (about 22 px).
-      for (const mk of this.marks) {
-        if (!(mk.i >= 0 && mk.i < this.n)) continue;
-        const o = mk.i * 6;
-        tryPlace(mk.i, Infinity, `tag-mark${mk.cls ? ` ${mk.cls}` : ''}`, mk.text, Math.max(L.top[mk.i], g[o + 1] + g[o + 4] / 2), 26);
-      }
-      let count = 0;
-      for (const [px, i] of dirs) {
-        if (count >= 24) break;
-        if (tryPlace(i, px, L.type[i] === BOX.CAP ? 'tag-dir tag-cap' : 'tag-dir', L.node[i].n, L.top[i], 9)) count++;
-      }
-      count = 0;
-      for (const [px, i] of files) {
-        if (count >= 28) break;
-        if (tryPlace(i, px, 'tag-file', L.node[i].n, g[i * 6 + 1] + g[i * 6 + 4] / 2, 2)) count++;
       }
     }
     for (let k = used; k < pool.length; k++) pool[k].hidden = true;
@@ -1603,6 +1868,7 @@ export class Viewport {
     sun.shadow.bias = -0.0004;
     sun.shadow.normalBias = half * 0.0009;
     sun.target.updateMatrixWorld();
+    this.mesh.material.userData.sunDir.value.set(sx, 0.86, sz).normalize();
     // Contact shadows slide away from the sun.
     const sl = Math.hypot(sx, sz) || 1;
     this.contact.material.uniforms.uSun.value.set(-sx / sl, -sz / sl);
@@ -1646,13 +1912,13 @@ export class Viewport {
     this.#placeFrame(this.selFrame, this.selIndex, 3);
     this.#placeFrame(this.selFrame2, this.selIndex, 8);
     this.#placeFrame(this.hoverFrame, this.hoverIndex === this.selIndex ? -1 : this.hoverIndex, 2);
+    this.#updateLabels();
     if (this.relationsStale) this.#writeRelations();
     // An empty draw range is still a draw call in three.js (only a negative
     // count is skipped), so the layer is drawn only when it holds a line.
     this.relations.visible = !this.transition && this.relations.geometry.drawRange.count > 0;
     this.renderer.render(this.scene, this.camera);
     if (this.shadowAge < SHADOW_EVERY) this.shadowAge++;
-    this.#updateLabels();
     this.on.moved?.(!again);
     if (again) this.invalidate();
   }

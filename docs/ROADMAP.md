@@ -1,17 +1,19 @@
 <!--
 ✒ Metadata
-    - Title: Terrane Roadmap (Terrane Edition - v1.9)
+    - Title: Terrane Roadmap (Terrane Edition - v1.10)
     - File Name: ROADMAP.md
     - Relative Path: docs/ROADMAP.md
     - Artifact Type: docs
-    - Version: 1.9.0
-    - Date: 11/13/2026
-    - Update: Friday, November 13, 2026
+    - Version: 1.10.0
+    - Date: 11/14/2026
+    - Update: Saturday, November 14, 2026
     - Author: Dennis 'dendogg' Smaltz
     - A.I. Acknowledgement: Anthropic - Claude Opus 5.5
     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
 
 ✒ Changelog:
+    - 1.10.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — Build
+      waves record the names on the blocks; where things stand says so.
     - 1.9.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — Build
       waves record the blocks' new look, merged into `main`; where things
       stand says so.
@@ -101,7 +103,7 @@
 
 ## Where things stand
 
-As of 11/13/2026:
+As of 11/14/2026:
 
 - **Complete, on `main`:** Stages 1 to 3, Wave 0 (the Stage 5
   groundwork), the 1.2.0 interface, the load screen's first cut, Wave 1
@@ -128,6 +130,9 @@ As of 11/13/2026:
   finish, contact shadows and a sun at a three-quarter angle to the
   view; a closed mass's sides show its strata, and each extension takes
   a tone of its kind's colour.
+- **Complete, on `main`:** the names on the blocks. A name is
+  printed on its box by the box's own shader, lit and shadowed with it,
+  instead of standing over it as a tag.
 - **Next:** no wave is planned yet; the open ground is the rest of
   Stage 4, the rest of Stage 6, and the Stage 5 deferrals in section 4.
 
@@ -615,6 +620,22 @@ view. Camera RAW files (Canon's CR3 among them) count as images. One
 draw call more, for the contact shadows. It was merged into `main`
 after the demo world, in the commit titled "Merge look: the blocks'
 look"; the draw-call baseline was recorded again with it.
+
+### Complete: the names on the blocks
+
+The names stood over the world as plain tags: white boxes and black
+type that floated in front of the blocks, crowded each other, and never
+looked part of the place. A name is now part of its box. The boxes' own
+shader prints a file's name on its lid and a folder's in expanded
+capitals, on a closed mass's lid, along an open plateau's rim, or cut
+into the riser that faces the eye, from one atlas of distance fields
+(`web/js/lettering.js`). Names are lit, shadowed and hazed with their
+surface, read upright from the eye, and fade in as they grow legible;
+a scree's tile says how many it holds. Only the benchmarks' mark tags
+stay in HTML. No draw call more. Checks: `npm test`, "797 passed, 0
+failed"; `node tools/ui-check.mjs --no-shots`, both passes, "1412
+passed, 0 failed, 6 skipped". It was merged into `main` in the commit
+titled "Merge labels: the names on the blocks".
 
 ### Next
 

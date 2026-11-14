@@ -1,18 +1,22 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Hardening Scenarios (Terrane Edition - v1.3)
+ *     - Title: Hardening Scenarios (Terrane Edition - v1.4)
  *     - File Name: hardening.mjs
  *     - Relative Path: tools/ui-scenarios/hardening.mjs
  *     - Artifact Type: test
- *     - Version: 1.3.0
- *     - Date: 11/13/2026
- *     - Update: Friday, November 13, 2026
+ *     - Version: 1.4.0
+ *     - Date: 11/14/2026
+ *     - Update: Saturday, November 14, 2026
  *     - Author: Dennis 'dendogg' Smaltz
  *     - A.I. Acknowledgement: Anthropic - Claude Opus 5.5
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
  *
  * ✒ Changelog:
+ *     - 1.4.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] —
+ *       Names are printed on the boxes: at the overview the check asks
+ *       that some are, each on a box that is drawn, and that no file or
+ *       folder tag stands over the world.
  *     - 1.3.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — A
  *       page opened from another server now runs the demo world: the
  *       check asks that it surveys the world and sends nothing to /api/,
@@ -340,6 +344,26 @@ const hardening = {
         lp.hovered === lp.before && lp.turned > lp.hovered, JSON.stringify(lp));
       await t.key('0');
       await t.settle();
+
+      /* ---- names are printed on the boxes, not laid over them ---- */
+      const nm = await t.app(async (T) => {
+        const v = T.S.view;
+        const frame = () => new Promise((r) => requestAnimationFrame(() => r()));
+        for (let k = 0; k < 120 && (v.letterWait || !v.letterCount); k++) await frame();
+        const A = v.aLetter.array;
+        let lid = 0;
+        let riser = 0;
+        let off = 0;
+        for (const i of v.lettered.keys()) {
+          if (i >= v.n) off++;
+          if (Math.floor(A[i * 4]) % 4 === 2) riser++;
+          else lid++;
+        }
+        const tags = [...document.querySelectorAll('#tags .tag')].filter((e) => !e.hidden && !e.classList.contains('tag-mark')).length;
+        return { count: v.letterCount, lid, riser, off, set: v.letters.set, waiting: !!v.letterWait, tags };
+      });
+      t.check(`names are printed on the boxes at the overview (${nm.count}: ${nm.lid} on lids or rims, ${nm.riser} on risers), each on a box that is drawn, and no file or folder tag stands over the world`,
+        nm.count > 0 && nm.off === 0 && !nm.waiting && nm.tags === 0, JSON.stringify(nm));
     }
 
     /* ---- a narrow window: 800 by 500, as 200% zoom ---- */
