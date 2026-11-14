@@ -17,7 +17,9 @@
       for web/css/layout.css, web/css/components/ledger.css, web/css/components/traverse.css,
       web/js/traverse.js, web/js/time.js, web/js/interior.js and web/js/icons.js, whose 1.0.0
       entries left their headers with these releases. app.js's header rolls its 1.9.0 entry out,
-      and its header words now open the long form kept here.
+      and its header words now open the long form kept here. The title block, bar and
+      instruments that follow add the section for web/css/components/stage.css, whose 1.0.0
+      entry left its header with stage.css 1.3.0.
     - 1.8.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — Records the names on the blocks:
       viewport.js 1.7.0. viewport.js's header rolls its 1.4.0 entry out; this file already
       holds it.
@@ -818,6 +820,25 @@ short form is kept too.
   (calendar-clock), earlier and later (the left and right chevrons). Names for landmarks: places
   (the tab, map-pinned), bench (set a benchmark, flag), remeasure (ruler), markReturn (bookmark)
   and returnTo (arrow-left-right).
+
+- 1.0.0 (11/12/2026) [dendogg + Anthropic - Claude Opus 5.5] — Initial release.
+
+## web/css/components/stage.css
+
+- 1.3.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — The storage scale is 34 px, as
+  the view tools strip is; the placing banner sets its sentence on a row of its own and Cancel
+  and Place where I am on one line under it; the veil's quiet message is a balanced sentence
+  with its error on a mono line of its own.
+
+- 1.2.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — The file and folder tags are
+  gone: names are printed on the boxes by the world's own shader. The tag layer holds only mark
+  tags, which places.css draws.
+
+- 1.1.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — Without WebGL the travel tools
+  step aside; the explanation a page the service did not serve shows (#veil.is-elsewhere). The
+  instruments take their inset and sizes from tokens; the view tools drop their words before
+  they reach the storage scale, and in a narrow world the scale rises above them; the placing
+  banner wraps its words and keeps clear of the north arrow.
 
 - 1.0.0 (11/12/2026) [dendogg + Anthropic - Claude Opus 5.5] — Initial release.
 

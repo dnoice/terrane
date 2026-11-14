@@ -1,18 +1,21 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Print Sheet (Terrane Edition - v1.1)
+ *     - Title: Print Sheet (Terrane Edition - v1.2)
  *     - File Name: print.css
  *     - Relative Path: web/css/print.css
  *     - Artifact Type: stylesheet
- *     - Version: 1.1.0
- *     - Date: 11/13/2026
- *     - Update: Friday, November 13, 2026
+ *     - Version: 1.2.0
+ *     - Date: 11/14/2026
+ *     - Update: Saturday, November 14, 2026
  *     - Author: Dennis 'dendogg' Smaltz
  *     - A.I. Acknowledgement: Anthropic - Claude Opus 5.5
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
  *
  * ✒ Changelog:
+ *     - 1.2.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — On paper
+ *       the title block's first cell takes its own width, not the ledger's,
+ *       since the ledger is not printed.
  *     - 1.1.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] —
  *       The unused .panel-tool leaves the hidden list; the actions'
  *       note joins it. The title block follows the location bar, so the
@@ -87,6 +90,8 @@ main { display: grid; grid-template-columns: 1fr 74mm; gap: 6mm; margin: 6mm 0; 
 
 #block { border-top: 0; border-bottom: 1pt solid #000; break-inside: avoid; }
 .cell { padding: 4px 10px 6px; }
+/* The ledger is not printed, so the first cell takes its own width, not the ledger's. */
+#block .cell:first-child { width: auto; }
 /* The lens's ink plate is measured on screen; on paper the chosen lens is
    simply inked. */
 .seg::before { display: none; }
