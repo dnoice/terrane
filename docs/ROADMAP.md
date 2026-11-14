@@ -1,10 +1,10 @@
 <!--
 ✒ Metadata
-    - Title: Terrane Roadmap (Terrane Edition - v1.5)
+    - Title: Terrane Roadmap (Terrane Edition - v1.6)
     - File Name: ROADMAP.md
     - Relative Path: docs/ROADMAP.md
     - Artifact Type: docs
-    - Version: 1.5.0
+    - Version: 1.6.0
     - Date: 11/13/2026
     - Update: Friday, November 13, 2026
     - Author: Dennis 'dendogg' Smaltz
@@ -12,6 +12,16 @@
     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
 
 ✒ Changelog:
+    - 1.6.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — Wave
+      3, quality of life, is recorded as complete on branch `qol`, with
+      its commits and final check lines, waiting to be merged into
+      `main`; where things stand gains that line, and Next is the
+      merge. The original plan's Waves 3 and 4 ran inside Wave 2, so
+      this is the first wave numbered 3 to run on its own. The Stage 4
+      cache, the Stage 6 batch rename, and the Stage 5 deferrals Changed
+      with it, the Untouched sort and export and import of places move
+      to done where they are; the exploration loop, requirement 11, the
+      out-of-scope table and the datasets name what Wave 3 added.
     - 1.5.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
       load screen is complete: its reload check timed out because,
       with reduced motion, the sheet left before the first look, and
@@ -53,8 +63,9 @@
     The plan behind Terrane: the exploration loop the world is designed
     around, the minimum viable filesystem scope, the practical filesystem
     interaction requirements, a staged implementation roadmap, the build
-    waves that carry it out (what is complete on `main` and what comes
-    next), and the datasets that let development run against real data
+    waves that carry it out (what is complete on `main`, what is
+    complete on a branch and waits to be merged, and what comes next),
+    and the datasets that let development run against real data
     without touching it.
 
 ✒ Key Features:
@@ -63,10 +74,11 @@
     - Minimum filesystem scope: in, out, and why
     - Interaction requirements written as checkable statements
     - Six stages, each with an exit test; stages 1 to 3 are complete,
-      and stages 5 and 6 are under way
+      and stages 4 to 6 are under way
     - Stage 5's first increment: what was delivered, by which wave,
       what was deferred, and the question each feature answers
-    - Build waves: complete on `main` and next, with commits and checks
+    - Build waves: complete on `main`, complete on branch `qol`, and
+      next, with commits and checks
     - Development datasets: how to build against real data safely
 
 ✒ Other Important Information:
@@ -89,8 +101,18 @@ As of 11/13/2026:
   waves, and the Audit, Hardening pass, Enhancement and polish and Sanity
   sweeps, merged as Terrane 1.3.0, and the load screen, whose reload
   check now passes. Every Stage 5 candidate now has its first increment.
-- **Next:** no wave is planned yet. The open ground is Stage 4, the rest
-  of Stage 6, and the Stage 5 deferrals in section 4.
+- **Complete, on branch `qol`:** Wave 3, quality of life: finding your
+  way (the command palette, the remembered view and links, search
+  history, saved searches and `in:`), looking before you act (Quick
+  look, the selection's total, the quick searches, the Untouched order,
+  Changed with it), acting on many (the batch rename, duplicate cleanup,
+  copy as), getting things in and out (lists as CSV, places files, a
+  terminal opened in a folder) and starting fast (the warm start), with
+  its review fixes and its docs and sweep. It waits to be merged into
+  `main`.
+- **Next:** merging `qol` into `main` once it has been reviewed. No wave
+  is planned after it yet; the open ground is the rest of Stage 4, the
+  rest of Stage 6, and the Stage 5 deferrals in section 4.
 
 Section 5 has the detail for every wave.
 
@@ -100,18 +122,18 @@ One pass through the loop, and what serves each step today.
 
 | Step | The visitor | Served by |
 | ---- | ----------- | --------- |
-| 1. Arrive | Sees the whole directory from above as a hundred or so masses: where the bytes are, what kind they are | Overview vantage; area is bytes; masses tinted by dominant kind; heavyweight pins |
-| 2. Notice | Something stands out: a large mass, a tall fresh block, a pin, a colour | Lenses (kind, age, size, duplicates), with closed masses at their typical age under the Age lens; survey tab, working sessions included; search pins; benchmark tags that say what changed; the time view, where what changed since a date lies flat |
+| 1. Arrive | Sees the whole directory from above as a hundred or so masses: where the bytes are, what kind they are | Overview vantage; area is bytes; masses tinted by dominant kind; heavyweight pins; a warm start that draws the last session's tree at once; a reload or a link that lands where it names |
+| 2. Notice | Something stands out: a large mass, a tall fresh block, a pin, a colour | Lenses (kind, age, size, duplicates), with closed masses at their typical age under the Age lens; survey tab, working sessions and quick searches included; search pins; benchmark tags that say what changed; the time view, where what changed since a date lies flat |
 | 3. Approach | Flies toward it. It opens as it gets close | Wheel flies to the cursor; distance-driven unfolding; contents rise out of the plateau |
-| 4. Orient | Knows where they are without thinking about it | Breadcrumbs and ledger follow the camera; tags on nearby plateaus; benchmarks as survey marks; horizon and haze |
-| 5. Inspect | Selects a thing and reads it | Inspector: path, size and shares, dates, composition, bytes by last change, what changed since a benchmark or a date, preview, duplicates; an archive's contents with I |
-| 6. Act | Opens, renames, moves, removes | Context menu, keys, placing mode, drag and drop; every result stated in words |
+| 4. Orient | Knows where they are without thinking about it | Breadcrumbs, ledger and the address follow the camera; tags on nearby plateaus; benchmarks as survey marks; horizon and haze |
+| 5. Inspect | Selects a thing and reads it | Inspector: path, size and shares, dates, composition, bytes by last change, what changed since a benchmark or a date, what changed with a file, preview, duplicates; Quick look, stepped through a list; what a selection weighs; an archive's contents with I |
+| 6. Act | Opens, renames, moves, removes | Context menu, keys, placing mode, drag and drop, the command palette; many items renamed with a preview; verified copies cleaned up; names and paths copied; lists saved as CSV; a terminal in the folder; every result stated in words |
 | 7. Confirm | Sees the world change to match the disk | Affected folders re-read; boxes move or rise; Undo offered in the notice |
-| 8. Leave | Goes up, back, or jumps somewhere else | Backspace, Alt+Left, 0, J to a marked return point, Fly there in the Places tab, breadcrumbs, search results, survey entries |
+| 8. Leave | Goes up, back, or jumps somewhere else | Backspace, Alt+Left, 0, J to a marked return point, Fly there in the Places tab, breadcrumbs, search results and saved searches, survey entries, the command palette (Ctrl+K) |
 
 The loop has two speeds. On foot (W A S D at eye level) it is browsing. By
-jump (search, survey, breadcrumbs) it is retrieval. Both end in the same
-inspector and the same operations.
+jump (search, the palette, survey, breadcrumbs) it is retrieval. Both end
+in the same inspector and the same operations.
 
 ## 2. Minimum viable filesystem scope
 
@@ -140,12 +162,12 @@ The smallest scope at which Terrane is a tool and not a demonstration.
 | Permissions, ownership, attributes | Platform-specific and rarely the question a storage explorer answers |
 | Following symbolic links, mounting archives | Each breaks "area is bytes inside this directory" and invites cycles. Stage 5 lets a zip archive's directory be looked at, read-only, as a walled floor; it is never mounted, nothing in it counts toward the tree's totals, and nothing in it can be changed |
 | Multiple roots, network authentication, cloud APIs | The single-root boundary is the safety model. A mounted share already works as a directory |
-| Batch rename, sync, compression | Useful, not minimal |
+| Sync, compression | Useful, not minimal. Batch rename, once listed here too, is built in Stage 6 (Wave 3) |
 
 ## 3. Practical filesystem interaction requirements
 
 Written so each can be checked. All fifteen are met by the build on
-`main`.
+`main`, and still by branch `qol`.
 
 1. Every item drawn in the world corresponds to exactly one real entry,
    or to one entry of an open archive as the archive's directory lists
@@ -170,7 +192,9 @@ Written so each can be checked. All fifteen are met by the build on
 10. Nothing is deleted without passing through the holding area, and the
     one permanent action says it is permanent before it runs.
 11. Undo reverses the latest change exactly, or refuses and says what on
-    disk now prevents it.
+    disk now prevents it. On branch `qol`, an Undo stopped part way by
+    an item in use says how many items went back, and the next Undo
+    resumes.
 12. The user can always tell where they are (breadcrumbs follow the
     camera) and can always get out (Backspace, 0, Escape).
 13. Selection survives a refresh of the folder it is in.
@@ -211,17 +235,27 @@ location derived from the camera.
 Exit test: fly from the overview to a file twelve levels down in a
 400,000-file tree, with stable geometry and correct location at each end.
 
-### Stage 4. Streaming the data, not only the geometry
+### Stage 4. Streaming the data, not only the geometry. Under way
 
-The browser currently holds the whole tree. For trees in the millions:
+The browser currently holds the whole tree. The plan for trees in the
+millions has one item done.
+
+Done on 11/13/2026, on branch `qol` (Wave 3):
+
+- A cache of the last scan on disk, so a second launch draws at once:
+  the warm start. Its first form is validated by a full survey in the
+  background rather than by folder modification times, and while that
+  survey runs the page holds two trees.
+
+Next:
 
 - The service keeps the tree and serves regions: children of a folder,
   with aggregates, on request.
 - The browser requests regions as the eye approaches and drops them as
   it leaves, the same way it already does for geometry.
 - Search, survey and duplicate grouping move to the service.
-- A cache of the last scan on disk, validated by folder modification
-  times, so a second launch is immediate.
+- The cache validated by folder modification times, so the check after
+  a warm start reads only what changed.
 - Layout in a worker.
 
 Exit test: five million entries with browser memory under 300 MB and no
@@ -253,15 +287,16 @@ uploads by range, one relation-line layer for named sets, the
 registries feature modules fill, a fixed key allocation, the shared age
 table and the headless interface check (Wave 0). The first increment of
 every candidate followed by 11/13/2026, each in its own module, in
-Waves 1 and 2 (section 5):
+Waves 1 and 2 (section 5), and Wave 3 delivered three of the deferrals
+on branch `qol`:
 
 | Candidate | Wave | Delivered | Deferred |
 | --------- | ---- | --------- | -------- |
 | Interiors | 1 (service), 2 (world) | A zip archive (and the formats built on zip: jar, war, ear, apk, aab, whl, xpi, nupkg, vsix, ipa) looked inside with I, as a walled floor on its file's footprint. The service lists its directory without unpacking it (`GET /api/inside`), bounded and with locked and escaping names flagged; nothing inside can be changed; entries already in the directory by name and size are half-banded and tied as twins | tar and its compressed forms; CRC-32 verification; search inside an interior; more than one archive open at once; the age table and typical ages for an archive's folders; an image at wall scale; a text file as a readable surface |
-| Relations across the tree | 0 (line layer), 2 (traverse) | Duplicate ties and archive twins as named sets in one line layer. Working sessions (files changed within 30 minutes of one another) as a search, `session:N`, a Survey section, and a route drawn through the world: the traverse | Stop-stepping keys; a gap selector; a way to include folders whose names start with a dot; "Changed with it" in the inspector and the context menu; folders as stops of their own; same-name siblings; symbolic links as bridges to their targets |
+| Relations across the tree | 0 (line layer), 2 (traverse), 3 (Changed with it) | Duplicate ties and archive twins as named sets in one line layer. Working sessions (files changed within 30 minutes of one another) as a search, `session:N`, a Survey section, and a route drawn through the world: the traverse. Changed with it: a selected file's session and the files nearest it in time, in the inspector, the context menu and the palette | Stop-stepping keys; a gap selector; a way to include folders whose names start with a dot; folders as stops of their own; same-name siblings; symbolic links as bridges to their targets |
 | Time as a dimension | 1 | The date scrub: T , . < > and the As of stepper look back along a ladder of dates; what changed after the date lies flat and crossed, closed masses sink to the share they kept, and the inspector says what changed since and where | Scree taking part; replay; calendar-aligned steps; an "as it looked then" height mode; creation dates |
-| Vertical organisation | 2 | Strata, without using the space above: the inspector's Bytes by last change in six strata, and closed masses coloured by their typical age under the Age lens | Staffs above the plateaus; leaders to the largest descendants; an "Untouched" Contents sort |
-| Landmarks and memory | 1 | Benchmarks: B measures a folder, a verdigris survey mark and its tag stand on it, and the Places tab says what changed since, including what left it. One return point: H marks where you stand, J flies back and swaps the two | Export and import of places, first; a trail of where you have been, under a name and a drawing convention other than the traverse's; coverage; search over benchmarks beyond `is:benchmark` |
+| Vertical organisation | 2, 3 (Untouched) | Strata, without using the space above: the inspector's Bytes by last change in six strata, and closed masses coloured by their typical age under the Age lens. Contents sorted Untouched, longest untouched first by typical age | Staffs above the plateaus; leaders to the largest descendants |
+| Landmarks and memory | 1, 3 (places files) | Benchmarks: B measures a folder, a verdigris survey mark and its tag stand on it, and the Places tab says what changed since, including what left it. One return point: H marks where you stand, J flies back and swaps the two. Export and import of places as a file, saved searches with them | A trail of where you have been, under a name and a drawing convention other than the traverse's; coverage; search over benchmarks beyond `is:benchmark` |
 
 What each answers that the ledger alone cannot:
 
@@ -277,8 +312,9 @@ What each answers that the ledger alone cannot:
   including what left it.
 
 Places are kept in this browser for this directory at this address, and
-a snapshot's apart from the live directory's, so export and import come
-before the next landmark feature.
+a snapshot's apart from the live directory's. Export and import, which
+were to come before the next landmark feature, now carry them to
+another browser, profile or address as a file (Wave 3, branch `qol`).
 
 ### Stage 6. Operations at scale. Under way
 
@@ -288,9 +324,18 @@ Done on 11/11/2026:
   of the partial item and undo of the finished ones.
 - A journal that persists across restarts.
 
+Done on 11/13/2026, on branch `qol` (Wave 3):
+
+- Batch rename with preview: rules over a preview of every new name,
+  the whole batch checked again by the service before its first rename,
+  and one journal entry, so one Undo puts every name back.
+- Duplicate cleanup: one verified copy kept and the others moved to the
+  holding area as one change, after the group is hashed again.
+- An Undo that stops part way keeps what is still to go back, so the
+  next Undo resumes, after a restart too.
+
 Next:
 
-- Batch rename with preview.
 - Send to the operating system's recycle bin as an alternative holding
   area.
 - A packaged desktop build (single executable, no terminal) once the
@@ -305,19 +350,23 @@ to take a second.
 
 ## 5. Build waves
 
-Stage 5 is built in waves. Each wave runs on its own branch (`wave-1`,
-`wave-2`) in a separate worktree: its build steps one after another, then
-an adversarial review, a fix step, and a docs and header pass. A wave is
-merged into `main` and pushed only when `npm test`,
+Stage 5 is built in waves, and Wave 3 took the same method across
+Stages 4 to 6. Each wave runs on its own branch (`wave-1`, `wave-2`,
+then `qol`) in a separate worktree: its build steps one after
+another, then an adversarial review, a fix step, and a docs and header
+pass. A wave is merged into `main` and pushed only when `npm test`,
 `node tools/vendor.mjs --check` and the full `node tools/ui-check.mjs`
-pass, with and without WebGL, on the default fixture. The one accepted
-failure is the load screen's reload check, which times out once per pass
-and is parked for the load-screen work at the end.
+pass, with and without WebGL, on the default fixture. Through Wave 2
+and the Sanity sweeps the one accepted failure was the load screen's
+reload check, which timed out once per pass; since the load screen work
+every check passes.
 
 The plan had five waves: Wave 0 for the groundwork, Waves 1 to 3 for the
 features and Wave 4 for the docs. In practice the client half of
 Interiors (planned as Wave 3) and the docs (planned as Wave 4) ran as the
-last steps of Wave 2.
+last steps of Wave 2, so the original plan's Waves 3 and 4 ran inside
+Wave 2. Wave 3 below, quality of life, is therefore the first wave
+numbered 3 to run on its own, and not the Wave 3 of that plan.
 
 ### Complete
 
@@ -467,10 +516,66 @@ installs a recorder for the new page that notes the sheet from its first
 frame, and reads that record when the sheet has already gone. Checks:
 `node tools/ui-check.mjs --no-shots`, both passes: "879 passed, 0 failed, 5 skipped".
 
+### Complete on branch qol: Wave 3, quality of life
+
+Wave 3 runs on its own branch, `qol`, made from `main` at `515faee`
+("Single-key shortcuts off by default"), in a separate worktree. It
+began by scoping what Terrane already does, then chose thirteen
+features that make it more useful from day to day and built them in
+five groups, one after another, each with Node checks in `npm test`
+and `ui-check` scenarios of its own, run in both passes before it
+committed. An adversarial review, a fix step and a docs and sweep step
+followed. Nothing of it is on `main` yet: it waits to be merged.
+
+1. **Finding your way.** The seams (`1543ad9`): the registries
+   `COMMANDS`, `LEDGER_SUB`, `AFTER_FOCUS`, `AFTER_SELECT` and
+   `TAB_SECTIONS`, `openSheet`, and double quotes in search. The
+   features (`1b1cd15`): the command palette (Ctrl+K), the remembered
+   view and links, and search history, saved searches and `in:`.
+2. **Looking before you act.** Quick look, P, with byte ranges on
+   `GET /api/raw` (`091605e`); the selection's total, the quick
+   searches and the Untouched order (`df29bc7`); Changed with it
+   (`8b2bcb3`).
+3. **Acting on many** (`fc1e39f`): the batch rename with a preview and
+   the service's `renames` operation, duplicate cleanup and copy as,
+   through the seams `RENAME_MANY`, `MENU` `many()`, `INSPECTOR.many`
+   and `DUP_GROUP`; what Verify proved now survives a refresh.
+4. **Getting things in and out.** The service passes over a port
+   Windows refuses (`c7bb15c`); lists saved as CSV (`5b44d33`); places
+   export and import (`937cd13`); a terminal opened in a folder,
+   `POST /api/terminal` (`dd86458`).
+5. **Starting fast** (`974596f`): the warm start, the cache in the
+   service (`GET /api/warm`) and the catch-up in the page.
+6. **The review fixes** (`ffd528f`): an Undo that stops part way
+   resumes; no warm cache inside the root; the address and the kept
+   view follow when the folder you are in goes; Quick look leaves a long
+   text and a player their keys; two records put right.
+7. **Docs and sweep**, in the commit titled "Wave 3 docs and sweep":
+   README, ARCHITECTURE, this roadmap, `CHANGELOG.md` and every header
+   the wave touched, checked against the code. Final check lines, on
+   Windows 11 with Edge 157 on an RTX 5050 laptop GPU and the default
+   fixture of 3,126 files:
+   - `node --check` on all 81 script files outside `web/vendor/`: no
+     error;
+   - `npm test`: "255 passed, 0 failed", "97 passed, 0 failed",
+     "57 passed, 0 failed", "33 passed, 0 failed", "57 passed, 0 failed",
+     "52 passed, 0 failed", "54 passed, 0 failed", "31 passed, 0 failed"
+     and "68 passed, 0 failed", 704 in all;
+   - `node tools/vendor.mjs --check`:
+     "Every vendored file matches the manifest.";
+   - `node tools/ui-check.mjs --no-shots --port 5080`, both passes, 37
+     scenarios: "1369 passed, 0 failed, 6 skipped" (744 and 2 skipped
+     with WebGL, 625 and 4 skipped without). The skips are, in each
+     pass, what needs `--snapshot` and the `splash` check for a sheet
+     gone before the first look, and without WebGL two checks of what
+     is drawn in the world. Draw calls at the baseline (overview 6,
+     selected 8, search 7, duplicate ties 9).
+
 ### Next
 
-No wave is planned yet. The open ground is Stage 4, the rest of Stage 6,
-and the Stage 5 deferrals in section 4.
+Merging `qol` into `main` once it has been reviewed. No wave is planned
+after it yet. The open ground is the rest of Stage 4, the rest of
+Stage 6, and the Stage 5 deferrals in section 4.
 
 ## 6. Development datasets
 
@@ -487,7 +592,10 @@ re-snapshots every hour while it runs. Both datasets live in
 `%LOCALAPPDATA%\terrane\datasets\<name>`, outside the project and outside
 OneDrive, because they hold real file names and run to hundreds of
 megabytes. A snapshot holds names, sizes and dates, not what a file
-contains, so in snapshot mode an archive cannot be looked inside.
+contains, so in snapshot mode an archive cannot be looked inside. The
+warm start's cache, the last complete survey of any directory Terrane
+is started on, sits in the same folder, and `TERRANE_DATA` moves all of
+them; the checks give every service they start a folder of its own.
 
 The rules the image work follows, set by the shape of the real data
 (19,181 images, 35.7 GB, a largest file of 443 MB):
