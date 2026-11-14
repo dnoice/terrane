@@ -19,7 +19,8 @@
       Travelling: flavors, so the mouse steers the world as Blender,
       AutoCAD, SketchUp, Maya, 3ds Max, Rhino, SolidWorks, Unity,
       Unreal Engine or Google Earth do. The commands name flavors-test;
-      the project map lists flavors.js.
+      the project map lists flavors.js; What was verified records the
+      runs.
     - 1.14.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] —
       Travelling: Blender's middle-button drags and numpad views.
       Reading the world: hatching and bands stay put as you travel.
@@ -717,6 +718,8 @@ browser holds two copies of it, about 300 MB per million entries.
 | The names on the blocks on Windows 11 (11/14/2026), Edge 157 on an RTX 5050 laptop GPU: `npm test`, and `node tools/ui-check.mjs --no-shots`, both passes, on the default fixture, with `hardening` now checking that names are printed at the overview, each on a box that is drawn, and that no file or folder tag stands over the world | `npm test`: 797 passed, 0 failed. The interface check: 1412 passed, 0 failed, 6 skipped; draw calls at the baseline, since the names are drawn by the boxes' own shader |
 
 | Steady conventions and Blender's view controls on Windows 11 (11/14/2026), Edge 157 on an RTX 5050 laptop GPU: `npm test`, and `node tools/ui-check.mjs --no-shots`, both passes, on the default fixture, with the new `views` scenario (hatching and bands drawn with the floating origin moved and moved back under the same eye; the middle button's orbit, grab and fly; the numpad views). With the old origin-relative coordinates put back, the same check finds 6,045 and 11,984 pixels moved | `npm test`: 797 passed, 0 failed. The interface check: 1424 passed, 0 failed, 6 skipped; 7 of 840,160 pixels differ with the fix |
+
+| Flavors on Windows 11 (11/14/2026), Edge 157 on an RTX 5050 laptop GPU: `npm test` with the new `flavors-test`, and `node tools/ui-check.mjs --no-shots`, both passes, on the default fixture, with `views` making every drag of every flavor with the mouse and judging what the eye did | `npm test`: 874 passed, 0 failed (77 in `flavors-test`). The interface check: 1438 passed, 1 failed, 6 skipped; the failure was the full-upload picture in `transitions`, one byte of one pixel a level apart, which the check now ignores while still counting anything over two levels (`transitions` again: 33 passed, 0 failed) |
 
 Not verified: running on macOS; frame rate at street level in the largest
 trees on a hardware GPU; Open and Reveal reaching a desktop application on
