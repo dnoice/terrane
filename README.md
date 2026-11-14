@@ -1,10 +1,10 @@
 <!--
 ✒ Metadata
-    - Title: Terrane Readme (Terrane Edition - v1.15)
+    - Title: Terrane Readme (Terrane Edition - v1.16)
     - File Name: README.md
     - Relative Path: README.md
     - Artifact Type: docs
-    - Version: 1.15.0
+    - Version: 1.16.0
     - Date: 11/14/2026
     - Update: Saturday, November 14, 2026
     - Author: Dennis 'dendogg' Smaltz
@@ -12,6 +12,9 @@
     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
 
 ✒ Changelog:
+    - 1.16.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] —
+      Reading the world: the conventions are listed in the Guide's tab
+      of that name, no longer in the inspector.
     - 1.15.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] —
       Travelling: flavors, so the mouse steers the world as Blender,
       AutoCAD, SketchUp, Maya, 3ds Max, Rhino, SolidWorks, Unity,
@@ -331,8 +334,9 @@ along an open plateau's rim, or cut into the riser that faces you. They
 read upright from where you stand and come into view as they grow large
 enough to read.
 
-The inspector's Reading the world section lists the same conventions,
-the features' rows included.
+The Guide (`?`, or the Guide button) lists the same conventions in its
+Reading the world tab, the features' rows included, beside its Keys,
+Mouse and Settings tabs. It opens on the tab you used last.
 
 ## Travelling
 

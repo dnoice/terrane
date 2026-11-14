@@ -1,11 +1,11 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Floating Surfaces (Terrane Edition - v1.2)
+ *     - Title: Floating Surfaces (Terrane Edition - v1.3)
  *     - File Name: floating.css
  *     - Relative Path: web/css/components/floating.css
  *     - Artifact Type: stylesheet
- *     - Version: 1.2.0
+ *     - Version: 1.3.0
  *     - Date: 11/14/2026
  *     - Update: Saturday, November 14, 2026
  *     - Author: Dennis 'dendogg' Smaltz
@@ -13,6 +13,9 @@
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
  *
  * ✒ Changelog:
+ *     - 1.3.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] —
+ *       The Guide's tab strip and panels: Keys, Mouse, Reading the world
+ *       and Settings, one panel shown at a time at one height.
  *     - 1.2.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] —
  *       The guide's Mouse section: the Flavor list, the chosen flavor's
  *       drags in the guide's own key style, and its note.
@@ -23,12 +26,11 @@
  *       operations in progress stand on the second row, clear of the
  *       view tools; the guide's keycaps keep one line's height beside
  *       a description of two; sizes come from the type scale.
- *     - 1.0.0 (11/12/2026) [dendogg + Anthropic - Claude Opus 5.5] —
- *       Initial release.
+ *     Earlier entries: see CHANGELOG.md
  *
  * ✒ Description:
  *     Everything that floats above the sheet: the context menu, the hover
- *     tip, modal dialogs and the guide, notices, and the panel of
+ *     tip, modal dialogs and the Guide's tabs, notices, and the panel of
  *     operations in progress. Each is a paper card with a hard ink shadow;
  *     each enters with @starting-style, so no script times its arrival.
  *
@@ -204,7 +206,34 @@ dialog.is-wide { width: min(880px, 94vw); }
   color: var(--text-2);
 }
 .guide-pref input { flex: none; margin-top: var(--s-1); accent-color: var(--ink); }
-/* The Mouse section: the flavor and its drags, under the keys. */
+/* The Guide's tabs, drawn like the ledger's, over panels of one height. */
+.guide-tabs { display: flex; height: var(--control-h); margin: 0 0 var(--s-3); border-bottom: var(--border-2); }
+.guide-tabs button {
+  appearance: none;
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 0 var(--s-2);
+  border: 0;
+  border-right: var(--border-3);
+  background: transparent;
+  color: var(--text-3);
+  font: inherit;
+  font-size: var(--fs-3xs);
+  font-stretch: var(--wdth-wide);
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.guide-tabs button:last-child { border-right: 0; }
+.guide-tabs button:focus-visible { outline-offset: calc(var(--focus-offset) * -1); }
+.guide-tabs button[aria-selected='true'] { color: var(--text); box-shadow: inset 0 -3px 0 var(--ink); }
+@media (hover: hover) { .guide-tabs button:hover { color: var(--text); } }
+.guide-panel { min-height: 22rem; }
+.guide-panel:focus-visible { outline-offset: var(--focus-offset); }
+.guide-panel .reading { padding: 0; }
+.guide-panel > .guide-pref { margin-top: 0; padding-top: 0; border-top: 0; }
+/* The Mouse tab: the flavor and its drags. */
 .guide-flavor { margin-top: var(--s-3); animation: fade-up var(--dur-base) var(--ease-out-expo) 120ms both; }
 .guide-flavor-pick { display: flex; align-items: center; gap: var(--s-2); margin: 0 0 var(--s-2); color: var(--text-2); }
 .guide-flavor-pick select {

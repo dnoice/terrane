@@ -1,10 +1,10 @@
 <!--
 ✒ Metadata
-    - Title: Shipped File Changelogs (Terrane Edition - v1.10)
+    - Title: Shipped File Changelogs (Terrane Edition - v1.11)
     - File Name: CHANGELOG.md
     - Relative Path: CHANGELOG.md
     - Artifact Type: docs
-    - Version: 1.10.0
+    - Version: 1.11.0
     - Date: 11/14/2026
     - Update: Saturday, November 14, 2026
     - Author: Dennis 'dendogg' Smaltz
@@ -12,6 +12,10 @@
     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
 
 ✒ Changelog:
+    - 1.11.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — Records the Guide window:
+      app.js 1.14.0 and the first section for web/css/components/floating.css (1.3.0), whose
+      1.0.0 entry leaves its header with that release. app.js's header rolls its 1.11.0 entry
+      out, which now opens with its header's words.
     - 1.10.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — Records the flavors:
       viewport.js 1.9.0, app.js 1.13.0 and features.js 1.4.0. viewport.js's header rolls
       its 1.6.0 entry out, app.js's its 1.10.0 and features.js's its 1.1.0; the first two
@@ -96,6 +100,15 @@ short form is kept too.
 
 ## web/js/app.js
 
+- 1.14.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — The Guide is one window in four
+  tabs: Keys, Mouse, Reading the world and Settings, the last one opened kept. Reading the world
+  leaves the inspector for it, so the inspector's space is free. In full: showGuide(tab) builds
+  a tab strip in the ledger's style (role tablist; arrows, Home and End move between tabs) over
+  four panels: the key table, the flavor and its drags, the READING rows as the inspector drew
+  them, and the single-key setting. The tab opened last is kept under terrane.guide-tab; a
+  caller may name one. The inspector's "You are in" summary no longer ends with Reading the
+  world (INSPECTOR.focus loses 'reading').
+
 - 1.13.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — Flavors: the guide's
   Mouse section chooses how drags steer the world (Terrane, Blender, AutoCAD and eight more),
   lists the chosen flavor's drags, and the choice is kept in this browser (api.flavor, for the
@@ -112,7 +125,10 @@ short form is kept too.
   flies in and out) and the numpad views.
 
 - 1.11.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — Paint gives each file its
-  kind's colour in a tone of its own extension (extTone): five steps from 22 % darker to 24 %
+  kind's colour in a tone of its own extension, a closed mass a richer tint and, on its sides,
+  strata of what it holds (strataOf, as bands and shares for the viewport); Reading the world
+  says so. In full: paint gives each file its kind's colour in a tone of its own extension
+  (extTone): five steps from 22 % darker to 24 %
   lighter, with common neighbours set apart (.ts and .tsx, .tsx and .css, .jpg and .png, .mov
   and .mp4) and every other extension stepped by its hash. A closed mass takes 56 % of its
   dominant kind over clay where it took 42 %, and its strata (strataOf): the three largest
@@ -676,6 +692,19 @@ short form is kept too.
   diagonals of a footprint). A role for benchmarks, --bench (verdigris, the colour of their
   survey marks), and its wash. Sizes the ledger and the world's labels use that the scales
   lacked: --fs-row and --fs-fig, the row padding and indent, and a tag's padding (11/13/2026).
+- 1.0.0 (11/12/2026) [dendogg + Anthropic - Claude Opus 5.5] — Initial release.
+
+## web/css/components/floating.css
+
+- 1.3.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — The Guide's tab strip and panels:
+  Keys, Mouse, Reading the world and Settings, one panel shown at a time at one height.
+- 1.2.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — The guide's Mouse section: the Flavor
+  list, the chosen flavor's drags in the guide's own key style, and its note.
+- 1.1.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — The keyboard's menu item is edged in
+  ink, not marked by the highlighter alone; the guide's setting for single-key shortcuts. The menu
+  fades out as it fades in; notices and operations in progress stand on the second row, clear
+  of the view tools; the guide's keycaps keep one line's height beside a description of two;
+  sizes come from the type scale.
 - 1.0.0 (11/12/2026) [dendogg + Anthropic - Claude Opus 5.5] — Initial release.
 
 <!-- ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once! -->
