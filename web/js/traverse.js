@@ -17,7 +17,9 @@
  *       session's time breaks between its two dates outside their nowrap
  *       spans, its dash kept with the first; Changed with it carries the
  *       session as its head's figure, the head's text unchanged; Working
- *       sessions' title is a span.t.
+ *       sessions' title is a span.t. In region mode no sessions are found,
+ *       and Working sessions and Changed with it say they are not
+ *       available at this size.
  *     - 1.2.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] —
  *       Changed with it: the inspector says which working session a
  *       selected file was changed in, lists the 8 files nearest to it in
@@ -231,10 +233,12 @@ export function install(api) {
   }
 
   function workingSessions() {
-    const list = S.sessions?.list;
+    const region = api.regionMode();
+    const list = region ? null : S.sessions?.list;
     const minutes = Math.round((S.sessions?.gapMs ?? GAP_MS) / 60000);
     const body = [];
-    if (!list) body.push(el('p', { class: 'note', text: 'Working sessions are counted once the survey has finished.' }));
+    if (region) body.push(el('p', { class: 'note', text: api.notAtSize('Working sessions') }));
+    else if (!list) body.push(el('p', { class: 'note', text: 'Working sessions are counted once the survey has finished.' }));
     else {
       body.push(el('p', { class: 'note', text: `Files changed within ${minutes} minutes of one another, newest first. Folders whose names start with a dot are left out. A copy, a checkout or an extraction changes every file it writes, so it shows as a session too.` }));
       if (!list.length) body.push(el('p', { class: 'note', text: `No two files changed within ${minutes} minutes of one another.` }));
@@ -256,6 +260,7 @@ export function install(api) {
   function sessionFor(node) {
     if (!node || node.d) return { k: 0, why: 'a folder has no working session; select a file' };
     if (api.hostOf(node)) return { k: 0, why: 'inside an archive' };
+    if (api.regionMode()) return { k: 0, why: 'not available at this size' };
     if (!S.sessions) return { k: 0, why: 'counted once the survey has finished' };
     const list = S.sessions.list;
     const k = sessionOf(list, node);
@@ -267,7 +272,11 @@ export function install(api) {
 
   /** The inspector's Changed with it: the file's session, its nearest sessionmates in time, and Show all. */
   function changedWith(node, ctx) {
-    if (node.d || ctx?.inside || !S.sessions) return null;
+    if (node.d || ctx?.inside) return null;
+    // Region mode: the page holds only part of the tree, so it does not
+    // find sessions; the section says so where it would stand.
+    if (api.regionMode()) return [api.sectionTitle('Changed with it'), el('p', { class: 'session-note', text: api.notAtSize('Working sessions') })];
+    if (!S.sessions) return null;
     const { k, s, why } = sessionFor(node);
     const minutes = Math.round((S.sessions.gapMs ?? GAP_MS) / 60000);
     if (!k) {
@@ -339,7 +348,7 @@ export function install(api) {
   api.AFTER_SURVEY.add({
     id: 'traverse', order: 30, owner: OWNER,
     run: () => {
-      S.sessions = lazySessions(S.model.root);
+      S.sessions = api.regionMode() ? null : lazySessions(S.model.root);
       if (tokensOf(S.query).length) {
         api.runQuery();
         // The survey redraws its own tab; any other shows the new matches here.

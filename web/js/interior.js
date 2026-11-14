@@ -17,7 +17,9 @@
  *       heads go through api.sectionTitle, a count as a figure; Holds and
  *       Unpacked break only at separators; "In the archive" is "Inside", so
  *       the label keeps one line; Close names the archive and is marked
- *       data-named.
+ *       data-named. In region mode twins are not looked for, and I's
+ *       notice and Already here say so with the tree's size; the age line
+ *       reads kids().
  *     - 1.2.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
  *       lock also reads a batch rename's items: any item whose path is
  *       under the archive's is refused before anything is sent.
@@ -100,7 +102,7 @@
  * ----------------------------------------------------------------------------
  */
 
-import { Model, FLAG_LINK, extOf, fmtBytes, fmtCount, plural, relPath } from './model.js';
+import { Model, FLAG_LINK, extOf, fmtBytes, fmtCount, plural, relPath, kids } from './model.js';
 import { BOX, STYLE } from './layout.js';
 
 export const name = 'Interiors';
@@ -231,13 +233,14 @@ export const changedSentence = (archive) => `${archive} changed on disk, so its 
  * escaped }.
  */
 export function openSentence(listing) {
-  const { name: archive, files, folders, unpacked, twins = 0, locked = 0, escapes = 0, escaped = [] } = listing;
+  const { name: archive, files, folders, unpacked, twins = 0, locked = 0, escapes = 0, escaped = [], unlooked = null } = listing;
   let s;
   if (!files) s = `${archive} holds no files${folders ? `, only ${plural(folders, 'folder', 'folders')}` : ''}.`;
   else {
-    s = `${archive} holds ${plural(files, 'file', 'files')}${folders ? ` in ${plural(folders, 'folder', 'folders')}` : ''}, ${fmtBytes(unpacked)} unpacked; `;
-    s += twins ? `${fmtCount(twins)} of them ${twins === 1 ? 'is' : 'are'} already in this directory, by name and size.`
-      : 'none of them is already in this directory by name and size.';
+    // unlooked: why twins were not looked for (a tree held in regions).
+    s = `${archive} holds ${plural(files, 'file', 'files')}${folders ? ` in ${plural(folders, 'folder', 'folders')}` : ''}, ${fmtBytes(unpacked)} unpacked${unlooked ? '. ' : '; '}`;
+    s += unlooked || (twins ? `${fmtCount(twins)} of them ${twins === 1 ? 'is' : 'are'} already in this directory, by name and size.`
+      : 'none of them is already in this directory by name and size.');
   }
   if (locked) s += ` ${plural(locked, 'entry is', 'entries are')} locked (encrypted).`;
   if (escapes) {
@@ -276,6 +279,9 @@ export function install(api) {
   const unavailable = (host) => (S.info.snapshot ? 'snapshot mode' : host.f & FLAG_LINK ? 'a symbolic link' : null);
 
   /* ---------- opening and closing ---------- */
+
+  /** Why twins are not looked for in region mode, with the tree's size. */
+  const unlookedSentence = () => `Twins are not looked for at this size: the page holds only the parts of this ${fmtCount(S.regions?.entries ?? 0)}-entry tree near you.`;
 
   /**
    * Twins against the whole tree: the archive's index is made once and
@@ -331,11 +337,14 @@ export function install(api) {
    * archive. Called on opening and after every refresh it outlives.
    */
   function withTwins(I, dirs = null) {
-    const { twins, twinOf } = dirs ? againAfter(I, dirs) : allTwins(I);
+    // A tree held in regions is not walked for twins: the page holds only
+    // the parts near the eye, so none are looked for, and the sentences say so.
+    const region = api.regionMode();
+    const { twins, twinOf } = region ? { twins: new Map(), twinOf: new Map() } : dirs ? againAfter(I, dirs) : allTwins(I);
     const { root } = I;
     return Object.freeze({
       ...I,
-      listing: Object.freeze({ ...I.listing, twins: twins.size }),
+      listing: Object.freeze({ ...I.listing, twins: twins.size, unlooked: region ? unlookedSentence() : null }),
       twins, twinOf,
       twinsOf: (node) => twins.get(node) || twinOf.get(node) || null,
       // Locked entries are hatched; twins, inside and out, half-banded.
@@ -485,7 +494,7 @@ export function install(api) {
       el('dl', { class: 'facts interior-facts' },
         fact('Holds', api.parts(plural(L.files, 'file', 'files'), plural(L.folders, 'folder', 'folders'))),
         fact('Unpacked', api.parts(el('b', { text: fmtBytes(L.unpacked) }), `${fmtBytes(L.packed)} packed`)),
-        fact('Already here', L.files ? `${fmtCount(L.twins)} of its files, by name and size` : 'no files to compare'),
+        fact('Already here', L.unlooked ? L.unlooked : L.files ? `${fmtCount(L.twins)} of its files, by name and size` : 'no files to compare'),
         L.locked ? fact('Locked', `${plural(L.locked, 'entry', 'entries')}, encrypted`) : null,
         L.escapes ? fact('Escapes', `${plural(L.escapes, 'name', 'names')} would land outside the folder if unpacked`) : null),
     ];
@@ -621,7 +630,7 @@ export function install(api) {
       if (c.type === BOX.WALL) return [`The walls of ${I.host.n}: what its directory lists stands inside`, 'I, or Escape with nothing selected, closes it'];
       // The age table holds only the tree on disk (strata.js), so under the
       // Age lens a closed mass in here keeps its newest change (app.js).
-      const aged = S.lens === 'age' && c.type === BOX.CAP && node.d && !node.e && node.c.length > 0;
+      const aged = S.lens === 'age' && c.type === BOX.CAP && node.d && !node.e && kids(node) > 0;
       const AGE = 'Coloured by its newest change: typical ages are for folders on disk';
       if (node === I.root) return [`Inside ${I.host.n} · nothing here can be changed`, aged ? AGE : null];
       if (api.hostOf(node)) {

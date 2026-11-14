@@ -18,7 +18,12 @@
  *       then the keys over the columns; Select all an icon) with one-line
  *       captions; facts from parts, sectionTitle and the path broken after
  *       each slash; the legend's whole chips behind +N; the status reads
- *       files, bytes, folders; the veil's error on its own line.
+ *       files, bytes, folders; the veil's error on its own line. A tree
+ *       above the region threshold, or one a survey finds past it, is drawn
+ *       from regions (regions.js) the page asks for as the eye nears them;
+ *       a folder's region is held before you go there or select it; changed
+ *       folders are read again as fresh regions; search and the survey say
+ *       they are not available at this size.
  *     - 1.11.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] —
  *       Paint gives each file its kind's colour in a tone of its own
  *       extension, a closed mass a richer tint and, on its sides, strata
@@ -100,6 +105,11 @@
  *       shows whole chips and puts the rest behind "+N"
  *     - One age table per survey (timeline.js) answers how much of any
  *       folder changed since a date, for every feature that asks
+ *     - Region mode for a tree too large to hold (S.regions, regions.js):
+ *       the page holds only the folders it asked the service for, opens a
+ *       closed folder once its region lands, reads a folder's region before
+ *       going there, selecting it or measuring it, and finds any path or
+ *       ref by asking for its chain; the status line says how much it holds
  *     - Instruments over the world: a north arrow that turns with the
  *       camera and back to north on a click, and a storage scale
  *
@@ -129,7 +139,7 @@
  *
  * ✒ Other Important Information:
  *     - Dependencies: model.js, layout.js, viewport.js, theme.js, ui.js,
- *       thumbs.js, timeline.js, strata.js (the Age lens's mass colours),
+ *       thumbs.js, timeline.js, regions.js, strata.js (the Age lens's mass colours),
  *       places.js (anchorOf, poseRelative, vantage: the eye through a
  *       warm start's catch-up), features.js, icons.js, motion.js, hud.js,
  *       float.js, splash.js
@@ -137,13 +147,15 @@
  *     - Limitations: when WebGL is unavailable the ledger, inspector,
  *       search and every operation keep working without the 3D world;
  *       during a warm start's catch-up the page holds two trees, about
- *       twice 150 MB per million entries
+ *       twice 150 MB per million entries. In region mode search, the
+ *       survey, working sessions and the palette's places are not
+ *       available until the service answers them
  * ----------------------------------------------------------------------------
  */
 
 import {
   Model, KINDS, FLAG_LINK, FLAG_HIDDEN, IMAGE_EXT, TEXT_EXT, extOf, fmtBytes, fmtCount, fmtDate, fmtAge, freshness, relPath, depthOf,
-  isAncestor, parseQuery, runSearch, plural,
+  isAncestor, parseQuery, runSearch, plural, kids,
 } from './model.js';
 import { anchorOf, poseRelative, vantage } from './places.js';
 import { buildLayout, BOX, STYLE, AUX } from './layout.js';
@@ -152,6 +164,7 @@ import { THEME, mixHex, ramp, cssHex } from './theme.js';
 import { el, openMenu, closeFloating, floatingOpen, ask, notice, tip, hideTip, slideIndicator, VirtualList } from './ui.js';
 import { thumbs } from './thumbs.js';
 import { buildAgeTable } from './timeline.js';
+import { createRegions, decode, measure } from './regions.js';
 import { massTones } from './strata.js';
 import { FEATURES } from './features.js';
 import { icon } from './icons.js';
@@ -205,6 +218,9 @@ const S = {
   // shared age table (timeline.js), rebuilt after every survey and null
   // until the first one.
   time: null, interior: null, places: null, ages: null, sessions: null, searches: null,
+  // Region mode (regions.js): the client that holds the parts of a large
+  // tree near the eye; null while the page holds the whole tree.
+  regions: null,
 };
 
 /* ====================================================================== */
@@ -621,15 +637,39 @@ const relLabel = (node) => {
 /* scanning and refresh                                                   */
 /* ====================================================================== */
 
-async function scanInto(dir) {
+/**
+ * Streams a survey of dir into the model. switchAt (the region threshold,
+ * when the service could not say how large the tree is): once the tree
+ * holds more entries than that, the survey stops and rejects with
+ * err.switchToRegions, and the page reads the tree in regions instead.
+ */
+async function scanInto(dir, { switchAt = 0 } = {}) {
   const idMap = [];
-  await scanStream(relPath(dir), 0, (records) => {
-    S.model.ingest(records, idMap, dir);
-    if (!S.noGL) hideVeil();
-    queueLayout();
-    drawStatus();
-    endSplash();
-  });
+  const ac = switchAt ? new AbortController() : null;
+  let over = false;
+  try {
+    await scanStream(relPath(dir), 0, (records) => {
+      if (over) return;
+      S.model.ingest(records, idMap, dir);
+      const r = S.model.root;
+      if (switchAt && r.fc + r.dc + 1 > switchAt) {
+        over = true;
+        ac.abort();
+        return;
+      }
+      if (!S.noGL) hideVeil();
+      queueLayout();
+      drawStatus();
+      endSplash();
+    }, { signal: ac?.signal });
+  } catch (err) {
+    if (!over) throw err;
+  }
+  if (over) {
+    const err = new Error('The directory holds more entries than the page keeps whole.');
+    err.switchToRegions = true;
+    throw err;
+  }
 }
 
 /**
@@ -666,6 +706,26 @@ function refreshDirs(rels) {
   if (S.warm) {
     for (const rel of rels) S.warm.pending.add(rel);
     return S.warm.done;
+  }
+  if (S.regions) {
+    // The service reads the folders again and answers their regions: what
+    // the page holds is filled again with its nodes kept. No page survey.
+    refreshChain = refreshChain.then(async () => {
+      const R = S.regions;
+      if (!R) return;
+      const { dirs, stale } = await R.refresh(rels);
+      if (stale || S.regions !== R) return;
+      const was = S.focus;
+      for (const n of [...S.sel]) if (!isAttached(n)) S.sel.delete(n);
+      if (S.primary && !isAttached(S.primary)) S.primary = [...S.sel].at(-1) || null;
+      if (!isAttached(S.focus)) S.focus = S.model.root;
+      S.trail = S.trail.filter(isAttached);
+      runHooks(AFTER_REFRESH, dirs);
+      focusMoved(was);
+      queueLayout(40);
+      drawAll();
+    }).catch((err) => notice(`Refresh failed: ${err.message}`, { kind: 'error' }));
+    return refreshChain;
   }
   refreshChain = refreshChain.then(async () => {
     const dirs = new Set();
@@ -727,6 +787,7 @@ function queueSurvey() {
 function surveyNow() {
   clearTimeout(S.surveyTimer);
   S.surveyTimer = 0;
+  if (S.regions) return;
   S.survey = S.model.survey();
   S.survey.dupGroups = keepVerified(S.survey.dupGroups);
   S.model.dupGroups = S.survey.dupGroups;
@@ -764,6 +825,12 @@ function connectEvents() {
 }
 
 async function fullScan() {
+  // In region mode the service reads the tree afresh and the page opens
+  // it again, keeping the folder you are in by its path.
+  if (S.regions) {
+    stopPlacing();
+    return reopenRegions({ build: true });
+  }
   // A survey of the whole directory replaces the tree from the last
   // session too: its own survey stops, and what waited for it is let go.
   const W = S.warm;
@@ -796,8 +863,9 @@ async function fullScan() {
   focusMoved(was);
   thumbs.reload(TOKEN);
   try {
-    await scanInto(S.model.root);
+    await scanInto(S.model.root, { switchAt: switchAt() });
   } catch (err) {
+    if (err.switchToRegions) return startRegions({ build: true });
     fatal('The survey stopped', err.message);
   }
   S.scanning = false;
@@ -960,6 +1028,179 @@ async function catchUp() {
 }
 
 /* ====================================================================== */
+/* region mode: a tree too large to hold whole, held near the eye         */
+/* ====================================================================== */
+
+/** What the loading sheet and the veil say while a large tree is read in regions. */
+const REGION_STAGE = 'Large directory: reading it in regions';
+
+/**
+ * The survey in region mode, until the service answers the questions that
+ * walk the whole tree: every list empty, and regions set so the Survey
+ * tab says so instead of listing nothing.
+ */
+const regionSurvey = () => ({ regions: true, largest: [], heavy: new Set(), empty: [], sealed: [], links: [], dupGroups: [] });
+
+/** The sentence a whole-tree question gives in region mode. */
+const notAtSize = (what) => `${what} is not available at this size.`;
+
+/**
+ * The entries past which a whole survey stops and the page reads the tree
+ * in regions: the threshold, when the service could not say how large the
+ * tree is; 0 (never) when it could, or when it draws every tree in regions.
+ */
+function switchAt() {
+  const R = S.info?.regions;
+  return R && R.threshold > 0 && R.entries === null ? R.threshold : 0;
+}
+
+/* ---------- the transport ---------- */
+
+/** A region answer read and decoded on the main thread. */
+async function mainThreadRegion(params) {
+  const res = await fetch(`/api/region?${new URLSearchParams(params)}`, { headers: { 'X-Terrane-Token': TOKEN } });
+  if (!res.ok) {
+    const err = await asError(res);
+    err.status = res.status;
+    throw err;
+  }
+  const text = await res.text();
+  const out = decode(JSON.parse(text));
+  out.bytes = text.length;
+  return out;
+}
+
+/** The region client's transport: /api/region decoded here, anything else as get(). */
+function regionFetch(route, params) {
+  return route === 'region' ? mainThreadRegion(params) : get(route, params);
+}
+
+/* ---------- opening a tree in regions ---------- */
+
+const regionClient = (model) => createRegions({
+  fetchJSON: regionFetch, model, onStale: () => { reopenRegions({ build: false }); }, onLanded: regionsLanded,
+});
+
+/**
+ * Puts a client whose tree is open in place of what was shown: a new
+ * model, nothing selected, the folder you are in its root; the survey's
+ * placeholder and its hooks; a layout from the root's region.
+ */
+function takeRegions(client) {
+  S.regions?.close();
+  const was = S.focus;
+  S.regions = client;
+  S.model = client.model;
+  S.focus = S.model.root;
+  S.sel.clear();
+  S.primary = null;
+  S.trail = [];
+  S.force = null;
+  S.search = null;
+  S.sessions = null;
+  findCache = { search: null, key: '', items: [] };
+  hold = null;
+  S.scanning = false;
+  clearTimeout(S.layoutTimer);
+  S.layoutTimer = 0;
+  S.survey = regionSurvey();
+  focusMoved(was);
+  runHooks(AFTER_SURVEY, S.survey, { full: true, regions: true });
+  relayout();
+  drawAll();
+}
+
+/**
+ * Starts region mode: at once when the service says the tree is above the
+ * threshold, or once a whole survey passed it (build: the service reads
+ * the tree afresh, and the partial model is dropped). The loading sheet
+ * and the veil say so while the service reads.
+ */
+async function startRegions({ build = false, t0 = performance.now() } = {}) {
+  splash?.stage(REGION_STAGE);
+  if (!S.noGL) fatal(REGION_STAGE, S.info.root, 'busy');
+  S.scanning = true;
+  S.model = new Model(S.info.name);
+  S.focus = S.model.root;
+  S.sel.clear();
+  S.primary = null;
+  S.survey = null;
+  drawAll();
+  const client = regionClient(new Model(S.info.name, { regions: true }));
+  let tree;
+  try {
+    tree = await client.open({
+      build,
+      onProgress: (t) => {
+        const p = t.progress;
+        if (p?.of) splash?.progress((p.folders + p.files) / p.of);
+      },
+    });
+  } catch (err) {
+    endSplash();
+    fatal('The survey stopped', err.message);
+    return;
+  }
+  splash?.progress(null);
+  takeRegions(client);
+  if (!S.noGL) hideVeil();
+  expose(t0);
+  if (tree.error) notice(tree.error, { kind: 'error' });
+  if (S.model.root.e) notice(`The root could not be read: ${S.model.root.e}`, { kind: 'error' });
+  connectEvents();
+  endSplash();
+  DEMO?.welcome(API);
+}
+
+let reopening = null;
+/**
+ * Opens the tree again: Rescan all (build), or a new generation the
+ * service read meanwhile (409 ESTALE). The old tree stays on screen until
+ * the new one is open; then the folder you were in is found by its path.
+ */
+function reopenRegions({ build = false } = {}) {
+  if (reopening) return reopening;
+  const keep = S.focus && !hostOf(S.focus) ? relPath(S.focus) : '';
+  reopening = (async () => {
+    const client = regionClient(new Model(S.info.name, { regions: true }));
+    let tree;
+    try {
+      tree = await client.open({ build });
+    } catch (err) {
+      notice(`The directory could not be read again: ${err.message}`, { kind: 'error' });
+      return;
+    }
+    takeRegions(client);
+    thumbs.reload(TOKEN);
+    if (tree.error) notice(tree.error, { kind: 'error' });
+    if (keep) {
+      const node = await client.resolve(keep);
+      if (S.regions === client && node?.d && node !== S.focus) setFocus(node, { remember: false });
+    }
+  })().finally(() => { reopening = null; });
+  return reopening;
+}
+
+/* ---------- regions landing ---------- */
+
+/** A batch of regions is in: the folders that wanted them open in the next layout. */
+function regionsLanded() {
+  queueLayout(30);
+}
+
+/** The deepest node of the whole tree on a path: api.nearest in whole-tree mode. */
+function nearestNode(rel) {
+  let node = S.model.root;
+  for (const part of String(rel ?? '').split('/')) {
+    if (!part) continue;
+    const next = node.d ? node.c.find((ch) => ch.n === part) : null;
+    if (!next) break;
+    node = next;
+  }
+  return node;
+}
+
+/* ====================================================================== */
 /* layout and paint                                                       */
 /* ====================================================================== */
 
@@ -972,6 +1213,7 @@ function queueLayout(ms) {
 }
 
 function relayout({ animate = true } = {}) {
+  const t0 = performance.now();
   S.model.now = Date.now();
   const eye = S.view.eye || { x: 0, y: 900, z: 1200 };
   S.lastEye = { ...eye, alt: S.view.alt || 900 };
@@ -992,6 +1234,10 @@ function relayout({ animate = true } = {}) {
   updateWhere();
   drawStatus();
   runHooks(AFTER_LAYOUT, S.layout);
+  // Region mode: the folders this layout would open whose children are
+  // not held yet are asked for. Without WebGL nothing opens by approach.
+  if (S.regions && !S.noGL) S.regions.want(S.layout.want);
+  measure('terrane:relayout', t0);
 }
 
 /**
@@ -1051,6 +1297,16 @@ function moveFocus(dir) {
   if (S.force && (S.noGL || !S.view.flight) && !onForcedBranch(dir)) releaseForce();
   if (dir === S.focus) return;
   S.focus = dir;
+  // In region mode the eye can come to rest over a closed folder whose
+  // children are not held: they are asked for, and shown once in.
+  if (S.regions && dir.u) {
+    S.regions.ensure(dir).then((n) => {
+      if (n !== dir || S.focus !== dir) return;
+      if (S.tab === 'contents') drawLedger(true);
+      if (!S.primary) drawInspector();
+      drawLegend();
+    }, () => {});
+  }
   drawCrumbs();
   if (S.tab === 'contents') drawLedger();
   if (!S.primary) drawInspector();
@@ -1189,6 +1445,7 @@ function strataOf(node) {
 }
 
 function paint() {
+  const tp = performance.now();
   const L = S.layout;
   const n = L.n;
   const color = new Uint32Array(n);
@@ -1229,7 +1486,7 @@ function paint() {
       s = STYLE.STIPPLE;
     } else if (type === BOX.CAP) {
       if (node.e) { c = THEME.clay; s = STYLE.HATCH; }
-      else if (node.c.length === 0) { c = THEME.paper; s = STYLE.HOLLOW; }
+      else if (kids(node) === 0) { c = THEME.paper; s = STYLE.HOLLOW; }
       else if (S.lens === 'kind') c = mixHex(THEME.clay, KINDS[dominantKind(node)].color, 0.56);
       else if (S.lens === 'age') {
         const k = ages && !inRoom ? ages.medianStep(node) : -1;
@@ -1295,6 +1552,7 @@ function paint() {
       shares[i * 2] = shares[i * 2 + 1] = 1;
     }
   }
+  measure('terrane:paint', tp);
   return { color, style, dim, bands, shares };
 }
 
@@ -1424,6 +1682,11 @@ function select(node, { add = false, quiet = false } = {}) {
   if (!quiet) drawLedger(true);
   if (S.primary) say(S.sel.size > 1 ? `${S.sel.size} items selected` : describe(S.primary));
   runHooks(AFTER_SELECT, S.sel, S.primary);
+  // Region mode: a folder selected whose children are not held is asked
+  // for, and the inspector, which reads them, is drawn again once in.
+  if (S.regions && node?.d && node.u) {
+    S.regions.ensure(node).then(() => { if (S.primary === node) drawInspector(); }, () => {});
+  }
 }
 
 /**
@@ -1476,8 +1739,22 @@ function overview() {
  * Flies to a folder. "Where you are" then follows from the camera, or,
  * without a 3D view, moves to the folder at once.
  */
-function setFocus(dir, { remember = true } = {}) {
+let goSeq = 0;
+function setFocus(dir, opts = {}) {
   if (!dir || !dir.d) return;
+  // Each go counts, so a region that lands late never overrides a newer one.
+  const seq = ++goSeq;
+  if (S.regions && dir.x !== undefined && (dir.u || !S.regions.live(dir))) {
+    S.regions.ensure(dir).then((node) => {
+      if (seq === goSeq && node?.d) goTo(node, opts);
+    }, (err) => notice(err.message, { kind: 'error' }));
+    return;
+  }
+  goTo(dir, opts);
+}
+
+/** setFocus once the folder's children are held (at once, in whole-tree mode). */
+function goTo(dir, { remember = true } = {}) {
   if (remember && S.focus !== dir) S.trail.push(S.focus);
   hold = null;
   if (!dir.p) {
@@ -1486,7 +1763,7 @@ function setFocus(dir, { remember = true } = {}) {
     relayout();
     S.view.overview();
     if (S.noGL || !S.view.look()) moveFocus(dir);
-    say(`Travelling to ${dir.n}, ${fmtCount(dir.c.length)} items`);
+    say(`Travelling to ${dir.n}, ${fmtCount(kids(dir))} items`);
     return;
   }
   forceOpen(dir);
@@ -1504,7 +1781,7 @@ function setFocus(dir, { remember = true } = {}) {
     hold = { dir, goal: S.view.flight?.to || S.view.pose() };
     moveFocus(dir);
   }
-  say(`Travelling to ${dir.n}, ${fmtCount(dir.c.length)} items`);
+  say(`Travelling to ${dir.n}, ${fmtCount(kids(dir))} items`);
 }
 
 /** Up one level; from an open archive's root, to the folder its file is in. */
@@ -1517,8 +1794,24 @@ const goBack = () => {
   if (prev && isAttached(prev)) setFocus(prev, { remember: false });
 };
 
-/** Makes a node visible (changing focus if it must) and flies to it. */
+let revealSeq = 0;
+/**
+ * Makes a node visible (changing focus if it must) and flies to it. In
+ * region mode a ref, or a node of a region let go since, is found by its
+ * path first.
+ */
 function reveal(node) {
+  if (!node) return;
+  const seq = ++revealSeq;
+  if (node.ref || (S.regions && !isAttached(node))) {
+    const found = S.regions ? S.regions.resolve(relPath(node)) : Promise.resolve(node.ref ? S.model.find(node.rel) : null);
+    found.then((n) => { if (seq === revealSeq && n) revealNow(n); }, (err) => notice(err.message, { kind: 'error' }));
+    return;
+  }
+  revealNow(node);
+}
+
+function revealNow(node) {
   if (!S.layout.index.has(node)) {
     forceOpen(node);
     relayout();
@@ -1534,7 +1827,9 @@ function activate(node) {
   else runOp({ type: 'open', path: relPath(node) });
 }
 
+let stepSeq = 0;
 function stepSelection(key) {
+  stepSeq++;
   const cur = S.primary;
   if (!cur) return select(S.focus.c[0] || S.focus);
   // An open archive's root steps up to its file, and the file down to it;
@@ -1542,7 +1837,13 @@ function stepSelection(key) {
   const I = S.interior;
   let next = null;
   if (key === 'ArrowUp') next = I && cur === I.root ? I.host : cur !== S.focus ? cur.p : null;
-  else if (key === 'ArrowDown') next = cur.d ? cur.c[0] : I && cur === I.host ? I.root : null;
+  else if (key === 'ArrowDown' && S.regions && cur.d && cur.u) {
+    const seq = ++stepSeq;
+    S.regions.ensure(cur).then((n) => {
+      if (seq === stepSeq && S.primary === cur && n?.c.length) select(n.c[0]);
+    }, () => {});
+    return undefined;
+  } else if (key === 'ArrowDown') next = cur.d ? cur.c[0] : I && cur === I.host ? I.root : null;
   else if (cur.p?.d) {
     const sibs = cur.p.c;
     const i = sibs.indexOf(cur);
@@ -1891,6 +2192,8 @@ function keepVerified(groups) {
 }
 
 async function verifyDuplicates() {
+  // Region mode holds no duplicate candidates until the service groups them.
+  if (S.regions) return;
   // A survey still queued after a refresh holds the files as they are
   // now; the one shown may hold nodes a refresh has replaced since.
   if (S.surveyTimer) surveyNow();
@@ -2091,7 +2394,7 @@ function rowFor(node, { showPath = false, total } = {}) {
   const crossed = !!S.time?.crossed?.(node);
   // A locked entry of an open archive, or one whose name climbs out.
   const mark = S.interior?.rowMark(node);
-  const cls = (node.d ? (node.e ? 'swatch is-sealed' : node.c.length ? 'swatch is-dir' : 'swatch is-empty') : 'swatch') + (crossed ? ' is-crossed' : '') + (mark ? ` ${mark.cls}` : '');
+  const cls = (node.d ? (node.e ? 'swatch is-sealed' : kids(node) ? 'swatch is-dir' : 'swatch is-empty') : 'swatch') + (crossed ? ' is-crossed' : '') + (mark ? ` ${mark.cls}` : '');
   const share = total ? Math.max(0, Math.min(1, node.s / total)) : 0;
   const row = el('div', { class: `row${S.sel.has(node) ? ' is-selected' : ''}`, draggable: node.p && !writable() && !hostOf(node) ? 'true' : null, 'aria-selected': S.sel.has(node) ? 'true' : 'false', title: showPath ? relPath(node) : node.n },
     el('span', { class: cls, style: node.d ? null : { background: cssHex(KINDS[node.k].color) } }),
@@ -2209,7 +2512,9 @@ function keepFocus(host, draw, fallback = host) {
 
 let ledgerKey = null;
 function drawLedger(keepScroll = false) {
+  const t0 = performance.now();
   keepFocus($('ledger'), () => drawLedgerNow(keepScroll), $('ledger-rich').hidden ? $('ledger-list') : $('ledger-rich'));
+  measure('terrane:ledger', t0);
 }
 
 function drawLedgerNow(keepScroll) {
@@ -2318,18 +2623,23 @@ function drawContents(sub, _host, keepScroll) {
     S.sort = { key, dir: S.sort.key === key ? -S.sort.dir : key === 'name' || key === 'untouched' ? 1 : -1 };
     drawLedger();
   }, titles);
-  const n = S.focus.c.length;
+  const f = S.focus;
+  const n = kids(f);
   const items = sortedContents();
-  const tools = subTools('contents', { items, search: S.search, focus: S.focus });
+  const tools = subTools('contents', { items, search: S.search, focus: f });
+  // Region mode: a folder of more than 5,000 lists its largest; the rest
+  // lie in its scree, and the sentence says how many and how much.
+  const tail = f.tail ? `The largest ${fmtCount(f.c.length)} of ${fmtCount(n)} items are listed; the other ${fmtCount(f.tail.n)}, ${fmtBytes(f.tail.s)}, lie in the scree.` : null;
   // Two rows: the count and its tools, then the sort keys over the list's
   // columns (Name over the names, Size on the size column). An empty
   // folder has nothing to sort, so it shows no keys.
   sub.replaceChildren(
-    el('div', { class: 'sub-row is-count' }, subCount(`${fmtCount(n)} item${n === 1 ? '' : 's'}`, ` · ${fmtBytes(S.focus.s)}`), tools),
+    el('div', { class: 'sub-row is-count' }, subCount(`${fmtCount(n)} item${n === 1 ? '' : 's'}`, ` · ${fmtBytes(f.s)}`), tools),
+    ...(tail ? [el('div', { class: 'sub-row sub-note', text: tail })] : []),
     ...(n ? [el('div', { class: 'sub-row is-columns' },
       el('span', { class: 'sorts' }, sortBtn('name', 'Name'), sortBtn('date', 'Changed'), sortBtn('untouched', 'Untouched', UNTOUCHED), sortBtn('size', 'Size')))] : []));
   list.render = (node) => rowFor(node, { total: S.focus.s });
-  list.setEmpty(S.focus.e ? `This folder could not be read (${S.focus.e}).` : S.focus.stub ? 'This folder has not been read yet.' : 'This folder is empty.');
+  list.setEmpty(f.e ? `This folder could not be read (${f.e}).` : f.u ? 'Reading this folder…' : f.stub ? 'This folder has not been read yet.' : 'This folder is empty.');
   list.setItems(items, keepScroll, { follow: S.primary });
 }
 
@@ -2356,7 +2666,7 @@ function findingsItems() {
 
 function drawFindings(sub, _host, keepScroll) {
   if (!S.search) {
-    sub.replaceChildren(caption(S.query && S.scanning ? 'Runs again once the survey is done' : 'Type in Find to search every level.'));
+    sub.replaceChildren(caption(S.regions ? notAtSize('Search') : S.query && S.scanning ? 'Runs again once the survey is done' : 'Type in Find to search every level.'));
     list.setEmpty('');
     list.setItems([]);
     return;
@@ -2406,6 +2716,11 @@ function itemButton(node, figure) {
 
 function drawSurvey(sub, host) {
   const sv = S.survey;
+  if (S.regions) {
+    sub.replaceChildren(caption('Noteworthy conditions, every level'));
+    host.replaceChildren(el('p', { class: 'note', text: notAtSize('The survey of the whole directory') }));
+    return;
+  }
   if (!sv) {
     sub.replaceChildren(caption('Compiled once the survey is done'));
     host.replaceChildren();
@@ -2646,7 +2961,7 @@ const readingRow = (r) => el('li', {}, el('span', { class: `glyph ${r.glyph}` })
 /* The inspector's own sections, in INSPECTOR order. */
 
 function nodeTitle(node) {
-  const kindLine = node.d ? (node.e ? `Sealed folder · ${node.e}` : node.c.length ? 'Folder' : 'Empty folder')
+  const kindLine = node.d ? (node.e ? `Sealed folder · ${node.e}` : kids(node) ? 'Folder' : 'Empty folder')
     : `${KINDS[node.k].label}${extOf(node.n) ? ` · .${extOf(node.n)}` : ''}${node.f & FLAG_LINK ? ' · symbolic link' : ''}${node.f & FLAG_HIDDEN ? ' · hidden' : ''}`;
   return el('div', { class: 'insp-title' },
     el('div', { class: 'insp-kind' }, el('span', { class: node.d ? 'swatch is-dir' : 'swatch', style: node.d ? null : { background: cssHex(KINDS[node.k].color) } }), kindLine),
@@ -2872,9 +3187,11 @@ let statusParts = null;
 function statusLine() {
   if (statusParts) return statusParts;
   const fig = () => el('span', { class: 'num' });
-  statusParts = { lamp: el('span', { class: 'pulse' }), dirs: fig(), files: fig(), bytes: fig() };
+  statusParts = { lamp: el('span', { class: 'pulse' }), dirs: fig(), files: fig(), bytes: fig(), held: fig(), entries: fig() };
+  // Region mode: how much of the tree the page holds, after the figures.
+  statusParts.regions = el('span', { class: 'status-regions', hidden: true }, ' · Regions · ', statusParts.held, ' of ', statusParts.entries, ' entries held');
   // Files, bytes, folders: in a narrow cell the ellipsis takes the least needed figure first.
-  $('status').replaceChildren(statusParts.lamp, el('span', {}, statusParts.files, ' files · ', statusParts.bytes, ' · ', statusParts.dirs, ' folders'));
+  $('status').replaceChildren(statusParts.lamp, el('span', {}, statusParts.files, ' files · ', statusParts.bytes, ' · ', statusParts.dirs, ' folders', statusParts.regions));
   return statusParts;
 }
 
@@ -2899,6 +3216,12 @@ function drawStatus() {
   countTo(parts.dirs, r.dc, fmtCount);
   countTo(parts.files, r.fc, fmtCount);
   countTo(parts.bytes, r.s, fmtBytes);
+  const R = S.regions;
+  parts.regions.hidden = !R;
+  if (R) {
+    setText(parts.held, fmtCount(R.held));
+    setText(parts.entries, fmtCount(R.entries ?? 0));
+  }
   $('status').title = `${fmtCount(S.layout?.n || 0)} blocks drawn`;
 }
 
@@ -2907,6 +3230,15 @@ function drawStatus() {
 /* ====================================================================== */
 
 function runQuery() {
+  // Region mode: the page holds only part of the tree, so it cannot
+  // search all of it; it says so instead of listing what it happens to hold.
+  if (S.regions) {
+    S.search = null;
+    $('q-count').textContent = '';
+    if (S.query.trim()) say(notAtSize('Search'));
+    runHooks(AFTER_QUERY, null, S.query);
+    return;
+  }
   const pred = parseQuery(S.query, QUERY);
   S.search = pred ? runSearch(S.model, pred) : null;
   $('q-count').textContent = S.search ? `${fmtCount(S.search.list.length)} found` : '';
@@ -3357,12 +3689,13 @@ function wireKeys() {
 
   // The shared age table, rebuilt with every survey so no feature walks
   // the tree for it and pressing a key never waits on it.
-  AFTER_SURVEY.add({ id: 'ages', order: 10, run: () => { S.ages = buildAgeTable(S.model.root, Date.now()); } });
+  // In region mode every folder carries its own row from the service.
+  AFTER_SURVEY.add({ id: 'ages', order: 10, run: () => { S.ages = S.regions ? S.regions.ages : buildAgeTable(S.model.root, Date.now()); } });
 
   PIN_SOURCES.add({ id: 'search', order: 20, pins: searchPins });
   PIN_SOURCES.add({ id: 'heavy', order: 30, pins: heavyPins });
 
-  TIP_LINES.add({ id: 'levels', order: 10, lines: (node, c) => (c.type === BOX.CAP && !node.e && node.c.length ? `${node.h + 1} level${node.h ? 's' : ''} inside · opens as you approach · double-click to go` : null) });
+  TIP_LINES.add({ id: 'levels', order: 10, lines: (node, c) => (c.type === BOX.CAP && !node.e && kids(node) ? `${node.h + 1} level${node.h ? 's' : ''} inside · opens as you approach · double-click to go` : null) });
   TIP_LINES.add({ id: 'matches', order: 20, lines: (node, c) => (c.type !== BOX.SCREE && node.d && S.search?.within.has(node) ? `${fmtCount(S.search.within.get(node))} matches inside` : null) });
   TIP_LINES.add({
     id: 'placing', order: 30,
@@ -3465,6 +3798,20 @@ const API = Object.freeze({
     return i >= 0;
   },
   relayout, queueLayout, repaint, drawPins, visibleIndexOf,
+  // Region mode (regions.js): whether the page holds only regions; and,
+  // in either mode, a folder's children held (ensure), a path or a ref
+  // made a node (resolve, resolveAll, resolveRef), each a promise, and
+  // the deepest node held on a path (nearest). In whole-tree mode they
+  // answer at once from the whole model.
+  regionMode: () => !!S.regions,
+  ensure: (dir) => (S.regions ? S.regions.ensure(dir) : Promise.resolve(dir ?? null)),
+  resolve: (rel) => (S.regions ? S.regions.resolve(rel) : Promise.resolve(rel === null || rel === undefined ? null : S.model.find(rel))),
+  resolveAll: (rels) => (S.regions ? S.regions.resolveAll(rels) : Promise.resolve(rels.map((r) => (r === null || r === undefined ? null : S.model.find(r))))),
+  resolveRef: (ref) => (!ref?.ref ? Promise.resolve(ref ?? null) : S.regions ? S.regions.resolve(ref.rel) : Promise.resolve(S.model.find(ref.rel))),
+  nearest: (rel) => (S.regions ? S.regions.nearest(rel) : nearestNode(rel)),
+  // How many entries a folder holds (the service's count in region mode),
+  // and the sentence a whole-tree question gives in region mode.
+  kids, notAtSize,
   select, selectAll, setFocus, reveal, activate, describe, say, forceOpen, overview, setLens, copyText,
   rescan: fullScan,
   drawAll, drawTabs, drawLedger, drawInspector, drawLegend, drawStatus, runQuery, setQuery, tabSections,
@@ -3575,6 +3922,15 @@ async function start() {
   wireViewport();
   wireControls();
   wireKeys();
+  // Region mode: the service says the tree is above the threshold (or
+  // draws every tree in regions), so the page never holds it whole.
+  const R = S.info.regions;
+  const large = !!R && (R.threshold === 0 || (R.entries !== null && R.entries > R.threshold));
+  if (large) {
+    thumbs.load(TOKEN);
+    await startRegions({ build: false, t0: performance.now() });
+    return;
+  }
   // The tree the service kept from the last complete survey, when there is
   // one: drawn first, then checked against the disk (catchUp).
   const warm = S.info.warm && !S.info.snapshot ? S.info.warm : null;
@@ -3609,8 +3965,13 @@ async function start() {
     drawAll();
   }
   try {
-    await scanInto(S.model.root);
+    await scanInto(S.model.root, { switchAt: switchAt() });
   } catch (err) {
+    // Larger than the page keeps whole: the tree is read in regions.
+    if (err.switchToRegions) {
+      await startRegions({ build: true, t0 });
+      return;
+    }
     endSplash();
     fatal('The survey stopped', err.message);
     return;
@@ -3641,6 +4002,7 @@ function expose(t0) {
     S, list, scanMs: Math.round(performance.now() - t0), api: API, install: installFeatures, warm: warmRecord, demo: DEMO,
     get firstDrawMs() { return firstDrawMs; },
     get places() { return S.places; },
+    get regions() { return S.regions; },
   };
 }
 

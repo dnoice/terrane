@@ -18,7 +18,9 @@
  *       Set benchmark on a named folder is data-named. The inspector's
  *       Benchmark head carries its date as a figure, its text unchanged; Then
  *       and Now break only at separators; Set benchmark stands in an actions
- *       grid.
+ *       grid. In region mode B reads the folder's region before measuring,
+ *       J finds the return point by its path, and the first survey reads
+ *       every benchmark's folder by its path before comparing.
  *     - 1.3.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
  *       Places tab ends with the sections other features keep there
  *       (api.tabSections('places')), such as Saved searches. A batch
@@ -250,7 +252,9 @@ export function install(api) {
       api.say(WAIT);
       return;
     }
-    const node = S.model.find(path);
+    let node = S.model.find(path);
+    // In region mode the folder's children are held before it is measured.
+    if (node?.d && api.regionMode()) node = await api.ensure(node);
     if (!node || !node.d) {
       api.notice(`${named(dir)} is no longer there, so no benchmark was set.`, { kind: 'error' });
       return;
@@ -430,7 +434,15 @@ export function install(api) {
       api.say('No return point yet. H marks one where you are.');
       return;
     }
-    const node = S.model.find(to.rel);
+    // In region mode the return point's folder is found by its path first.
+    if (api.regionMode()) {
+      api.resolve(to.rel).then((node) => { if (store.ret === to) goBackTo(to, node); });
+      return;
+    }
+    goBackTo(to, S.model.find(to.rel));
+  }
+
+  function goBackTo(to, node) {
     if (!node || !node.d) {
       api.say(`The return point's folder, ${to.rel || 'the root'}, is no longer there. H marks a new one.`);
       return;
@@ -943,14 +955,31 @@ export function install(api) {
   // in both, and what changed is said only of the checked tree.
   api.AFTER_SURVEY.add({
     id: 'places', order: 30, owner: OWNER,
-    run: (_sv, { full, warm, settled } = {}) => {
+    run: (_sv, { full, warm, settled, regions } = {}) => {
       if (!full && !settled) return;
-      store.resolve(S.model);
-      if (warm) return;
-      if (!announced) {
-        announced = true;
-        announce();
-      } else if (store.benchmarks.some((b) => !b.node && !b.noticed)) queueLost();
+      const found = () => {
+        store.resolve(S.model);
+        if (warm) return;
+        if (!announced) {
+          announced = true;
+          announce();
+        } else if (store.benchmarks.some((b) => !b.node && !b.noticed)) queueLost();
+      };
+      if (!regions) {
+        found();
+        return;
+      }
+      // Region mode: the benchmarks' folders and the return point's are
+      // read by their paths first, so the store finds them held (and the
+      // page pins them); then they are compared as after any survey.
+      const model = S.model;
+      const rels = [...store.benchmarks.map((b) => b.rel), ...(store.ret ? [store.ret.rel] : [])];
+      api.resolveAll(rels).then(() => {
+        if (S.model !== model) return;
+        found();
+        if (S.tab === 'places') api.drawLedger(true);
+        api.drawInspector();
+      }, (err) => api.notice(`Benchmarks could not be found: ${err.message}`, { kind: 'error' }));
     },
   });
 

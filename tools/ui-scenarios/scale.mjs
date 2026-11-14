@@ -14,7 +14,13 @@
  *
  * ✒ Changelog:
  *     - 1.0.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] —
- *       Initial release.
+ *       Initial release. In region mode, until the service answers them,
+ *       the tour's search and survey steps note that they are not
+ *       available at this size; a folder walked counts as reached when you
+ *       are in it or below it, its region held; the region requests'
+ *       timings, the entries held and whether a worker decodes are
+ *       recorded; async trace events (b/e, as measures are traced) pair,
+ *       so a long task is named by its terrane:* measure.
  *
  * ✒ Description:
  *     Measures the page over a synthetic snapshot: how soon the first box
@@ -51,6 +57,10 @@
  *       the first box again after a reload
  *     - Without WebGL the overview and the trace are left out and the
  *       heap is still measured
+ *     - In region mode: held entries and regions, region requests' median
+ *       and 95th percentile, bytes read and whether the worker decoded
+ *       them; the search and the survey, not yet answered at this size,
+ *       are typed and opened and their sentences noted
  *
  * ✒ Usage Instructions:
  *     node tools/make-synthetic.mjs --entries 100k --out <dir>
@@ -92,18 +102,24 @@ async function heap(t, { gc = true } = {}) {
   };
 }
 
-/** Intervals [start, end] (µs) of the events that pass keep on one thread, X events and B/E pairs. */
+/**
+ * Intervals [start, end] (µs) of the events that pass keep on one thread:
+ * X events, B/E pairs, and b/e pairs (async events, as user timing's
+ * measures are traced), matched by name and id.
+ */
 function intervals(events, keep) {
   const out = [];
   const open = new Map();
+  const key = (e) => (e.ph === 'b' || e.ph === 'e' ? `${e.name}|${e.id ?? e.id2?.local ?? e.id2?.global ?? ''}` : e.name);
   for (const e of events) {
     if (!keep(e.name)) continue;
     if (e.ph === 'X') out.push([e.ts, e.ts + (e.dur || 0), e]);
-    else if (e.ph === 'B') {
-      if (!open.has(e.name)) open.set(e.name, []);
-      open.get(e.name).push(e);
-    } else if (e.ph === 'E') {
-      const b = open.get(e.name)?.pop();
+    else if (e.ph === 'B' || e.ph === 'b') {
+      const k = key(e);
+      if (!open.has(k)) open.set(k, []);
+      open.get(k).push(e);
+    } else if (e.ph === 'E' || e.ph === 'e') {
+      const b = open.get(key(e))?.pop();
       if (b) out.push([b.ts, e.ts, b]);
     }
   }
@@ -264,43 +280,70 @@ export default {
         });
         if (!rel) break;
         await t.key('Enter');
-        await t.waitFor((T, r) => T.api.relPath(T.S.focus) === r && (!T.S.regions || T.S.regions.stats?.idle !== false), { args: [rel], timeout: 120000, what: `the folder ${rel}` });
+        // With WebGL the location follows the eye and may settle inside
+        // the folder; in region mode its children must be held and listed.
+        await t.waitFor((T, r) => {
+          const f = T.api.relPath(T.S.focus);
+          return (f === r || f.startsWith(`${r}/`)) && !T.S.focus.u && (!T.S.regions || T.S.regions.stats?.idle !== false);
+        }, { args: [rel], timeout: 120000, what: `the folder ${rel}` });
         await t.settle({ timeout: 60000 });
+        await t.eval(() => document.getElementById('ledger-list').focus());
       }
       tour.depth = depth;
 
       // f. A search, a reveal from Findings, a second search, cleared.
+      // Until the service answers searches, a page in regions says that
+      // search is not available at this size; the tour types it anyway.
+      const searchable = await t.app((T) => !T.S.regions);
       await t.eval(() => document.getElementById('q').focus());
       await t.type('report');
-      await t.waitFor((T) => T.S.query === 'report' && T.S.search?.list?.length > 0, { timeout: 120000, what: 'the matches for report' });
-      tour.reportMatches = await t.app((T) => T.S.search.total ?? T.S.search.list.length);
-      await t.eval(() => document.getElementById('ledger-list').focus());
-      await t.key('ArrowDown');
-      await t.key('Enter');
-      await t.settle({ timeout: 60000 });
-      tour.revealed = await t.app((T) => !!T.S.primary);
-      // Ctrl+A as a DevTools key event selects nothing in a field (the
-      // editor's command is not run), so the text is selected as it would.
-      await t.eval(() => {
-        const q = document.getElementById('q');
-        q.focus();
-        q.select();
-      });
-      await t.type('ext:psd >50mb');
-      await t.waitFor((T) => T.S.query === 'ext:psd >50mb', { timeout: 120000, what: 'the second search' });
-      tour.psdMatches = await t.app((T) => (T.S.search ? T.S.search.total ?? T.S.search.list.length : 0));
-      await t.key('Escape');
-      await t.waitFor((T) => !T.S.query, { timeout: 30000, what: 'the search cleared' });
-      await t.settle({ timeout: 60000 });
+      if (!searchable) {
+        await t.waitFor((T) => T.S.query === 'report', { timeout: 30000, what: 'the query' });
+        await t.sleep(200);
+        tour.search = await t.live();
+        t.note(`search in regions: "${tour.search}"`);
+        await t.key('Escape');
+        await t.waitFor((T) => !T.S.query, { timeout: 30000, what: 'the search cleared' });
+        await t.settle({ timeout: 60000 });
+      }
+      if (searchable) {
+        await t.waitFor((T) => T.S.query === 'report' && T.S.search?.list?.length > 0, { timeout: 120000, what: 'the matches for report' });
+        tour.reportMatches = await t.app((T) => T.S.search.total ?? T.S.search.list.length);
+        await t.eval(() => document.getElementById('ledger-list').focus());
+        await t.key('ArrowDown');
+        await t.key('Enter');
+        await t.settle({ timeout: 60000 });
+        tour.revealed = await t.app((T) => !!T.S.primary);
+        // Ctrl+A as a DevTools key event selects nothing in a field (the
+        // editor's command is not run), so the text is selected as it would.
+        await t.eval(() => {
+          const q = document.getElementById('q');
+          q.focus();
+          q.select();
+        });
+        await t.type('ext:psd >50mb');
+        await t.waitFor((T) => T.S.query === 'ext:psd >50mb', { timeout: 120000, what: 'the second search' });
+        tour.psdMatches = await t.app((T) => (T.S.search ? T.S.search.total ?? T.S.search.list.length : 0));
+        await t.key('Escape');
+        await t.waitFor((T) => !T.S.query, { timeout: 30000, what: 'the search cleared' });
+        await t.settle({ timeout: 60000 });
+      }
 
-      // g. The Survey tab, and a reveal from Largest files.
+      // g. The Survey tab, and a reveal from Largest files (in regions,
+      // until the service answers the survey, the tab says it is not
+      // available at this size).
       await t.tabTo('.tabs [data-tab=survey]');
       await t.key('Enter');
       await t.waitFor((T) => T.S.tab === 'survey' && !!T.S.survey, { timeout: 120000, what: 'the Survey tab' });
-      await t.tabTo('#ledger-rich .item');
-      await t.key('Enter');
-      await t.settle({ timeout: 60000 });
-      tour.surveyRevealed = await t.app((T) => T.S.primary?.n ?? null);
+      if (await t.eval(() => !!document.querySelector('#ledger-rich .item'))) {
+        await t.tabTo('#ledger-rich .item');
+        await t.key('Enter');
+        await t.settle({ timeout: 60000 });
+        tour.surveyRevealed = await t.app((T) => T.S.primary?.n ?? null);
+      } else {
+        tour.survey = (await t.text('#ledger-rich')).trim();
+        t.note(`the survey in regions: "${tour.survey}"`);
+      }
 
       // h. Back up, then the overview.
       await t.eval(() => document.getElementById('view').focus());
@@ -337,9 +380,13 @@ export default {
     result.afterGC = await heap(t);
 
     // k. What the page holds.
-    result.held = await t.app((T) => (T.S.regions
-      ? { entries: T.S.regions.stats?.held ?? null, regions: T.S.regions.stats?.regions ?? null, stats: T.S.regions.stats ?? null }
-      : { entries: T.S.model.root.fc + T.S.model.root.dc + 1, regions: null }));
+    result.held = await t.app((T) => {
+      if (!T.S.regions) return { entries: T.S.model.root.fc + T.S.model.root.dc + 1, regions: null };
+      const st = T.S.regions.stats;
+      const ms = st.ms.slice().sort((a, b) => a - b);
+      const at = (q) => (ms.length ? Math.round(ms[Math.min(ms.length - 1, Math.floor(q * ms.length))] * 10) / 10 : null);
+      return { entries: st.held, regions: st.regions, requests: st.requests, dropped: st.dropped, bytesMB: Math.round(st.bytes / 1048576 * 10) / 10, regionMs: { median: at(0.5), p95: at(0.95) }, worker: T.regionWorker };
+    });
 
     // l. The service: its memory and load time, starting nothing.
     result.service = await t.eval(async () => {

@@ -15,7 +15,8 @@
  *
  * ✒ Changelog:
  *     - 1.0.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] —
- *       Initial release.
+ *       Initial release. A browser point above the threshold runs, the
+ *       page drawing it in regions; --force is gone.
  *
  * ✒ Description:
  *     Measures Terrane at several sizes of synthetic tree, one heavy
@@ -38,9 +39,8 @@
  *       elsewhere), polling every 20 s
  *     - A browser point runs the scale scenario with --no-shots,
  *       --no-baseline, --ready-ms 600000 and --min-free 6, and reads its
- *       SCALE line and its pass, fail and skip counts; until the page
- *       draws in regions, only points at or below the threshold run a
- *       browser, unless --force
+ *       SCALE line and its pass, fail and skip counts; above the threshold
+ *       the page draws in regions, at or below it it holds the whole tree
  *     - --service-only: the service on the snapshot, polled until its tree
  *       is ready (load time, memory), eight levels walked down by the
  *       child folder with the most folders beneath, each region timed, 50
@@ -57,7 +57,7 @@
  *     node tools/scale.mjs
  *     node tools/scale.mjs --points 100k --nogl
  *     node tools/scale.mjs --points 400k,1m --service-only --keep
- *     node tools/scale.mjs --points 1m --force --region-threshold 0
+ *     node tools/scale.mjs --points 100k --region-threshold 0
  *     node tools/scale.mjs --points 5m --service-only --out C:\temp\scale-5m.json
  *
  * ✒ Command-Line Arguments:
@@ -71,7 +71,6 @@
  *         --nogl                 The browser pass without WebGL.
  *         --service-only         Measure the service alone, no browser.
  *         --region-threshold <n> Passed to every service (environment).
- *         --force                Run a browser point above the threshold.
  *     Output:
  *         --out <file>           Where the JSON goes.
  *         --keep                 Keep the generated datasets.
@@ -371,11 +370,6 @@ async function main() {
     const label = labelOf(entries);
     const res = { point: label, entries, freeGBAtStart: Math.round(freeGB() * 10) / 10 };
     results.push(res);
-    if (!opt['service-only'] && entries > THRESHOLD && !opt.force) {
-      res.skipped = `above the threshold (${THRESHOLD.toLocaleString('en-US')}) the page would hold the whole tree; it draws in regions from increment 2 (--force runs it anyway)`;
-      print(`\n[${label}] skipped: ${res.skipped}`);
-      continue;
-    }
     print(`\n[${label}] generating ${entries.toLocaleString('en-US')} entries`);
     let point = null;
     try {

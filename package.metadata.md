@@ -16,7 +16,10 @@
       test script runs tools/regions-test.mjs after the warm test and
       before the demo test: the tree the service keeps in columns, its
       regions and changes against the page's model, the generator of
-      synthetic trees, and the region routes through the service.
+      synthetic trees, and the region routes through the service. It then
+      runs tools/partial-test.mjs, before the demo test: the page's region
+      mode (regions.js, the partial model, the layout's wants, RegionAges,
+      the budget) against the whole model, with no service.
     - 1.11.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — Adds
       the demo script (tools/demo.mjs: the repository served as GitHub
       Pages serves it, or the demo world written to disk) and the export

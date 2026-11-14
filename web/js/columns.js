@@ -15,7 +15,8 @@
  * ✒ Changelog:
  *     - 1.0.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] —
  *       Initial release: the tree in typed columns, regions, the region
- *       protocol's answers and the shared refresh.
+ *       protocol's answers and the shared refresh. The record D's indices
+ *       are model.js's, re-exported here, so the page reads D by them.
  *
  * ✒ Description:
  *     The directory tree held in typed columns instead of one object per
@@ -69,8 +70,8 @@
  *     await refreshFrom(tree, 'docs', readDepth1, readDeep)
  *
  * ✒ Other Important Information:
- *     - Dependencies: model.js (kindOf), timeline.js (LADDER_DAYS,
- *       STEPS, DAY)
+ *     - Dependencies: model.js (kindOf, the record D's indices),
+ *       timeline.js (LADDER_DAYS, STEPS, DAY)
  *     - Compatible platforms: any browser with ES2022 modules; Node.js
  *       22.5+
  *     - Performance: about 103 bytes an entry with names, plus 253 bytes
@@ -82,8 +83,13 @@
  * ----------------------------------------------------------------------------
  */
 
-import { kindOf } from './model.js';
+import {
+  kindOf, D_ID, D_NAME, D_MTIME, D_ERR, D_S, D_FC, D_DC, D_H, D_MM, D_CN, D_KS, D_AB, D_AF, D_MD, D_LEN,
+} from './model.js';
 import { LADDER_DAYS, STEPS, DAY } from './timeline.js';
+
+// The record D's layout is model.js's, which the page's model reads it by.
+export { D_ID, D_NAME, D_MTIME, D_ERR, D_S, D_FC, D_DC, D_H, D_MM, D_CN, D_KS, D_AB, D_AF, D_MD, D_LEN };
 
 /** Above this many entries (folders and files, the root counted) the page draws in regions. */
 export const REGION_THRESHOLD = 400000;
@@ -95,22 +101,6 @@ export const REGION_WITH_MAX = 100;
 export const REGION_FRESH_MAX = 50;
 export const REGION_ENTRIES_MAX = 40000;
 export const REGION_BYTES_MAX = 4 * 1024 * 1024;
-
-export const D_ID = 0;
-export const D_NAME = 1;
-export const D_MTIME = 2;
-export const D_ERR = 3;
-export const D_S = 4;
-export const D_FC = 5;
-export const D_DC = 6;
-export const D_H = 7;
-export const D_MM = 8;
-export const D_CN = 9;
-export const D_KS = 10;
-export const D_AB = 19;
-export const D_AF = 40;
-export const D_MD = 61;
-export const D_LEN = 62;
 
 /** Width of an age row: the ladder's steps, then the total. */
 const W = STEPS + 1;

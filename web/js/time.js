@@ -16,7 +16,9 @@
  *     - 1.3.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
  *       Since head carries its date as a figure and Where the change is its
  *       count (api.sectionTitle), their text unchanged; Changed and Not
- *       changed break only at their separators (api.parts).
+ *       changed break only at their separators (api.parts). crossedAt and
+ *       Where the change is read a folder's count through kids(), so a
+ *       folder held in region mode answers as in a whole tree.
  *     - 1.2.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] —
  *       , . < > carry one label each for the command palette: one date
  *       earlier or later, the earliest date, the present.
@@ -82,7 +84,7 @@
  * ----------------------------------------------------------------------------
  */
 
-import { fmtBytes, fmtCount, fmtAge, fmtDay } from './model.js';
+import { fmtBytes, fmtCount, fmtAge, fmtDay, kids } from './model.js';
 import { STEPS, buildAgeTable } from './timeline.js';
 import { BOX, AUX } from './layout.js';
 
@@ -106,7 +108,7 @@ export function crossedAt(A, k, node) {
   const t = A.T[k];
   if (!node.d) return node.m > t;
   if (node.e) return false;
-  if (!node.c.length) return node.m > t;
+  if (!kids(node)) return node.m > t;
   return node.mm > t && A.kept(node, k) <= 0;
 }
 
@@ -281,12 +283,13 @@ export function install(api) {
     const facts = el('dl', { class: 'facts since' },
       fact('Changed', api.parts(el('b', { text: fmtBytes(cb) }), `${fmtCount(cf)} file${cf === 1 ? '' : 's'}`, pctOf(share)), shareBar(share, 1)),
       fact('Not changed', api.parts(fmtBytes(tb - cb), `${fmtCount(tf - cf)} file${tf - cf === 1 ? '' : 's'}`, pctOf(tf ? 1 - share : 0)), shareBar(tf ? 1 - share : 0, 1)));
-    // Where the change is: the entries here holding the most changed bytes.
+    // Where the change is: the entries here holding the most changed bytes;
+    // in region mode, those of the folder's held children.
     const where = [];
     for (const ch of node.c) {
       const C = tableFor(ch);
       const f = ch.d ? C.changedFiles(ch, k) : ch.m > st.t ? 1 : 0;
-      const empty = ch.d && !ch.e && !ch.c.length && ch.m > st.t;
+      const empty = ch.d && !ch.e && !kids(ch) && ch.m > st.t;
       if (f || empty) where.push({ ch, b: C.changedBytes(ch, k), f });
     }
     where.sort((a, b) => b.b - a.b || b.f - a.f || a.ch.n.localeCompare(b.ch.n));

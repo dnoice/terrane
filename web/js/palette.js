@@ -1,18 +1,21 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Command Palette (Terrane Edition - v1.0)
+ *     - Title: Command Palette (Terrane Edition - v1.1)
  *     - File Name: palette.js
  *     - Relative Path: web/js/palette.js
  *     - Artifact Type: javascript
- *     - Version: 1.0.0
- *     - Date: 11/13/2026
- *     - Update: Friday, November 13, 2026
+ *     - Version: 1.1.0
+ *     - Date: 11/14/2026
+ *     - Update: Saturday, November 14, 2026
  *     - Author: Dennis 'dendogg' Smaltz
  *     - A.I. Acknowledgement: Anthropic - Claude Opus 5.5
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
  *
  * ✒ Changelog:
+ *     - 1.1.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] —
+ *       In region mode the places group says "Places are not available at
+ *       this size.", and so does the live region; the actions are as before.
  *     - 1.0.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] —
  *       Initial release.
  *
@@ -109,6 +112,9 @@ export function install(api) {
   const $ = (id) => document.getElementById(id);
 
   /* ---------- places: every folder and file, folders first ---------- */
+
+  /** What the places group says in region mode. */
+  const PLACES_NOT_HERE = 'Places are not available at this size.';
 
   // nodes[k] and lower[k] side by side; paths (and their lower-cased form)
   // only once a query asks for them.
@@ -247,21 +253,23 @@ export function install(api) {
       if (speak && item?.node) api.say(api.describe(item.node));
     }
 
-    function draw(acts, spots) {
+    function draw(acts, spots, noPlaces = false) {
       shown = [...acts, ...spots.map((node) => ({ node }))];
       const parts = [];
       if (acts.length) parts.push(el('div', { class: 'palette-group', role: 'presentation', text: 'Actions' }));
       acts.forEach((a, k) => parts.push(option(a, k)));
       if (spots.length) parts.push(el('div', { class: 'palette-group', role: 'presentation', text: 'Places' }));
       spots.forEach((n, k) => parts.push(option({ node: n }, acts.length + k)));
-      if (!shown.length) parts.push(el('p', { class: 'palette-empty', role: 'presentation', text: 'Nothing matches. Try fewer letters, or a / to search paths.' }));
+      // Region mode: the page holds only part of the tree, so it lists no places.
+      if (noPlaces) parts.push(el('div', { class: 'palette-group', role: 'presentation', text: 'Places' }), el('p', { class: 'palette-empty', role: 'presentation', text: PLACES_NOT_HERE }));
+      else if (!shown.length) parts.push(el('p', { class: 'palette-empty', role: 'presentation', text: 'Nothing matches. Try fewer letters, or a / to search paths.' }));
       listbox.replaceChildren(...parts);
       setActive(0);
       clearTimeout(sayTimer);
       sayTimer = setTimeout(() => {
         if (done) return;
         const a = `${fmtCount(acts.length)} action${acts.length === 1 ? '' : 's'}`;
-        api.say(input.value.trim() ? `${a}, ${fmtCount(spots.length)} place${spots.length === 1 ? '' : 's'}` : a);
+        api.say(!input.value.trim() ? a : noPlaces ? `${a}. ${PLACES_NOT_HERE}` : `${a}, ${fmtCount(spots.length)} place${spots.length === 1 ? '' : 's'}`);
       }, 250);
     }
 
@@ -273,6 +281,10 @@ export function install(api) {
         return;
       }
       const acts = rank(q, all, { limit: ACTIONS_MAX, key: (a) => a.label }).map((r) => r.item);
+      if (api.regionMode()) {
+        draw(acts, [], true);
+        return;
+      }
       const P = placeList();
       const byPath = q.includes('/');
       if (byPath) withPaths(P);

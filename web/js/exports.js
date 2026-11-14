@@ -15,7 +15,10 @@
  * ✒ Changelog:
  *     - 1.1.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — Export
  *       CSV on the Contents and Findings count rows is a 24 px icon tool
- *       (download), named Export CSV, its title saying what it saves.
+ *       (download), named Export CSV, its title saying what it saves. In
+ *       region mode Findings and the Survey's lists have nothing to export
+ *       at this size, and a folder held in part exports its largest items
+ *       and says so.
  *     - 1.0.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] —
  *       Initial release.
  *
@@ -85,8 +88,8 @@ export function install(api) {
   const opts = { relLabel: (n) => api.relLabel(n) };
   const base = () => slug(S.info.name) || 'directory';
 
-  /** Saves a table as a CSV file and says so; an empty one says why there is nothing. */
-  function save(what, table, why) {
+  /** Saves a table as a CSV file and says so (said(n, file) words it instead); an empty one says why there is nothing. */
+  function save(what, table, why, said = null) {
     const n = table.rows.length;
     if (!n) {
       api.notice(`Nothing to export: ${why}.`, { kind: 'info' });
@@ -94,19 +97,28 @@ export function install(api) {
     }
     const file = fileName([base(), ...what], 'csv');
     download(file, toCSV(table.header, table.rows), 'text/csv;charset=utf-8');
-    api.notice(`Exported ${fmtCount(n)} row${n === 1 ? '' : 's'} to ${file}.`);
+    api.notice(said ? said(n, file) : `Exported ${fmtCount(n)} row${n === 1 ? '' : 's'} to ${file}.`);
     return file;
   }
 
-  /** The Contents of the folder you are in, in the order shown. */
+  /**
+   * The Contents of the folder you are in, in the order shown. In region
+   * mode a folder of more than 5,000 lists its largest, and the notice
+   * says that is what was saved.
+   */
   function exportContents() {
     const f = S.focus;
-    const why = f.e ? 'this folder could not be read' : f.stub ? 'this folder has not been read yet' : 'this folder is empty';
-    return save(['contents', slug(api.relLabel(f))], nodeRows(api.listItems(), opts), why);
+    const why = f.e ? 'this folder could not be read' : f.u ? 'this folder is still being read' : f.stub ? 'this folder has not been read yet' : 'this folder is empty';
+    const said = f.tail ? (n, file) => `Exported the largest ${fmtCount(n)} of ${fmtCount(api.kids(f))} items to ${file}.` : null;
+    return save(['contents', slug(api.relLabel(f))], nodeRows(api.listItems(), opts), why, said);
   }
 
   /** The Findings of the search in Find, in the order shown. */
   function exportFindings() {
+    if (api.regionMode()) {
+      api.notice(`Nothing to export: ${api.notAtSize('Search')}`, { kind: 'info' });
+      return null;
+    }
     if (!S.search) {
       api.notice('Nothing to export: there is no search in Find.', { kind: 'info' });
       return null;
@@ -115,6 +127,10 @@ export function install(api) {
   }
 
   function exportList(list) {
+    if (api.regionMode()) {
+      api.notice(`Nothing to export: ${api.notAtSize(`the ${list.label.toLowerCase()} list`)}`, { kind: 'info' });
+      return null;
+    }
     const sv = S.survey;
     if (!sv || S.scanning) {
       api.notice('Nothing to export: the survey has not finished.', { kind: 'info' });
@@ -166,7 +182,7 @@ export function install(api) {
       { label: `Export the Contents of ${S.focus.n} as CSV`, detail: 'Export', run: () => fromTab('contents', exportContents) },
       { label: 'Export the Findings as CSV', detail: S.query.trim() || 'Export', off: S.search ? null : 'there is no search in Find', run: () => fromTab('findings', exportFindings) },
       ...LISTS.map((list) => ({
-        label: `Export ${list.label.toLowerCase()} as CSV`, detail: 'Survey', off: S.survey && !S.scanning ? null : 'once the survey has finished', run: () => exportList(list),
+        label: `Export ${list.label.toLowerCase()} as CSV`, detail: 'Survey', off: api.regionMode() ? 'not available at this size' : S.survey && !S.scanning ? null : 'once the survey has finished', run: () => exportList(list),
       })),
     ],
   });

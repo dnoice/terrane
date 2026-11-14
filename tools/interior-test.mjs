@@ -2,18 +2,23 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Interior Test (Terrane Edition - v1.2)
+ *     - Title: Interior Test (Terrane Edition - v1.3)
  *     - File Name: interior-test.mjs
  *     - Relative Path: tools/interior-test.mjs
  *     - Artifact Type: test
- *     - Version: 1.2.0
- *     - Date: 11/13/2026
- *     - Update: Friday, November 13, 2026
+ *     - Version: 1.3.0
+ *     - Date: 11/14/2026
+ *     - Update: Saturday, November 14, 2026
  *     - Author: Dennis 'dendogg' Smaltz
  *     - A.I. Acknowledgement: Anthropic - Claude Opus 5.5
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
  *
  * ✒ Changelog:
+ *     - 1.3.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] —
+ *       Region mode: with the page in regions an archive opens with no
+ *       twins, and I's notice and the inspector's Already here say that
+ *       twins are not looked for at this size. The stand-in api gains
+ *       regionMode().
  *     - 1.2.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
  *       lock reads a batch rename's items: one item under the archive
  *       refuses the batch, items outside it (the archive's own file
@@ -53,6 +58,8 @@
  *       sentence when the file's size or time changes or it is gone; a
  *       refresh it outlives works its twins out again, so a twin that
  *       left is no longer one and a copy that came becomes one
+ *     - Region mode: an archive opened while the page holds the tree in
+ *       regions looks for no twins and says so, with the tree's size
  *     - The sentences say "changed", never "created", "arrived" or
  *       "added"; the module names no browser global
  *
@@ -431,7 +438,7 @@ section('A 300,000-entry archive seen from its floor');
 /* ---------- install(api) with a stand-in api ---------- */
 
 /** app.js's contract, as far as interior.js uses it, without a page. */
-function standIn(model, listingFor) {
+function standIn(model, listingFor, { regions = null } = {}) {
   const lists = {};
   const reg = (name) => {
     const list = [];
@@ -440,7 +447,7 @@ function standIn(model, listingFor) {
   };
   const S = {
     info: { snapshot: null }, model, focus: model.root, sel: new Set(), primary: null, trail: [], force: null,
-    tab: 'findings', interior: null, scanning: false, noGL: true, view: { clearRelation() {} },
+    tab: 'findings', interior: null, scanning: false, noGL: true, view: { clearRelation() {} }, regions,
   };
   const log = { notices: [], said: [], gets: [], refresh: [], relayouts: 0 };
   // The graft-aware isAttached and hostOf, as app.js has them.
@@ -467,7 +474,7 @@ function standIn(model, listingFor) {
     setFocus: (d) => { S.focus = d; S.force = chainOf(d); },
     relayout: () => { log.relayouts++; }, drawAll() {}, drawLedger() {},
     refreshDirs: async (rels) => { log.refresh.push(rels); },
-    isAttached, hostOf, listCursor: () => null,
+    isAttached, hostOf, listCursor: () => null, regionMode: () => !!S.regions,
     notice: (text) => { log.notices.push(text); }, say: (text) => { log.said.push(text); },
     el: (tag, props, ...kids) => ({ tag, props, kids }), fact: (k, ...v) => ({ k, v }), itemButton: (n) => ({ n }), actionButton: (label, run, o) => ({ label, o }),
   };
@@ -691,6 +698,34 @@ section('Time inside an open archive: figures from its own entries');
   check('so it is not crossed, and it keeps 90% of its height, where the shared table alone would cross it whole',
     !crossedAt(T, k, innerDir) && Math.abs(T.kept(innerDir, k) - 0.9) < 1e-9 && A.kept(innerDir, k) === 0 && crossedAt(A, k, innerDir));
   check('a folder on disk and a file keep the shared table', tableOf(A, B, find(model, 'old')) === A && tableOf(A, B, host) === A && tableOf(A, null, innerDir) === A);
+}
+
+/* ---------- region mode ---------- */
+
+section('Region mode: twins are not looked for');
+{
+  const model = mainWithSite();
+  const host = find(model, 'archives/site.zip');
+  const listing = (p) => {
+    const t = siteListing('site.zip');
+    return { format: 'zip', name: 'site.zip', size: host.s, mtime: host.m, files: t.files, folders: t.folders, unpacked: t.unpacked, packed: t.packed,
+      locked: t.locked, escapes: t.escapes, escaped: t.escaped, renamed: t.renamed, partial: null, records: t.records, path: p };
+  };
+  const { api, S, log, lists } = standIn(model, listing, { regions: { entries: 5000000 } });
+  // The inspector's builders, as the api gives them: a head and a value's parts.
+  Object.assign(api, { sectionTitle: (text) => ({ k: text }), parts: (...x) => x.flat() });
+  X.install(api);
+  S.primary = host;
+  S.sel = new Set([host]);
+  await lists.KEYS[0].run({ inList: false });
+  const I = S.interior;
+  const SENTENCE = 'Twins are not looked for at this size: the page holds only the parts of this 5,000,000-entry tree near you.';
+  check('with the page in regions the archive opens with no twins, and nothing of the tree is walked for them', !!I && I.twins.size === 0 && I.twinOf.size === 0 && I.listing.twins === 0);
+  check('I\'s notice says that twins are not looked for at this size', log.notices.at(-1).includes(SENTENCE) && /site\.zip holds 8 files in 6 folders/.test(log.notices.at(-1)) && !/already in this directory/.test(log.notices.at(-1)), log.notices.at(-1));
+  const facts = lists.node[0].build(host);
+  const flatText = (x) => (x == null ? '' : typeof x === 'string' ? x : Array.isArray(x) ? x.map(flatText).join(' ') : [x.k, x.label, x.props?.text, ...(x.kids || []), ...(x.v || [])].map(flatText).join(' '));
+  check('the inspector\'s Already here says it too', flatText(facts).includes(SENTENCE), flatText(facts).slice(0, 300));
+  S.interior = null;
 }
 
 /* ---------- no DOM ---------- */

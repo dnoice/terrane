@@ -26,6 +26,10 @@
  *       (120,000 by default); --min-free <GB> waits, polling every 20 s
  *       for up to 120 s, for that much free memory before the service and
  *       before each browser, and stops with a sentence when it never is.
+ *       A scenario's regions: <n> starts its service with
+ *       --region-threshold n, so the page draws in regions above n entries:
+ *       a write or warm scenario's on the next port, any other's read-only
+ *       on the shared data two ports up, with readOnlyUrl the shared one.
  *     - 1.5.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — A
  *       tab's first page forgets the view and the searches the page keeps
  *       (the localStorage keys starting terrane.view. and
@@ -134,7 +138,10 @@
  *         };
  *     Fields: name, title, data ('any', 'fixture' or 'synthetic'), write (true for a
  *     writable service on a fresh fixture), warm (true for the same, with
- *     the warm start on), passes (['webgl', 'nogl']), timeout (ms). The
+ *     the warm start on), regions (a number: the scenario's own service
+ *     draws in regions above that many entries, 0 for every tree; with
+ *     write or warm on PORT+1, otherwise read-only on the same data at
+ *     PORT+2), passes (['webgl', 'nogl']), timeout (ms). The
  *     context t offers: pass, gl, data, manifest, meta, root, dataDir,
  *     abs(rel), baseline, recorded, check, skip, note, key, keys, type,
  *     tabTo, focused, eval, app, waitFor, until, poll, settle, text,
@@ -171,8 +178,11 @@
  *         --software             SwiftShader instead of the GPU.
  *         --headed               Show the browser window.
  *         --port <n>             First port to serve on (4710); write
- *                                scenarios use the next one, the browser's
- *                                DevTools endpoint the ninth after it.
+ *                                scenarios use the next one, a read-only
+ *                                scenario's region service the one after,
+ *                                the browser's DevTools endpoint the ninth.
+ *                                The demo scenarios serve their stand-in
+ *                                GitHub Pages on the sixth.
  *         --service-heap <MB>    --max-old-space-size for every service.
  *         --ready-ms <ms>        How long a page may take to be ready
  *                                (120000).
@@ -295,9 +305,11 @@ let DATA = null;
  * no tree for a warm start (--no-warm) unless warm is true, or every page
  * after the first would start from the last one's tree.
  */
-async function startService(args, port, launchLog, { warm = false } = {}) {
+async function startService(args, port, launchLog, { warm = false, regions = undefined } = {}) {
   const heap = SERVICE_HEAP ? [`--max-old-space-size=${Math.round(SERVICE_HEAP)}`] : [];
-  const child = spawn(process.execPath, [...heap, SERVER, ...args, ...(warm ? [] : ['--no-warm']), '--no-open', '--port', String(port)], {
+  // A scenario's region threshold: the page draws in regions above it (0: always).
+  const threshold = regions === undefined ? [] : ['--region-threshold', String(regions)];
+  const child = spawn(process.execPath, [...heap, SERVER, ...args, ...threshold, ...(warm ? [] : ['--no-warm']), '--no-open', '--port', String(port)], {
     stdio: ['ignore', 'pipe', 'pipe'], env: { ...process.env, TERRANE_LAUNCH_LOG: launchLog, TERRANE_DATA: DATA },
   });
   let out = '';
@@ -1073,7 +1085,7 @@ async function loadScenarios() {
 async function main() {
   const all = await loadScenarios();
   if (opt.list) {
-    for (const s of all) print(`  ${s.name.padEnd(16)} ${s.file.padEnd(16)} ${s.data === 'fixture' || s.data === 'synthetic' ? s.data : 'any data'}${s.write ? ', writes' : ''}${s.warm ? ', warm' : ''}, ${s.passes.join(' + ')}  ${s.title || ''}`);
+    for (const s of all) print(`  ${s.name.padEnd(16)} ${s.file.padEnd(16)} ${s.data === 'fixture' || s.data === 'synthetic' ? s.data : 'any data'}${s.write ? ', writes' : ''}${s.warm ? ', warm' : ''}${s.regions !== undefined ? `, regions above ${s.regions}` : ''}, ${s.passes.join(' + ')}  ${s.title || ''}`);
     return 0;
   }
   const chosen = names.length ? all.filter((s) => names.includes(s.name) || names.includes(s.file) || names.includes(s.file.replace(/\.mjs$/, ''))) : all;
@@ -1175,12 +1187,20 @@ async function main() {
         }
         const root = path.join(work, `write-${pass}-${s.name}`);
         const manifest = await makeFixture(root, { files: data.files || FILES, seed: data.seed || SEED });
-        const svc = await startService([root], PORT + 1, path.join(work, `launch-${PORT + 1}.log`), { warm: !!s.warm });
+        const svc = await startService([root], PORT + 1, path.join(work, `launch-${PORT + 1}.log`), { warm: !!s.warm, regions: s.regions });
         await runScenario(browser, s, {
           ...env, scenario: s.name, prefix, root, url: svc.url, readOnlyUrl: env.url, launchLog: svc.launchLog, readOnlyLaunchLog: env.launchLog, data: { ...data, manifest, root },
         });
         await svc.stop();
         removeDir(root);
+      } else if (s.regions !== undefined) {
+        // Its own read-only service on the same data, drawing in regions
+        // above the scenario's threshold.
+        const svc = await startService(data.args, PORT + 2, path.join(work, `launch-${PORT + 2}.log`), { regions: s.regions });
+        await runScenario(browser, s, {
+          ...env, scenario: s.name, prefix, url: svc.url, readOnlyUrl: env.url, launchLog: svc.launchLog, readOnlyLaunchLog: env.launchLog,
+        });
+        await svc.stop();
       } else await runScenario(browser, s, { ...env, scenario: s.name, prefix });
     }
     await browser.close();
