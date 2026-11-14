@@ -1,0 +1,137 @@
+/*
+ * ============================================================================
+ * ✒ Metadata
+ *     - Title: Command Palette (Terrane Edition - v1.0)
+ *     - File Name: palette.css
+ *     - Relative Path: web/css/components/palette.css
+ *     - Artifact Type: stylesheet
+ *     - Version: 1.0.0
+ *     - Date: 11/13/2026
+ *     - Update: Friday, November 13, 2026
+ *     - Author: Dennis 'dendogg' Smaltz
+ *     - A.I. Acknowledgement: Anthropic - Claude Opus 5.5
+ *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
+ *
+ * ✒ Changelog:
+ *     - 1.0.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] —
+ *       Initial release.
+ *
+ * ✒ Description:
+ *     The command palette (Ctrl+K): a field over a list of actions and
+ *     places, in the shared dialog, set high in the window so the list
+ *     can grow under it. It reads as the rest of the sheet does: paper,
+ *     an ink rule, a hard shadow, and the highlighter on the chosen row.
+ *
+ * ✒ Key Features:
+ *     - dialog.is-palette: wider than a question, opened near the top
+ *     - A field with a search icon, ruled off from the list beneath
+ *     - Group labels in spaced capitals; rows of icon or swatch, name with
+ *       a muted detail beneath, and a key cap or a figure at the right
+ *     - The active row carries the highlighter and an ink bar at its left
+ *       edge, so it is not told by colour alone
+ *     - An unavailable action is muted, with its reason under its name
+ *     - A foot line naming the keys, in mono
+ *
+ * ✒ Other Important Information:
+ *     - Dependencies: tokens.css, base.css (kbd), ledger.css (.swatch),
+ *       floating.css (dialog); web/js/palette.js builds the rows
+ *     - Compatible platforms: current evergreen browsers
+ * ----------------------------------------------------------------------------
+ */
+
+dialog.is-palette {
+  width: min(640px, 94vw);
+  margin-block: 12vh auto;
+}
+.is-palette .sheet {
+  display: flex;
+  flex-direction: column;
+  max-height: min(600px, 76vh);
+}
+
+.palette-head {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: var(--s-2);
+  padding: 0 var(--s-3);
+  border-bottom: var(--border);
+  background: var(--surface-field);
+}
+.palette-head > .icon { flex: none; width: var(--icon); height: var(--icon); color: var(--text-2); }
+.palette-input {
+  flex: 1;
+  min-width: 0;
+  height: 46px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  font: 400 var(--fs-lg) / 1 var(--sans);
+}
+.palette-input:focus { outline: none; }
+.palette-input::placeholder { color: var(--text-3); }
+.palette-head:focus-within { box-shadow: inset 0 -2px 0 var(--line); }
+
+.palette-list {
+  flex: 1 1 auto;
+  min-height: 0;
+  padding: var(--s-1) 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+.palette-group {
+  padding: var(--s-2) var(--s-3) var(--s-1);
+  color: var(--text-3);
+  font: 600 var(--fs-3xs) / 1 var(--sans);
+  font-stretch: var(--wdth-wide);
+  letter-spacing: var(--track-caps);
+  text-transform: uppercase;
+}
+.palette-option {
+  display: grid;
+  grid-template-columns: var(--icon-sm) minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--s-3);
+  padding: 5px var(--s-3);
+  box-shadow: inset 0 0 0 transparent;
+  color: var(--text);
+  cursor: default;
+  transition: background-color var(--dur-instant) linear;
+}
+.palette-option > .icon { width: var(--icon-sm); height: var(--icon-sm); color: var(--text-2); }
+.palette-option > .swatch { justify-self: center; }
+.palette-option:hover { background: var(--select-hover); }
+.palette-option[aria-selected='true'] { background: var(--select); box-shadow: inset 3px 0 0 var(--line); }
+.palette-option[aria-disabled='true'] { color: var(--text-3); }
+.palette-option[aria-disabled='true'] > .icon { color: var(--text-3); }
+.pal-text { display: flex; flex-direction: column; min-width: 0; gap: 1px; }
+.pal-label {
+  overflow: hidden;
+  font: 500 var(--fs-md) / 1.25 var(--sans);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.pal-detail, .pal-why {
+  overflow: hidden;
+  color: var(--text-3);
+  font: 400 var(--fs-xs) / 1.3 var(--mono);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.palette-option[aria-selected='true'] .pal-detail { color: var(--text-2); }
+.pal-why { color: var(--text-2); white-space: normal; }
+.pal-fig { color: var(--text-2); font: 500 var(--fs-xs) / 1 var(--mono); font-variant-numeric: tabular-nums; }
+.palette-option kbd { border-color: var(--line-3); background: transparent; white-space: nowrap; }
+.palette-option[aria-selected='true'] kbd { border-color: currentColor; color: inherit; }
+.palette-empty { margin: 0; padding: var(--s-4) var(--s-3); color: var(--text-2); font-size: var(--fs-md); }
+
+.palette-foot {
+  flex: none;
+  margin: 0;
+  padding: var(--s-1) var(--s-3);
+  border-top: var(--border-2);
+  color: var(--text-3);
+  font: 500 var(--fs-xs) / 1.6 var(--mono);
+}
+.palette-foot kbd { margin-right: 2px; }

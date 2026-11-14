@@ -1,10 +1,10 @@
 <!--
 ✒ Metadata
-    - Title: Package Manifest (Terrane Edition - v1.8)
+    - Title: Package Manifest (Terrane Edition - v1.9)
     - File Name: package.json
     - Relative Path: package.json
     - Artifact Type: config
-    - Version: 1.8.0
+    - Version: 1.9.0
     - Date: 11/13/2026
     - Update: Friday, November 13, 2026
     - Author: Dennis 'dendogg' Smaltz
@@ -12,6 +12,10 @@
     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
 
 ✒ Changelog:
+    - 1.9.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
+      test script ends with tools/finding-test.mjs, the Node check of the
+      command palette's fuzzy ranking and of the kept view, links, search
+      history and saved searches.
     - 1.8.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — Raises
       the package version to 1.3.0: every Stage 5 candidate has its
       first increment, and the Audit, Hardening pass, Enhancement and
@@ -67,8 +71,10 @@
     - test: runs the service smoke test against a throwaway directory,
       then the places store test (benchmarks and the return point), the
       working sessions test (sessions, session:N, the route), the
-      strata test (bytes by last change, typical age) and the interior
-      test (the graft, the chamber, twins, the lock) in Node
+      strata test (bytes by last change, typical age), the interior
+      test (the graft, the chamber, twins, the lock) and the finding
+      test (fuzzy ranking, the kept view, links, history, saved
+      searches) in Node
     - vendor: fetches the pinned third-party browser files into
       web/vendor/ from jsDelivr; --check verifies them offline
     - ui-check: drives the page in headless Edge or Chrome, keyboard

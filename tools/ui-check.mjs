@@ -2,11 +2,11 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Interface Check (Terrane Edition - v1.4)
+ *     - Title: Interface Check (Terrane Edition - v1.5)
  *     - File Name: ui-check.mjs
  *     - Relative Path: tools/ui-check.mjs
  *     - Artifact Type: test
- *     - Version: 1.4.0
+ *     - Version: 1.5.0
  *     - Date: 11/13/2026
  *     - Update: Friday, November 13, 2026
  *     - Author: Dennis 'dendogg' Smaltz
@@ -14,6 +14,11 @@
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
  *
  * ✒ Changelog:
+ *     - 1.5.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — A
+ *       tab's first page forgets the view and the searches the page keeps
+ *       (the localStorage keys starting terrane.view. and
+ *       terrane.searches.), once per tab by a sessionStorage marker, so
+ *       every scenario starts fresh while t.reload() brings them back.
  *     - 1.4.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — Every
  *       page opens with single-key shortcuts turned on, as the guide's
  *       setting turns them on, because the page now starts with them
@@ -55,6 +60,8 @@
  *       WebSocket; no Puppeteer, no Playwright
  *     - Pages open with single-key shortcuts turned on (the guide's
  *       setting), so a scenario's letter keys act wherever focus is
+ *     - A tab's first page starts with no kept view and no search
+ *       history; a reload in the same tab keeps both, as for a person
  *     - Per-feature scenario files in tools/ui-scenarios/, each a module
  *       whose default export is one scenario or a list of them
  *     - Keyboard-only steps: real key events (Tab, Enter, Escape, arrows,
@@ -414,8 +421,14 @@ class Page {
     // The page starts with single-key shortcuts off; scenarios press letters
     // wherever focus happens to be, so turn them on as the guide's setting
     // does. The hardening scenario clears it to check the default.
+    // A tab's first page also forgets the kept view and the searches, so
+    // every scenario starts fresh, while a reload in it brings them back.
     await page.send('Page.addScriptToEvaluateOnNewDocument', {
-      source: "try { localStorage.setItem('terrane.single-keys', 'everywhere'); } catch {}",
+      source: [
+        "try { localStorage.setItem('terrane.single-keys', 'everywhere'); } catch {}",
+        "try { if (!sessionStorage.getItem('terrane.check.opened')) { sessionStorage.setItem('terrane.check.opened', '1');",
+        "for (const k of Object.keys(localStorage)) if (k.startsWith('terrane.view.') || k.startsWith('terrane.searches.')) localStorage.removeItem(k); } } catch {}",
+      ].join(' '),
     });
     await page.send('Page.navigate', { url });
     return page;

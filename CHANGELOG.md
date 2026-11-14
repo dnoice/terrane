@@ -16,7 +16,9 @@
       finding your way: app.js 1.9.0, ui.js 1.4.0, and the first sections for web/js/model.js
       (1.4.0, double quotes in search) and web/js/landmarks.js (1.3.0, the Places tab's
       sections from other features), whose 1.0.0 entries left their headers with these
-      releases.
+      releases. Then the features themselves: terrane.css 2.4.0, and the first section for
+      web/js/features.js (1.3.0, the palette, the remembered view and searches), whose
+      1.0.0 entry left its header with that release.
     - 1.4.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — Records app.js 1.8.0:
       single-key shortcuts are off unless turned on in the guide.
     - 1.3.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — Records the hardening
@@ -187,6 +189,11 @@ here unchanged in the same edit.
 
 ## web/css/terrane.css
 
+- 2.4.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — Imports
+  components/palette.css: the command palette's field, its options with the highlighter
+  and an ink bar on the active one, its group labels and its foot line, in the shared
+  dialog set high in the window; and components/searches.css: the Places tab's saved
+  searches, a bookmark mark, the name over the query in mono, Run and Forget.
 - 2.3.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — Imports components/traverse.css:
   the Findings sub-line in two rows with its sort keys and note, the Working sessions rows and the
   traverse glyph; components/strata.css: the inspector's Bytes by last change and the
@@ -283,6 +290,24 @@ here unchanged in the same edit.
 - 1.1.0 (11/11/2026) [dendogg + Anthropic - Claude Opus 5.5] — The hover tip can carry a picture
   below its lines.
 - 1.0.0 (11/09/2026) [dendogg + Anthropic - Claude Fable 5.2] — Initial release.
+
+## web/js/features.js
+
+- 1.3.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — The sixth to eighth
+  features, finding your way: the command palette, Ctrl+K, every action and every folder
+  and file by fuzzy match (palette.js, with the DOM-free fuzzy.js); the remembered view
+  and links, a reload coming back to the folder, the lens, the tab, the selection and the
+  eye, and an address (#/folder) that opens a folder and follows the one you are in
+  (resume.js); and the search history, saved searches and the in: token (searches.js).
+  resume.js and searches.js keep their data through the DOM-free memory.js.
+- 1.2.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — The third: Session
+  traverse, working sessions as a search and a route (traverse.js). The fourth: Strata,
+  bytes by last change and the Age lens's typical age for closed masses (strata.js). The
+  fifth: Interiors, a zip archive looked inside as a walled floor (interior.js).
+- 1.1.0 (11/12/2026) [dendogg + Anthropic - Claude Opus 5.5] — The first feature: Time,
+  the date scrub (time.js). The second: Landmarks, benchmarks and the return point
+  (landmarks.js).
+- 1.0.0 (11/12/2026) [dendogg + Anthropic - Claude Opus 5.5] — Initial release.
 
 ## web/js/model.js
 
