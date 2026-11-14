@@ -1,18 +1,22 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Terrane Application (Terrane Edition - v1.11)
+ *     - Title: Terrane Application (Terrane Edition - v1.12)
  *     - File Name: app.js
  *     - Relative Path: web/js/app.js
  *     - Artifact Type: javascript
- *     - Version: 1.11.0
- *     - Date: 11/13/2026
- *     - Update: Friday, November 13, 2026
+ *     - Version: 1.12.0
+ *     - Date: 11/14/2026
+ *     - Update: Saturday, November 14, 2026
  *     - Author: Dennis 'dendogg' Smaltz
  *     - A.I. Acknowledgement: Anthropic - Claude Opus 5.5
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
  *
  * ✒ Changelog:
+ *     - 1.12.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] —
+ *       The guide lists Blender's controls the world now takes: the
+ *       middle button (orbit; Shift grabs and moves the ground; Ctrl
+ *       flies in and out) and the numpad views.
  *     - 1.11.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] —
  *       Paint gives each file its kind's colour in a tone of its own
  *       extension, a closed mass a richer tint and, on its sides, strata
@@ -23,13 +27,6 @@
  *       Pages), runs the demo world (demo.js): /api/ is answered in the
  *       page, the status says Demo world, pictures, sounds and film come
  *       from the world, and a notice says what the visitor is looking at.
- *     - 1.9.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] —
- *       Wave 3's seams and features: COMMANDS, LEDGER_SUB, AFTER_FOCUS,
- *       AFTER_SELECT and TAB_SECTIONS for the palette, the kept view and
- *       saved searches; rawUrl and the Untouched order for Quick look and
- *       presets; RENAME_MANY, MENU many(), INSPECTOR.many and DUP_GROUP
- *       for acting on many; the warm start (GET /api/warm, catch-up and
- *       Model.adopt). In full in CHANGELOG.md.
  *     Earlier entries: see CHANGELOG.md
  *
  * ✒ Description:
@@ -3145,10 +3142,16 @@ function wireKeys() {
   core({ id: 'guide-wheel', guide: [GO, 'Wheel', 'Fly toward what is under the cursor'] });
   core({ id: 'guide-drag', guide: [GO, 'Drag', 'Slide the ground'] });
   core({ id: 'guide-right-drag', guide: [GO, 'Right-drag', 'Orbit the point you grabbed'] });
+  core({ id: 'guide-middle-drag', guide: [GO, 'Middle-drag', 'Orbit the point you grabbed, as in Blender'] });
+  core({ id: 'guide-shift-middle-drag', guide: [GO, 'Shift+middle-drag', 'Grab the ground and move it'] });
+  core({ id: 'guide-ctrl-middle-drag', guide: [GO, 'Ctrl+middle-drag', 'Fly in and out'] });
   core({ id: 'guide-alt-drag', guide: [GO, 'Alt+drag', 'Look around'] });
   core({ id: 'guide-travel', guide: [GO, 'W A S D', 'Move (Shift: faster)'] });
   core({ id: 'guide-turn', guide: [GO, 'Q  E', 'Turn'] });
   core({ id: 'guide-rise', guide: [GO, 'R  F', 'Rise / descend'] });
+  core({ id: 'guide-numpad-views', guide: [GO, 'Numpad 1 3 7', 'Front, right, top (Ctrl: the far side)'] });
+  core({ id: 'guide-numpad-orbit', guide: [GO, 'Numpad 2 4 6 8', 'Orbit in steps'] });
+  core({ id: 'guide-numpad-frame', guide: [GO, 'Numpad .', 'Frame the selection'] });
   core({ id: 'descend', keys: ['v'], gl: true, run: () => { S.view.descend(); }, guide: [GO, 'V', 'Drop to eye level'] });
   core({ id: 'overview', keys: ['0', 'Home'], gl: true, run: () => { overview(); }, guide: [GO, '0', 'Rise to the overview'] });
   core({ id: 'fly-to-selection', keys: ['g'], run: () => { if (S.primary) reveal(S.primary); }, guide: [GO, 'G', 'Fly to the selection'] });

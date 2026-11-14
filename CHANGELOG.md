@@ -1,10 +1,10 @@
 <!--
 ✒ Metadata
-    - Title: Shipped File Changelogs (Terrane Edition - v1.8)
+    - Title: Shipped File Changelogs (Terrane Edition - v1.9)
     - File Name: CHANGELOG.md
     - Relative Path: CHANGELOG.md
     - Artifact Type: docs
-    - Version: 1.8.0
+    - Version: 1.9.0
     - Date: 11/14/2026
     - Update: Saturday, November 14, 2026
     - Author: Dennis 'dendogg' Smaltz
@@ -12,6 +12,10 @@
     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
 
 ✒ Changelog:
+    - 1.9.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — Records steady conventions and
+      Blender's controls: viewport.js 1.8.0 and app.js 1.12.0. viewport.js's header rolls its
+      1.5.0 entry out and app.js's its 1.9.0; the app.js 1.9.0 entry now opens with its
+      header's words.
     - 1.8.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — Records the names on the blocks:
       viewport.js 1.7.0. viewport.js's header rolls its 1.4.0 entry out; this file already
       holds it.
@@ -88,6 +92,10 @@ short form is kept too.
 
 ## web/js/app.js
 
+- 1.12.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — The guide lists Blender's
+  controls the world now takes: the middle button (orbit; Shift grabs and moves the ground; Ctrl
+  flies in and out) and the numpad views.
+
 - 1.11.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — Paint gives each file its
   kind's colour in a tone of its own extension (extTone): five steps from 22 % darker to 24 %
   lighter, with common neighbours set apart (.ts and .tsx, .tsx and .css, .jpg and .png, .mov
@@ -109,7 +117,11 @@ short form is kept too.
   to the repository. A page opened from disk still says how to start the service, and so does
   one whose demo could not start. The header's 1.9.0 entry takes a short form.
 
-- 1.9.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — Seams for Wave 3's first
+- 1.9.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — Wave 3's seams and features:
+  COMMANDS, LEDGER_SUB, AFTER_FOCUS, AFTER_SELECT and TAB_SECTIONS for the palette, the kept view
+  and saved searches; rawUrl and the Untouched order for Quick look and presets; RENAME_MANY,
+  MENU many(), INSPECTOR.many and DUP_GROUP for acting on many; the warm start (GET /api/warm,
+  catch-up and Model.adopt). In full in CHANGELOG.md. Seams for Wave 3's first
   group, finding your way (the command palette, the remembered view and links, search
   history and saved searches). Five registries, frozen with the rest and handed out in the
   api: COMMANDS, the palette's actions that have no key ({ id, owner, order, section,
@@ -373,6 +385,26 @@ short form is kept too.
 
 ## web/js/viewport.js
 
+- 1.8.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — Hatching, stipple and bands
+  stay put: drawn from each box's own centre with one period for the whole box, blended between
+  octaves, so the floating origin, a turn or a zoom no longer breaks them. Blender's controls:
+  the middle button orbits, Shift grabs and moves, Ctrl flies in and out; numpad views
+  (viewAbout). In full: the patterns had been measured in coordinates relative to the floating
+  origin, which moves to the eye at every layout, so they jumped as the eye travelled; and their
+  period was chosen per pixel from the coordinate's rate, so two faces of one box, or the near
+  and far parts of one face, took different octaves and broke at the seams. Now the coordinate is
+  the box's own (from its centre, in world units), the period comes from the eye's distance to
+  the box's nearest point, worked out in view space in the vertex shader (vStripe: the octave
+  and how far toward the next), and the pattern at that period and at twice it are blended by
+  that fraction; lines, bands and dots stand on whole multiples of the period, so the coarser
+  octave keeps every other one. Where a period falls under about two pixels a pattern fades to
+  its average. uPxScale (device pixels per world unit at a distance of one) follows the canvas.
+  The middle button no longer looks around (Alt with either button still does); it no longer
+  starts the browser's autoscroll. Numpad 7, 1 and 3 fly to the top, front (north) and right
+  views about the middle of the view at the same distance, Ctrl takes the far side, 4 and 6
+  orbit by 15 degrees, 8 and 2 tilt, 9 turns about and . frames the selection; Numpad 0, + and -
+  reach the page's own keys. setPaint keeps what it was given (paintNow).
+
 - 1.7.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — Names are part of the boxes:
   the box shader prints a file's name on its lid and a folder's in capitals, on a closed mass's
   lid or along an open plateau's rim or cut into its riser, from lettering.js's distance-field
@@ -415,7 +447,9 @@ short form is kept too.
 
 - 1.5.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — The relation layer is drawn only
   while it holds a line (three.js draws an empty range), and labels are placed again only when
-  the eye, the layout, the marks or the canvas change, not on a frame redrawn for a hover. The
+  the eye, the layout, the marks or the canvas change, not on a frame redrawn for a hover. A
+  label's overlap test measures the tag as drawn (LABEL_BOX: a folder's expanded capitals and its
+  leader line, a mark's pin), so no tag stands across another or over another's line. The
   overview, a selection and a search each cost one draw call fewer; the baseline was recorded
   again (overview 6, selected 8, search 7, dupTies 9). A label's overlap test measures the tag
   as drawn (LABEL_BOX: a folder's expanded capitals and its 9 px leader line, a file's mono, a
