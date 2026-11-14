@@ -1,10 +1,10 @@
 <!--
 ✒ Metadata
-    - Title: Terrane Readme (Terrane Edition - v1.13)
+    - Title: Terrane Readme (Terrane Edition - v1.14)
     - File Name: README.md
     - Relative Path: README.md
     - Artifact Type: docs
-    - Version: 1.13.0
+    - Version: 1.14.0
     - Date: 11/14/2026
     - Update: Saturday, November 14, 2026
     - Author: Dennis 'dendogg' Smaltz
@@ -12,6 +12,10 @@
     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
 
 ✒ Changelog:
+    - 1.14.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] —
+      Travelling: Blender's middle-button drags and numpad views.
+      Reading the world: hatching and bands stay put as you travel.
+      What was verified records the runs.
     - 1.13.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] —
       Reading the world: names are printed on the blocks themselves,
       and the scree's tile says how many it holds. The project map
@@ -332,9 +336,14 @@ the features' rows included.
 | Wheel | Fly toward whatever is under the cursor |
 | Drag | Slide the ground |
 | Right-drag | Orbit the point you grabbed |
+| Middle-drag | Orbit the point you grabbed, as in Blender |
+| Shift+middle-drag | Grab the ground and move it |
+| Ctrl+middle-drag | Fly in and out |
 | Alt+drag | Look around in place |
 | W A S D | Move. Shift moves faster. Speed scales with your height above the surface |
 | Q E, R F | Turn, rise and descend |
+| Numpad 7, 1, 3 | Top, front (facing north) and right views about the middle of the view; Ctrl takes the far side |
+| Numpad 4 6, 8 2, 9, . | Orbit and tilt in 15 degree steps; turn about; frame the selection |
 | V | Drop to eye level where you are looking |
 | 0 | Rise to the overview |
 | G | Fly to the selection |
@@ -674,6 +683,8 @@ browser holds two copies of it, about 300 MB per million entries.
 | Terrane 1.4.0 on `main` (11/13/2026), Wave 3, the demo world and the blocks' look merged, on Windows 11 with Edge 157 on an RTX 5050 laptop GPU: `npm test` (ten suites, the demo test last), `npm run vendor -- --check`, and `node tools/ui-check.mjs --record-baseline`, both passes, on the default fixture; then the seven scenarios it failed (`baseline`, `interior`, `landmarks`, `relations`, `strata`, `time`, `transitions`, `seams`) again after three checks were brought in line with the new look | `npm test`: 797 passed, 0 failed. Vendored files match. The full run: 1400 passed, 11 failed, 6 skipped: seven draw-call checks still held the old baseline, which the run re-recorded one call higher (overview 7, selected 9, search 8, duplicate ties 10, the contact shadows), and the Closed mass reading row, a crossed file's colour (now its extension's tone) and the full-upload picture (the contact shadows' soft edges blend a hair differently from draw to draw, so the check sets them aside) had to follow the new look. The rerun: 525 passed, 0 failed, 2 skipped |
 | The names on the blocks on Windows 11 (11/14/2026), Edge 157 on an RTX 5050 laptop GPU: `npm test`, and `node tools/ui-check.mjs --no-shots`, both passes, on the default fixture, with `hardening` now checking that names are printed at the overview, each on a box that is drawn, and that no file or folder tag stands over the world | `npm test`: 797 passed, 0 failed. The interface check: 1412 passed, 0 failed, 6 skipped; draw calls at the baseline, since the names are drawn by the boxes' own shader |
 
+| Steady conventions and Blender's view controls on Windows 11 (11/14/2026), Edge 157 on an RTX 5050 laptop GPU: `npm test`, and `node tools/ui-check.mjs --no-shots`, both passes, on the default fixture, with the new `views` scenario (hatching and bands drawn with the floating origin moved and moved back under the same eye; the middle button's orbit, grab and fly; the numpad views). With the old origin-relative coordinates put back, the same check finds 6,045 and 11,984 pixels moved | `npm test`: 797 passed, 0 failed. The interface check: 1424 passed, 0 failed, 6 skipped; 7 of 840,160 pixels differ with the fix |
+
 Not verified: running on macOS; frame rate at street level in the largest
 trees on a hardware GPU; Open and Reveal reaching a desktop application on
 Windows; the progress panel driven in a browser (its service side is
@@ -788,7 +799,8 @@ tools/ui-check.mjs   headless browser check; scenarios in tools/ui-scenarios/,
                      searches), looking.mjs (quicklook, presets,
                      changed-with), many.mjs (batch-rename, dupes, copy-as),
                      exchange.mjs (export, places-file, terminal), warm.mjs,
-                     demo.mjs
+                     demo.mjs, views.mjs (steady conventions, Blender's
+                     controls)
 tools/make-fixture.mjs  the synthetic tree the checks run on (npm run fixture)
 tools/vendor.mjs     fetch and verify the vendored browser libraries
 docs/                ARCHITECTURE.md, ROADMAP.md

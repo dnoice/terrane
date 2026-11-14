@@ -1,11 +1,11 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Controller Seams Scenario (Terrane Edition - v1.6)
+ *     - Title: Controller Seams Scenario (Terrane Edition - v1.7)
  *     - File Name: seams.mjs
  *     - Relative Path: tools/ui-scenarios/seams.mjs
  *     - Artifact Type: test
- *     - Version: 1.6.0
+ *     - Version: 1.7.0
  *     - Date: 11/13/2026
  *     - Update: Friday, November 13, 2026
  *     - Author: Dennis 'dendogg' Smaltz
@@ -13,6 +13,8 @@
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
  *
  * ✒ Changelog:
+ *     - 1.7.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — The guide's
+ *       Travelling rows add Blender's middle-button drags and numpad views.
  *     - 1.6.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — The core's
  *       Closed mass row says that a mass's sides show its strata.
  *     - 1.5.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
@@ -102,7 +104,7 @@
 
 /** The guide as the hard-coded showGuide drew it before the key table. */
 const GUIDE = [
-  ['Travelling', [['Wheel', 'Fly toward what is under the cursor'], ['Drag', 'Slide the ground'], ['Right-drag', 'Orbit the point you grabbed'], ['Alt+drag', 'Look around'], ['W A S D', 'Move (Shift: faster)'], ['Q  E', 'Turn'], ['R  F', 'Rise / descend'], ['V', 'Drop to eye level'], ['0', 'Rise to the overview'], ['G', 'Fly to the selection'], ['Double-click', 'Fly to folder / open file']]],
+  ['Travelling', [['Wheel', 'Fly toward what is under the cursor'], ['Drag', 'Slide the ground'], ['Right-drag', 'Orbit the point you grabbed'], ['Middle-drag', 'Orbit the point you grabbed, as in Blender'], ['Shift+middle-drag', 'Grab the ground and move it'], ['Ctrl+middle-drag', 'Fly in and out'], ['Alt+drag', 'Look around'], ['W A S D', 'Move (Shift: faster)'], ['Q  E', 'Turn'], ['R  F', 'Rise / descend'], ['Numpad 1 3 7', 'Front, right, top (Ctrl: the far side)'], ['Numpad 2 4 6 8', 'Orbit in steps'], ['Numpad .', 'Frame the selection'], ['V', 'Drop to eye level'], ['0', 'Rise to the overview'], ['G', 'Fly to the selection'], ['Double-click', 'Fly to folder / open file']]],
   ['Selecting and going places', [['Click', 'Select'], ['Ctrl+click', 'Add to selection'], ['← →', 'Previous / next sibling'], ['↑ ↓', 'Parent / first child'], ['Enter', 'Go to folder / open file'], ['Backspace', 'Up one level'], ['Alt+←', 'Back'], ['/', 'Find'], ['Esc', 'Cancel, clear'], ['[  ]', 'Hide ledger / inspector'], ['1 – 4', 'Lens']]],
   ['Changing things', [['N', 'New folder'], ['F2', 'Rename'], ['M', 'Move to…'], ['Ctrl+D', 'Duplicate'], ['Del', 'Remove to holding area'], ['Ctrl+Z', 'Undo'], ['Ctrl+C', 'Copy path'], ['Drag a row', 'Drop on a folder, breadcrumb or plateau'], ['Menu key', 'Context menu'], ['F5', 'Re-read folder']]],
 ];
