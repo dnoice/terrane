@@ -18,7 +18,14 @@
  *       search-token section checks double quotes: a quoted term keeps
  *       its space, a quoted prefix value reaches its maker whole (in:"My
  *       Folder"), a token that begins with a quote is a literal name, an
- *       open quote runs to the end and empty quotes add nothing.
+ *       open quote runs to the end and empty quotes add nothing. A
+ *       previews section asks GET /api/raw for byte ranges: bytes=10-19
+ *       exactly, bytes=0- on the 24 MB file cut at 8 MiB, an end past the
+ *       file, a suffix, 416 past the end with the size, several ranges, a
+ *       reversed one or another unit served whole as before, every answer
+ *       guarded (nosniff, sandbox, no-store, Accept-Ranges), the media
+ *       types, and the token, the holding area, a climbing path and a
+ *       link that leads outside refused; snapshot mode refuses a range.
  *     - 1.5.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
  *       hardening checks. Through the service: the holding area refused
  *       under every other spelling (case, a trailing dot, NTFS stream
@@ -134,6 +141,9 @@
  *     - Undo answers and partial changes, in-process: the paths moved
  *       back, and the paths finished before a simulated failure
  *     - Duplicate hashing distinguishes true copies from same-size files
+ *     - Previews: one byte range per answer, at most 8 MiB, 416 past the
+ *       end, the whole-file answer for anything else, media types, and
+ *       every refusal kept
  *     - Layout safety, without the service: the box budget holds at every
  *       box, so no layout can pass the viewport's capacity
  *     - Relation lines, without the service or a browser: the vertices the
@@ -517,6 +527,94 @@ console.log('\nDuplicates');
 r = await s.post('/api/hash', { paths: ['media/x.bin', 'media/y.bin', 'media/z.bin'] });
 check('hashing separates true copies from same-size files', r.body.results[0].hash === r.body.results[1].hash && r.body.results[0].hash !== r.body.results[2].hash);
 
+console.log('\nPreviews and byte ranges');
+{
+  // Files of known content, removed again at the end of the section.
+  const ALPHA = '0123456789abcdefghijklmnopqrstuvwxyz';
+  const made = [['range.txt', ALPHA], ['clip.mp4', Buffer.alloc(64, 1)], ['song.mp3', Buffer.alloc(64, 2)], ['empty.txt', '']];
+  for (const [n, body] of made) fs.writeFileSync(path.join(root, 'media', n), body);
+  /** GET /api/raw with the body as bytes; token null sends none. */
+  const raw = (rel, headers = {}, token = s.token, max = null) => new Promise((resolve, reject) => {
+    const q = new URLSearchParams({ path: rel, ...(max !== null ? { max: String(max) } : {}) });
+    const req = http.get({ host: '127.0.0.1', port: s.port, path: `/api/raw?${q}`, headers: { ...headers, ...(token ? { 'X-Terrane-Token': token } : {}) } }, (res) => {
+      const chunks = [];
+      res.on('data', (c) => chunks.push(c));
+      res.on('end', () => resolve({ status: res.statusCode, headers: res.headers, body: Buffer.concat(chunks) }));
+    });
+    req.on('error', reject);
+  });
+  const SANDBOX = "sandbox; default-src 'none'; style-src 'unsafe-inline'";
+  const guarded = (h) => h['x-content-type-options'] === 'nosniff' && h['content-security-policy'] === SANDBOX && h['cache-control'] === 'no-store' && h['accept-ranges'] === 'bytes';
+
+  const mid = await raw('media/range.txt', { Range: 'bytes=10-19' });
+  check('bytes=10-19 answers 206 with exactly those ten bytes, Content-Range and Content-Length',
+    mid.status === 206 && mid.body.toString() === 'abcdefghij' && mid.headers['content-range'] === 'bytes 10-19/36' && mid.headers['content-length'] === '10',
+    `${mid.status} ${mid.headers['content-range']} ${mid.body}`);
+  check('a 206 keeps nosniff, the CSP sandbox and no-store, says Accept-Ranges, and carries no X-Terrane-Truncated',
+    guarded(mid.headers) && !('x-terrane-truncated' in mid.headers), JSON.stringify(mid.headers));
+  const movie = path.join(root, 'big', 'movie.bin');
+  const head8 = fs.readFileSync(movie).subarray(0, 8 * 1024 * 1024);
+  const open = await raw('big/movie.bin', { Range: 'bytes=0-' });
+  check(`bytes=0- on a ${(BIG / 1024 / 1024).toFixed(0)} MB file is capped at 8 MiB, the first 8 MiB exactly, and says the whole size`,
+    open.status === 206 && open.body.length === 8 * 1024 * 1024 && open.body.equals(head8) && open.headers['content-range'] === `bytes 0-8388607/${BIG}` && open.headers['content-length'] === '8388608',
+    `${open.status} ${open.headers['content-range']} ${open.body.length}`);
+  const later = await raw('big/movie.bin', { Range: `bytes=${BIG - 1000}-${BIG + 5000}` });
+  check('an end past the file is cut at its last byte',
+    later.status === 206 && later.body.length === 1000 && later.headers['content-range'] === `bytes ${BIG - 1000}-${BIG - 1}/${BIG}` && later.body.equals(fs.readFileSync(movie).subarray(BIG - 1000)),
+    `${later.status} ${later.headers['content-range']}`);
+  const tail = await raw('media/range.txt', { Range: 'bytes=-5' });
+  check('the suffix bytes=-5 gives the last five bytes', tail.status === 206 && tail.body.toString() === 'vwxyz' && tail.headers['content-range'] === 'bytes 31-35/36', `${tail.status} ${tail.headers['content-range']} ${tail.body}`);
+  const longTail = await raw('media/range.txt', { Range: 'bytes=-500' });
+  check('a suffix longer than the file gives the whole file', longTail.status === 206 && longTail.body.toString() === ALPHA && longTail.headers['content-range'] === 'bytes 0-35/36');
+  const past = await raw('media/range.txt', { Range: 'bytes=36-' });
+  const far = await raw('media/range.txt', { Range: 'bytes=100-200' });
+  const none = await raw('media/range.txt', { Range: 'bytes=-0' });
+  const empty = await raw('media/empty.txt', { Range: 'bytes=0-' });
+  check('a range that starts at or past the end, a suffix of 0, or any range of an empty file answers 416 with bytes */size and no body',
+    [past, far, none].every((r) => r.status === 416 && r.headers['content-range'] === 'bytes */36' && r.body.length === 0) && empty.status === 416 && empty.headers['content-range'] === 'bytes */0'
+    && guarded(past.headers), [past, far, none, empty].map((r) => `${r.status} ${r.headers['content-range']}`).join(', '));
+  const multi = await raw('media/range.txt', { Range: 'bytes=0-1,4-5' });
+  const reversed = await raw('media/range.txt', { Range: 'bytes=5-2' });
+  const unit = await raw('media/range.txt', { Range: 'items=0-1' });
+  const plain = await raw('media/range.txt');
+  check('several ranges, a reversed range or another unit are ignored: the whole-file answer, 200, as without a Range',
+    [multi, reversed, unit, plain].every((r) => r.status === 200 && r.body.toString() === ALPHA && r.headers['x-terrane-truncated'] === '0' && !r.headers['content-range']),
+    [multi, reversed, unit, plain].map((r) => r.status).join(' '));
+  check('the 200 says Accept-Ranges too, and keeps nosniff, the sandbox and no-store', guarded(plain.headers), JSON.stringify(plain.headers));
+  const capped = await raw('big/movie.bin', {}, s.token, 4096);
+  check('without a Range the cap still holds and says it cut', capped.status === 200 && capped.body.length === 4096 && capped.headers['x-terrane-truncated'] === '1');
+  const mp4 = await raw('media/clip.mp4', { Range: 'bytes=0-' });
+  const mp3 = await raw('media/song.mp3');
+  check('.mp4 and .mp3 carry their media types, ranged or not',
+    mp4.status === 206 && mp4.headers['content-type'] === 'video/mp4' && mp4.body.length === 64 && mp3.status === 200 && mp3.headers['content-type'] === 'audio/mpeg',
+    `${mp4.headers['content-type']} ${mp3.headers['content-type']}`);
+  check('a text file stays text/plain', plain.headers['content-type'] === 'text/plain; charset=utf-8');
+  // A refusal is the service's JSON error, never bytes of the file.
+  const refused = (r, status, code) => r.status === status && !r.headers['content-range'] && JSON.parse(r.body.toString() || '{}').code === code;
+  const noToken = await raw('media/range.txt', { Range: 'bytes=0-3' }, null);
+  check('a range without the token is refused with 401 and no bytes', refused(noToken, 401, 'ETOKEN'), `${noToken.status} ${noToken.body}`);
+  const held = await raw('.terrane-trash/journal.json', { Range: 'bytes=0-10' });
+  check('a range in the holding area is refused with 403', held.status === 403 && !held.headers['content-range'], `${held.status} ${held.body}`);
+  const climb = await raw('../outside/keep.txt', { Range: 'bytes=0-3' });
+  check('a range of a path that climbs out is refused', climb.status === 400 && !climb.headers['content-range'], `${climb.status} ${climb.body}`);
+  // A link that leads outside: the root's own link where links can be made,
+  // else a junction, which Windows lets anyone make.
+  let outLink = linked ? 'escape/keep.txt' : null;
+  const junction = path.join(root, 'media', 'out-j');
+  if (!outLink) {
+    try {
+      fs.symlinkSync(outside, junction, 'junction');
+      outLink = 'media/out-j/keep.txt';
+    } catch { /* no links here at all */ }
+  }
+  if (outLink) {
+    const through = await raw(outLink, { Range: 'bytes=0-3' });
+    check(`a range through a link that leads outside is refused with 403 (${outLink})`, refused(through, 403, 'EOUTSIDE'), `${through.status} ${through.body}`);
+  } else console.log('  note  no link or junction can be made here; the link check is left out');
+  fs.rmSync(junction, { force: true });
+  for (const [n] of made) fs.rmSync(path.join(root, 'media', n), { force: true });
+}
+
 console.log('\nThe holding area by any name, links and the thumbnail cookie');
 {
   const hold = path.join(root, '.terrane-trash');
@@ -883,6 +981,8 @@ r = await sm.op({ type: 'mkdir', parent: '', name: 'from-snapshot' });
 const u = await sm.post('/api/undo');
 check('snapshot mode refuses every change', r.status === 403 && u.status === 403 && /snapshot/i.test(r.body.message) && !has('from-snapshot'));
 check('snapshot mode never reads file contents', (await sm.get('/api/raw?path=docs/b.txt')).status === 403);
+r = await sm.request('GET', '/api/raw?path=docs/b.txt', { token: sm.token, headers: { Range: 'bytes=0-2' } });
+check('nor a byte range of one: ESNAPSHOT, no bytes', r.status === 403 && r.body.code === 'ESNAPSHOT' && !r.headers['content-range'], `${r.status} ${JSON.stringify(r.body)}`);
 r = await sm.get('/api/inside?path=docs/b.txt');
 check('snapshot mode refuses to look inside an archive, with ESNAPSHOT and a sentence',
   r.status === 403 && r.body.code === 'ESNAPSHOT' && /snapshot mode/i.test(r.body.message) && !r.body.records, JSON.stringify(r.body));

@@ -18,7 +18,8 @@
       sections from other features), whose 1.0.0 entries left their headers with these
       releases. Then the features themselves: terrane.css 2.4.0, and the first section for
       web/js/features.js (1.3.0, the palette, the remembered view and searches), whose
-      1.0.0 entry left its header with that release.
+      1.0.0 entry left its header with that release. Looking before you act extends
+      the same entries of app.js, model.js, terrane.css and features.js: Quick look.
     - 1.4.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — Records app.js 1.8.0:
       single-key shortcuts are off unless turned on in the guide.
     - 1.3.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — Records the hardening
@@ -83,7 +84,10 @@ here unchanged in the same edit.
   list's cursor to a node and scrolls to it; rescan, the whole survey again; and
   tabSections. S declares the searches slot. Find's own keydown handler returns first when
   a listener installed before it has claimed the key with preventDefault, so the search
-  history's arrows can step without the list taking focus.
+  history's arrows can step without the list taking focus. Looking before you act: P is
+  allocated to Quick look in KEY_OWNERS; the api gains rawUrl(node, max), the address of a
+  file's bytes for a preview; and the inspector's preview reads its picture and text
+  extensions from model.js (IMAGE_EXT, TEXT_EXT), the list Quick look reads too.
 - 1.8.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — Single-key shortcuts are
   off unless turned on in the guide, on Dennis's call after the hardening pass offered the
   setting with shortcuts on: letters, digits and signs act while the world or the ledger
@@ -193,7 +197,12 @@ here unchanged in the same edit.
   components/palette.css: the command palette's field, its options with the highlighter
   and an ink bar on the active one, its group labels and its foot line, in the shared
   dialog set high in the window; and components/searches.css: the Places tab's saved
-  searches, a bookmark mark, the name over the query in mono, Run and Forget.
+  searches, a bookmark mark, the name over the query in mono, Run and Forget. Then
+  components/quicklook.css: the Quick look sheet, about 1,100 px by 86% of the window, a
+  ruled head with the kind swatch, the name, Close, the facts, the position and the cut
+  note; one scroll container for the body, text as a sticky gutter of line numbers beside
+  a pre, a picture or a player fitted and centred, facts under a sentence; a foot line of
+  keys.
 - 2.3.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — Imports components/traverse.css:
   the Findings sub-line in two rows with its sort keys and note, the Working sessions rows and the
   traverse glyph; components/strata.css: the inspector's Bytes by last change and the
@@ -299,7 +308,9 @@ here unchanged in the same edit.
   and links, a reload coming back to the folder, the lens, the tab, the selection and the
   eye, and an address (#/folder) that opens a folder and follows the one you are in
   (resume.js); and the search history, saved searches and the in: token (searches.js).
-  resume.js and searches.js keep their data through the DOM-free memory.js.
+  resume.js and searches.js keep their data through the DOM-free memory.js. Then,
+  looking before you act: Quick look, P, the selected file's text, picture, sound or
+  film in a large sheet, stepped through the list shown with the arrows (quicklook.js).
 - 1.2.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — The third: Session
   traverse, working sessions as a search and a route (traverse.js). The fourth: Strata,
   bytes by last change and the Age lens's typical age for closed masses (strata.js). The
@@ -316,7 +327,9 @@ here unchanged in the same edit.
   reaches its prefix as the value my folder and the raw My Folder. A token that begins with
   a quote is a literal name term, never a prefix, a glob or a size; a quote left open runs
   to the end of the query, and empty quotes add nothing. A query without quotes is split
-  and read exactly as before.
+  and read exactly as before. IMAGE_EXT and TEXT_EXT: the extensions a preview shows as a
+  picture or reads as text, one list for the inspector's preview and Quick look, moved
+  here from app.js.
 - 1.3.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — fmtDay (MM/DD/YYYY) and
   plural are the one date formatter and count wording every module imports; fmtDate builds
   on fmtDay. isDir, which nothing used, is gone.

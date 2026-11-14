@@ -2,11 +2,11 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Terrane Service (Terrane Edition - v1.4)
+ *     - Title: Terrane Service (Terrane Edition - v1.5)
  *     - File Name: terrane.mjs
  *     - Relative Path: server/terrane.mjs
  *     - Artifact Type: CLI
- *     - Version: 1.4.0
+ *     - Version: 1.5.0
  *     - Date: 11/13/2026
  *     - Update: Friday, November 13, 2026
  *     - Author: Dennis 'dendogg' Smaltz
@@ -14,6 +14,20 @@
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
  *
  * ✒ Changelog:
+ *     - 1.5.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — GET
+ *       /api/raw answers one byte range, so Quick look's audio and video
+ *       elements can play and seek: bytes=a-b, a- or -n gets 206 with
+ *       Content-Range and Content-Length, at most 8 MiB at a time (the
+ *       browser asks again for the rest); a range that starts at or past
+ *       the end gets 416, whose Content-Range gives the size after an
+ *       asterisk; several ranges or a malformed header get the whole-file
+ *       answer as before. Every answer carries
+ *       Accept-Ranges; X-Terrane-Truncated stays on the 200 only. Media
+ *       files carry their own types (mp4, m4v, webm, mov, ogv, mp3, m4a,
+ *       aac, wav, flac, ogg, oga, opus). Every check before the bytes is
+ *       unchanged and comes first, and snapshot mode still refuses. The
+ *       bytes are streamed through pipeline(), so a reader the page drops
+ *       is closed rather than left open.
  *     - 1.4.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — POST
  *       /api/hash reads a file only once its real location is proved
  *       inside the root and outside the holding area, as /api/raw and
@@ -75,7 +89,9 @@
  *       three sampled megabytes plus size beyond that, reported as such),
  *       of files whose real location is inside the root
  *     - Sandboxed raw-file endpoint for previews: capped length, nosniff,
- *       and a CSP sandbox so a previewed HTML or SVG file cannot run
+ *       and a CSP sandbox so a previewed HTML or SVG file cannot run; one
+ *       byte range at a time (206, 416) for audio and video, at most 8 MiB
+ *       per answer
  *     - Archive interiors: a zip's central directory read without
  *       unpacking (server/archive.mjs), bounded in entries, directory
  *       size and time, with anything left out stated in a sentence
@@ -141,6 +157,7 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { spawn } from 'node:child_process';
+import { pipeline } from 'node:stream';
 import { makeGuard, GuardError, HOLD_DIR, relParts } from './guard.mjs';
 import { scan, pump } from './scan.mjs';
 import { makeOps } from './ops.mjs';
@@ -219,6 +236,42 @@ const IMAGE_MIME = {
   '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.gif': 'image/gif', '.webp': 'image/webp',
   '.svg': 'image/svg+xml', '.bmp': 'image/bmp', '.avif': 'image/avif', '.ico': 'image/x-icon',
 };
+// What Quick look plays: an <audio> or <video> element asks for these in ranges.
+const MEDIA_MIME = {
+  '.mp4': 'video/mp4', '.m4v': 'video/mp4', '.webm': 'video/webm', '.mov': 'video/quicktime', '.ogv': 'video/ogg',
+  '.mp3': 'audio/mpeg', '.m4a': 'audio/mp4', '.aac': 'audio/aac', '.wav': 'audio/wav', '.flac': 'audio/flac',
+  '.ogg': 'audio/ogg', '.oga': 'audio/ogg', '.opus': 'audio/ogg',
+};
+/** The most bytes one ranged answer of /api/raw carries; the browser asks again for the rest. */
+const RANGE_MAX = 8 * 1024 * 1024;
+
+/**
+ * The one byte range a Range header asks of a file of `size` bytes:
+ * { start, end } (end inclusive, at most RANGE_MAX bytes and never past
+ * the end), 'unsatisfiable' when it starts at or past the end (a suffix
+ * of 0 included), or null when there is no header, it names several
+ * ranges, another unit, or is malformed: the whole-file answer serves
+ * those as before.
+ */
+function byteRange(header, size) {
+  if (typeof header !== 'string') return null;
+  const m = /^bytes=(\d*)-(\d*)$/.exec(header.trim());
+  if (!m || (m[1] === '' && m[2] === '')) return null;
+  if (m[1] === '') {
+    const suffix = Number(m[2]);
+    if (suffix === 0 || size === 0) return 'unsatisfiable';
+    const start = Math.max(0, size - suffix);
+    return { start, end: Math.min(size - 1, start + RANGE_MAX - 1) };
+  }
+  const start = Number(m[1]);
+  const end = m[2] === '' ? Infinity : Number(m[2]);
+  if (end < start) return null;
+  if (start >= size) return 'unsatisfiable';
+  return { start, end: Math.min(end, size - 1, start + RANGE_MAX - 1) };
+}
+
+/** Streams bytes start to end (inclusive) of a file; a failure or a closed socket ends both sides. */
+const sendBytes = (real, start, end, res) => pipeline(fs.createReadStream(real, { start, end }), res, () => {});
 
 const json = (res, status, body) => {
   res.writeHead(status, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
@@ -511,15 +564,29 @@ async function api(req, res, url) {
       const real = await guard.realInside(abs);
       const st = await fsp.stat(real);
       if (!st.isFile()) throw new GuardError('ENOTFILE', 'Not a regular file.');
-      const max = Math.min(Number(q.get('max')) || 262144, 32 * 1024 * 1024);
-      const type = IMAGE_MIME[path.extname(abs).toLowerCase()] || 'text/plain; charset=utf-8';
-      res.writeHead(200, {
-        'Content-Type': type, 'X-Content-Type-Options': 'nosniff', 'Cache-Control': 'no-store',
+      const ext = path.extname(abs).toLowerCase();
+      const headers = {
+        'Content-Type': IMAGE_MIME[ext] || MEDIA_MIME[ext] || 'text/plain; charset=utf-8',
+        'X-Content-Type-Options': 'nosniff', 'Cache-Control': 'no-store',
         'Content-Security-Policy': "sandbox; default-src 'none'; style-src 'unsafe-inline'",
-        'X-Terrane-Truncated': st.size > max ? '1' : '0',
-      });
+        'Accept-Ranges': 'bytes',
+      };
+      // One range (a media element's, or anyone's): 206 with at most
+      // RANGE_MAX bytes, 416 past the end; several ranges or a malformed
+      // header get the whole-file answer below, capped by max.
+      const range = byteRange(req.headers.range, st.size);
+      if (range === 'unsatisfiable') {
+        res.writeHead(416, { ...headers, 'Content-Range': `bytes */${st.size}`, 'Content-Length': 0 });
+        return res.end();
+      }
+      if (range) {
+        res.writeHead(206, { ...headers, 'Content-Range': `bytes ${range.start}-${range.end}/${st.size}`, 'Content-Length': range.end - range.start + 1 });
+        return sendBytes(real, range.start, range.end, res);
+      }
+      const max = Math.min(Number(q.get('max')) || 262144, 32 * 1024 * 1024);
+      res.writeHead(200, { ...headers, 'X-Terrane-Truncated': st.size > max ? '1' : '0' });
       if (st.size === 0) return res.end();
-      return fs.createReadStream(real, { start: 0, end: Math.min(st.size, max) - 1 }).on('error', () => res.end()).pipe(res);
+      return sendBytes(real, 0, Math.min(st.size, max) - 1, res);
     }
     if (route === 'inside') {
       // The /raw sequence: lexical check, parent's real location, the

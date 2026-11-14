@@ -23,7 +23,8 @@
  *       a LEDGER_SUB control stands after the sort keys, cursorTo moves
  *       the list's cursor, a TAB_SECTIONS section is drawn in the Places
  *       tab, copyText says what happened, and the key table carries the
- *       palette's labels, palette: false and gl fields.
+ *       palette's labels, palette: false and gl fields. P is allocated to
+ *       Quick look, and quicklook may bind it.
  *     - 1.4.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
  *       S.sessions slot may hold what the Session traverse feature fills
  *       it with after the survey (a list of working sessions), as
@@ -109,6 +110,7 @@ const READING = [
 const OWNERS = {
   w: 'viewport', a: 'viewport', s: 'viewport', d: 'viewport', q: 'viewport', e: 'viewport', r: 'viewport', f: 'viewport',
   i: 'interiors', t: 'time', ',': 'time', '.': 'time', '<': 'time', '>': 'time', b: 'landmarks', h: 'landmarks', j: 'landmarks',
+  p: 'quicklook',
 };
 
 const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
@@ -195,7 +197,7 @@ export default {
     const g1regs = ['COMMANDS', 'LEDGER_SUB', 'AFTER_FOCUS', 'AFTER_SELECT', 'TAB_SECTIONS'];
     t.check('the palette commands, ledger sub-line controls, focus and selection hooks and tab sections hold no controller entry',
       g1regs.every((n) => ids[n].length === 0), JSON.stringify(g1regs.map((n) => ids[n])));
-    t.check('the key allocation is fixed: I Interiors, T , . < > Time, B H J Landmarks, the canvas keeps W A S D Q E R F',
+    t.check('the key allocation is fixed: I Interiors, T , . < > Time, B H J Landmarks, P Quick look, the canvas keeps W A S D Q E R F',
       same(start.owners, OWNERS) && start.ownersFrozen, JSON.stringify(start.owners));
     t.check('the tab buttons are made from TABS, Contents selected', same(start.tabs, ['contents:Contents:true', 'findings:Findings:false', 'survey:Survey:false', 'journal:Journal:false']), JSON.stringify(start.tabs));
 
@@ -254,7 +256,7 @@ export default {
         ctrlB: tryAdd({ id: 'seam-ctrl-b', mod: 'ctrl', keys: ['b'], run }),
         // A reserved key is either free for its owner or already held by
         // an entry of that owner (its feature is installed).
-        owned: ['i:interiors', 't:time', ',:time', '.:time', '<:time', '>:time', 'b:landmarks', 'h:landmarks', 'j:landmarks']
+        owned: ['i:interiors', 't:time', ',:time', '.:time', '<:time', '>:time', 'b:landmarks', 'h:landmarks', 'j:landmarks', 'p:quicklook']
           .map((s) => {
             const [k, owner] = [s.slice(0, s.indexOf(':')), s.slice(s.indexOf(':') + 1)];
             const held = [...K].find((x) => !x.mod && x.keys?.some((z) => (z.length === 1 ? z.toLowerCase() : z) === k));

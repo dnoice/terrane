@@ -16,7 +16,9 @@
  *     - 1.4.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] —
  *       Double quotes keep spaces in one search token and are dropped:
  *       "two words" is one name term, and in:"My Folder" reaches its
- *       prefix as the value my folder and the raw My Folder.
+ *       prefix as the value my folder and the raw My Folder. IMAGE_EXT
+ *       and TEXT_EXT, the extensions a preview shows as a picture or
+ *       reads as text, for the inspector and Quick look alike.
  *     - 1.3.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] —
  *       fmtDay (MM/DD/YYYY) and plural are the one date formatter and
  *       count wording every module imports; fmtDate builds on fmtDay.
@@ -42,7 +44,8 @@
  *     - Reconcile: re-reads one folder, preserves the identity of entries
  *       that still exist (selection survives), and reports which new child
  *       folders need a deep scan
- *     - Nine content kinds derived from the extension
+ *     - Nine content kinds derived from the extension, and the one list
+ *       of extensions a preview shows as a picture or reads as text
  *     - Search grammar: free text, glob, ext:, kind:, is:, size and age
  *       comparisons, all combinable; double quotes keep spaces in one
  *       term or one prefix value
@@ -121,6 +124,11 @@ export function kindOf(name) {
   if (lower === 'readme' || lower === 'license' || lower === 'changelog') return 1;
   return 8;
 }
+
+/** Extensions a preview shows as a picture: the inspector's and Quick look's one list. */
+export const IMAGE_EXT = new Set(['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'bmp', 'avif', 'ico']);
+/** Extensions a preview reads as text besides the code and data kinds; an svg is shown as a picture first. */
+export const TEXT_EXT = new Set(['txt', 'md', 'markdown', 'rst', 'log', 'nfo', 'tex', 'svg']);
 
 /* ---------- formatting ---------- */
 

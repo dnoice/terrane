@@ -23,6 +23,9 @@
  *       uses it), copyText (copyPaths uses it), listItems, cursorTo,
  *       rescan and tabSections; S gains the searches slot. Find's own
  *       keys give way to a feature's listener that claimed one first.
+ *       Looking before you act: P is Quick look's in KEY_OWNERS, the api
+ *       gains rawUrl, and the preview's picture and text extensions are
+ *       model.js's IMAGE_EXT and TEXT_EXT.
  *     - 1.8.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] —
  *       Single-key shortcuts are off unless turned on in the guide:
  *       letters, digits and signs act while the world or the ledger
@@ -128,7 +131,7 @@
  */
 
 import {
-  Model, KINDS, FLAG_LINK, FLAG_HIDDEN, extOf, fmtBytes, fmtCount, fmtDate, fmtAge, freshness, relPath, depthOf,
+  Model, KINDS, FLAG_LINK, FLAG_HIDDEN, IMAGE_EXT, TEXT_EXT, extOf, fmtBytes, fmtCount, fmtDate, fmtAge, freshness, relPath, depthOf,
   isAncestor, parseQuery, runSearch,
 } from './model.js';
 import { buildLayout, BOX, STYLE, AUX } from './layout.js';
@@ -230,13 +233,15 @@ function runHooks(reg, ...args) {
 /**
  * The fixed key allocation for plain keys (no Ctrl, Cmd or Alt). A
  * reserved key is refused to any entry whose owner is not its owner. The
- * canvas keeps its travel keys; Session and Strata have no keys.
+ * canvas keeps its travel keys; P is Quick look's; Session and Strata have
+ * no keys.
  */
 const KEY_OWNERS = Object.freeze({
   w: 'viewport', a: 'viewport', s: 'viewport', d: 'viewport', q: 'viewport', e: 'viewport', r: 'viewport', f: 'viewport',
   i: 'interiors',
   t: 'time', ',': 'time', '.': 'time', '<': 'time', '>': 'time',
   b: 'landmarks', h: 'landmarks', j: 'landmarks',
+  p: 'quicklook',
 });
 const keyName = (k) => (k.length === 1 ? k.toLowerCase() : k);
 
@@ -2018,9 +2023,6 @@ async function drawJournal(sub, host) {
 
 /* ---------- inspector ---------- */
 
-const IMAGE_EXT = new Set(['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'bmp', 'avif', 'ico']);
-const TEXT_EXT = new Set(['txt', 'md', 'markdown', 'rst', 'log', 'nfo', 'tex', 'svg']);
-
 function fact(label, ...value) {
   return el('div', {}, el('dt', { text: label }), el('dd', {}, ...value));
 }
@@ -2842,6 +2844,9 @@ const API = Object.freeze({
   KEYS, ESCAPE, PIN_SOURCES, TIP_LINES, INSPECTOR, READING, TABS, LAYOUT_OPTS, AFTER_LAYOUT, AFTER_REFRESH, AFTER_SURVEY, AFTER_OP, MENU, QUERY,
   AFTER_QUERY, SURVEY, COMMANDS, LEDGER_SUB, AFTER_FOCUS, AFTER_SELECT, TAB_SECTIONS,
   get, post, runOp, refreshDirs, writable, isAttached, hostOf, relPath, absPath,
+  // The address of a file's bytes for a preview: at most max of them
+  // without a Range header (0: the service's default, 256 KB).
+  rawUrl,
   // The ledger row the keyboard cursor is on, or null.
   listCursor: () => (list?.items.length ? list.items[list.cursor] ?? null : null),
   // The ledger list's rows, in the order shown.
