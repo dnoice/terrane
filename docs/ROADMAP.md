@@ -322,15 +322,15 @@ Next:
 - Layout in a worker. Not done, by decision: once what follows a region
   landing, the location's update and a reveal's panels ran in tasks of
   their own, the longest relayout at 5,000,000 entries took
-  @@RELAYOUT-5M@@ ms and no task passed 16 ms of script, so a worker
+  6.5 ms and no task passed 16 ms of script, so a worker
   would add the cost of copying what layout reads for no frame saved.
   It stays the remedy should a heavier layout or a slower machine need
   it.
 - More margin on the frame. The longest task at 400,000 entries and
   above is the one in which a region answer arrives from the worker and
-  the page paints and draws the ledger twice: @@5M-SCRIPT@@ ms at
+  the page paints once and draws the ledger twice: 12.1 ms at
   5,000,000 entries in the final run, and 14.1 to 14.9 ms in three
-  earlier ones. Finding why that task paints twice, and splitting it,
+  earlier ones. Finding why that task draws the ledger twice, and splitting it,
   is the next remedy should a slower machine pass 16 ms.
 - A survey and search the service works out without holding region
   answers, by an incremental survey or a worker thread. After a change
@@ -350,12 +350,12 @@ frame over 16 ms from script.
 Result, 11/14/2026: **met at 5,000,000 entries**, the largest size
 measured, on a synthetic snapshot in regions, with WebGL and without,
 on Windows 11 with Edge 157 and an RTX 5050 laptop GPU. With WebGL the
-page's script heap peaked at @@5M-PEAK@@ MB and held @@5M-AFTER@@ MB
-after the tour, and the longest task ran @@5M-SCRIPT@@ ms of script,
+page's script heap peaked at 41.7 MB and held 12.6 MB
+after the tour, and the longest task ran 12.1 ms of script,
 none over 16 ms; with the budget halved, letting regions go took
-@@5M-EVICT@@ ms. It was met at 400,000, 1,000,000 and 2,000,000 entries
+4.4 ms. It was met at 400,000, 1,000,000 and 2,000,000 entries
 too, and 100,000 entries, held whole below the threshold, ran
-@@100K-SCRIPT@@ ms (section 5 and ARCHITECTURE section 4 have every
+13.4 ms (section 5 and ARCHITECTURE section 4 have every
 figure). What it does not show: memory is the page's script heap
 (`JSHeapUsedSize`), not the browser's whole process; nothing above
 5,000,000 entries was measured, though the generator writes up to ten
@@ -886,7 +886,16 @@ The exit test on the final tree, `node tools/scale.mjs` and then the
 same with `--nogl`, on Windows 11 with Edge 157 on an RTX 5050 laptop
 GPU, seed 11 (ARCHITECTURE section 4 has the full table):
 
-@@EXIT-LINES@@
+- `node tools/scale.mjs`: "2 passed, 0 failed" at 100,000 entries, held whole
+  (peak script heap 28.6 MB, longest task 13.4 ms of script), and
+  "8 passed, 0 failed" at each of 400,000, 1,000,000, 2,000,000 and 5,000,000
+  in regions (peak 28.8, 42.1, 42.2, 41.7 MB; longest task
+  12.6, 13.3, 13.0, 12.1 ms of script);
+- `node tools/scale.mjs --nogl`: "2 passed, 0 failed" at 100,000 entries and
+  "6 passed, 0 failed" at each larger size (peak 19.1, 9.2, 7.1, 7.9, 7.9 MB);
+- `node tools/scale.mjs --service-only`: every size loaded and answered; at
+  5,000,000 entries ready in 3,111 ms with 786 MB resident, a region in
+  0.3 ms (median) and a chain to a deep file in 0.8 ms, none failed;
 
 Final check lines, on Windows 11 with Edge 157 on an RTX 5050 laptop
 GPU and the default fixture of 3,126 files:

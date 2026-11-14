@@ -820,7 +820,7 @@ Linux container above was not measured for them.
 
 `node tools/scale.mjs`, then the same with `--nogl`, on the final tree
 of Wave 4: Windows 11, 16 cores, 31.6 GB, Node 26.13, synthetic
-snapshots of seed 11, one point at a time with @@FREE-GB@@ GB free or more
+snapshots of seed 11, one point at a time with 6.6 GB free or more
 and no other headless browser, the service at `--max-old-space-size`
 1024 (100k, 400k), 2048 (1M), 3072 (2M) and 4096 (5M). The tour goes
 from the overview eight levels down by keyboard, searches twice and
@@ -829,11 +829,17 @@ halves the budget of held entries and walks three levels down again.
 Heap is the page's script heap (`JSHeapUsedSize`); a task's script is
 read from a trace of the tour, which costs a little itself.
 
-@@EXIT-TABLE@@
+| Entries | Held | First box, cold / once the service is ready | Script heap: settled / peak / after the tour / after collection | Longest task, script | Longest relayout | Search twice, then the survey, in the service |
+| ------- | ---- | ------------------------------------------- | ---------------------------------------------------------------- | -------------------- | ---------------- | --------------------------------------------- |
+| 100,000 | whole | 610 / 297 ms | 18.0 / 28.6 / 26.8 / 19.5 MB | 13.4 ms | 8.3 ms | in the page |
+| 400,000 | regions | 529 / 221 ms | 5.6 / 28.8 / 12.3 / 9.5 MB | 12.6 ms | 5.5 ms | 35 + 23 ms, 38 ms |
+| 1,000,000 | regions | 552 / 218 ms | 5.8 / 42.1 / 13.1 / 12.1 MB | 13.3 ms | 6.9 ms | 77 + 48 ms, 71 ms |
+| 2,000,000 | regions | 1,162 / 218 ms | 5.9 / 42.2 / 14.8 / 11.2 MB | 13.0 ms | 5.9 ms | 124 + 92 ms, 128 ms |
+| 5,000,000 | regions | 2,544 / 216 ms | 5.9 / 41.7 / 12.6 / 11.8 MB | 12.1 ms | 6.5 ms | 299 + 221 ms, 385 ms |
 
 The longest task at 400,000 entries and above is the one in which a
-region answer arrives from the worker and the page paints and draws the
-ledger twice; at 5,000,000 it ran @@5M-SCRIPT@@ ms, @@5M-MARGIN@@ ms
+region answer arrives from the worker and the page paints once and draws
+the ledger twice; at 5,000,000 it ran 12.1 ms, 3.9 ms
 inside the limit. Earlier runs at 5,000,000 gave 14.8 ms (the first
 exit run), 14.9 ms (the review's) and 14.1 ms (after the fixes), so the
 margin is real but thin. A whole task ran longer only where the
@@ -842,13 +848,25 @@ scenario's own forced collection, made to read the heap, fell in it.
 Without WebGL the page draws no world and the scenario makes no trace,
 so only memory and the first box are read:
 
-@@NOGL-TABLE@@
+| Entries | Held | First box, cold / once the service is ready | Script heap: settled / peak / after the tour / after collection | Search twice, then the survey, in the service |
+| ------- | ---- | ------------------------------------------- | ---------------------------------------------------------------- | --------------------------------------------- |
+| 100,000 | whole | 316 / 256 ms | 16.8 / 19.1 / 19.1 / 17.2 MB | in the page |
+| 400,000 | regions | 175 / 128 ms | 4.1 / 9.2 / 5.1 / 4.6 MB | 36 + 27 ms, 32 ms |
+| 1,000,000 | regions | 316 / 127 ms | 4.2 / 7.1 / 5.8 / 5.3 MB | 68 + 46 ms, 65 ms |
+| 2,000,000 | regions | 894 / 122 ms | 4.3 / 7.9 / 5.7 / 5.3 MB | 129 + 92 ms, 130 ms |
+| 5,000,000 | regions | 2,570 / 121 ms | 4.3 / 7.9 / 5.2 / 5.0 MB | 301 + 221 ms, 372 ms |
 
 The service alone (`--service-only`: the tree loaded, eight levels
 walked down by the folder with most folders beneath, each region timed,
 50 chains to random deep files):
 
-@@SVC-TABLE@@
+| Entries | Ready (loaded) | Memory loaded / after the walk: RSS, heap, arrays | A region, median / p95 | A chain to a deep file, median / p95 |
+| ------- | -------------- | ------------------------------------------------- | ---------------------- | ------------------------------------ |
+| 100,000 | 175 ms (77) | 106 / 110 MB, 24 / 30 MB, 6 / 6 MB | 0.5 / 1.1 ms | 0.7 / 2.6 ms |
+| 400,000 | 488 ms (264) | 179 / 193 MB, 54 / 64 MB, 27 / 25 MB | 0.5 / 1 ms | 1.6 / 4.7 ms |
+| 1,000,000 | 761 ms (573) | 249 / 264 MB, 53 / 92 MB, 59 / 61 MB | 0.4 / 1.3 ms | 1.8 / 5 ms |
+| 2,000,000 | 1,308 ms (1,098) | 401 / 359 MB, 157 / 113 MB, 135 / 119 MB | 0.3 / 1.2 ms | 1 / 4.3 ms |
+| 5,000,000 | 3,111 ms (2,676) | 786 / 694 MB, 350 / 255 MB, 338 / 296 MB | 0.3 / 1 ms | 0.8 / 9 ms |
 
 ### Measured (Windows 11, 16 cores, 11/14/2026, region mode in Node)
 

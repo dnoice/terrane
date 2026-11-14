@@ -281,7 +281,8 @@ short form is kept too.
   the task in which a search's answer arrives from the worker, painting the world and drawing
   the ledger twice: runQueryRegions did both, and applyQuery's show did both again in the same
   task. runQueryRegions now resolves true once it has drawn, and show then draws the ledger
-  again only when the search changed the tab, which took that task from 16.3 ms of script at 2,000,000 entries to @@FIX-2M@@ ms.
+  again only when the search changed the tab,
+  which took that task from 16.3 ms of script at 2,000,000 entries to 13.0 ms.
 - 1.14.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — The Guide is one window in four
   tabs: Keys, Mouse, Reading the world and Settings, the last one opened kept. Reading the world
   leaves the inspector for it, so the inspector's space is free. In full: showGuide(tab) builds
