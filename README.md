@@ -1,10 +1,10 @@
 <!--
 ✒ Metadata
-    - Title: Terrane Readme (Terrane Edition - v1.14)
+    - Title: Terrane Readme (Terrane Edition - v1.15)
     - File Name: README.md
     - Relative Path: README.md
     - Artifact Type: docs
-    - Version: 1.14.0
+    - Version: 1.15.0
     - Date: 11/14/2026
     - Update: Saturday, November 14, 2026
     - Author: Dennis 'dendogg' Smaltz
@@ -12,6 +12,12 @@
     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
 
 ✒ Changelog:
+    - 1.15.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] —
+      Travelling: flavors, so the mouse steers the world as Blender,
+      AutoCAD, SketchUp, Maya, 3ds Max, Rhino, SolidWorks, Unity,
+      Unreal Engine or Google Earth do. The commands name flavors-test;
+      the project map lists flavors.js; What was verified records the
+      runs.
     - 1.14.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] —
       Travelling: Blender's middle-button drags and numpad views.
       Reading the world: hatching and bands stay put as you travel.
@@ -334,10 +340,8 @@ the features' rows included.
 | Input | Effect |
 | ----- | ------ |
 | Wheel | Fly toward whatever is under the cursor |
-| Drag | Slide the ground |
-| Right-drag | Orbit the point you grabbed |
-| Middle-drag | Orbit the point you grabbed, as in Blender |
-| Shift+middle-drag | Grab the ground and move it |
+| Drag, middle-drag | Grab the ground and move it (Terrane's flavor; see below) |
+| Right-drag, Shift+middle-drag | Orbit the point you grabbed |
 | Ctrl+middle-drag | Fly in and out |
 | Alt+drag | Look around in place |
 | W A S D | Move. Shift moves faster. Speed scales with your height above the surface |
@@ -349,6 +353,32 @@ the features' rows included.
 | G | Fly to the selection |
 | Double-click | Fly to a folder; open a file |
 | Backspace, Alt+Left | Up one level; back |
+
+The drags in the table are Terrane's own flavor. If your hands already
+know another tool, choose its flavor under Flavor in the guide (`?`) or
+from the palette (Ctrl+K, "flavor"), and the mouse steers the world as
+it does there:
+
+| Flavor | Orbit | Grab and move | Fly in and out |
+| ------ | ----- | ------------- | -------------- |
+| Blender | Middle-drag, or Alt+drag | Shift+middle-drag | Ctrl+middle-drag |
+| AutoCAD, Fusion 360, Revit | Shift+middle-drag | Middle-drag | Ctrl+middle-drag |
+| SketchUp | Middle-drag | Shift+middle-drag | Ctrl+middle-drag |
+| Maya, Cinema 4D | Alt+drag | Alt+middle-drag | Alt+right-drag |
+| 3ds Max | Alt+middle-drag | Middle-drag | Ctrl+Alt+middle-drag |
+| Rhino | Right-drag | Shift+right-drag | Ctrl+right-drag |
+| SolidWorks | Middle-drag | Ctrl+middle-drag | Shift+middle-drag |
+| Unity | Alt+drag | Middle-drag | Alt+right-drag |
+| Unreal Engine | Alt+drag | Middle-drag | Alt+right-drag |
+| Google Earth | Shift+drag | Drag | Right-drag |
+
+In Unity and Unreal Engine the right button looks around, and holding
+it while you press W A S D flies; Unreal's left drag walks forward and
+back and turns. In AutoCAD and SketchUp a middle double-click rises to
+the overview. A drag a flavor leaves alone keeps Terrane's meaning,
+right-click without moving opens the menu in every flavor, and the
+keys are the same in all of them. The choice is kept in this browser
+for every directory.
 
 The breadcrumbs and the Contents tab follow the folder you are in. Clicking
 a breadcrumb, a ledger row, a search result or a survey entry flies you
@@ -685,6 +715,8 @@ browser holds two copies of it, about 300 MB per million entries.
 
 | Steady conventions and Blender's view controls on Windows 11 (11/14/2026), Edge 157 on an RTX 5050 laptop GPU: `npm test`, and `node tools/ui-check.mjs --no-shots`, both passes, on the default fixture, with the new `views` scenario (hatching and bands drawn with the floating origin moved and moved back under the same eye; the middle button's orbit, grab and fly; the numpad views). With the old origin-relative coordinates put back, the same check finds 6,045 and 11,984 pixels moved | `npm test`: 797 passed, 0 failed. The interface check: 1424 passed, 0 failed, 6 skipped; 7 of 840,160 pixels differ with the fix |
 
+| Flavors on Windows 11 (11/14/2026), Edge 157 on an RTX 5050 laptop GPU: `npm test` with the new `flavors-test`, and `node tools/ui-check.mjs --no-shots`, both passes, on the default fixture, with `views` making every drag of every flavor with the mouse and judging what the eye did | `npm test`: 874 passed, 0 failed (77 in `flavors-test`). The interface check: 1438 passed, 1 failed, 6 skipped; the failure was the full-upload picture in `transitions`, one byte of one pixel a level apart, which the check now ignores while still counting anything over two levels (`transitions` again: 33 passed, 0 failed) |
+
 Not verified: running on macOS; frame rate at street level in the largest
 trees on a hardware GPU; Open and Reveal reaching a desktop application on
 Windows; the progress panel driven in a browser (its service side is
@@ -739,6 +771,7 @@ web/js/model.js      tree model, aggregation, search, survey, adopt
 web/js/layout.js     the spatial language and level of detail; BOX, STYLE, AUX
 web/js/viewport.js   3D world, camera, picking, transitions, relation lines
 web/js/lettering.js  the names on the blocks: a distance-field atlas
+web/js/flavors.js    the flavors: what each drag does, DOM-free
 web/js/theme.js      colours shared with the stylesheet
 web/js/thumbs.js     the only way the page shows an image
 web/js/ui.js         menu, dialog, sheets, notices, tip, indicators, virtual
@@ -801,6 +834,7 @@ tools/ui-check.mjs   headless browser check; scenarios in tools/ui-scenarios/,
                      exchange.mjs (export, places-file, terminal), warm.mjs,
                      demo.mjs, views.mjs (steady conventions, Blender's
                      controls)
+tools/flavors-test.mjs  every flavor in Node (in npm test)
 tools/make-fixture.mjs  the synthetic tree the checks run on (npm run fixture)
 tools/vendor.mjs     fetch and verify the vendored browser libraries
 docs/                ARCHITECTURE.md, ROADMAP.md

@@ -1,10 +1,10 @@
 <!--
 ✒ Metadata
-    - Title: Terrane Architecture (Terrane Edition - v1.10)
+    - Title: Terrane Architecture (Terrane Edition - v1.11)
     - File Name: ARCHITECTURE.md
     - Relative Path: docs/ARCHITECTURE.md
     - Artifact Type: docs
-    - Version: 1.10.0
+    - Version: 1.11.0
     - Date: 11/14/2026
     - Update: Saturday, November 14, 2026
     - Author: Dennis 'dendogg' Smaltz
@@ -12,6 +12,8 @@
     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
 
 ✒ Changelog:
+    - 1.11.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
+      feature modules add flavors.js, the flavors.
     - 1.10.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — Visual
       identity: names are printed on the boxes by their own shader from
       a distance-field atlas (lettering.js), and the measured table says
@@ -852,7 +854,10 @@ their data through the DOM-free `memory.js`; `quicklook.js`;
 `presets.js` (the selection's total and the quick searches);
 `batch.js` (the batch rename, with the DOM-free `rename.js`);
 `dupes.js` (duplicate cleanup); `copyas.js`; `exports.js` (lists as
-CSV, with the DOM-free `csv.js`); and `terminal.js`. `api` is frozen:
+CSV, with the DOM-free `csv.js`); `terminal.js`; and `flavors.js`
+(the flavors, DOM-free: what each drag does in Terrane's own and ten
+others, which the view reads through `setFlavor`, the guide's Mouse
+section chooses, and the palette's Flavor commands offer). `api` is frozen:
 the session state `S`, the registries below, and the controller
 functions a feature needs to read the tree, travel, redraw and speak. A
 module that throws while installing is named in a notice, and the

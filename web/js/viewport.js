@@ -1,11 +1,11 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: 3D Viewport (Terrane Edition - v1.8)
+ *     - Title: 3D Viewport (Terrane Edition - v1.9)
  *     - File Name: viewport.js
  *     - Relative Path: web/js/viewport.js
  *     - Artifact Type: javascript
- *     - Version: 1.8.0
+ *     - Version: 1.9.0
  *     - Date: 11/14/2026
  *     - Update: Saturday, November 14, 2026
  *     - Author: Dennis 'dendogg' Smaltz
@@ -13,6 +13,11 @@
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
  *
  * ✒ Changelog:
+ *     - 1.9.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] —
+ *       Drags follow a flavor (flavors.js, setFlavor):
+ *       Terrane's, Blender's, AutoCAD's and eight more; a walk motion for
+ *       Unreal's left drag, and a middle double click that rises to the
+ *       overview where a flavor asks for it.
  *     - 1.8.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] —
  *       Hatching, stipple and bands stay put: drawn from each box's own
  *       centre with one period for the whole box, blended between octaves,
@@ -26,12 +31,6 @@
  *       lettering.js's distance-field atlas. They are lit, shadowed and
  *       hazed with their surface and read upright from the eye; the HTML
  *       file and folder tags are gone, and only mark tags stay in HTML.
- *     - 1.6.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] —
- *       Boxes look made, not drawn: a satin finish whose shader rounds
- *       every edge, shades each side toward its foot, gives a closed mass
- *       strata of what it holds and a riser two courses, and keeps ink for
- *       the conventions; a soft contact shadow under every box; the sun
- *       at a three-quarter angle to the view, so shadows fall in sight.
  *     Earlier entries: see CHANGELOG.md
  *
  * ✒ Description:
@@ -57,10 +56,12 @@
  *       three-quarter angle to the view that
  *       follow the eye down to any scale
  *     - Travel by pointer: the wheel flies toward whatever is under the
- *       cursor, drag slides the ground, right-drag orbits the point you
- *       grabbed, Alt-drag looks around; and as in Blender the middle
- *       button orbits, Shift+middle grabs and moves the ground, and
- *       Ctrl+middle flies in and out
+ *       cursor; each drag means what the flavor says (slide,
+ *       orbit, look, dolly or walk). Terrane's own: drag and middle-drag
+ *       grab the ground and move it, right-drag and Shift+middle orbit
+ *       the point you grabbed, Ctrl+middle flies in and out, Alt with any
+ *       button looks around; Blender's, AutoCAD's, Maya's and eight more
+ *       come from flavors.js
  *     - Blender's numpad views about the middle of the view: 7 top, 1
  *       front, 3 right (Ctrl the far side), 2 4 6 8 orbit in steps, 9
  *       turns about, . frames the selection
@@ -107,10 +108,11 @@
  *     view.flyTo(view.pose());             // the eye and heading, and back
  *     view.viewAbout('top');               // 'front', 'back', 'right', 'left',
  *     view.viewAbout({ yaw, pitch });      // or a step of orbit
+ *     view.setFlavor(flavorById('blender'));  // what each drag does
  *
  * ✒ Other Important Information:
  *     - Dependencies: three.js r187 (vendored at web/vendor/three),
- *       layout.js, lettering.js, theme.js
+ *       layout.js, lettering.js, flavors.js, theme.js
  *     - Compatible platforms: browsers with WebGL2
  *     - Performance: 70,000 boxes is the layout budget; transitions write
  *       matrices directly into the instance buffer, and every buffer
@@ -128,6 +130,7 @@
 import * as THREE from '../vendor/three/three.module.js';
 import { BOX, STYLE, WORLD } from './layout.js';
 import { Lettering, FACE, SLOT, ATLAS, PAD } from './lettering.js';
+import { motionFor, flavorById } from './flavors.js';
 
 const FOV = 44;
 const HORIZON = 0xe9eeea;
@@ -990,6 +993,9 @@ export class Viewport {
     this.raf = 0;
     this.raycaster = new THREE.Raycaster();
     this.labelPool = [];
+    // What each drag does: Terrane's own until the page chooses a flavor.
+    this.flavor = flavorById('terrane');
+    this.lastMiddle = null;
     // Boxes that carry a printed name now, and the frames drawn so far
     // (the lettering's slots are kept by the frame they were last used in).
     this.lettered = new Map();
@@ -1163,6 +1169,11 @@ export class Viewport {
   /** Turns the eye in place. */
   turn(delta) {
     this.flyTo({ yaw: this.cam.yaw + delta }, 260);
+  }
+
+  /** What each drag does from now on: a flavor from flavors.js. */
+  setFlavor(flavor) {
+    this.flavor = flavor || flavorById('terrane');
   }
 
   /**
@@ -1551,12 +1562,8 @@ export class Viewport {
     el.addEventListener('pointerdown', (e) => {
       el.setPointerCapture(e.pointerId);
       el.focus({ preventScroll: true });
-      // As in Blender, the middle button orbits, Shift slides (grabs and
-      // moves) and Ctrl flies in and out; the left button slides, the
-      // right orbits and Alt looks around with either.
-      const mode = e.altKey ? 'look'
-        : e.button === 1 ? (e.shiftKey ? 'slide' : e.ctrlKey || e.metaKey ? 'dolly' : 'orbit')
-          : e.button === 2 ? 'orbit' : 'slide';
+      // The flavor says what this drag does.
+      const mode = motionFor(this.flavor, e.button, { shift: e.shiftKey, ctrl: e.ctrlKey || e.metaKey, alt: e.altKey });
       const p = this.probe(e.clientX, e.clientY);
       down = { x: e.clientX, y: e.clientY, lx: e.clientX, ly: e.clientY, button: e.button, moved: false, mode, anchor: p.point };
     });
@@ -1586,6 +1593,15 @@ export class Viewport {
           c.y = a.y + (c.y - a.y) * f;
           c.z = a.z + (c.z - a.z) * f;
         } else this.zoomAt(f, down.x, down.y);
+      } else if (down.mode === 'walk') {
+        // Unreal's left drag: up and down walk along the heading on the
+        // level, left and right turn.
+        const h = Viewport.forward(c.yaw, 0);
+        const hl = Math.hypot(h[0], h[2]) || 1;
+        const step = -dy * Math.max(this.alt, 1e-6) * 0.006;
+        c.x += (h[0] / hl) * step;
+        c.z += (h[2] / hl) * step;
+        c.yaw += dx * 0.004;
       } else if (down.mode === 'look' || !down.anchor) {
         c.yaw += dx * 0.004;
         c.pitch -= dy * 0.004;
@@ -1628,6 +1644,18 @@ export class Viewport {
       down = null;
       el.classList.remove('is-dragging');
       if (d.moved) return;
+      // A middle double click rises to the overview where the flavor says
+      // so (zoom extents, in AutoCAD and SketchUp).
+      if (d.button === 1) {
+        const now = performance.now();
+        const last = this.lastMiddle;
+        this.lastMiddle = { t: now, x: e.clientX, y: e.clientY };
+        if (this.flavor.overview === 'middle' && last && now - last.t < 450 && Math.hypot(e.clientX - last.x, e.clientY - last.y) < 8) {
+          this.lastMiddle = null;
+          this.overview();
+        }
+        return;
+      }
       const i = this.pick(e.clientX, e.clientY);
       if (d.button === 2) this.on.context?.(i, e);
       else if (d.button === 0) this.on.click?.(i, e);

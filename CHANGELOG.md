@@ -1,10 +1,10 @@
 <!--
 ✒ Metadata
-    - Title: Shipped File Changelogs (Terrane Edition - v1.9)
+    - Title: Shipped File Changelogs (Terrane Edition - v1.10)
     - File Name: CHANGELOG.md
     - Relative Path: CHANGELOG.md
     - Artifact Type: docs
-    - Version: 1.9.0
+    - Version: 1.10.0
     - Date: 11/14/2026
     - Update: Saturday, November 14, 2026
     - Author: Dennis 'dendogg' Smaltz
@@ -12,6 +12,10 @@
     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
 
 ✒ Changelog:
+    - 1.10.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — Records the flavors:
+      viewport.js 1.9.0, app.js 1.13.0 and features.js 1.4.0. viewport.js's header rolls
+      its 1.6.0 entry out, app.js's its 1.10.0 and features.js's its 1.1.0; the first two
+      entries now open with their headers' words.
     - 1.9.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — Records steady conventions and
       Blender's controls: viewport.js 1.8.0 and app.js 1.12.0. viewport.js's header rolls its
       1.5.0 entry out and app.js's its 1.9.0; the app.js 1.9.0 entry now opens with its
@@ -92,6 +96,17 @@ short form is kept too.
 
 ## web/js/app.js
 
+- 1.13.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — Flavors: the guide's
+  Mouse section chooses how drags steer the world (Terrane, Blender, AutoCAD and eight more),
+  lists the chosen flavor's drags, and the choice is kept in this browser (api.flavor, for the
+  palette's commands). In full: the key table loses its drag rows (Drag, Right-drag, the three
+  middle-button rows, Alt+drag), which depend on the flavor; the guide draws them under its
+  Mouse heading from rowsFor, with the flavor's note, beside a Flavor list that redraws them as
+  it changes. The choice is kept under terrane.flavor in local storage, for every directory, or
+  for the page's life where storage is refused; setFlavor hands it to the view
+  and says the first three drags in the live region. The view takes the kept flavor as it
+  starts.
+
 - 1.12.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — The guide lists Blender's
   controls the world now takes: the middle button (orbit; Shift grabs and moves the ground; Ctrl
   flies in and out) and the numpad views.
@@ -107,7 +122,10 @@ short form is kept too.
   closed mass's sides show its strata.
 
 - 1.10.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — A page no service served,
-  opened over http or https (GitHub Pages, `npm run demo`), runs the demo world: DEMO is
+  opened over http or https (GitHub Pages), runs the demo world (demo.js): /api/ is answered in
+  the page, the status says Demo world, pictures, sounds and film come from the world, and a
+  notice says what the visitor is looking at. In full: a page no service served, opened over
+  http or https (GitHub Pages, `npm run demo`), runs the demo world: DEMO is
   demo.js's startDemo(), imported with a top-level await before anything asks for /api/, so
   every request the page makes is answered in the page by demo-service.js. rawUrl takes the
   world's picture for an image, a synthesized tone for audio and a few seconds of film recorded
@@ -385,6 +403,18 @@ short form is kept too.
 
 ## web/js/viewport.js
 
+- 1.9.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — Drags follow a flavor
+  (flavors.js, setFlavor): Terrane's, Blender's, AutoCAD's and eight more; a walk
+  motion for Unreal's left drag, and a middle double click that rises to the overview where a
+  flavor asks for it. In full: pointerdown asks motionFor(this.flavor, button, modifiers) for the
+  drag's motion, where it had chosen slide, orbit, look or dolly itself. walk moves the eye along
+  its heading on the level as the pointer goes up or down and turns it as it goes left or right.
+  A middle press released without moving, a second within 450 ms and 8 px of the first, calls
+  overview() when the flavor's overview is 'middle'. The default is Terrane's flavor. It keeps
+  what the drags meant before, except the middle button, which, on Dennis's ruling, now grabs
+  the ground and moves it, with Shift orbiting the grabbed point; Blender's flavor keeps
+  Blender's orbit.
+
 - 1.8.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — Hatching, stipple and bands
   stay put: drawn from each box's own centre with one period for the whole box, blended between
   octaves, so the floating origin, a turn or a zoom no longer breaks them. Blender's controls:
@@ -428,7 +458,11 @@ short form is kept too.
   prints its name in ink. The pass runs before the frame is drawn, so the names and the eye
   agree; names waiting for their slot bring it back on the next frame. No draw call more.
 
-- 1.6.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — Boxes look made, not drawn.
+- 1.6.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — Boxes look made, not drawn: a
+  satin finish whose shader rounds every edge, shades each side toward its foot, gives a closed
+  mass strata of what it holds and a riser two courses, and keeps ink for the conventions; a soft
+  contact shadow under every box; the sun at a three-quarter angle to the view, so shadows fall
+  in sight. In full: boxes look made, not drawn.
   The box material is a MeshStandardMaterial (roughness 0.46) whose shader, from each box's
   own dimensions: rounds every edge, the normal leaning toward the edge within a bevel of 16 %
   of the short side or 6 % of the footprint, never under about a pixel and a half nor over a
@@ -512,6 +546,9 @@ short form is kept too.
 - 1.0.0 (11/09/2026) [dendogg + Anthropic - Claude Fable 5.2] — Initial release.
 
 ## web/js/features.js
+
+- 1.4.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — The flavors' palette
+  commands, Flavor (flavors.js).
 
 - 1.3.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — The sixth to eighth
   features, finding your way: the command palette, Ctrl+K, every action and every folder

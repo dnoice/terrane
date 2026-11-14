@@ -1,18 +1,24 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Transition Cost Scenario (Terrane Edition - v1.1)
+ *     - Title: Transition Cost Scenario (Terrane Edition - v1.2)
  *     - File Name: transitions.mjs
  *     - Relative Path: tools/ui-scenarios/transitions.mjs
  *     - Artifact Type: test
- *     - Version: 1.1.0
- *     - Date: 11/13/2026
- *     - Update: Friday, November 13, 2026
+ *     - Version: 1.2.0
+ *     - Date: 11/14/2026
+ *     - Update: Saturday, November 14, 2026
  *     - Author: Dennis 'dendogg' Smaltz
  *     - A.I. Acknowledgement: Anthropic - Claude Opus 5.5
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
  *
  * ✒ Changelog:
+ *     - 1.2.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
+ *       full-upload picture counts bytes off by more than two levels: a
+ *       stale buffer moves whole boxes, while the GPU's own rounding has
+ *       left one byte of one pixel a level apart now and then since the
+ *       boxes print names and take one stripe period each. The raw count
+ *       is still reported.
  *     - 1.1.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
  *       full-upload picture sets the contact shadows aside, whose soft
  *       edges blend a hair differently from draw to draw; they share the
@@ -176,13 +182,17 @@ function samePicture(T) {
   }
   const b = grab();
   if (contact) contact.visible = true;
+  // A stale buffer moves whole boxes, by many levels; rounding on the GPU
+  // can leave a byte a level apart. Only the first counts.
   let diff = 0;
+  let raw = 0;
   let ink = 0;
   for (let i = 0; i < a.length; i++) {
-    if (a[i] !== b[i]) diff++;
+    if (a[i] !== b[i]) raw++;
+    if (Math.abs(a[i] - b[i]) > 2) diff++;
     if (i % 4 === 0 && a[i] < 120) ink++;
   }
-  return { diff, ink, w, h };
+  return { diff, raw, ink, w, h };
 }
 
 /** Frame statistics: uploads on transition frames and the shadow cadence within each run. */
