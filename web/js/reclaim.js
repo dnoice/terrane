@@ -19,7 +19,8 @@
  *       review: a folder holding pyvenv.cfg is a Python environment, listed
  *       whole; site-packages and dist-packages are never walked, and no
  *       copy inside them, or inside a cache the folder lies in, is kept or
- *       suggested; dupPage cuts a large set's rows.
+ *       suggested; dupPage cuts a large set's rows; on a tie keepOf keeps
+ *       the path that sorts first, so a refresh never changes the keep.
  *
  * ✒ Description:
  *     What in one folder could go, and by which rule: verified duplicate
@@ -42,8 +43,8 @@
  *       nor site-packages or dist-packages, where moving one file breaks an
  *       installed package; links and sealed folders never match;
  *       hidden-only folders counted
- *     - keepOf: the copy a duplicate set keeps, newest or oldest, the first
- *       listed on a tie (duplicate cleanup's own rule)
+ *     - keepOf: the copy a duplicate set keeps, newest or oldest, and on a
+ *       tie the path that sorts first (duplicate cleanup's own rule)
  *     - dupSuggestions: verified sets only; a copy inside a cache is left to
  *       the cache and the keep is chosen among the rest, so no move of any
  *       group ever takes the last copy; a copy inside .git, an installed
@@ -307,10 +308,30 @@ export function walk(root, acc, { keepCap = Infinity } = {}) {
   return { caches: listOf(caches, keepCap), stale: listOf(stale, keepCap), empty: listOf(empty, keepCap), hiddenOnly, sealedCaches, vcs, pkgs, claimed };
 }
 
-/** The file a keep leaves in place: the latest or earliest last change, the first listed on a tie. */
-export function keepOf(group, how) {
+/**
+ * The file a keep leaves in place: the latest or earliest last change; on a
+ * tie, the path that sorts first, so the choice holds through a refresh
+ * that lists the copies in another order. pathOf gives a file's path
+ * (f.rel by default; duplicate cleanup passes api.relPath for nodes).
+ */
+export function keepOf(group, how, pathOf = (f) => f.rel ?? '') {
   let best = group.files[0];
-  for (const f of group.files) if (how === 'newest' ? f.m > best.m : f.m < best.m) best = f;
+  let bestPath = null;
+  for (const f of group.files) {
+    if (f === best) continue;
+    const d = how === 'newest' ? f.m - best.m : best.m - f.m;
+    if (d < 0) continue;
+    if (d === 0) {
+      bestPath ??= pathOf(best);
+      const p = pathOf(f);
+      if (!(p < bestPath)) continue;
+      best = f;
+      bestPath = p;
+      continue;
+    }
+    best = f;
+    bestPath = null;
+  }
   return best;
 }
 

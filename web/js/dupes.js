@@ -16,8 +16,9 @@
  *     - 1.2.0 (11/15/2026) [dendogg + Anthropic - Claude Opus 5.5] —
  *       keepOf moves to reclaim.js and is re-exported, so Cleanup keeps by
  *       the same rule; recheck(api, groups), the read again before a move,
- *       is exported for Cleanup, 4,000 paths a request. No change of
- *       behaviour here.
+ *       is exported for Cleanup, 4,000 paths a request. On a tie of last
+ *       change the path that sorts first is kept, so a refresh that lists
+ *       the copies in another order no longer changes which one stays.
  *     - 1.1.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — In
  *       region mode a group's files are refs: the copy kept is told from
  *       the others by its path, a ref is never asked whether it is held,
@@ -40,8 +41,8 @@
  *       Keep oldest, and in the inspector Keep this one; an unverified
  *       group says "Verify by content first: size alone is only a hint."
  *     - Keep newest and Keep oldest keep the file with the latest or
- *       earliest last change (on a tie, the first listed); Keep this one
- *       keeps the file the inspector shows
+ *       earliest last change (on a tie, the path that sorts first); Keep
+ *       this one keeps the file the inspector shows
  *     - A confirmation names what is kept (its path and last change) and
  *       what moves (up to 12 paths, then how many more), the total size,
  *       and that nothing is deleted; a sampled group's says it was
@@ -87,7 +88,7 @@ import { ask } from './ui.js';
 import { fmtBytes, fmtCount, fmtDate } from './model.js';
 import { keepOf as keepBy } from './reclaim.js';
 
-/** The copy a keep leaves in place (newest or oldest, the first listed on a tie): reclaim.js's rule, shared with Cleanup. */
+/** The copy a keep leaves in place (newest or oldest, the path that sorts first on a tie): reclaim.js's rule, shared with Cleanup. */
 export { keepOf } from './reclaim.js';
 
 export const name = 'Duplicate cleanup';
@@ -126,7 +127,7 @@ export function install(api) {
   const { S, el } = api;
 
   /** The file a keep leaves in place: reclaim.js's rule, or the inspected node for 'this'. */
-  const keepOf = (group, how, node) => (how === 'this' ? node : keepBy(group, how));
+  const keepOf = (group, how, node) => (how === 'this' ? node : keepBy(group, how, api.relPath));
 
   /** Why the group cannot be cleaned here (short, for a button), or null. */
   function offFor(group, ctx) {

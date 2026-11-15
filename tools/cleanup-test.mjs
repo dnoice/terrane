@@ -18,7 +18,8 @@
  *       holding pyvenv.cfg) is one cache, nothing in it listed or offered as
  *       a copy; site-packages is never walked; no copy is offered inside a
  *       cache the folder lies in; the service counts as the page does;
- *       a set of 6,000 copies draws 100 rows.
+ *       a set of 6,000 copies draws 100 rows; a tie keeps the path that
+ *       sorts first, whatever the listing order.
  *
  * ✒ Description:
  *     Checks the Cleanup tab's rules (web/js/reclaim.js) in Node, with no
@@ -35,7 +36,7 @@
  *     - A Python environment by its pyvenv.cfg, whatever its name, listed
  *       whole; site-packages and dist-packages never walked; neither ever
  *       keeps or gives a duplicate copy, nor does a cache the folder is in
- *     - Duplicates: keepOf newest and oldest with ties to the first; the
+ *     - Duplicates: keepOf newest and oldest, ties to the path first; the
  *       kept copy in no group; a copy inside a cache left to it and the
  *       keep chosen among the rest; sets outside the folder, a kept copy
  *       outside it, sampled sets and unverified ones counted as pending
@@ -243,10 +244,18 @@ section('3. Duplicates');
   const a = f('x/a', 1);
   const b = f('x/b', 3);
   const c = f('x/c', 3);
-  check('keepOf newest keeps the latest change, the first listed on a tie', RC.keepOf({ files: [a, b, c] }, 'newest') === b);
+  check('keepOf newest keeps the latest change, the path that sorts first on a tie', RC.keepOf({ files: [a, b, c] }, 'newest') === b);
+  check('on a tie the keep holds whatever order the copies are listed in', RC.keepOf({ files: [c, a, b] }, 'newest') === b && RC.keepOf({ files: [a, c, b] }, 'newest') === b);
+  {
+    const p = f('Video/r/final.mp4', 5);
+    const q = f('Downloads/share.mp4', 5);
+    const r = f('Video/r/old.mp4', 5);
+    check('a tie in oldest too, and a pathOf for nodes, as duplicate cleanup passes', RC.keepOf({ files: [p, r, q] }, 'oldest') === q
+      && RC.keepOf({ files: [{ id: 2 }, { id: 1 }].map((x, i) => ({ ...x, m: 7, i })) }, 'newest', (x) => `n${x.id}`).id === 1);
+  }
   check('keepOf oldest keeps the earliest change', RC.keepOf({ files: [b, a, c] }, 'oldest') === a);
   const dupesSrc = fs.readFileSync(new URL('../web/js/dupes.js', import.meta.url), 'utf8');
-  check('duplicate cleanup keeps by the same rule: dupes.js re-exports reclaim.js\'s keepOf and uses it', /export \{ keepOf \} from '\.\/reclaim\.js'/.test(dupesSrc) && /keepBy\(group, how\)/.test(dupesSrc));
+  check('duplicate cleanup keeps by the same rule: dupes.js re-exports reclaim.js\'s keepOf and uses it', /export \{ keepOf \} from '\.\/reclaim\.js'/.test(dupesSrc) && /keepBy\(group, how, api\.relPath\)/.test(dupesSrc));
 
   const d1 = RC.dupSuggestions([g([a, b, c])], '', [], 'newest');
   const s1 = d1.sets[0];
