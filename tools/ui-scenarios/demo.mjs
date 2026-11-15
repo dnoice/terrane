@@ -17,7 +17,9 @@
  *       Shelf in the demo world: K on two items and Add to shelf on a
  *       folder, Move to… Archive as one change answered in the page, the
  *       shelf following, Undo following it back, and a reload keeping the
- *       shelf while the world starts afresh.
+ *       shelf while the world starts afresh. The move's check and its
+ *       Undo's wait for the world as well as the shelf, which follows
+ *       before the folders are read again.
  *     - 1.4.0 (11/15/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
  *       right panel's Cleanup tab on the demo's root, answered in the page:
  *       all four groups, the hidden-only folder counted, the decoy build
@@ -248,13 +250,15 @@ const demo = {
         const k = await kept();
         return k.every((r) => r.startsWith('Archive/')) && k;
       }, { timeout: 10000 });
-      const inWorld = await t.app(() => !!window.__terrane.S.model.find('Archive/Recipes') && !window.__terrane.S.model.find('Documents/Recipes'));
+      // The shelf follows the move's answer (AFTER_OP) before the folders are read again, so the world is waited for.
+      const inWorld = await t.poll(() => t.app(() => !!window.__terrane.S.model.find('Archive/Recipes') && !window.__terrane.S.model.find('Documents/Recipes')), { timeout: 10000 });
       t.check(`Move to… Archive moves the three in the page, and the shelf follows them (${movedTo})`, !!movedTo && movedTo.length === 3 && inWorld, JSON.stringify(movedTo));
       await t.app((T) => { T.api.setQuery(''); return true; });
       await t.eval(() => { document.getElementById('ledger-list').focus(); return true; });
       await t.key('Ctrl+Z');
       const movedBack = await t.poll(async () => JSON.stringify(await kept()) === JSON.stringify(want), { timeout: 10000 });
-      t.check('Undo puts them back, and the shelf follows them back', movedBack && await t.app(() => !!window.__terrane.S.model.find('Documents/Recipes')), JSON.stringify(await kept()));
+      const backInWorld = await t.poll(() => t.app(() => !!window.__terrane.S.model.find('Documents/Recipes') && !window.__terrane.S.model.find('Archive/Recipes')), { timeout: 10000 });
+      t.check('Undo puts them back, and the shelf follows them back', movedBack && backInWorld, JSON.stringify(await kept()));
       await t.reload();
       await t.app(() => { window.__terrane.api.showBTab('shelf'); return true; });
       const reloaded = await t.waitFor(() => {

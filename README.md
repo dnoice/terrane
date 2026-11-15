@@ -1,10 +1,10 @@
 <!--
 ✒ Metadata
-    - Title: Terrane Readme (Terrane Edition - v1.26)
+    - Title: Terrane Readme (Terrane Edition - v1.27)
     - File Name: README.md
     - Relative Path: README.md
     - Artifact Type: docs
-    - Version: 1.26.0
+    - Version: 1.27.0
     - Date: 11/15/2026
     - Update: Sunday, November 15, 2026
     - Author: Dennis 'dendogg' Smaltz
@@ -12,6 +12,21 @@
     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
 
 ✒ Changelog:
+    - 1.27.0 (11/15/2026) [dendogg + Anthropic - Claude Opus 5.5] —
+      The Shelf, on branch `tab-shelf`. Doing things to files gains the
+      right panel's Shelf tab: what it is for, how to reach it, the
+      ways to put things on it, what each row shows, its keys, the
+      actions on everything it holds as one change with one Undo, Clear
+      and Put back, where it is kept, and what it does in read-only,
+      snapshot and region mode and with an item no longer there.
+      Travelling says what the right panel's third tab beside the
+      Inspector is for. Very large directories say how the Shelf finds
+      its items and what its cap cuts; the safety model says what it
+      keeps and that it has no route of its own. The commands name
+      shelf-test; the project map lists shelf.js, shelf-store.js,
+      shelf.css, shelf-test and the shelf scenarios. What was verified
+      records the final sweep of the branch; Not verified adds what the
+      Shelf could not see.
     - 1.26.0 (11/15/2026) [dendogg + Anthropic - Claude Opus 5.5] —
       What was verified records Cleanup as merged into `main`, with
       the check run on the merge; duplicate cleanup and Cleanup's
@@ -201,7 +216,8 @@
     scrub, landmarks, working sessions, strata, archive interiors, a
     quick look at a file and Preview, which reads the selection beside
     the world. Also what it can do to files, one or many at a time,
-    Cleanup's suggestions for reclaiming space among them, how those
+    Cleanup's suggestions for reclaiming space among them, the Shelf
+    that gathers them from anywhere to act on together, how those
     actions are kept safe, and where to start when continuing
     development.
 
@@ -226,9 +242,11 @@
       saved as CSV and a terminal opened in a folder
     - Cleanup: ranked, sized suggestions for reclaiming space in one
       folder, each with its rule, moved to the holding area as one change
+    - The Shelf: files and folders gathered from anywhere and kept in
+      this browser, then moved, copied, renamed or exported together
     - Safety model and its limits, the archive listing, the new routes,
-      the warm cache, the region routes, what Preview reads and what
-      Cleanup moves included
+      the warm cache, the region routes, what Preview reads, what
+      Cleanup moves and what the Shelf keeps included
     - The checks (npm test, ui-check), what was verified, and what was
       not
     - Project map for continuing development
@@ -379,10 +397,16 @@ once:
   the traverse, the palette's folders and files, the quick searches'
   counts, and Cleanup's suggestions for a folder, counted across every
   level beneath it.
+- The Shelf's items, found by path across the tree before it acts on
+  them ("Finding the shelf's 14 items across the tree…"). Until then a
+  row whose folder is not loaded shows the size it had when it was put
+  on the shelf, and its tooltip says so.
 
 What is cut to a size, and says so:
 
-- Select all in Findings takes the first 1,000 matches.
+- Select all in Findings takes the first 1,000 matches. Add all to the
+  shelf stops where the Shelf is full, at 1,000 items, and says how
+  many of the matches it put on.
 - Cleanup lists the 1,000 largest of each group and says so; the rest
   come up after a move. Its duplicates come from the 400 largest sets
   the survey found.
@@ -447,7 +471,7 @@ It does four things:
 | `npm run thumbs -- --huge` | Also thumbnail images over 80 megapixels, one at a time |
 | `npm run thumbs -- --heavy-svg` | Also render SVGs over 512 KB through Inkscape |
 | `node server/terrane.mjs --snapshot <folder>` | Serve a snapshot without the dev runner |
-| `npm test` | The service smoke test on a throwaway directory, then the Node checks of landmarks (`places-test`), working sessions (`relations-test`), strata (`strata-test`), archive interiors (`interior-test`), finding your way (`finding-test`), the batch rename (`rename-test`), CSV export (`export-test`), the warm start and its check (`warm-test`), the service's tree, its regions and questions (`regions-test`), the page's region mode against the whole model (`partial-test`), the demo world and its service (`demo-test`), the flavors (`flavors-test`), the readers Quick look and Preview share (`preview-test`) and Cleanup's rules and its question (`cleanup-test`) |
+| `npm test` | The service smoke test on a throwaway directory, then the Node checks of landmarks (`places-test`), working sessions (`relations-test`), strata (`strata-test`), archive interiors (`interior-test`), finding your way (`finding-test`), the batch rename (`rename-test`), CSV export (`export-test`), the warm start and its check (`warm-test`), the service's tree, its regions and questions (`regions-test`), the page's region mode against the whole model (`partial-test`), the demo world and its service (`demo-test`), the flavors (`flavors-test`), the readers Quick look and Preview share (`preview-test`), Cleanup's rules and its question (`cleanup-test`) and the Shelf's store (`shelf-test`) |
 | `npm run ui-check` | Drive the page in headless Edge or Chrome, keyboard only, with and without WebGL, on a fresh fixture in the OS temp folder; compares draw calls with the recorded baseline |
 | `npm run ui-check -- time --pass nogl` | One scenario in one pass; `npm run ui-check -- --list` names every scenario |
 | `node tools/make-synthetic.mjs --entries 1m --out <folder>` | A synthetic structure snapshot of a million entries; see Synthetic snapshots and the scale harness |
@@ -628,10 +652,12 @@ they work. Ctrl and Alt shortcuts act everywhere. A setting in the guide
 lets single-key shortcuts act wherever focus is.
 
 The right panel opens on the Inspector. The tabs beside it on its strip
-read the same selection another way (Preview, under Looking further) or
+read the same selection another way (Preview, under Looking further),
 suggest what to do with its folder (Cleanup, under Doing things to
-files). `]`, or its toggle in the view tools, hides and shows the right
-panel and says which tab it shows. Below 860 px wide (or at 200% zoom)
+files), or hold what you gather from anywhere to act on together (the
+Shelf, there too; its tab carries how many items it holds). `]`, or its
+toggle in the view tools, hides and shows the right panel and says
+which tab it shows. Below 860 px wide (or at 200% zoom)
 the right panel folds away, and `]` or the toggle opens it as a drawer
 over the world, on the tab chosen. On either panel's tab strip, ← and →
 move to the previous and next tab, Home and End to the first and last,
@@ -846,6 +872,7 @@ arrived.
 | Remove | Del | Moves to the holding area. Nothing is deleted |
 | Keep one copy | Survey and inspector, under verified duplicates; palette | The other copies move to the holding area |
 | Reclaim space | The right panel's Cleanup tab; menu (Suggest cleanup here); palette | Ranked suggestions for one folder; what stays checked moves to the holding area as one change |
+| Gather, then act together | K, menu (Add to shelf), ledger rows dragged onto the Shelf tab, Findings' count row, palette | The right panel's Shelf tab keeps them across travel and reloads; Move to…, Copy to… and Rename… on all of them are each one change with one Undo |
 | Export CSV | Contents and Findings count rows, Survey, palette | Saved by the browser; nothing goes through the service |
 | Undo | Ctrl+Z, toolbar, Journal tab | Reverses the latest change. One that stops part way says how many items went back, and Undo again finishes it |
 | Restore, Purge | Journal tab | Purge is the only permanent deletion and asks first |
@@ -958,6 +985,98 @@ and one Terrane renames or moves is followed, and back on Undo. A
 folder with nothing to suggest says it looks clean and why, naming each
 rule it was read against.
 
+**The Shelf.** The right panel's fourth tab is a tray for files and
+folders gathered from anywhere, the world, the ledger, Findings,
+Preview, Cleanup and one folder after another, so that you can act on
+them together. It keeps them by path while you travel and across
+reloads. Putting something on the shelf, or taking it off, never
+touches the disk. To put things on it:
+
+- Select files or folders and press K. K again, while all of them are
+  on the shelf, takes them off. With nothing selected and the ledger
+  list focused, K takes the row under the list's cursor.
+- Right-click one and choose Add to shelf (Take off the shelf once it
+  is there), with K beside it; with several selected, Add N items to
+  the shelf; on the ground, Add this folder to shelf. The Inspector has
+  the same button.
+- Drag rows from the ledger onto the Shelf tab, which is marked while
+  they are over it.
+- After a search, Add all to the shelf, the shelf's icon on the
+  Findings count row, puts every match listed on it.
+- K in Preview's pane puts the item it shows on the shelf (a row's
+  item, when several are shown), and K on a Cleanup row puts that
+  row's item.
+- Ctrl+K, "shelf": Add to shelf (or Take off the shelf) with K, Add
+  this folder to shelf, Add all results to shelf, and Show Shelf, which
+  opens the tab.
+
+Each sentence says what happened, as in "frame-0412.exr is on the shelf
+(1 item). K again takes it off." or "Put 7 items on the shelf (14
+items); 1 was already on it.". The authorized root and the entries of
+an open archive cannot go on it (the archive itself can), and the
+sentence says why. The tab's label carries the count, which flashes
+once as items arrive, and the hover tip says "On the shelf".
+
+Choose SHELF on the right panel's strip, or Show Shelf in the palette.
+Empty, the tab says what the shelf is for, lists the four ways in, and
+offers Add the selection when something is selected, and Add with the
+name of the folder you are in. Otherwise its head reads "On the shelf"
+over the count, then the size, files and folders and how many folders
+they come from (an item inside a folder that is also on the shelf
+counts once), and that the list is kept in this browser for this
+directory. Under the head stand the actions, and under them the list,
+newest first: each row has its kind's swatch, its name, its folder and
+kind ("Projects/tidelines · Images"), its size, and an x that takes it
+off. A hundred rows are drawn, then Show 100 more. The list is one Tab
+stop: ↑ and ↓ step through it, Home and End reach its ends, Enter
+selects the item and frames it in the world, Space (or Ctrl+click) adds
+it to the selection or drops it, and Del or K takes it off the shelf;
+the Guide lists these keys under Acting on many. Del elsewhere in the
+tab removes nothing and says so.
+
+The actions work on everything on the shelf:
+
+- **Show in the world**: one item is flown to and selected; several
+  are selected together, and the location moves to the deepest folder
+  that holds them all.
+- **Copy paths**: their absolute paths, one per line.
+- **Move to…** and **Copy to…**: every item is selected and placing
+  starts, as with M: click a folder in the world, or travel to one and
+  choose Place where I am; Escape cancels. A folder and something inside
+  it move as the folder. It is one change, one journal entry and one
+  Undo.
+- **Rename…**: the batch rename over every item, with its preview; one
+  change and one Undo.
+- **Export CSV**: the list, with a `missing` column beside name, path,
+  kind, size_bytes and modified, saved as
+  `terrane-<directory>-shelf-YYYY-MM-DD.csv`.
+- **Clear the shelf**, at the foot: the list is emptied, and the
+  notice's Put back restores it.
+
+The shelf follows Terrane's own renames and moves and their Undo, so
+after Move to… its rows name the new folder and Ctrl+Z brings them
+back; after Copy to… it keeps the originals. An item deleted or moved
+outside Terrane stays on the shelf, dimmed, with a hollow swatch and
+"no longer there" on its row, and a line above the list names it
+("Recipes is no longer there.", or "5 items are no longer there: a, b
+and 3 more.") beside Take it, or them, off the shelf. Nothing is
+dropped without a word: an action runs on the items still there and
+says how many no longer there stay on the shelf. After a change
+Terrane makes, an item not found counts as gone only once its folders
+have been read again.
+
+The shelf is kept in this browser for this directory, a snapshot's
+apart from the live directory's, and holds at most 1,000 items; another
+browser, profile or port keeps its own. Two tabs of the page keep each
+other's additions and removals. A browser that refuses to keep it says
+so once, and the shelf lasts until the page closes. In read-only and
+snapshot mode, and while a warm start's tree is checked, Move to…, Copy
+to… and Rename… stay in the grid, unavailable, with the reason under
+it, while gathering, Show, Copy paths, Export and Clear work. In a very
+large directory an item is found by path across the tree before an
+action runs, and while the tree is being read again the tab asks you
+to try again in a moment.
+
 **Copy as.** Ctrl+C copies absolute paths. The context menu and the
 palette also copy names, and paths relative to the directory, for one
 item, a selection or the folder you are in. Relative paths use `/` on
@@ -1046,6 +1165,15 @@ that cannot be read.
   Host check and the generation like the other whole-tree questions; a
   folder that is not there, a file, or a path that climbs out is
   refused as `ENOFOLDER`.
+- The Shelf has no route of its own. What it keeps is a list of
+  root-relative paths with each item's size and dates, in this
+  browser's storage for this directory (`terrane.shelf.v1|<root>`), and
+  every path read back is checked as a path from the root (no `..`, no
+  leading `/`, nothing empty) before it is used. Gathering and Clear
+  send nothing to the service. Move to…, Copy to… and Rename… are the
+  `move`, `copy` and `renames` operations through `POST /api/op` that
+  placing and the batch rename send, refused in read-only and snapshot
+  mode, and journaled as one change each.
 - The warm cache holds what a snapshot holds: names, sizes, dates and
   flags, never what a file contains. It is written only from a survey of
   the whole directory that ran to its end, and read back only when its
@@ -1134,6 +1262,7 @@ time.
 | The precise terrain, part one, on branch `precision-terrain`, Windows 11 (11/14/2026), Edge 157 on an RTX 5050 laptop GPU: before and after shots of six poses of the demo world (overview, Projects, Photos, components, the street, Music); `npm test`; and, after `main` with Preview was merged in, `node tools/ui-check.mjs` scenarios views, interiors, landmarks, time, transitions, seams, preview, strata and polish, each on its own | `npm test`: 1,215 passed, 0 failed. views 33, interiors 118, landmarks 127 (2 skipped), time 80, transitions 33, seams 135, preview 158, strata 76 and polish 1,200 passed, none failed. The first landmarks run found its check of the benchmarks' draw call naming the pins by their unlit material; it now finds the pin mesh by its own count. A selection fill leaning from the box's colour toward the mark was tried and dropped: a teal box turned olive. Merged into `main` |
 | The precise terrain, part two, on branch `precision-terrain-2`, Windows 11 (11/15/2026), Edge 157 on an RTX 5050 laptop GPU: before and after shots of the demo world pinned to one moment (12,087 files), 13 poses at 1600 by 1000 and 1280 by 800, of `391c5a7`, the reviewed build and the fixed one; `npm test`; `node tools/ui-check.mjs --no-shots --port 5309`, both passes, after the last change to the code; the `scale` scenario on a 400,000-entry synthetic snapshot in regions; then the docs and sweep: `node --check` on every script outside `web/vendor/`, `npm test`, `node tools/vendor.mjs --check`, the header of every file the branch touched and Markdown line lengths | `npm test`: 1,234 passed, 0 failed (274 in the smoke test). The interface check: 2990 passed, 0 failed, 8 skipped; draw calls at the baseline (overview 7, selected 9, search 8, duplicate ties 10). At 400,000 entries the longest script task was 13.2 ms against the reviewed build's 12.8 ms on the same snapshot (a first run's one 18 ms frame did not recur), and the heap 26.7 MB at its peak; the 5,000,000-entry tour was not run, for want of free memory. The sweep: no syntax error in 108 scripts; `npm test` 1,234 passed, 0 failed; every vendored file matches the manifest; 14 headers in rule; no Markdown line over 100 columns. Tried and dropped: a name's floor measured only as it would stand facing the eye, behind a flatness gate, which printed names under 5 px as seen (the floor is now the smaller of the two, with larger shares and a step up the ladder to keep names); and a soft cap on heights, which made a fresh file's height follow its footprint (each folder has one recency scale instead). Merged into `main` after `main`'s removal of the panel letters was merged in and checked again: `npm test` 1,234 passed, 0 failed; the interface check's seams, preview, polish and core, both passes: seams 147, preview 158, polish 1,200 and core 73 passed, 0 failed |
 | Cleanup's final sweep on branch `tab-cleanup`, Windows 11 (11/15/2026): `node --check` on every script outside `web/vendor/`; `npm test`, now fifteen suites, `cleanup-test` last (the 18 cache names and the Python environment, nothing listed twice, nothing from `.git` or `site-packages`, the copy kept and never moved, the Big and stale thresholds against `runSearch`, empty and hidden-only folders, the ranking, the totals and the cap, and the page's walk equal to the service's question over 20,000 entries); `node tools/vendor.mjs --check`; the header of every file the branch touched; Markdown line lengths; and `node tools/ui-check.mjs --no-shots --port 5300` in both passes, every port it opens between 5300 and 5309, with Edge 157 on an RTX 5050 laptop GPU and the default fixture of 3,126 files: the earlier scenarios plus `cleanup`, `cleanup-disk` and `cleanup-regions`, with Cleanup's checks in `demo`, `polish` and `preview` | No syntax error in 112 scripts; 1,300 passed (274, 97, 57, 33, 60, 52, 54, 31, 80, 159, 68, 128, 91, 58 and 58), none failed; every vendored file matches the manifest; 24 headers in rule; no Markdown line over 100 columns; 3152 passed, 0 failed, 8 skipped (1,657 and 3 with WebGL, 1,495 and 5 without: what needs `--snapshot`, what needs a synthetic snapshot, a `splash` check the survey's timing left nothing to test, and without WebGL two checks of the world), `cleanup` 32, `cleanup-disk` 14 and `cleanup-regions` 9 in each pass, the first full run with them; draw calls at the baseline. In Node, 100,000 entries walked in 10.9 ms. Before the merge, the copy a set keeps on a tie of last change made the path that sorts first: `cleanup-test` 60 passed, and `dupes`, `cleanup`, `demo` and `regions` in both passes 361 passed, 0 failed. Merged into `main`, which had not moved since the branch was made; `npm test` on the merged branch: 1,302 passed, 0 failed, over fifteen suites, `cleanup-test` now 60 |
+| The Shelf's final sweep on branch `tab-shelf`, Windows 11 (11/15/2026): `node --check` on every script outside `web/vendor/`; `npm test`, now sixteen suites, `shelf-test` last (the key and its snapshot form, the paths accepted and refused, an exact duplicate left where it is, the 1,000 cap, take off, clear and put back, renames and moves followed and Undo's pairs back, junk kept read as nothing, two stores on one storage, storage that refuses, the helpers, and 1,000 items followed and read back in under 50 ms); `node tools/vendor.mjs --check`; the header of every file the branch touched; Markdown line lengths; and `node tools/ui-check.mjs --no-shots --port 5300` in both passes, every port it opens between 5300 and 5309, with Edge 157 on an RTX 5050 laptop GPU and the default fixture of 3,126 files: the earlier scenarios plus `shelf`, `shelf-modes` and `shelf-regions`, with the Shelf's checks in `seams`, `polish`, `preview`, `cleanup`, `hardening` and `demo` | No syntax error in 116 scripts; 1,358 passed (276, 97, 57, 33, 60, 52, 54, 31, 80, 159, 68, 130, 91, 58, 60 and 52), none failed; every vendored file matches the manifest; 29 headers in rule; no Markdown line over 100 columns; the interface check, run once after the docs: 3127 passed, 14 failed, 8 skipped (1,641 passed, 7 failed and 3 skipped with WebGL; 1,486, 7 and 5 without; the skips as before: what needs `--snapshot`, what needs a synthetic snapshot, a `splash` check the survey's timing left nothing to test, and without WebGL two checks of the world), over 56 scenarios with WebGL and 52 without, the first full run with the Shelf and the first run of the other scenarios the branch touched: `shelf` 46, `shelf-modes` 14 and `shelf-regions` 7 passed in each pass, `polish` 647 with WebGL and 645 without, `hardening` 38 and 31, `cleanup` 33 in each; draw calls at the baseline. The failures were four checks the branch had left behind, in `seams`, `preview`, `copy-as` and `demo`, fixed in the checks with the code unchanged, and a timeout each in `regions-warm` and `cleanup-regions` on a machine short of memory. The failed scenarios and those that share their files, run again in both passes: 468 passed, 2 failed, both `demo`'s Undo check, which read the world in the moment after the shelf had followed; waiting for the world too, `demo` and `demo-regions`: 103 passed, 0 failed. In Node, 1,000 items followed and written in 1.3 ms and read back in 0.3 ms. Not yet merged into `main` |
 
 Not verified: running on macOS; frame rate at street level in the largest
 trees on a hardware GPU; Open and Reveal reaching a desktop application on
@@ -1188,6 +1317,16 @@ the fixture at a threshold of 0); duplicate sets compared by samples on
 real data, beyond the fixture's one set and the demo world's; the tab
 with a screen reader; the look of its head and grid in a shot, beyond
 what the `polish` check measures; and the tab in Firefox and Safari.
+From the Shelf: rows dragged onto its tab with a real mouse (the checks
+send the drag's events in the page); two browser tabs on one directory
+(Node checks two stores on one storage, not the `storage` event between
+real tabs); a browser's own storage refusing (the checks stand in for
+it); Move to… and Copy to… of hundreds of items on real disks (the
+checks move seven items, and three in the demo world); the shelf in a
+real tree of millions of entries (the region scenario runs the fixture
+at a threshold of 0); the tab with a screen reader; its look in a shot,
+beyond what the `polish` check measures; and the tab in Firefox and
+Safari.
 
 ## Continuing development
 
@@ -1214,7 +1353,7 @@ web/css/tokens.css   the colours, type and space scales, named sizes, shadows,
 web/css/components/  controls, bar, ledger, stage, inspector, block, floating,
                      splash (the loading sheet), and one per feature: time,
                      places, traverse, strata, interior, palette, searches,
-                     quicklook, presets, batch, preview, cleanup
+                     quicklook, presets, batch, preview, cleanup, shelf
 web/css/*.css        also: fonts, base, layout, utilities, motion, print
 web/js/app.js        controller: state, service calls, panels and the right
                      panel's tab strip, progress, the warm start, and the
@@ -1278,6 +1417,10 @@ web/js/cleanup.js    Cleanup: the right panel's third tab, ranked
                      suggestions for reclaiming space in one folder
 web/js/reclaim.js    Cleanup's rules: the caches' names, the walk, the
                      copy kept, the ranking and totals, DOM-free
+web/js/shelf.js      the Shelf: the right panel's fourth tab, files and
+                     folders gathered from anywhere to act on together
+web/js/shelf-store.js  what the Shelf keeps, by path, in this browser:
+                     add, take off, follow a move, merge two tabs, DOM-free
 web/js/copyas.js     Copy as: names and relative paths
 web/js/exports.js    lists saved as CSV
 web/js/csv.js        the CSV text and its file names, DOM-free
@@ -1321,13 +1464,15 @@ tools/ui-check.mjs   headless browser check; scenarios in tools/ui-scenarios/,
                      (regions, regions-warm, regions-outside,
                      regions-switch), scale.mjs (synthetic snapshots only),
                      views.mjs (steady conventions, Blender's controls),
-                     preview.mjs (preview, preview-regions, preview-disk)
-                     and cleanup.mjs (cleanup, cleanup-disk,
-                     cleanup-regions)
+                     preview.mjs (preview, preview-regions, preview-disk),
+                     cleanup.mjs (cleanup, cleanup-disk, cleanup-regions)
+                     and shelf.mjs (shelf, shelf-modes, shelf-regions)
 tools/flavors-test.mjs  every flavor in Node (in npm test)
 tools/preview-test.mjs  the readers Quick look and Preview share, in Node
 tools/cleanup-test.mjs  Cleanup's rules, and the page's walk against the
-                     service's question, in Node (last in npm test)
+                     service's question, in Node
+tools/shelf-test.mjs the Shelf's store in Node: paths, the cap, following,
+                     two tabs, storage that refuses (last in npm test)
 tools/make-fixture.mjs  the synthetic tree the checks run on (npm run fixture)
 tools/make-synthetic.mjs  synthetic structure snapshots, 1,000 to 10,000,000
                      entries, written without a file

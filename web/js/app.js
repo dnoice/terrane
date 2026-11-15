@@ -16,7 +16,8 @@
  *     - 1.22.0 (11/15/2026) [dendogg + Anthropic - Claude Opus 5.5] — For
  *       the Shelf: K is the Shelf's; a right-panel tab may carry a count
  *       and take dragged rows (drawBTabCounts); api.place starts placing;
- *       rows drag where nothing moves, but only to the Shelf's tab.
+ *       rows drag where nothing moves, but only to the Shelf's tab. The
+ *       Key Features name the right panel without a letter.
  *     - 1.21.0 (11/15/2026) [dendogg + Anthropic - Claude Opus 5.5] —
  *       The api offers verifyDuplicates for the Cleanup tab. Verify by
  *       content keeps what it proved by path in whole-tree mode too, so a
@@ -117,8 +118,8 @@
  *       or an open archive, nor a folder standing open
  *     - Instruments over the world: a north arrow that turns with the
  *       camera and back to north on a click, and a storage scale
- *     - Panel B's tab strip (B_TABS): the Inspector first and the
- *       default, a feature's tabs beside it, each with a panel of its own
+ *     - The right panel's tab strip (B_TABS): the Inspector first and
+ *       the default, a feature's tabs beside it, each with a panel of its own
  *       and, when it asks, a count on its label and rows dragged onto it;
  *       the chosen tab kept in this browser; a tab not shown (another
  *       chosen, ] or a closed drawer) does no work, the Inspector included

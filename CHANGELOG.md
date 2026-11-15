@@ -16,6 +16,8 @@
       app.js 1.22.0, features.js 1.7.0, terrane.css 2.7.0, icons.js 1.4.0 and inspector.css
       1.4.0, whose 1.19.0, 1.4.0, 2.4.0, 1.1.0 and 1.1.0 entries leave their headers; this file
       already holds them, and terrane.css 2.4.0's long form now opens with its header's words.
+      The docs and sweep extend app.js 1.22.0 and inspector.css 1.4.0, whose headers now name
+      the right panel without a letter; their long forms here open with the extended words.
     - 1.19.0 (11/15/2026) [dendogg + Anthropic - Claude Opus 5.5] — Records the Cleanup tab:
       app.js 1.21.0, features.js 1.6.0 and terrane.css 2.6.0, whose 1.18.0, 1.3.0 and 2.3.0
       entries leave their headers; this file already holds them, and features.js 1.3.0's long
@@ -169,25 +171,25 @@ short form is kept too.
 
 - 1.22.0 (11/15/2026) [dendogg + Anthropic - Claude Opus 5.5] — For the Shelf: K is the
   Shelf's; a right-panel tab may carry a count and take dragged rows (drawBTabCounts);
-  api.place starts placing; rows drag where nothing moves, but only to the Shelf's tab. In
-  full: KEY_OWNERS reserves the plain K for the Shelf, as every feature's plain keys are
-  reserved. A B_TABS entry may carry count(), a number drawn as a span.count on its tab's
-  label after the icon and the words, and drop { refuse(nodes), take(nodes) }: the tab button
-  takes ledger rows dragged onto it, marked .is-drop while they are over it, when refuse
-  answers null. drawBTabCounts(), on the api, reads every count() again and makes, changes or
-  removes the figure in place without building a button again, so focus on the strip stays,
-  then fits the strip again. Both live in the controller because the strip is its DOM, built
-  again by drawBTabs, so a module cannot keep figures or listeners on its buttons. api.place
-  (type, nodes) is startPlacing, because placing is the controller's state (S.placing, the
-  bar, the world's and the ledger's clicks, Escape at 20); the Shelf's Move to… and Copy to…
-  start it. A ledger row is now draggable wherever it is not the root or inside an open
-  archive, read-only and snapshot modes and region-mode refs included, so rows can be gathered
-  onto the Shelf's tab; dragMoves() says whether a drag can move or copy (the service takes
-  changes and every row is a node held), and every folder drop target (a row, a breadcrumb)
-  and the world's canvas ask it before they offer a drop, so a drag that cannot move is never
-  offered a folder and never reaches runOp. regionPins keeps the folder of each node being
-  placed, so the items the Shelf places keep their regions when a ledger click changes the
-  selection mid-placing.
+  api.place starts placing; rows drag where nothing moves, but only to the Shelf's tab. The
+  Key Features name the right panel without a letter. In full: KEY_OWNERS reserves the plain
+  K for the Shelf, as every feature's plain keys are reserved. A B_TABS entry may carry
+  count(), a number drawn as a span.count on its tab's label after the icon and the words,
+  and drop { refuse(nodes), take(nodes) }: the tab button takes ledger rows dragged onto it,
+  marked .is-drop while they are over it, when refuse answers null. drawBTabCounts(), on the
+  api, reads every count() again and makes, changes or removes the figure in place without
+  building a button again, so focus on the strip stays, then fits the strip again. Both live
+  in the controller because the strip is its DOM, built again by drawBTabs, so a module
+  cannot keep figures or listeners on its buttons. api.place(type, nodes) is startPlacing,
+  because placing is the controller's state (S.placing, the bar, the world's and the
+  ledger's clicks, Escape at 20); the Shelf's Move to… and Copy to… start it. A ledger row is
+  now draggable wherever it is not the root or inside an open archive, read-only and snapshot
+  modes and region-mode refs included, so rows can be gathered onto the Shelf's tab;
+  dragMoves() says whether a drag can move or copy (the service takes changes and every row
+  is a node held), and every folder drop target (a row, a breadcrumb) and the world's canvas
+  ask it before they offer a drop, so a drag that cannot move is never offered a folder and
+  never reaches runOp. regionPins keeps the folder of each node being placed, so the items
+  the Shelf places keep their regions when a ledger click changes the selection mid-placing.
 
 - 1.21.0 (11/15/2026) [dendogg + Anthropic - Claude Opus 5.5] — The api offers
   verifyDuplicates for the Cleanup tab. Verify by content keeps what it proved by path in
@@ -1472,7 +1474,8 @@ short form is kept too.
 
 - 1.4.0 (11/15/2026) [dendogg + Anthropic - Claude Opus 5.5] — A right-panel tab that takes
   dragged rows (the Shelf) is marked while they are over it (.is-drop); a crowded strip keeps
-  each tab's count beside its icon. In full: #b-tabs button.is-drop takes the highlighter's
+  each tab's count beside its icon. The Description, Key Features and the strip's comment name
+  the right panel without a letter. In full: #b-tabs button.is-drop takes the highlighter's
   wash and a 2 px ink ring inside its edge; in a crowded strip only the label of a tab not
   chosen is hidden, so the Shelf's count stays visible beside its icon.
 

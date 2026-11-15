@@ -16,7 +16,8 @@
  *     - 1.4.0 (11/15/2026) [dendogg + Anthropic - Claude Opus 5.5] — A
  *       right-panel tab that takes dragged rows (the Shelf) is marked
  *       while they are over it (.is-drop); a crowded strip keeps each
- *       tab's count beside its icon.
+ *       tab's count beside its icon. The Description, Key Features and
+ *       the strip's comment name the right panel without a letter.
  *     - 1.3.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — Panel
  *       B's tab strip (#b-tabs, drawn as the ledger's): once a label no
  *       longer fits (data-crowded), only the chosen tab keeps its words.
@@ -30,11 +31,11 @@
  *     Earlier entries: see CHANGELOG.md
  *
  * ✒ Description:
- *     Panel B: everything known about the selection or about the folder
- *     the eye is in. Title, path, facts with share bars, composition by
- *     kind, actions, a thumbnail or text preview, and the key to reading
- *     the world. Sections settle in one after another when the subject
- *     changes.
+ *     The right panel: everything known about the selection or about the
+ *     folder the eye is in. Title, path, facts with share bars,
+ *     composition by kind, actions, a thumbnail or text preview, and the
+ *     key to reading the world. Sections settle in one after another when
+ *     the subject changes.
  *
  * ✒ Key Features:
  *     - Sections stagger in on a new subject (.is-entering, --i per child)
@@ -48,8 +49,8 @@
  *     - Preview frame on a stippled ground with the image's average colour
  *       as its placeholder (set inline by thumbs.js)
  *     - Reading glyphs drawn in CSS with the world's own conventions
- *     - Panel B's tab strip: too crowded for every label, each tab shows
- *       its icon and only the chosen one its words as well
+ *     - The right panel's tab strip: too crowded for every label, each
+ *       tab shows its icon and only the chosen one its words as well
  *
  * ✒ Other Important Information:
  *     - Dependencies: tokens.css, base.css, controls.css, ledger.css
@@ -58,7 +59,7 @@
  * ----------------------------------------------------------------------------
  */
 
-/* Panel B's strip, crowded (app.js's fitBTabs sets data-crowded when a
+/* The right panel's strip, crowded (app.js's fitBTabs sets data-crowded when a
    label no longer fits): each tab shows its icon and only the chosen one
    its label as well. The others keep their label as their name, and as
    their title, as the ledger's do in a narrow ledger. */

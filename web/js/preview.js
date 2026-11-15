@@ -15,14 +15,15 @@
  * ✒ Changelog:
  *     - 1.2.0 (11/15/2026) [dendogg + Anthropic - Claude Opus 5.5] — K in
  *       its pane puts its item (a row's, when several are shown) on the
- *       Shelf, or takes it off, through the Shelf's own key entry.
+ *       Shelf, or takes it off, through the Shelf's own key entry. The
+ *       Description and Usage name the right panel without a letter.
  *     - 1.1.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] —
  *       Its palette command's detail names the right panel.
  *     - 1.0.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] —
  *       Initial release.
  *
  * ✒ Description:
- *     Panel B's Preview tab: a quick look docked beside the world that
+ *     The right panel's Preview tab: a quick look docked beside the world that
  *     follows the selection, so a folder can be read through file by file
  *     without opening anything and without losing the place in the ledger
  *     or the world. Every case with nothing to show says why in one plain
@@ -63,7 +64,7 @@
  *
  * ✒ Usage Instructions:
  *     Listed in features.js and installed by app.js. Choose PREVIEW on
- *     panel B's tab strip, or Ctrl+K "preview", Enter; select something
+ *     the right panel's tab strip, or Ctrl+K "preview", Enter; select something
  *     in the world or the ledger, or arrow through the list.
  *
  * ✒ Examples:

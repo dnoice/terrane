@@ -15,9 +15,11 @@
  * ✒ Changelog:
  *     - 1.3.0 (11/15/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
  *       strip reads Inspector, Preview, Cleanup, Shelf: End reaches the
- *       Shelf, ArrowLeft from the Inspector wraps to it, and on to
- *       Cleanup. K in the pane puts its item on the Shelf, K again takes
- *       it off.
+ *       Shelf, ArrowLeft from the Inspector wraps to it, and on through
+ *       Cleanup back to Preview, so a reload still opens on Preview. K in
+ *       the pane puts its item on the Shelf, K again takes it off. The
+ *       Description and Key Features name the right panel without a
+ *       letter.
  *     - 1.2.0 (11/15/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
  *       strip reads Inspector, Preview, Cleanup: End reaches Cleanup, and
  *       ArrowLeft from it comes back to Preview.
@@ -28,10 +30,11 @@
  *       Initial release.
  *
  * ✒ Description:
- *     Drives panel B's tab strip and its Preview tab in the real page, by
- *     keyboard where a person would, in both passes: what it reads and
- *     asks the service for, what it says when there is nothing to show,
- *     how it steps, and that it does no work while it cannot be seen.
+ *     Drives the right panel's tab strip and its Preview tab in the real
+ *     page, by keyboard where a person would, in both passes: what it
+ *     reads and asks the service for, what it says when there is nothing
+ *     to show, how it steps, and that it does no work while it cannot be
+ *     seen.
  *
  * ✒ Key Features:
  *     - preview (read-only fixture): the strip, Inspector first and drawn,
@@ -51,9 +54,9 @@
  *       summary, ↓ from the pane to its rows, the way back up; four
  *       selected, ↓ and Enter from the pane, each step described, back; a
  *       folder and a link read as one of several keeping the selection;
- *       snapshot mode for a moment; ] hiding panel B, named so; the
- *       palette's "preview", Enter with panel B hidden; the Guide's rows,
- *       one P; no POST
+ *       snapshot mode for a moment; ] hiding the right panel, named so;
+ *       the palette's "preview", Enter with the right panel hidden; the
+ *       Guide's rows, one P; no POST
  *     - preview-regions (threshold 0): a folder not held shows its figures
  *       and then its largest rows; a file reads; Findings' refs step
  *     - preview-disk (writes): a text of 6,500 lines cut at 256 KB,
@@ -271,7 +274,9 @@ const preview = {
     const r5 = await t.waitFor((T) => T.S.bTab === 'shelf', { what: 'ArrowLeft wrapping' }).catch(() => false);
     await t.key('ArrowLeft');
     const r6 = await t.waitFor((T) => T.S.bTab === 'cleanup', { what: 'ArrowLeft to Cleanup' }).catch(() => false);
-    t.check('End chooses the last tab, the Shelf, and ArrowRight and ArrowLeft wrap', !!r3 && !!r4 && !!r5 && !!r6);
+    await t.key('ArrowLeft');
+    const r7 = await t.waitFor((T) => T.S.bTab === 'preview', { what: 'ArrowLeft to Preview' }).catch(() => false);
+    t.check('End chooses the last tab, the Shelf, ArrowRight and ArrowLeft wrap, and ArrowLeft steps back through Cleanup to Preview', !!r3 && !!r4 && !!r5 && !!r6 && !!r7);
 
     // A reload keeps Preview.
     await t.reload();

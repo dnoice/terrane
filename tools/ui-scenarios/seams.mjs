@@ -18,6 +18,9 @@
  *       count draws it on its label, and drawBTabCounts changes it in
  *       place with focus kept on the tab's button; one with a drop is a
  *       drop target that refuses what refuse() names; api.place exists.
+ *       The Key Features name the right panel without a letter. K is
+ *       among the owned keys, and the dispatch tests use the free keys
+ *       L, Y and U.
  *     - 1.12.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] —
  *       The Guide row for [ and ] reads "Hide ledger / right panel".
  *     - 1.11.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] —
@@ -99,8 +102,8 @@
  *     - Any data, both passes; pins and hover lines need WebGL
  *     - The guide, the Reading rows and the tab buttons are compared with
  *       the text the hard-coded versions produced
- *     - Panel B's strip from B_TABS: a tab registered, chosen by Enter,
- *       shown once, stepped past with ArrowRight and removed
+ *     - The right panel's strip from B_TABS: a tab registered, chosen by
+ *       Enter, shown once, stepped past with ArrowRight and removed
  *     - The fixed key allocation: reserved and taken keys are refused,
  *       owners may bind theirs (or already hold them through their
  *       feature), inList is honoured, and a run() that returns false
@@ -298,21 +301,22 @@ export default {
         unowned: tryAdd({ id: 'seam-anon', keys: [','], run }),
         canvas: tryAdd({ id: 'seam-canvas', owner: 'time', keys: ['W'], run }),
         taken: tryAdd({ id: 'seam-taken', owner: 'core', keys: ['N'], run }),
-        sameId: tryAdd({ id: 'undo', keys: ['k'], run }),
-        noRun: tryAdd({ id: 'seam-norun', keys: ['k'] }),
+        sameId: tryAdd({ id: 'undo', keys: ['l'], run }),
+        noRun: tryAdd({ id: 'seam-norun', keys: ['l'] }),
         nothing: tryAdd({ id: 'seam-nothing' }),
-        badMod: tryAdd({ id: 'seam-mod', mod: 'shift', keys: ['k'], run }),
+        badMod: tryAdd({ id: 'seam-mod', mod: 'shift', keys: ['l'], run }),
         ctrlB: tryAdd({ id: 'seam-ctrl-b', mod: 'ctrl', keys: ['b'], run }),
         // A reserved key is either free for its owner or already held by
         // an entry of that owner (its feature is installed).
-        owned: ['i:interiors', 't:time', ',:time', '.:time', '<:time', '>:time', 'b:landmarks', 'h:landmarks', 'j:landmarks', 'p:quicklook']
+        owned: ['i:interiors', 't:time', ',:time', '.:time', '<:time', '>:time', 'b:landmarks', 'h:landmarks', 'j:landmarks', 'p:quicklook', 'k:shelf']
           .map((s) => {
             const [k, owner] = [s.slice(0, s.indexOf(':')), s.slice(s.indexOf(':') + 1)];
             const held = [...K].find((x) => !x.mod && x.keys?.some((z) => (z.length === 1 ? z.toLowerCase() : z) === k));
             if (held) return held.owner === owner ? 'ok' : `held by ${held.owner}`;
             return tryAdd({ id: `seam-own-${owner}`, owner, keys: [k], run });
           }),
-        free: tryAdd({ id: 'seam-free', owner: 'anyone', keys: ['k'], run }),
+        // K is the Shelf's now; L, Y and U are free.
+        free: tryAdd({ id: 'seam-free', owner: 'anyone', keys: ['l'], run }),
       };
     });
     t.check('a reserved key is refused to another owner', /belongs to time/.test(rules.stolen) && /belongs to time/.test(rules.unowned), `${rules.stolen} | ${rules.unowned}`);
@@ -326,26 +330,26 @@ export default {
     await t.app((T) => {
       const K = T.api.KEYS;
       const where = () => (document.activeElement?.id || document.activeElement?.className || 'body');
-      K.add({ id: 'seam-t', owner: 'seams', keys: ['k'], run: () => { window.__seam.t.push(where()); }, guide: ['Seams', 'K', 'A test row'] });
+      K.add({ id: 'seam-t', owner: 'seams', keys: ['l'], run: () => { window.__seam.t.push(where()); }, guide: ['Seams', 'L', 'A test row'] });
       K.add({ id: 'seam-h', owner: 'seams', keys: ['y'], inList: false, run: () => { window.__seam.h++; } });
       K.add({ id: 'seam-j', owner: 'seams', keys: ['u'], run: () => false });
-      window.__seamListen = (e) => { if ('kyuKYU'.includes(e.key)) window.__seam.prevented.push(`${e.key}:${e.defaultPrevented}`); };
+      window.__seamListen = (e) => { if ('lyuLYU'.includes(e.key)) window.__seam.prevented.push(`${e.key}:${e.defaultPrevented}`); };
       window.addEventListener('keydown', window.__seamListen);
     });
     await t.tabTo('#view');
-    await t.keys('k', 'y', 'u');
+    await t.keys('l', 'y', 'u');
     await t.tabTo('#ledger-list', { back: true });
-    await t.keys('K', 'y');
+    await t.keys('L', 'y');
     const disp = await t.app(() => window.__seam);
     t.check('a registered key runs from the canvas and, with inList, from the ledger list, in either case', same(disp.t, ['view', 'ledger-list']), JSON.stringify(disp.t));
     t.check('inList: false keeps a key from acting while the ledger list has focus', disp.h === 1, `h ran ${disp.h} times`);
     t.check('a used key is kept from the browser; run() returning false leaves it to the browser',
-      same(disp.prevented, ['k:true', 'y:true', 'u:false', 'K:true', 'y:false']), JSON.stringify(disp.prevented));
+      same(disp.prevented, ['l:true', 'y:true', 'u:false', 'L:true', 'y:false']), JSON.stringify(disp.prevented));
     await t.key('?');
     await t.waitFor(() => document.getElementById('dialog').open);
     const guide2 = await t.eval(readGuide);
     const own2 = ownGuide(guide2);
-    t.check('a feature row appears in the guide under its own section', same(own2.slice(0, 3), GUIDE) && same(own2[3], ['Seams', [['K', 'A test row']]]) && own2.length === 4, JSON.stringify(guide2.slice(3)));
+    t.check('a feature row appears in the guide under its own section', same(own2.slice(0, 3), GUIDE) && same(own2[3], ['Seams', [['L', 'A test row']]]) && own2.length === 4, JSON.stringify(guide2.slice(3)));
     await t.key('Escape');
     await t.waitFor(() => !document.getElementById('dialog').open);
     await t.app((T) => {
@@ -353,7 +357,7 @@ export default {
       window.removeEventListener('keydown', window.__seamListen);
     });
     await t.tabTo('#view');
-    await t.key('k');
+    await t.key('l');
     t.check('a removed key does nothing', (await t.app(() => window.__seam.t.length)) === 2);
 
     // Escape: a slot between the kind filter and search, and text fields.
