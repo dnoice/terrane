@@ -169,7 +169,7 @@ export function sentence(as, node, { surface = 'preview', host = null, info = {}
     case 'snapshot': return 'Snapshot mode holds names, sizes and dates, not contents, so nothing is read from this file. Its facts are above.';
     case 'other-archive': return `A ${ext ? `.${ext} ` : ''}archive. Preview lists what zip archives hold, and the formats built on them (jar, war, apk and more); Open hands this one to its own application.`;
     case 'binary': return 'Binary content, or text in UTF-16, which Preview does not read. Its facts are above.';
-    case 'invalid': return 'Some bytes are not UTF-8 and show as �.';
+    case 'invalid': return 'Some bytes are not UTF-8 and show as \uFFFD.';
     case 'media-error': return 'This file could not be played here: the browser does not play its format, or it is not what its name says.';
     case 'image-error': return 'This thumbnail could not be shown.';
     case 'read-error': return `This file could not be read: ${info.message}.`;
@@ -226,7 +226,7 @@ export async function readText(url, { signal, fetchFn = fetch } = {}) {
   }
   const cut = r.headers.get('X-Terrane-Truncated') === '1';
   let text = new TextDecoder('utf-8', { ignoreBOM: true }).decode(await r.arrayBuffer());
-  const bom = text.startsWith('﻿');
+  const bom = text.startsWith('\uFEFF');
   if (bom) text = text.slice(1);
   return { text, cut, binary: text.includes('\u0000'), bom };
 }
@@ -327,10 +327,14 @@ export function textKind(name, text, { bom, cut = false } = {}) {
       } else cr++;
     } else if (c === 0xfffd) invalid++;
   }
-  if (cut && invalid && text.endsWith('�')) invalid--;
+  if (cut && invalid && text.endsWith('\uFFFD')) invalid--;
   const kinds = (lf > 0) + (crlf > 0) + (cr > 0);
   const endings = kinds === 0 ? null : kinds > 1 ? 'mixed' : lf ? 'LF' : crlf ? 'CRLF' : 'CR';
-  return { label, lines: countLines(text), endings, bom: bom ?? text.startsWith('﻿'), invalid };
+  // Lines as the view shows them: an ending of any kind ends one, and a
+  // last line without an ending is a line too.
+  const last = text.charCodeAt(text.length - 1);
+  const lines = lf + crlf + cr + (text && last !== 10 && last !== 13 ? 1 : 0);
+  return { label, lines, endings, bom: bom ?? text.startsWith('\uFEFF'), invalid };
 }
 
 /* ---------- orderings ---------- */

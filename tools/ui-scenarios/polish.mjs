@@ -17,6 +17,9 @@
  *       B's tab strip shares the class .tabs: C2 reads both strips' labels
  *       by id, and at 800 px checks each strip's tabs inside their own
  *       panel; clear() puts panel B back on the Inspector by its tab.
+ *       Preview's poses: README.md, a photo, Projects, six files and an
+ *       archive at 1600 and 1280, and the drawer on README.md at 800; C8
+ *       measures its kind words, name, facts, heads, notes and rows.
  *     - 1.0.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] —
  *       Initial release: the interface's alignment, wrapping and
  *       clipping invariants, measured in the demo world at three window
@@ -33,11 +36,13 @@
  *     Pages serves it, so it reads no file on disk.
  *
  * ✒ Key Features:
- *     - Eighteen poses: the root, a folder and a file selected, six
+ *     - Twenty-four poses: the root, a folder and a file selected, six
  *       files, Findings with and without a note, the Survey opened, the
  *       Journal, Places, the three other lenses, the time view, the
  *       context menu, the guide, the palette, both rename sheets,
- *       notices, placing and, in a narrow window, the inspector drawer;
+ *       notices, placing, Preview on a text, a photo, a folder, six files
+ *       and an archive, and, in a narrow window, the inspector drawer and
+ *       Preview in it;
  *       grouped by the folder they stand in, so the eye travels only
  *       when the place changes
  *     - Twelve invariants (C1 to C12): page overflow, one-line heads and
@@ -443,6 +448,23 @@ function INSTALL() {
           at('inspector item text (B)', textLeft(it.querySelector('.nm') || it), 32, I, it);
         }
       }
+      // Preview (panel B's tab): the same grid as the inspector's.
+      const PV = one('#b-panel-preview');
+      if (I && shown(PV) && one('#inspector').getBoundingClientRect().left < innerWidth - 10) {
+        for (const k of $('#b-panel-preview .insp-kind')) {
+          const marked = [...k.querySelectorAll('.swatch')].some(shown);
+          at(marked ? 'Preview kind words after a mark (B)' : 'Preview kind words (A)', textLeft(k.querySelector('.pv-kind-words') || k), marked ? 32 : 12, I, k);
+        }
+        for (const e of $('#b-panel-preview .insp-name, #b-panel-preview .pv-facts, #b-panel-preview .pv-cut, #b-panel-preview .section-title, #b-panel-preview .pv-body .facts dt, #b-panel-preview .pv-note, #b-panel-preview .pv-caption').slice(0, 30)) {
+          at('Preview text (A)', textLeft(e), 12, I, e);
+        }
+        for (const w of $('#b-panel-preview .pv-where')) at('Preview "in <folder>" words (B)', textLeft(w.querySelector('.pv-where-words')), 32, I, w);
+        for (const it of $('#b-panel-preview .item').slice(0, 12)) {
+          const sw = it.querySelector('.swatch');
+          if (sw && shown(sw)) mark('Preview item mark (A slot)', sw, 12, I);
+          at('Preview item text (B)', textLeft(it.querySelector('.nm') || it), 32, I, it);
+        }
+      }
       const first = one('#block .cell');
       if (L && innerWidth >= 1101 && shown(first)) test('C8', Math.abs(R(first).right - R(one('#ledger')).right) <= 0.5, { at: 'first cell = ledger', cell: r2(R(first).right), ledger: r2(R(one('#ledger')).right) });
       const status = one('#status-label');
@@ -609,6 +631,26 @@ async function listKey(t, key) {
 
 const drawerOpen = (t) => t.waitFor(() => getComputedStyle(document.getElementById('inspector')).visibility === 'visible', { what: 'the drawer' });
 
+/** Panel B on Preview, drawn whole for name (showing it opens the drawer at 800 px). */
+async function inPreview(t, name) {
+  await t.app((T) => { T.api.showBTab('preview'); return true; });
+  await t.waitFor((_T, n) => document.querySelector('#b-panel-preview .pv-pane')?.dataset.shown === n, { args: [name], what: `Preview of ${name}` });
+}
+
+/** The first JPG under Photos: a picture drawn from its thumbnail. */
+const PHOTO = (t) => t.app((T) => {
+  let found = null;
+  const walk = (d) => {
+    for (const c of d.c) {
+      if (found) return;
+      if (c.d) walk(c);
+      else if (/\.JPG$/.test(c.n)) found = c;
+    }
+  };
+  walk(T.S.model.find('Photos'));
+  return found ? T.api.relPath(found) : null;
+});
+
 /*
  * The poses, grouped by the folder they stand in so the eye travels only
  * when the place changes. heads: the ledger head's checks (C2); buttons:
@@ -617,6 +659,29 @@ const drawerOpen = (t) => t.waitFor(() => getComputedStyle(document.getElementBy
 const POSES = [
   { id: 'P1', name: 'root', at: '', heads: true, buttons: true, setup: async () => {} },
   { id: 'P2', name: 'Projects selected', at: '', heads: true, buttons: true, setup: (t) => selectRel(t, 'Projects') },
+  {
+    id: 'P20', name: 'Projects in Preview', at: '', small: 'skip', buttons: true, setup: async (t) => {
+      await selectRel(t, 'Projects');
+      await inPreview(t, 'Projects');
+    },
+  },
+  {
+    id: 'P21', name: 'a photo in Preview', at: '', small: 'skip', buttons: true, setup: async (t) => {
+      const rel = await PHOTO(t);
+      await t.app((T, r) => { T.api.select(T.S.model.find(r)); return true; }, rel);
+      await inPreview(t, rel.slice(rel.lastIndexOf('/') + 1));
+      await t.waitFor(() => {
+        const img = document.querySelector('#b-panel-preview .pv-picture img');
+        return !!img && img.complete && img.naturalWidth > 0;
+      }, { what: 'the photo drawn' });
+    },
+  },
+  {
+    id: 'P23', name: 'an archive in Preview', at: '', small: 'skip', buttons: true, setup: async (t) => {
+      await t.app((T) => { T.api.select(T.S.model.find('Downloads/fonts-pack.zip')); return true; });
+      await inPreview(t, 'fonts-pack.zip');
+    },
+  },
   { id: 'P5a', name: 'Findings "tide"', at: '', heads: true, setup: (t) => t.app((T) => { T.api.setQuery('tide'); return true; }) },
   { id: 'P5b', name: 'Findings "in:Projects >1mb"', at: '', heads: true, setup: (t) => t.app((T) => { T.api.setQuery('in:Projects >1mb'); return true; }) },
   {
@@ -702,6 +767,20 @@ const POSES = [
   },
   { id: 'P3', name: 'README.md selected', at: 'Projects/harbor-api', heads: true, buttons: true, setup: (t) => selectRel(t, README) },
   {
+    id: 'P19', name: 'README.md in Preview', at: 'Projects/harbor-api', small: 'skip', buttons: true, setup: async (t) => {
+      await selectRel(t, README);
+      await inPreview(t, 'README.md');
+    },
+  },
+  {
+    id: 'P18c', name: 'drawer on README.md in Preview', at: 'Projects/harbor-api', small: 'only', buttons: true, drawer: true, setup: async (t) => {
+      await selectRel(t, README);
+      await inPreview(t, 'README.md');
+      await drawerOpen(t);
+    },
+    after: (t) => listKey(t, ']'),
+  },
+  {
     id: 'P15', name: 'rename dialog', at: 'Projects/harbor-api', setup: async (t) => {
       await selectRel(t, README);
       await listKey(t, 'F2');
@@ -724,6 +803,12 @@ const POSES = [
     after: (t) => listKey(t, ']'),
   },
   { id: 'P4', name: 'six files selected', at: COMPONENTS, heads: true, buttons: true, setup: six },
+  {
+    id: 'P22', name: 'six files in Preview', at: COMPONENTS, small: 'skip', buttons: true, setup: async (t) => {
+      await six(t);
+      await inPreview(t, '6 items');
+    },
+  },
   {
     id: 'P14', name: 'batch rename of six files', at: COMPONENTS, setup: async (t) => {
       await six(t);
@@ -761,6 +846,7 @@ const polish = {
         await t.settle({ quiet: 250 });
         for (const p of POSES) {
           if (p.small === 'only' && size.id !== 'small') continue;
+          if (p.small === 'skip' && size.id === 'small') continue;
           const t0 = Date.now();
           await clear(t);
           await into(t, p.at);

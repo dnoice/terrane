@@ -1,11 +1,11 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Demo Scenario (Terrane Edition - v1.2)
+ *     - Title: Demo Scenario (Terrane Edition - v1.3)
  *     - File Name: demo.mjs
  *     - Relative Path: tools/ui-scenarios/demo.mjs
  *     - Artifact Type: test
- *     - Version: 1.2.0
+ *     - Version: 1.3.0
  *     - Date: 11/14/2026
  *     - Update: Saturday, November 14, 2026
  *     - Author: Dennis 'dendogg' Smaltz
@@ -13,6 +13,13 @@
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
  *
  * ✒ Changelog:
+ *     - 1.3.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — Panel
+ *       B's Preview tab in the demo world: a README's numbered lines, an
+ *       arrow held over 12 rows of its fullest folder read at most twice, a
+ *       photo drawn from the 480 px rung (never the file's own picture),
+ *       Projects/current's target selected by its button, a zip listed and
+ *       a sound's player; demo-regions reads a folder's summary once its
+ *       region has landed. Both end on the Inspector.
  *     - 1.2.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] —
  *       pages(port), the stand-in GitHub Pages, is exported, so the
  *       polish scenario serves the demo world the same way. demo-regions
@@ -49,6 +56,8 @@
  *     - Search (is:dup), an archive's interior, and a download arriving
  *       by the event stream
  *     - Quick look on a text file, a photo, an audio file and a film
+ *     - Preview on a README, a photo (from its 480 px rung), a link, a zip
+ *       and a sound; and, in regions, a folder's summary
  *     - Not one request to /api/ reaches the network
  *     - demo-regions: the same world in regions (?regions), with the
  *       status saying so, a folder read by its path, a rename and Undo
@@ -253,6 +262,9 @@ const demo = {
       if (filmReady) t.check(`Quick look plays the film recorded in the page (${qFilm?.media?.tag})`, qFilm?.media?.tag === 'video' && qFilm.media.src === 'blob:' && qFilm.media.ready >= 1 && !qFilm.note, JSON.stringify(qFilm));
       else t.skip('the film in Quick look', 'this browser could not record one from a canvas');
 
+      // Panel B's Preview tab, answered in the page.
+      await previewIn(t, photo);
+
       const asked = t.requests(mark).filter((r) => /\/api\//.test(r.url));
       t.check(`not one request to /api/ left the page (${asked.length})`, asked.length === 0, JSON.stringify(asked.slice(0, 3)));
     } finally {
@@ -262,6 +274,122 @@ const demo = {
     await t.until((T) => !!T && !T.S.scanning && document.getElementById('splash').hidden, { timeout: 30000 });
   },
 };
+
+/** Preview's state in the page: the name its body shows once drawn whole, and what it holds. */
+const pvState = () => {
+  const P = document.getElementById('b-panel-preview');
+  const img = P?.querySelector('.pv-picture img');
+  return {
+    done: P?.querySelector('.pv-pane')?.dataset.shown ?? null,
+    kind: P?.querySelector('.pv-kind-words')?.textContent ?? null,
+    lines: P?.querySelectorAll('.pv-line').length ?? 0,
+    first: P?.querySelector('.pv-line')?.textContent ?? null,
+    img: img ? { src: img.getAttribute('src').slice(0, 22), natural: img.naturalWidth, complete: img.complete } : null,
+    caption: P?.querySelector('.pv-caption')?.textContent ?? null,
+    notes: [...(P?.querySelectorAll('.pv-note') || [])].map((n) => n.textContent),
+    rows: [...(P?.querySelectorAll('.pv-rows .item .nm') || [])].map((n) => n.textContent),
+    heads: [...(P?.querySelectorAll('.section-title .t') || [])].map((n) => n.textContent),
+    player: P?.querySelector('.pv-player audio, .pv-player video')?.tagName.toLowerCase() ?? null,
+  };
+};
+
+/** Selects rel (a path) and waits until Preview has drawn it and fn(state) holds. */
+async function previewOf(t, rel, fn = () => true) {
+  await t.app((T, r) => {
+    const n = T.S.model.find(r);
+    T.api.setFocus(n.p);
+    T.S.tab = 'contents';
+    T.api.drawLedger();
+    T.api.select(n);
+    T.api.cursorTo(n);
+    return true;
+  }, rel);
+  const name = rel.slice(rel.lastIndexOf('/') + 1);
+  return t.until(`(_T, n) => { const st = (${pvState})(); return st.done === n && (${fn})(st) && st; }`, { args: [name], timeout: 8000 });
+}
+
+/** The demo's Preview: a README, a photo from its 480 px rung, a link, a zip and a sound. */
+async function previewIn(t, photo) {
+  const raw = await t.app((T) => {
+    window.__rawAsked = [];
+    const real = T.demo.rawUrl;
+    T.demo.rawUrl = (...a) => {
+      window.__rawAsked.push(a[0]);
+      return real(...a);
+    };
+    T.api.showBTab('preview');
+    return T.S.bTab;
+  });
+  t.check('Preview is chosen in the demo world', raw === 'preview');
+  const readme = await previewOf(t, 'Projects/harbor-api/README.md', (s) => s.lines > 0);
+  t.check(`Preview reads the README, its lines numbered (${readme?.lines})`, readme?.kind === 'Markdown text · .md' && /^# Read me/.test(readme?.first || ''), JSON.stringify(readme));
+  // An arrow held through the fullest folder of the world: the body waits
+  // for the arrows to rest, so the files passed are read once or twice.
+  const fullest = await t.app((T) => {
+    let best = null;
+    const walk = (d) => {
+      for (const c of d.c) {
+        if (!c.d) continue;
+        const n = c.c.filter((x) => !x.d).length;
+        if (!best || n > best.n) best = { rel: T.api.relPath(c), n };
+        walk(c);
+      }
+    };
+    walk(T.S.model.root);
+    return best;
+  });
+  // From the overview the eye flies to a file of it, so the location
+  // settles in the folder (without WebGL, going there sets it).
+  if (t.gl) {
+    await t.app((T) => { T.api.overview(); return true; });
+    await t.settle();
+  }
+  await t.app((T, r) => {
+    const dir = T.S.model.find(r);
+    if (T.S.noGL) T.api.setFocus(dir);
+    else T.api.reveal(dir.c.find((x) => !x.d));
+    return true;
+  }, fullest.rel);
+  await t.until((T, r) => T.api.relPath(T.S.focus) === r, { args: [fullest.rel], timeout: 15000 });
+  await t.settle();
+  const rows = await t.app((T) => {
+    T.S.tab = 'contents';
+    T.api.drawLedger();
+    const items = T.api.listItems();
+    T.api.select(items[0]);
+    T.api.cursorTo(items[0]);
+    document.getElementById('ledger-list').focus();
+    return items.map((n) => n.n);
+  });
+  const steps = Math.min(12, rows.length - 1);
+  await t.until(`(_T, n) => (${pvState})().done === n`, { args: [rows[0]], timeout: 8000 });
+  const before = await t.app(() => window.__rawAsked.length);
+  for (let i = 0; i < steps; i++) await t.key('ArrowDown');
+  const rested = await t.until(`(_T, n) => (${pvState})().done === n`, { args: [rows[steps]], timeout: 8000 });
+  await t.sleep(300);
+  const heldReads = await t.app((_T, b) => window.__rawAsked.length - b, before);
+  t.note(`the demo world (${fullest.rel}, ${fullest.n} files): ↓ held over ${steps} rows, ${heldReads} read${heldReads === 1 ? '' : 's'}`);
+  t.check(`an arrow held over ${steps} rows of the demo world reads at most twice (${heldReads}) and rests on the last`, !!rested && heldReads <= 2, String(heldReads));
+  const pic = await previewOf(t, photo, (s) => !!s.img && s.img.complete && s.img.natural > 0);
+  const viaRaw = await t.app(() => window.__rawAsked.slice());
+  t.check(`a photo is drawn from its 480 px rung, never the file's own picture (${pic?.img?.natural} px wide; ${pic?.caption})`,
+    /^data:image\//.test(pic?.img?.src || '') && pic.img.natural <= 480 && /^[\d,]+ × [\d,]+ px · colour #[0-9a-f]{6} · from the 480 px thumbnail$/.test(pic.caption || '') && !viaRaw.includes(photo), JSON.stringify({ pic, viaRaw }));
+  const link = await previewOf(t, 'Projects/current', (s) => s.notes.length > 0);
+  t.check(`Projects/current says where it points (${link?.notes[0]})`, /It points to tidepool-web, which is Projects\/tidepool-web in this directory\.$/.test(link?.notes[0] || ''), JSON.stringify(link));
+  await t.eval(() => { document.querySelector('#b-panel-preview .pv-actions .btn').click(); return true; });
+  const target = await t.until((T) => T.S.primary && T.api.relPath(T.S.primary) === 'Projects/tidepool-web', { timeout: 5000 });
+  t.check('and its button selects Projects/tidepool-web', !!target);
+  const zip = await previewOf(t, 'Downloads/fonts-pack.zip', (s) => s.rows.length > 0);
+  t.check(`a zip is listed: what it holds and its top level (${zip?.rows.slice(0, 3).join(', ')})`, zip?.heads.includes('Top level') && zip.rows.length > 0, JSON.stringify(zip));
+  const song = await t.app((T) => T.api.relPath(T.S.model.find('Music/Podcasts').c.find((c) => /\.mp3$/.test(c.n))));
+  const sound = await previewOf(t, song, (s) => !!s.player);
+  t.check(`a sound gets the browser's player, with the demo's note (${sound?.notes.at(-1)})`, sound?.player === 'audio' && /tone made in the page/.test(sound.notes.at(-1) || ''), JSON.stringify(sound));
+  await t.app((T) => {
+    document.getElementById('b-tab-inspector').click();
+    T.api.select(null);
+    return true;
+  });
+}
 
 /**
  * The demo world drawn in regions (?regions): the demo service answers the
@@ -313,6 +441,25 @@ const demoRegions = {
         return T.S.model.find('Projects/harbor-api').c.map((c) => c.n);
       });
       t.check('Undo puts the old name back in the region', undone.includes('README.md') && !undone.includes('README-renamed.md'));
+
+      // Preview's summary of a folder whose region is not held yet.
+      const unheld = await t.app((T) => {
+        T.api.showBTab('preview');
+        const dir = T.S.model.find('Music');
+        return dir ? { u: !!dir.u, n: T.api.kids(dir) } : null;
+      });
+      const summary = await t.app((T) => {
+        const dir = T.S.model.find('Music');
+        T.api.select(dir);
+        return true;
+      }).then(() => t.until(`(_T) => { const st = (${pvState})(); return st.done === 'Music' && st.rows.length > 0 && st; }`, { timeout: 15000 }));
+      t.check(`in regions Preview summarizes a folder once its region lands (${summary?.rows.length} largest of ${unheld?.n}${unheld?.u ? ', not held at first' : ''})`,
+        !!summary && ['By kind', 'By age', 'Largest'].every((h) => summary.heads.includes(h)) && summary.rows.length === Math.min(10, unheld.n), JSON.stringify({ unheld, summary }));
+      await t.app((T) => {
+        document.getElementById('b-tab-inspector').click();
+        T.api.select(null);
+        return true;
+      });
 
       // A search, answered in the page by the demo's own column tree, and Enter reveals.
       await t.eval(() => document.getElementById('q').focus());

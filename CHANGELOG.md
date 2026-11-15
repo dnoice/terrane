@@ -17,6 +17,8 @@
       web/css/components/inspector.css (1.3.0) and web/css/print.css (1.3.0), whose 1.0.0
       entries leave their headers with these releases. app.js's header rolls its 1.13.0 entry
       out, index.html's its 1.5.0 and layout.css's its 1.1.0; this file already holds them.
+      Then the Preview tab: features.js 1.5.0 and terrane.css 2.5.0, whose headers roll their
+      1.2.0 and 2.2.0 entries out; this file already holds them.
     - 1.12.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — Records Wave 4, merged
       with main's flavors and Guide window (app.js 1.15.0, floating.css 1.4.0). First, the
       polish of the panels:
@@ -616,6 +618,14 @@ short form is kept too.
 
 ## web/css/terrane.css
 
+- 2.5.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — Imports components/preview.css
+  after quicklook.css: panel B's Preview tab, its head, tools, pane and foot. The head reuses the
+  inspector's title, kind and name on the panel's grid (the mark at A, the words at B) with "in
+  <folder>" and the facts in mono under them; the tools are small buttons that wrap whole; the
+  pane scrolls inside the panel and holds the numbered text (CSS counters per chunk, since
+  content-visibility scopes them), the picture on the stipple, the player, the listing and the
+  summary's rows; the foot's key hints are groups that never break.
+
 - 2.4.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — Imports
   components/palette.css: the command palette's field, its options with the highlighter
   and an ink bar on the active one, its group labels and its foot line, in the shared
@@ -834,6 +844,13 @@ short form is kept too.
 - 1.0.0 (11/09/2026) [dendogg + Anthropic - Claude Fable 5.2] — Initial release.
 
 ## web/js/features.js
+
+- 1.5.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — Preview, panel B's second tab
+  (preview.js), after the totals and quick searches. It is installed after presets.js, whose
+  selectionBytes it reads, and before the batch rename; it adds a B_TABS entry, guide rows under
+  Looking closer, an Escape entry at 45 while reading one of several, a palette command for
+  Wrap lines, and hooks that only schedule its work. It binds no global key: its keys act inside
+  its pane.
 
 - 1.4.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — The flavors' palette
   commands, Flavor (flavors.js).

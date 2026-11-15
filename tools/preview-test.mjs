@@ -244,7 +244,9 @@ check('else by its kind: code, document or data text', tk('a.vb', '').label === 
   [tk('a.vb', '').label, tk('a.dat', '').label, tk('README', '').label].join(', '));
 check('line endings: LF, CRLF, CR, mixed and none',
   same(['a\nb\n', 'a\r\nb\r\n', 'a\rb\r', 'a\r\nb\n', 'a'].map((t) => tk('a.txt', t).endings), ['LF', 'CRLF', 'CR', 'mixed', null]));
-check('lines are counted as the gutter numbers them', tk('a.txt', 'a\r\nb\r\n').lines === 2 && tk('a.txt', 'x\ny').lines === 2);
+check('lines are counted as the view numbers them, an ending of any kind ending one',
+  same(['a\r\nb\r\n', 'x\ny', 'a\rb\r', 'a\rb', 'a\r\nb\nc\r', '', 'x'].map((t) => tk('a.txt', t).lines), [2, 2, 2, 2, 3, 0, 1]),
+  JSON.stringify(['a\r\nb\r\n', 'x\ny', 'a\rb\r', 'a\rb', 'a\r\nb\nc\r', '', 'x'].map((t) => tk('a.txt', t).lines)));
 check('a byte order mark, given or in the text', tk('a.txt', 'x', { bom: true }).bom === true && tk('a.txt', '\uFEFFx').bom === true && tk('a.txt', 'x').bom === false);
 check('U+FFFD counted, and the one a cut may have split at the end left out',
   tk('a.txt', 'a\uFFFDb\uFFFD').invalid === 2 && tk('a.txt', 'a\uFFFDb\uFFFD', { cut: true }).invalid === 1);
