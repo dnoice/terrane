@@ -1,11 +1,11 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Flavors (Terrane Edition - v1.1)
+ *     - Title: Flavors (Terrane Edition - v1.2)
  *     - File Name: flavors.js
  *     - Relative Path: web/js/flavors.js
  *     - Artifact Type: javascript
- *     - Version: 1.1.0
+ *     - Version: 1.2.0
  *     - Date: 11/14/2026
  *     - Update: Saturday, November 14, 2026
  *     - Author: Dennis 'dendogg' Smaltz
@@ -13,6 +13,9 @@
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
  *
  * ✒ Changelog:
+ *     - 1.2.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] —
+ *       startingFlavor: a flavor the service was launched with (--flavor)
+ *       is taken once by each browser, and a choice made since keeps.
  *     - 1.1.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] —
  *       Blender's left and right buttons never move the view, as in
  *       Blender: a click selects and a right click opens the menu. The
@@ -44,6 +47,9 @@
  *       and right buttons only click, selecting and opening the menu
  *     - A double click of the middle button can rise to the overview, as
  *       zoom extents does in AutoCAD and SketchUp
+ *     - startingFlavor({ launch, taken, kept }) decides the flavor a page
+ *       starts with: a launch flavor this browser has not yet taken wins
+ *       once, then the browser's own choice, then Terrane's
  *     - rowsFor(flavor) gives the guide's rows for a flavor, in the order
  *       its users would look for them
  *     - DOM-free and deterministic, so Node checks every flavor
@@ -158,6 +164,22 @@ export const DEFAULT_FLAVOR = 'terrane';
 /** A flavor by id; an unknown id is Terrane's, never undefined. */
 export function flavorById(id) {
   return FLAVORS.find((p) => p.id === id) || FLAVORS[0];
+}
+
+/** Whether an id names a flavor. */
+export const isFlavor = (id) => FLAVORS.some((p) => p.id === id);
+
+/**
+ * The flavor a page starts with. launch is the flavor the service was
+ * started with (--flavor), or null; taken is the launch flavor this
+ * browser took last; kept is the browser's own choice. A launch flavor not
+ * yet taken wins, once: { id, took } names it and asks for it to be kept
+ * as both the choice and the one taken. Otherwise the kept choice stands,
+ * so a flavor chosen in the guide since holds until a launch names another.
+ */
+export function startingFlavor({ launch = null, taken = null, kept = null } = {}) {
+  if (isFlavor(launch) && launch !== taken) return { id: launch, took: launch };
+  return { id: flavorById(kept || DEFAULT_FLAVOR).id, took: null };
 }
 
 /** The label the setting shows: "AutoCAD (also Fusion 360, Revit)". */

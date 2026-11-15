@@ -1,10 +1,10 @@
 <!--
 ✒ Metadata
-    - Title: Terrane Readme (Terrane Edition - v1.18)
+    - Title: Terrane Readme (Terrane Edition - v1.19)
     - File Name: README.md
     - Relative Path: README.md
     - Artifact Type: docs
-    - Version: 1.18.0
+    - Version: 1.19.0
     - Date: 11/14/2026
     - Update: Saturday, November 14, 2026
     - Author: Dennis 'dendogg' Smaltz
@@ -12,6 +12,10 @@
     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
 
 ✒ Changelog:
+    - 1.19.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] —
+      Launch: `--flavor <id>`, the flavor every page that opens the
+      service starts in once; Developing against real data: `npm run dev`
+      keeps it with the target.
     - 1.18.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] —
       Travelling: in Blender's flavor the left and right buttons never
       move the view; a click selects and a right-click opens the menu.
@@ -267,6 +271,7 @@ keeps the last session's tree, says why and offers Survey again.
 | `--no-open` | Does not open the browser. |
 | `--no-watch` | Does not watch for outside changes; use Refresh. |
 | `--no-warm` | Keeps no tree of the last survey and serves none: every launch surveys before it draws, and the service writes nothing to the dataset home. |
+| `--flavor <id>` | Every page that opens the service starts in that flavor once, as if chosen in the guide: `blender`, `autocad`, `sketchup`, `maya`, `3dsmax`, `rhino`, `solidworks`, `unity`, `unreal`, `earth` or `terrane`. A flavor chosen in the guide afterwards holds until a launch names a different one. |
 | `--region-threshold <n>` | Above n entries (folders and files) the service keeps the tree and the page draws it in regions; 100,000 unless `TERRANE_REGION_THRESHOLD` says otherwise, and 0 for every tree. See Very large directories. |
 
 ```bash
@@ -355,6 +360,8 @@ npm run dev
 ```
 
 The first form remembers the target; after that `npm run dev` is enough.
+`npm run dev -- --flavor blender` is remembered the same way, so every
+later run opens in Blender's flavor.
 It does four things:
 
 1. Takes a structure snapshot if the newest is more than six hours old:

@@ -2,16 +2,23 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Development Runner (Terrane Edition - v1.0)
+ *     - Title: Development Runner (Terrane Edition - v1.1)
  *     - File Name: dev.mjs
  *     - Relative Path: tools/dev.mjs
  *     - Artifact Type: CLI
- *     - Version: 1.0.0
- *     - Date: 11/11/2026
- *     - Update: Wednesday, November 11, 2026
+ *     - Version: 1.1.0
+ *     - Date: 11/14/2026
+ *     - Update: Saturday, November 14, 2026
  *     - Author: Dennis 'dendogg' Smaltz
  *     - A.I. Acknowledgement: Anthropic - Claude Opus 5.5
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
+ *
+ * ✒ Changelog:
+ *     - 1.1.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] —
+ *       --flavor <id> is passed to the service and saved with the target,
+ *       so every later npm run dev starts in that flavor.
+ *     - 1.0.0 (11/11/2026) [dendogg + Anthropic - Claude Opus 5.5] —
+ *       Initial release.
  *
  * ✒ Description:
  *     One command for development against real-world data without touching
@@ -41,6 +48,7 @@
  *     npm run dev -- --target "C:\Users\DnnsS\OneDrive\Desktop\dd1\projects"
  *     npm run dev -- --every 30 --max-age 2
  *     npm run dev -- --no-thumbs --port 5050
+ *     npm run dev -- --flavor blender         Blender's hands, kept
  *
  * ✒ Command-Line Arguments:
  *     Input:
@@ -50,6 +58,8 @@
  *         --max-age <h>     Refresh on start when older than this (6).
  *         --no-thumbs       Do not run the thumbnail builder.
  *     Output:
+ *         --flavor <id>     The flavor pages start in once (blender, maya,
+ *                           ...). Saved for next time.
  *         --port <n>        Preferred port for the service.
  *         --no-open         Do not open the browser.
  *
@@ -89,7 +99,9 @@ if (!target) {
 }
 const every = Number(option('--every') || config.everyMinutes || 60);
 const maxAge = Number(option('--max-age') || config.maxAgeHours || 6);
-config = { target: path.resolve(target), everyMinutes: every, maxAgeHours: maxAge };
+// The flavor pages start in, kept with the target; the service checks it.
+const flavor = option('--flavor') || config.flavor || null;
+config = { target: path.resolve(target), everyMinutes: every, maxAgeHours: maxAge, ...(flavor ? { flavor } : {}) };
 fs.mkdirSync(path.dirname(CONFIG), { recursive: true });
 fs.writeFileSync(CONFIG, JSON.stringify(config, null, 2));
 
@@ -136,6 +148,7 @@ buildThumbs();
 
 const passthrough = [];
 if (option('--port')) passthrough.push('--port', option('--port'));
+if (flavor) passthrough.push('--flavor', flavor);
 if (flag('--no-open')) passthrough.push('--no-open');
 const service = spawn(process.execPath, [path.join(PROJECT, 'server', 'terrane.mjs'), '--snapshot', data, ...passthrough], { stdio: 'inherit' });
 
