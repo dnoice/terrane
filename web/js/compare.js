@@ -1412,7 +1412,8 @@ export function install(api) {
         { label: 'Compare the two selected folders', detail: two ? `${two[0].n} and ${two[1].n}` : 'Compare', off: two ? null : 'select two folders first', run: () => compareTwo(two[0], two[1]) },
         { label: 'Compare with its benchmark', detail: nm, off: b ? null : `no benchmark on ${nm}: B sets one`, run: () => compareBench(f) },
         { label: 'Swap the compared folders', detail: 'Compare', off: none, run: swap },
-        { label: 'Clear the comparison', detail: 'Compare', off: none, run: clear },
+        // "Compare" in each label, so Ctrl+K "compare" lists all five.
+        { label: 'Clear the compared folders', detail: 'Compare', off: none, run: clear },
       ];
     },
   });

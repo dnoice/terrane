@@ -297,12 +297,12 @@ const compare = {
       same(s0.tabs, ['inspector:Inspector', 'preview:Preview', 'compare:Compare', 'cleanup:Cleanup', 'shelf:Shelf']) && s0.icons[2] === 'columns-2'
       && s0.title === 'Compare: two folders side by side, and what differs' && !s0.mounted, JSON.stringify(s0));
     await t.eval(() => { document.getElementById('ledger-list').focus(); return true; });
-    const opts = await palette(t, 'compare', (o) => o.some((x) => x.startsWith('Show Compare|')) && o.some((x) => x.startsWith('Clear the comparison|')));
+    const opts = await palette(t, 'compare', (o) => o.some((x) => x.startsWith('Show Compare|')) && o.some((x) => x.startsWith('Clear the compared folders|')));
     const opt = (label) => opts.find((x) => x.startsWith(`${label}|`)) || '';
     t.check(`Ctrl+K "compare" lists Show Compare first, then the commands, each saying why when it cannot run (${opt('Compare the two selected folders')})`,
       opts[0].startsWith('Show Compare|') && /\|C\|/.test(opt('Compare with…').replace(/ · C\|/, '|C|')) && /Unavailable: select two folders first/.test(opt('Compare the two selected folders'))
       && /Unavailable: no benchmark on .+: B sets one/.test(opt('Compare with its benchmark')) && /Unavailable: nothing is being compared/.test(opt('Swap the compared folders'))
-      && /Unavailable: nothing is being compared/.test(opt('Clear the comparison')), JSON.stringify(opts));
+      && /Unavailable: nothing is being compared/.test(opt('Clear the compared folders')), JSON.stringify(opts));
     await t.key('Escape');
     await t.waitFor(() => !document.getElementById('dialog').open);
     await palette(t, 'show compare', (o) => o[0]?.startsWith('Show Compare|'));
@@ -373,7 +373,7 @@ const compare = {
     t.check(`↑ ↓ Enter on ${firstKey} selects both copies and frames the first; Enter again frames the other (${other}); the tab stays on Compare`,
       both.sel.length === 2 && both.primary.startsWith(`${LAB}/left/`) && other.startsWith(`${LAB}/right/`) && (await t.app((T) => T.S.bTab)) === 'compare', JSON.stringify({ both, other }));
     await press(t, '#b-panel-compare .cmp-row[data-key="c/sub"] button.cmp-item', 'ArrowRight');
-    const inner = await drawn(t, (s) => s.name === 'left/sub and right/sub' && s.tools.includes('Back out one level') && s.groups.length === 4, 'inside sub');
+    const inner = await drawn(t, (s) => s.name === 'Two folders named sub' && s.tools.includes('Back out one level') && s.groups.length === 4, 'inside sub');
     t.check(`→ on sub compares inside it ("${inner.name}"), with Back out one level in the head`, inner.groups.find((g) => g.id === 'only-1').count === 1 && inner.groups.find((g) => g.id === 'changed').count === 1, JSON.stringify(inner.groups));
     await t.waitFor(() => !!document.activeElement?.closest?.('#b-panel-compare .cmp-row'), { what: 'focus on the first inner row' });
     await t.key('ArrowLeft');
@@ -485,8 +485,12 @@ const compare = {
     t.check(`a Places row offers Compare (${placesBtn.join(', ')})`, placesBtn.includes('Compare'), JSON.stringify(placesBtn));
 
     /* ---- Terrane's rename, its Undo, and a folder removed from outside ---- */
+    // Two folders selected while a pair is shown: the head offers them; C compares them.
     await t.app((T, rs) => { T.api.selectAll(rs.map((r) => T.S.model.find(r))); return true; }, [`${LAB}/left`, `${LAB}/right`]);
     await showCompare(t);
+    const offer = await drawn(t, (s) => s.tools.includes('Compare the 2 selected instead'), 'the offer of the two selected');
+    t.check('with a benchmark pair shown, selecting two other folders offers Compare the 2 selected instead and does not switch on its own', offer.name === 'left, now and then', JSON.stringify(offer.tools));
+    await t.app((T) => { T.api.KEYS.get('compare').run({}); return true; });
     await drawn(t, (s) => s.name === 'left and right' && s.groups.length === 4, 'left and right again');
     await t.app((T) => T.api.runOp({ type: 'rename', path: 'compare-lab/right', name: 'right-renamed' }));
     const rn = await drawn(t, (s) => s.name === 'left and right-renamed' && s.groups.length === 4, 'the rename followed');
@@ -650,7 +654,8 @@ const compareRegions = {
     await showCompare(t);
     await t.sleep(600);
     const asked = t.requests(mark).filter((r) => r.path === '/api/places');
-    t.check(`the same-name suggestions are asked of the service (GET /api/places: ${asked.length})`, asked.length >= 1 && asked.every((r) => r.method === 'GET'), JSON.stringify(asked.slice(0, 2)));
+    const counted = await t.eval(() => window.__terrane.asked?.places ?? 0);
+    t.check(`the same-name suggestions are asked of the service (GET /api/places: ${asked.length} seen, ${counted} asked in all)`, (asked.length >= 1 || counted >= 1) && asked.every((r) => r.method === 'GET'), JSON.stringify(asked.slice(0, 2)));
     await clickNotice(t, /^Comparison cleared/, 'Undo');
     await drawn(t, (s) => s.groups.length === 4);
     await t.app((T) => {

@@ -14,8 +14,8 @@
 ✒ Changelog:
     - 1.21.0 (11/15/2026) [dendogg + Anthropic - Claude Opus 5.5] — Records the Compare tab:
       app.js 1.23.0, index.html 1.10.0, features.js 1.8.0, landmarks.js 1.5.0, icons.js
-      1.5.0 and terrane.css 2.8.0, whose 1.20.0, 1.7.0, 1.5.0, 1.2.0, 1.2.0 and 2.5.0
-      entries leave their headers; this file already holds them.
+      1.5.0, terrane.css 2.8.0 and palette.js 1.4.0, whose 1.20.0, 1.7.0, 1.5.0, 1.2.0,
+      1.2.0, 2.5.0 and 1.1.0 entries leave their headers; this file already holds them.
     - 1.20.0 (11/15/2026) [dendogg + Anthropic - Claude Opus 5.5] — Records the Shelf tab:
       app.js 1.22.0, features.js 1.7.0, terrane.css 2.7.0, icons.js 1.4.0 and inspector.css
       1.4.0, whose 1.19.0, 1.4.0, 2.4.0, 1.1.0 and 1.1.0 entries leave their headers; this file
@@ -1767,6 +1767,14 @@ short form is kept too.
 - 1.0.0 (11/12/2026) [dendogg + Anthropic - Claude Opus 5.5] — Initial release.
 
 ## web/js/palette.js
+
+- 1.4.0 (11/15/2026) [dendogg + Anthropic - Claude Opus 5.5] — A query of three letters or more
+  that a right-panel tab's name starts with lists that tab's Show item first, so Ctrl+K "compare"
+  finds Show Compare before the Compare commands. In full: the palette ranks its actions by how
+  early and how closely the query falls in each label, so "Compare with…" outranked "Show
+  Compare"; a Show item now carries its tab's id, and when the query begins the tab's name the
+  item moves to the head of the actions. Show Shelf, Show Cleanup and Show Preview already came
+  first for their names, and still do.
 
 - 1.3.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — The tabs' commands are listed under
   Right panel, the one shown now marked "Right panel · shown now". In full: the section and the

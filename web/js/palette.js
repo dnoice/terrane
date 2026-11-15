@@ -1,18 +1,22 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Command Palette (Terrane Edition - v1.3)
+ *     - Title: Command Palette (Terrane Edition - v1.4)
  *     - File Name: palette.js
  *     - Relative Path: web/js/palette.js
  *     - Artifact Type: javascript
- *     - Version: 1.3.0
- *     - Date: 11/14/2026
- *     - Update: Saturday, November 14, 2026
+ *     - Version: 1.4.0
+ *     - Date: 11/15/2026
+ *     - Update: Sunday, November 15, 2026
  *     - Author: Dennis 'dendogg' Smaltz
  *     - A.I. Acknowledgement: Anthropic - Claude Opus 5.5
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
  *
  * ✒ Changelog:
+ *     - 1.4.0 (11/15/2026) [dendogg + Anthropic - Claude Opus 5.5] — A
+ *       query of three letters or more that a right-panel tab's name
+ *       starts with lists that tab's Show item first, so Ctrl+K "compare"
+ *       finds Show Compare before the Compare commands.
  *     - 1.3.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
  *       tabs' commands are listed under Right panel, the one shown now
  *       marked "Right panel · shown now".
@@ -20,10 +24,6 @@
  *       B: "Show Inspector", "Show Preview" and one item for every tab a
  *       feature adds (B_TABS), each opening panel B when it is hidden and
  *       putting focus in the tab; the one shown now is marked so.
- *     - 1.1.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] —
- *       In region mode the service ranks the places over every name in the
- *       tree (GET /api/places), as here, and answers refs; a place chosen
- *       is found by its path first. The actions are as before.
  *     Earlier entries: see CHANGELOG.md
  *
  * ✒ Description:
@@ -201,7 +201,7 @@ export function install(api) {
       }
       for (const it of items) {
         if (it && typeof it.label === 'string' && typeof it.run === 'function') {
-          out.push({ label: it.label, detail: it.detail || c.section || '', hint: it.hint || '', off: it.off || null, run: it.run });
+          out.push({ label: it.label, detail: it.detail || c.section || '', hint: it.hint || '', off: it.off || null, run: it.run, tab: it.tab || null });
         }
       }
     }
@@ -290,6 +290,11 @@ export function install(api) {
         return;
       }
       const acts = rank(q, all, { limit: ACTIONS_MAX, key: (a) => a.label }).map((r) => r.item);
+      // A tab named by the query comes first: "compare" lists Show Compare
+      // before the commands whose labels start with the same word.
+      const lq = q.toLowerCase();
+      const named = lq.length >= 3 ? acts.findIndex((a) => a.tab && api.B_TABS.get(a.tab)?.label.toLowerCase().startsWith(lq)) : -1;
+      if (named > 0) acts.unshift(...acts.splice(named, 1));
       // Region mode: the service ranks every name in the tree, as below, and answers refs.
       if (api.regionMode()) {
         const seq = ++asked;
@@ -396,7 +401,7 @@ export function install(api) {
   api.COMMANDS.add({
     id: 'palette-panel-b', owner: OWNER, order: 80, section: 'Right panel',
     items: () => [...api.B_TABS].map((tab) => ({
-      label: `Show ${tab.label}`, detail: api.bTabShown(tab.id) ? 'Right panel · shown now' : 'Right panel',
+      label: `Show ${tab.label}`, detail: api.bTabShown(tab.id) ? 'Right panel · shown now' : 'Right panel', tab: tab.id,
       run: () => { api.showBTab(tab.id, { focus: true }); },
     })),
   });
