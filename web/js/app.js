@@ -1,11 +1,11 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Terrane Application (Terrane Edition - v1.15)
+ *     - Title: Terrane Application (Terrane Edition - v1.16)
  *     - File Name: app.js
  *     - Relative Path: web/js/app.js
  *     - Artifact Type: javascript
- *     - Version: 1.15.0
+ *     - Version: 1.16.0
  *     - Date: 11/14/2026
  *     - Update: Saturday, November 14, 2026
  *     - Author: Dennis 'dendogg' Smaltz
@@ -13,6 +13,9 @@
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
  *
  * ✒ Changelog:
+ *     - 1.16.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] —
+ *       A flavor the service was started with (--flavor, in /api/info) is
+ *       taken once by this browser; a choice made in the guide since holds.
  *     - 1.15.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
  *       sheet's polish: the ledger head in two rows (the count and its tools,
  *       then the keys over the columns; Select all an icon) with one-line
@@ -43,11 +46,6 @@
  *       The Guide is one window in four tabs: Keys, Mouse, Reading the
  *       world and Settings, the last one opened kept. Reading the world
  *       leaves the inspector for it, so the inspector's space is free.
- *     - 1.13.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] —
- *       Flavors: the guide's Mouse section chooses how drags
- *       steer the world (Terrane, Blender, AutoCAD and eight more), lists
- *       the chosen flavor's drags, and the choice is kept in this browser
- *       (api.flavor, for the palette's commands).
  *     Earlier entries: see CHANGELOG.md
  *
  * ✒ Description:
@@ -190,7 +188,7 @@ import {
 import { anchorOf, poseRelative, vantage } from './places.js';
 import { buildLayout, BOX, STYLE, AUX } from './layout.js';
 import { Viewport } from './viewport.js';
-import { FLAVORS, flavorById, rowsFor, labelOf, DEFAULT_FLAVOR } from './flavors.js';
+import { FLAVORS, flavorById, rowsFor, labelOf, DEFAULT_FLAVOR, startingFlavor } from './flavors.js';
 import { THEME, mixHex, ramp, cssHex } from './theme.js';
 import { el, openMenu, closeFloating, floatingOpen, ask, notice, tip, hideTip, slideIndicator, VirtualList } from './ui.js';
 import { thumbs } from './thumbs.js';
@@ -4706,6 +4704,25 @@ const flavorPrefs = {
   },
 };
 
+/**
+ * The flavor the service was started with (--flavor), taken once: when it
+ * is not the one this browser took from a launch last, it becomes the
+ * choice. Where storage is refused it holds for this page.
+ */
+const LAUNCH_FLAVOR_KEY = 'terrane.flavor-launch';
+function takeLaunchFlavor(launch) {
+  let taken = null;
+  try {
+    taken = localStorage.getItem(LAUNCH_FLAVOR_KEY);
+  } catch { /* refused: taken for this page only */ }
+  const { id, took } = startingFlavor({ launch, taken, kept: flavorPrefs.get() });
+  if (!took) return;
+  flavorPrefs.set(id);
+  try {
+    localStorage.setItem(LAUNCH_FLAVOR_KEY, took);
+  } catch { /* refused: taken for this page only */ }
+}
+
 /** Chooses a flavor: the view takes it, and it is kept and said. */
 function setFlavor(id) {
   const p = flavorById(id);
@@ -5047,6 +5064,7 @@ async function start() {
   splash?.stage('Starting the 3D world');
   try {
     S.view = new Viewport({ canvas: $('view'), labelLayer: $('tags') });
+    takeLaunchFlavor(S.info.flavor);
     S.view.setFlavor(flavorById(flavorPrefs.get()));
   } catch (err) {
     // No WebGL: every call becomes a no-op and the ledger carries the work.
