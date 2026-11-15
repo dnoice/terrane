@@ -18,7 +18,8 @@
  *       Cleanup question: GET cleanup under the root and Projects answers
  *       as reclaim.walk over the demo's model, every group seeded, the
  *       decoy build and node_modules' empty folder left out, and a file, a
- *       climbing path and a missing folder 404 ENOFOLDER.
+ *       climbing path and a missing folder 404 ENOFOLDER. After the
+ *       review: lumen-cli's .venv is one cache by its pyvenv.cfg.
  *     - 1.2.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — Every
  *       zip of the world holds its entries packed into its own size, with
  *       a few hundred bytes of records each, as Preview shows the two side
@@ -535,6 +536,9 @@ section('The whole-tree questions');
     check('the demo seeds every group: node_modules, build beside package.json, the backups and discs, an empty folder, a folder of only .DS_Store',
       rootClean.caches.items.some((t) => t[0] === 'Projects/harbor-api/node_modules') && rootClean.caches.items.some((t) => t[12] === 'build beside package.json')
       && rootClean.stale.items.some((t) => t[0] === 'Archive/Backups/full-backup-2021-03.zip') && rootClean.empty.total > 0 && rootClean.hiddenOnly >= 1);
+    check('the demo Python environment, Projects/lumen-cli/.venv, is one cache by its pyvenv.cfg, nothing in it listed on its own',
+      rootClean.caches.items.some((t) => t[0] === 'Projects/lumen-cli/.venv' && t[12] === '.venv holds pyvenv.cfg')
+      && ![...rootClean.stale.items, ...rootClean.empty.items].some((t) => String(t[0]).includes('/.venv/')), JSON.stringify(rootClean.caches.items.map((t) => t[0])));
     check('the decoy Documents/Notes/build and node_modules/.staging are not listed',
       !rootClean.caches.items.some((t) => t[0] === 'Documents/Notes/build') && !rootClean.empty.items.some((t) => String(t[0]).includes('node_modules')));
     for (const under of ['Downloads/invoice-2026-02.pdf', '../x', 'Nowhere']) {

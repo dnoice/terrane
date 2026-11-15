@@ -16,7 +16,9 @@
  *     - 1.4.0 (11/15/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
  *       right panel's Cleanup tab on the demo's root, answered in the page:
  *       all four groups, the hidden-only folder counted, the decoy build
- *       not listed.
+ *       not listed. After the review: Verify by content in the page, the
+ *       Tidelines renders marked probable on their rows, in the note and in
+ *       the confirmation.
  *     - 1.3.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — Panel
  *       B's Preview tab in the demo world: a README's numbered lines, an
  *       arrow held over 12 rows of its fullest folder read at most twice, a
@@ -339,6 +341,24 @@ async function cleanupIn(t) {
   t.check(`on the demo world Cleanup shows all four groups (${st.groups.map((g) => g.join(' ')).join(', ')}; ${st.sum})`,
     st.groups.length === 4 && st.groups.filter(([id]) => id !== 'dups').every(([, n]) => n > 0) && /^Could free /.test(st.sum)
     && !st.rows.includes('Documents/Notes/build') && /holds only hidden files/.test(st.empty), JSON.stringify(st));
+  // Verify by content, answered in the page: the Tidelines renders are too
+  // large to read whole, so they are probable, and said so.
+  await t.app(() => { document.querySelector('#b-panel-cleanup [data-group=dups] .cl-pending .btn')?.click(); return true; });
+  const dup = await t.waitFor(() => {
+    const P = document.getElementById('b-panel-cleanup');
+    const rows = [...P.querySelectorAll('[data-group=dups] .cl-row')].map((r) => ({ rel: r.dataset.rel, kept: r.classList.contains('is-kept'), path: r.querySelector('.path').textContent }));
+    const tide = rows.filter((r) => /Tidelines_v6_final/.test(r.rel));
+    return tide.length >= 2 && { tide, note: P.querySelector('[data-group=dups] > .cl-note')?.textContent ?? '' };
+  }, { timeout: 15000, what: 'the Tidelines set verified' });
+  await t.app(() => { document.querySelector('#b-panel-cleanup [data-move=dups] .btn').click(); return true; });
+  const body = await t.waitFor(() => document.getElementById('dialog').open && document.querySelector('#dialog .cl-confirm')?.textContent, { timeout: 5000, what: 'the confirmation' });
+  await t.key('Escape');
+  await t.waitFor(() => !document.getElementById('dialog').open, { what: 'the confirmation left' });
+  const keptRow = dup.tide.find((r) => r.kept);
+  const copyRow = dup.tide.find((r) => !r.kept);
+  t.check(`the Tidelines renders, compared by samples, are probable: the kept row (${keptRow?.path}), the copy (${copyRow?.path}), the note and the confirmation say so`,
+    / · probable$/.test(keptRow?.path || '') && / · a probable copy, changed /.test(copyRow?.path || '') && /probable/i.test(dup.note) && /probably, not certainly, the same/.test(body || ''),
+    JSON.stringify({ dup, body }));
   await t.app((T) => {
     document.getElementById('b-tab-inspector').click();
     return true;

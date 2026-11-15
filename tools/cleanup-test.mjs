@@ -14,7 +14,10 @@
  *
  * ✒ Changelog:
  *     - 1.0.0 (11/15/2026) [dendogg + Anthropic - Claude Opus 5.5] —
- *       Initial release.
+ *       Initial release. After the review: a Python environment (a folder
+ *       holding pyvenv.cfg) is one cache, nothing in it listed or offered as
+ *       a copy; site-packages is never walked; no copy is offered inside a
+ *       cache the folder lies in; the service counts as the page does.
  *
  * ✒ Description:
  *     Checks the Cleanup tab's rules (web/js/reclaim.js) in Node, with no
@@ -28,6 +31,9 @@
  *       and coverage only beside their project file; a link or a sealed
  *       folder never
  *     - Nothing inside a matched cache, or inside .git, is listed again
+ *     - A Python environment by its pyvenv.cfg, whatever its name, listed
+ *       whole; site-packages and dist-packages never walked; neither ever
+ *       keeps or gives a duplicate copy, nor does a cache the folder is in
  *     - Duplicates: keepOf newest and oldest with ties to the first; the
  *       kept copy in no group; a copy inside a cache left to it and the
  *       keep chosen among the rest; sets outside the folder, a kept copy
@@ -138,6 +144,67 @@ section('1. Caches and build output by name');
   check('a link named node_modules and a sealed node_modules are not caches; build beside package.json is, by its words',
     same(rels(w.caches), ['p/build']) && w.caches.items[0].why === 'build beside package.json' && w.sealedCaches === 1, JSON.stringify(w.caches.items.map((i) => [i.rel, i.why])));
   check('a build folder of plans with no project file is not a cache', !rels(w.caches).includes('q/build'));
+}
+
+/* ---------- 1b. python environments ---------- */
+
+section('1b. Python environments and installed packages');
+{
+  const none = new Set();
+  check('folderRule: a folder holding pyvenv.cfg is a Python environment, whatever its name and the case',
+    RC.folderRule('.venv', none, ['pyvenv.cfg']) === RC.ENV_RULE && RC.folderRule('my-env', none, ['PyVenv.CFG', 'x']) === RC.ENV_RULE
+    && RC.folderRule('venv', none, ['readme.md']) === null && RC.folderRule('node_modules', none, []) === RC.cacheRule('node_modules', none));
+  const LIC = [1200, 900];
+  const m = modelOf({
+    'proj/': {
+      'pyproject.toml': [300, 10],
+      'LICENSE': LIC,
+      '.venv/': {
+        'pyvenv.cfg': [120, 60],
+        'lib/': { 'site-packages/': { 'pkgA/': { 'LICENSE': LIC, '__init__.py': [0, 400] }, 'pkgB/': { 'LICENSE': LIC, 'wheel.bin': [300 * MB, 800] }, 'empty/': {} } },
+      },
+      'tools-env/': { 'pyvenv.cfg': [120, 60], 'bin/': { 'python': [9000, 60] } },
+    },
+    'python/': { 'Lib/': { 'site-packages/': { 'torch/': { 'big.dll': [400 * MB, 900] }, 'hollow/': {} } } },
+  });
+  const w = walkAt(m);
+  const venv = w.caches.items.find((i) => i.rel === 'proj/.venv');
+  check(`proj/.venv and proj/tools-env are caches by their pyvenv.cfg (${rels(w.caches).join(', ')})`,
+    !!venv && venv.why === '.venv holds pyvenv.cfg' && venv.words === RC.ENV_RULE.words && venv.rule === 'venv' && rels(w.caches).includes('proj/tools-env')
+    && same(w.claimed.slice().sort(), ['proj/.venv', 'proj/tools-env']), JSON.stringify(w.caches.items.map((i) => [i.rel, i.why])));
+  check('nothing inside a Python environment is listed: not its 300 MB wheel, not its empty folder',
+    !w.stale.items.some((i) => i.rel.includes('.venv')) && !w.empty.items.some((i) => i.rel.includes('.venv')), JSON.stringify([rels(w.stale), rels(w.empty)]));
+  check('site-packages outside an environment is never walked: its 400 MB file and empty folder are not listed, and it is counted',
+    w.pkgs === 1 && !rels(w.stale).some((r) => r.includes('site-packages')) && !rels(w.empty).some((r) => r.includes('site-packages')), JSON.stringify([w.pkgs, rels(w.stale), rels(w.empty)]));
+  const inside = walkAt(m, 'proj/.venv');
+  check('an environment walked as the folder itself is not listed as its own cache', !rels(inside.caches).includes('proj/.venv'));
+
+  // The review's probe: identical LICENSE files across packages.
+  const f = (rel, mt = 1) => ({ rel, n: rel.split('/').pop(), s: 1200, m: mt });
+  const lic = { verified: true, files: [f('proj/.venv/lib/site-packages/pkgA/LICENSE', 3), f('proj/.venv/lib/site-packages/pkgB/LICENSE', 2), f('proj/LICENSE', 1)] };
+  const d1 = RC.dupSuggestions([lic], 'proj', w.claimed, 'newest');
+  check('copies inside an environment are never kept or suggested: the person\'s own LICENSE is not offered', d1.sets.length === 0, JSON.stringify(d1.sets.map((x) => [x.keep.rel, x.copies.map((c) => c.rel)])));
+  const d2 = RC.dupSuggestions([lic], 'proj', [], 'newest', { claimedCut: true });
+  check('and so with the caches\' list cut, by the site-packages in their path', d2.sets.length === 0);
+  const conda = { verified: true, files: [f('conda/envs/x/lib/python3.12/site-packages/a/LICENSE', 5), f('docs/LICENSE', 1), f('docs/LICENSE copy', 2)] };
+  const d3 = RC.dupSuggestions([conda], '', [], 'newest');
+  check('a copy in any site-packages is never the keep: the two in docs keep one of their own',
+    d3.sets.length === 1 && d3.sets[0].keep.rel === 'docs/LICENSE copy' && same(d3.sets[0].copies.map((c) => c.rel), ['docs/LICENSE']));
+  const away = { verified: true, files: [f('other/venv/bin/activate', 9), f('here/activate', 1)] };
+  check('a copy outside the folder in a folder named venv is never the keep', RC.dupSuggestions([away], 'here', [], 'newest').sets.length === 0 && RC.cacheNamed('a/.venv/b') && !RC.cacheNamed('a/venv'));
+  const nm = { verified: true, files: [f('p/node_modules/a/LICENSE', 1), f('p/node_modules/b/LICENSE', 2)] };
+  check('a folder that is or lies in a cache offers no copy in it (scopeCached)',
+    RC.dupSuggestions([nm], 'p/node_modules', [], 'newest').sets.length === 1 && RC.dupSuggestions([nm], 'p/node_modules', [], 'newest', { scopeCached: true }).sets.length === 0);
+  check('inVcs and inPackages read the folders above the last segment', RC.inVcs('r/.git/x') && !RC.inVcs('r/.git') && RC.inPackages('a/dist-packages/x') && !RC.inPackages('site-packages'));
+
+  // The service's walk agrees on all of it.
+  const recs = recordsOf({ 'proj/': { 'pyproject.toml': [300, 10], '.venv/': { 'pyvenv.cfg': [120, 60], 'lib/': { 'big.bin': [300 * MB, 800] } } }, 'py/': { 'site-packages/': { 'x.bin': [300 * MB, 800] } }, 'old.bin': [200 * MB, 900] });
+  const tree = C.treeFrom(recs, { name: 'root', anchor: NOW });
+  const a = Q.ask(tree, 'cleanup', { under: '', limit: '1000' }, { v: 1, parts: (r) => String(r).split('/').filter(Boolean) });
+  const wm = RC.walk(modelOf({ 'proj/': { 'pyproject.toml': [300, 10], '.venv/': { 'pyvenv.cfg': [120, 60], 'lib/': { 'big.bin': [300 * MB, 800] } } }, 'py/': { 'site-packages/': { 'x.bin': [300 * MB, 800] } }, 'old.bin': [200 * MB, 900] }).root, RC.modelAccess);
+  check(`the service's question lists the environment and leaves site-packages alone, as the page does (${a.caches.items.map((t) => `${t[0]}: ${t[12]}`).join(', ')}; pkgs ${a.pkgs})`,
+    same(a.caches.items.map((t) => [t[0], t[11], t[12], t[13]]), wm.caches.items.map((i) => [i.rel, i.rule, i.why, i.words])) && a.pkgs === 1 && wm.pkgs === 1
+    && same(a.stale.items.map((t) => t[0]), ['old.bin']) && same(rels(wm.stale), ['old.bin']), JSON.stringify([a.caches, a.stale.items.map((t) => t[0])]));
 }
 
 /* ---------- 2. nesting ---------- */
@@ -291,7 +358,7 @@ const ctx = { v: 1, parts: (r) => String(r).split('/').filter(Boolean) };
     const bad = ['caches', 'stale', 'empty'].filter((k) => !same(pick(w[k]), fromQ(a[k])));
     const whys = same(w.caches.items.map((i) => i.why), a.caches.items.map((t) => t[12]));
     check(`${rel || 'the root'}: caches ${w.caches.total}, big and stale ${w.stale.total}, empty ${w.empty.total}, hidden-only ${w.hiddenOnly}: the same lists, totals, rules and claimed paths`,
-      bad.length === 0 && whys && w.hiddenOnly === a.hiddenOnly && w.sealedCaches === a.sealedCaches && w.vcs === a.vcs && same(w.claimed.slice(0, 1000), a.claimed) && a.under === rel,
+      bad.length === 0 && whys && w.hiddenOnly === a.hiddenOnly && w.sealedCaches === a.sealedCaches && w.vcs === a.vcs && w.pkgs === a.pkgs && same(w.claimed.slice(0, 1000), a.claimed) && a.under === rel,
       `${bad.join(', ')} ${JSON.stringify([w.hiddenOnly, a.hiddenOnly, w.vcs, a.vcs])}`);
   }
   check('the synthetic tree holds caches to compare', RC.walk(model.root, RC.modelAccess).caches.total > 0);

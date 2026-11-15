@@ -14,7 +14,13 @@
  *
  * ✒ Changelog:
  *     - 1.0.0 (11/15/2026) [dendogg + Anthropic - Claude Opus 5.5] —
- *       Initial release.
+ *       Initial release. After the review: Whole world only two levels
+ *       down; no live region but say(); Verify's focus on what it found,
+ *       and a redraw keeping focus on a group's head, its Move and the
+ *       names; a folder Terrane renames followed, and back on Undo; "no
+ *       longer there"; in region mode the new folder's head at once with
+ *       nothing to move while it counts, and the folder kept while the
+ *       tree is read again.
  *
  * ✒ Description:
  *     Walks the right panel's Cleanup tab end to end in the real page, by
@@ -75,6 +81,7 @@ const cl = () => {
     move: btn(q('.cl-move .btn')),
     offer: q('.cl-offer:not([hidden]) .cl-offer-text')?.textContent ?? null,
     clean: q('.cl-clean')?.textContent ?? null,
+    roles: [q('.cl-offer')?.getAttribute('role') ?? null, q('.cl-state')?.getAttribute('role') ?? null],
     groups: all('.cl-group').map((g) => ({
       id: g.dataset.group, bytes: Number(g.dataset.bytes), count: Number(g.dataset.count), t: g.querySelector('summary .t').textContent, n: g.querySelector('summary .n').textContent, open: g.open,
       notes: [...g.querySelectorAll(':scope > .cl-note, :scope > .cl-pending .cl-note')].map((n) => n.textContent),
@@ -222,8 +229,9 @@ const cleanup = {
     });
     const s1 = await drawn(t, 'edge cases', (s) => s.groups.length > 0 && /^Read-only/.test(s.state || ''));
     const focus1 = await t.eval(() => document.activeElement?.dataset?.btab ?? document.activeElement?.className);
-    t.check(`the head names the folder, its way up and its facts (${s1.name}; ${s1.where}; ${s1.facts})`,
-      s1.name === 'edge cases' && s1.where === `in ${ROOT}` && s1.whole && /files · .* folders?$/.test(s1.facts || ''), JSON.stringify(s1));
+    t.check(`the head names the folder, its way up and its facts, with no Whole world beside "in ${ROOT}", which already widens to it (${s1.name}; ${s1.where}; ${s1.facts})`,
+      s1.name === 'edge cases' && s1.where === `in ${ROOT}` && !s1.whole && /files · .* folders?$/.test(s1.facts || ''), JSON.stringify(s1));
+    t.check('the state line and the offer bar are not live regions: the tab speaks through say()', s1.roles.every((r) => r === null), JSON.stringify(s1.roles));
     t.check(`the summary says what could be freed, and the button what it moves (${s1.sum}; ${s1.move?.text})`,
       /^Could free /.test(s1.sum || '') && /^Move |^Nothing to move/.test(s1.move?.text || ''), JSON.stringify({ sum: s1.sum, move: s1.move, focus1 }));
     const bytes = s1.groups.map((g) => g.bytes);
@@ -252,6 +260,8 @@ const cleanup = {
       && JSON.stringify(d2.rows.slice(1).map((r) => r.name)) === JSON.stringify(['copy-a.dat', 'copy-b.dat']) && s2.groups[0].id === 'dups', JSON.stringify(d2));
     const posts = t.requests(mark).filter((r) => r.method === 'POST' && r.path.startsWith('/api/')).map((r) => r.path);
     t.check('Verify posts only /api/hash', posts.length > 0 && posts.every((p) => p === '/api/hash'), JSON.stringify(posts));
+    const afterVerify = await t.waitFor(`() => { const s = (${cl})(); return s.focus.startsWith('row:') && s.focus; }`, { timeout: 5000, what: 'focus after Verify' }).catch(() => null);
+    t.check(`Verify's button goes once it has run, and focus goes on to what it found, the set's first row (${afterVerify})`, afterVerify === 'row:edge cases/copy-c.dat', String(afterVerify));
 
     /* ---- the keyboard: into the list, ↓ ↓, Space, Enter, Home ---- */
     await t.eval(() => {
@@ -290,6 +300,28 @@ const cleanup = {
     const home = await t.app((T) => ({ here: T.api.relPath(T.S.focus), flight: T.S.noGL ? null : !!T.S.view.flight, focus: document.activeElement?.dataset?.rel ?? null }));
     t.check('Home on the list goes to its first row and never rises to the overview', home.focus === 'edge cases/copy-c.dat' && home.here === here0 && !home.flight, JSON.stringify(home));
 
+    /* ---- a redraw keeps focus: a group's head, a group's Move, the names ---- */
+    const redrawn = async (sel) => {
+      const k0 = await t.eval((s) => {
+        const e = document.querySelector(s);
+        e.closest('.cl-group').open = true;
+        e.focus();
+        document.querySelector('#b-panel-cleanup .cl-groups > *').dataset.old = '1';
+        return document.activeElement === e ? e.dataset.k : null;
+      }, sel);
+      await t.app((T) => { T.api.refreshDirs(['edge cases']); return true; });
+      await t.waitFor(() => !document.querySelector('#b-panel-cleanup [data-old]'), { what: 'the groups drawn again' });
+      await t.sleep(100);
+      return [k0, await t.eval(() => document.activeElement?.dataset?.k ?? document.activeElement?.tagName ?? null)];
+    };
+    const kept = [
+      await redrawn('#b-panel-cleanup [data-group=stale] > summary'),
+      await redrawn('#b-panel-cleanup [data-move=empty] .btn'),
+      await redrawn('#b-panel-cleanup .cl-names > summary'),
+    ];
+    t.check(`a redraw keeps focus on a group's head, a group's Move and Which folders count (${kept.map((k) => k.join(' → ')).join('; ')})`,
+      JSON.stringify(kept) === JSON.stringify([['group-stale', 'group-stale'], ['move-empty', 'move-empty'], ['names', 'names']]), JSON.stringify(kept));
+
     /* ---- another folder selected: the offer bar ---- */
     await t.app((T) => { T.api.select(T.S.model.find('archives')); return true; });
     const offered = await t.waitFor(`() => { const s = (${cl})(); return s.offer && s; }`, { what: 'the offer bar' });
@@ -306,12 +338,14 @@ const cleanup = {
     const fileItems = await worldMenu(t, 'edge cases/copy-a.dat');
     t.check('on a file the menu says Suggest cleanup in its folder; on empty ground, for this folder',
       fileItems.some((i) => i.label === 'Suggest cleanup in its folder') && (await worldMenu(t, null)).some((i) => i.label === 'Suggest cleanup for this folder'));
-    await press(t, '#b-panel-cleanup .cl-where');
-    const up = await drawn(t, 'archives');
     await press(t, '#b-panel-cleanup .cl-whole');
     const whole = await drawn(t, '');
-    t.check(`"in archives" widens to archives, Whole world to the root, where neither shows (${up.name}, ${whole.name})`,
-      up.name === 'archives' && up.where === `in ${ROOT}` && whole.name === ROOT && whole.where === null && !whole.whole);
+    await worldMenu(t, 'archives/site', 'Suggest cleanup here');
+    await drawn(t, 'archives/site');
+    await press(t, '#b-panel-cleanup .cl-where');
+    const up = await drawn(t, 'archives');
+    t.check(`two levels down Whole world widens to the root, where neither shows; "in archives" to archives, where only "in ${ROOT}" does (${site.whole}; ${whole.name}; ${up.name} ${up.where} ${up.whole})`,
+      site.whole && site.where === 'in archives' && up.name === 'archives' && up.where === `in ${ROOT}` && !up.whole && whole.name === ROOT && whole.where === null && !whole.whole);
     await worldMenu(t, 'edge cases', 'Suggest cleanup here');
     const back = await drawn(t, 'edge cases');
     t.check('and back by the menu, copy-b.dat still left out', back.name === 'edge cases' && grp(back, 'dups').rows.find((r) => r.name === 'copy-b.dat')?.out === true);
@@ -505,16 +539,28 @@ const cleanupDisk = {
     const j5 = (await t.app((T) => T.api.get('journal'))).journal.length;
     t.check('a copy rewritten since it was verified stops the move: dup-2.bin named, nothing moved', stopped && exists('dup-1.bin') && exists('dup-2.bin') && j5 === j4);
 
-    /* ---- the folder deleted from outside ---- */
+    /* ---- the folder renamed by Terrane: followed, and back on Undo ---- */
     await worldMenu(t, `${LAB}/nested`, 'Suggest cleanup here');
     await drawn(t, `${LAB}/nested`);
+    let liveMark = await t.live();
+    await t.app((T) => { T.api.runOp({ type: 'rename', path: 'cleanup-lab/nested', name: 'nested-2' }); return true; });
+    const renamed = await drawn(t, `${LAB}/nested-2`, () => true, 'the renamed folder');
+    const renamedLive = await t.live();
+    await t.eval(() => { document.getElementById('ledger-list').focus(); return true; });
+    await t.key('Ctrl+Z');
+    await t.poll(() => exists('nested'), { timeout: 20000 });
+    const unrenamed = await drawn(t, `${LAB}/nested`, () => true, 'the folder back under its name');
+    t.check(`a folder Terrane renames is followed (${renamed.name}), and back on Undo (${unrenamed.name}), never "no longer there"`,
+      renamed.name === 'nested-2' && unrenamed.name === 'nested' && !/no longer there/.test(`${renamedLive} ${await t.live()}`), JSON.stringify({ liveMark, renamedLive }));
+
+    /* ---- the folder deleted from outside ---- */
     fs.rmSync(at('nested'), { recursive: true, force: true });
     await t.sleep(600);
     await t.app((T) => { T.api.refreshDirs(['cleanup-lab']); return true; });
     const goneSt = await drawn(t, LAB, () => true, 'the parent after the folder went');
     const goneLive = await t.live();
     t.check(`a folder deleted from outside: the tab shows its parent and says so (${goneSt.state || goneLive})`,
-      goneSt.name === LAB && /nested is gone \(moved or deleted outside Terrane\); showing cleanup-lab\./.test(`${goneSt.state} ${goneLive}`), JSON.stringify({ state: goneSt.state, goneLive }));
+      goneSt.name === LAB && /nested is no longer there; showing cleanup-lab\./.test(`${goneSt.state} ${goneLive}`), JSON.stringify({ state: goneSt.state, goneLive }));
     await t.app((T) => {
       document.getElementById('b-tab-inspector').click();
       T.api.select(null);
@@ -558,6 +604,26 @@ const cleanupRegions = {
     const got = await t.waitFor((T, r) => T.S.primary && T.api.relPath(T.S.primary) === r && T.api.relPath(T.S.primary), { args: [row.rel], timeout: 15000, what: 'the row selected' });
     t.check(`a row ${heldBefore ? 'held' : 'not held'} before is resolved and selected (${got})`, got === row.rel);
 
+    // While the service counts: the new folder's head at once, never the
+    // last folder's groups under it; a recount of the same folder dims
+    // them and nothing can be moved.
+    await t.app(() => {
+      window.__clSeen = [];
+      const P = document.getElementById('b-panel-cleanup');
+      const mo = new MutationObserver(() => {
+        const st = P.querySelector('.cl-state');
+        if (!st || st.hidden || !/^Counting across every level/.test(st.textContent)) return;
+        const b = P.querySelector('.cl-move .btn');
+        window.__clSeen.push({
+          name: P.querySelector('.insp-name').textContent, summary: !P.querySelector('.cl-summary').hidden, groups: P.querySelectorAll('.cl-group').length,
+          waiting: P.querySelector('.cl-body').classList.contains('is-waiting'), move: b ? b.textContent : null,
+        });
+      });
+      mo.observe(P, { subtree: true, childList: true, characterData: true, attributes: true });
+      window.__clStop = () => { mo.disconnect(); return window.__clSeen; };
+      return true;
+    });
+
     // Two re-scopes in quick succession: only the last renders.
     mark = t.mark();
     await t.app((T) => {
@@ -572,6 +638,44 @@ const cleanupRegions = {
     await t.sleep(600);
     const final = await t.eval(cl);
     t.check(`re-scoped twice quickly, only the last renders (${asked(t, mark).join(', ')})`, last.name === 'archives' && final.at === 'archives' && asked(t, mark).includes('archives'), JSON.stringify(asked(t, mark)));
+    // Back to the root, whose groups hold something to move, and counted again there.
+    await press(t, '#b-panel-cleanup .cl-where');
+    await drawn(t, '', (s) => s.groups.length === 4, 'the root');
+    const asks = asked(t, 0).length;
+    await t.app((T) => { T.api.refreshDirs(['']); return true; });
+    await t.poll(() => asked(t, 0).length > asks, { timeout: 15000 }).catch(() => null);
+    await drawn(t, '', (s) => s.groups.length === 4, 'the recount');
+    const ROOT = await t.app((T) => T.S.info.name);
+    const seen = await t.app(() => window.__clStop());
+    const fresh = seen.filter((x) => x.name === 'archives' && !x.summary && x.groups === 0);
+    const recount = seen.filter((x) => x.name === ROOT && x.summary && x.waiting && /unavailable: still counting/.test(x.move || ''));
+    t.check(`while the service counts a new folder its head shows at once, with nothing of the last folder's (${fresh.length}); a recount dims the same folder's and nothing can be moved (${recount.length})`,
+      fresh.length > 0 && recount.length > 0, JSON.stringify(seen.slice(-6)));
+
+    // The tree read again: a client being replaced answers null for every
+    // path, which is not the folder gone.
+    await t.app((T) => {
+      T.api.select(T.S.model.find('archives'));
+      T.api.COMMANDS.get('cleanup').items()[0].run();
+      return true;
+    });
+    await drawn(t, 'archives', () => true, 'archives again');
+    const before = await t.live();
+    const closed = await t.app((T) => {
+      window.__oldRegions = T.S.regions;
+      T.S.regions.close();
+      T.api.COMMANDS.get('cleanup').items()[0].run();
+      return T.S.regions.stale;
+    });
+    await t.sleep(800);
+    const keptSt = await t.eval(cl);
+    const keptLive = await t.live();
+    await t.app((T) => { T.api.rescan(); return true; });
+    const reread = await drawn(t, 'archives', () => true, 'the folder once the tree is open again');
+    const swapped = await t.app((T) => T.S.regions !== window.__oldRegions && !T.S.regions.stale);
+    t.check(`while the tree is read again the folder is kept (${keptSt.name}; ${keptSt.state}), never "no longer there", and counted again once it is open`,
+      closed && keptSt.name === 'archives' && /^Reading the tree again/.test(keptSt.state || '') && !/no longer there/.test(`${keptLive} ${await t.live()}`) && reread.name === 'archives' && swapped,
+      JSON.stringify({ closed, name: keptSt.name, state: keptSt.state, before, keptLive, swapped }));
     await t.app((T) => {
       document.getElementById('b-tab-inspector').click();
       T.api.select(null);

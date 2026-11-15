@@ -15,7 +15,11 @@
  * ✒ Changelog:
  *     - 1.0.0 (11/15/2026) [dendogg + Anthropic - Claude Opus 5.5] —
  *       Initial release: the Cleanup tab's rules, shared by the page, the
- *       service's cleanup question, the demo and the Node check.
+ *       service's cleanup question, the demo and the Node check. After the
+ *       review: a folder holding pyvenv.cfg is a Python environment, listed
+ *       whole; site-packages and dist-packages are never walked, and no
+ *       copy inside them, or inside a cache the folder lies in, is kept or
+ *       suggested.
  *
  * ✒ Description:
  *     What in one folder could go, and by which rule: verified duplicate
@@ -30,15 +34,20 @@
  *     - CACHE_RULES: 18 names a tool makes and makes again, each with the
  *       words a row shows; dist, build, target and coverage count only
  *       beside the project file that makes them; names compare in any case
+ *     - ENV_RULE: a folder holding pyvenv.cfg, whatever its name, is a
+ *       Python environment (python -m venv, virtualenv), listed whole
  *     - walk(root, acc): one stack walk under a folder through an accessor,
  *       never into a matched cache, so nothing inside one is listed twice,
- *       and never into .git, .hg or .svn, whose records are not clutter;
- *       links and sealed folders never match; hidden-only folders counted
+ *       and never into .git, .hg or .svn, whose records are not clutter,
+ *       nor site-packages or dist-packages, where moving one file breaks an
+ *       installed package; links and sealed folders never match;
+ *       hidden-only folders counted
  *     - keepOf: the copy a duplicate set keeps, newest or oldest, the first
  *       listed on a tie (duplicate cleanup's own rule)
  *     - dupSuggestions: verified sets only; a copy inside a cache is left to
  *       the cache and the keep is chosen among the rest, so no move of any
- *       group ever takes the last copy
+ *       group ever takes the last copy; a copy inside .git, an installed
+ *       package or a Python environment is never kept or suggested
  *     - combine: four groups ranked by the space they free, ties in a fixed
  *       order with Empty folders last; a kept or suggested copy is never
  *       listed as big and stale as well
@@ -54,6 +63,7 @@
  *     cacheRule('node_modules', new Set())           npm packages, ...
  *     cacheRule('build', new Set(['package.json']))   build output, ...
  *     cacheRule('build', new Set(['plans.pdf']))      null
+ *     folderRule('.venv', new Set(), ['pyvenv.cfg'])  ENV_RULE
  *     keepOf({ files: [a, b] }, 'oldest')             the earlier change
  *
  * ✒ Other Important Information:
@@ -100,6 +110,20 @@ export const CACHE_RULES = Object.freeze([
 
 const BY_NAME = new Map(CACHE_RULES.flatMap((r) => r.names.map((n) => [n, r])));
 
+/**
+ * A Python environment: any folder holding pyvenv.cfg (python -m venv and
+ * virtualenv write it), whatever its name. Listed whole, like a cache, so
+ * no file of it is ever offered alone: moving one breaks the environment.
+ */
+const ENV_MARK = 'pyvenv.cfg';
+export const ENV_RULE = Object.freeze({ id: 'venv', marker: ENV_MARK, words: 'a Python environment, made again by pip install' });
+
+/** Installed packages outside an environment (a Python install, conda): never walked, no copy in them kept or suggested. */
+export const PACKAGES = Object.freeze(['site-packages', 'dist-packages']);
+const PKG_SET = new Set(PACKAGES);
+/** The names a Python environment usually has: the conservative test for a copy outside the folder walked. */
+const ENV_NAMES = new Set(['.venv', 'venv']);
+
 /** A repository's own records: never walked into, so nothing in them is ever suggested. */
 export const VCS = Object.freeze(['.git', '.hg', '.svn']);
 const VCS_SET = new Set(VCS);
@@ -123,19 +147,37 @@ function ruleLabel(r, siblings) {
   return `${r.id} beside ${b}`;
 }
 
-/** Whether a path has a folder named by any rule above its last segment: the conservative test for a copy outside the folder walked. */
-export function cacheNamed(rel) {
+/**
+ * The rule a folder matches by its name and its parent's files (cacheRule)
+ * or by its own (kidNames, its files' names: a Python environment), or
+ * null. The page asks it of the folder it shows and of its ancestors.
+ */
+export function folderRule(name, siblings, kidNames) {
+  const r = cacheRule(name, siblings);
+  if (r) return r;
+  for (const k of kidNames || []) if (String(k).toLowerCase() === ENV_MARK) return ENV_RULE;
+  return null;
+}
+
+/** Whether a folder above a path's last segment has a name from set. */
+function named(rel, set) {
   const parts = String(rel).split('/');
-  for (let i = 0; i < parts.length - 1; i++) if (BY_NAME.has(parts[i].toLowerCase())) return true;
+  for (let i = 0; i < parts.length - 1; i++) if (set.has(parts[i].toLowerCase())) return true;
   return false;
 }
 
+/**
+ * Whether a path has a folder named by any rule, or named as a Python
+ * environment usually is, above its last segment: the conservative test
+ * for a copy outside the folder walked.
+ */
+export const cacheNamed = (rel) => named(rel, BY_NAME) || named(rel, ENV_NAMES);
+
 /** Whether a path lies inside a repository's .git, .hg or .svn folder. */
-export function inVcs(rel) {
-  const parts = String(rel).split('/');
-  for (let i = 0; i < parts.length - 1; i++) if (VCS_SET.has(parts[i].toLowerCase())) return true;
-  return false;
-}
+export const inVcs = (rel) => named(rel, VCS_SET);
+
+/** Whether a path lies inside an installed site-packages or dist-packages folder. */
+export const inPackages = (rel) => named(rel, PKG_SET);
 
 /**
  * The accessor over model.js nodes: a folder whose region is not held
@@ -168,8 +210,11 @@ function listOf(items, cap) {
  * sealed, stub, rel }). Returns { caches, stale, empty } (each { total,
  * bytes, items }), hiddenOnly (folders holding only hidden files),
  * sealedCaches (cache names that could not be read), vcs (.git, .hg and
- * .svn folders, never walked into) and claimed (every cache's path, which
- * nothing else lists). keepCap cuts each list.
+ * .svn folders, never walked into), pkgs (site-packages and dist-packages
+ * folders, never walked into) and claimed (every cache's path, which
+ * nothing else lists). A folder holding pyvenv.cfg is a cache (ENV_RULE),
+ * found when it is visited: what its own files gave is taken back. The
+ * folder walked is never one. keepCap cuts each list.
  */
 export function walk(root, acc, { keepCap = Infinity } = {}) {
   const isStale = parseQuery(`${BIG_STALE.query} is:file`);
@@ -182,6 +227,7 @@ export function walk(root, acc, { keepCap = Infinity } = {}) {
   let hiddenOnly = 0;
   let sealedCaches = 0;
   let vcs = 0;
+  let pkgs = 0;
   const item = (x, d, why) => ({ x, rel: acc.rel(x), name: acc.name(x), d, s: acc.size(x), m: acc.mtime(x), why });
   const stack = [root];
   const subs = [];
@@ -191,6 +237,8 @@ export function walk(root, acc, { keepCap = Infinity } = {}) {
     if (!kids) continue;
     let files = 0;
     let hidden = 0;
+    let env = false;
+    const staleAt = stale.length;
     subs.length = 0;
     for (const ch of kids) {
       if (acc.isDir(ch)) {
@@ -201,10 +249,21 @@ export function walk(root, acc, { keepCap = Infinity } = {}) {
       const f = acc.flags(ch);
       const nm = acc.name(ch);
       if (f & FLAG_HIDDEN || nm.charCodeAt(0) === 46) hidden++;
+      if (nm.length === ENV_MARK.length && nm.toLowerCase() === ENV_MARK) env = true;
       fw.s = acc.size(ch);
       fw.m = acc.mtime(ch);
       fw.f = f;
       if (isStale(fw)) stale.push(item(ch, false, 'stale'));
+    }
+    if (env && dir !== root) {
+      // A Python environment: listed whole, nothing in it on its own.
+      stale.length = staleAt;
+      const it = item(dir, true, `${acc.name(dir)} holds ${ENV_MARK}`);
+      it.rule = ENV_RULE.id;
+      it.words = ENV_RULE.words;
+      caches.push(it);
+      claimed.push(it.rel);
+      continue;
     }
     if (dir !== root) {
       if (!files && !subs.length) {
@@ -216,6 +275,10 @@ export function walk(root, acc, { keepCap = Infinity } = {}) {
       const low = acc.name(sub).toLowerCase();
       if (VCS_SET.has(low)) {
         vcs++;
+        continue;
+      }
+      if (PKG_SET.has(low)) {
+        pkgs++;
         continue;
       }
       const r = BY_NAME.get(low);
@@ -240,7 +303,7 @@ export function walk(root, acc, { keepCap = Infinity } = {}) {
       stack.push(sub);
     }
   }
-  return { caches: listOf(caches, keepCap), stale: listOf(stale, keepCap), empty: listOf(empty, keepCap), hiddenOnly, sealedCaches, vcs, claimed };
+  return { caches: listOf(caches, keepCap), stale: listOf(stale, keepCap), empty: listOf(empty, keepCap), hiddenOnly, sealedCaches, vcs, pkgs, claimed };
 }
 
 /** The file a keep leaves in place: the latest or earliest last change, the first listed on a tie. */
@@ -255,15 +318,17 @@ const under = (rel, top) => top === '' || rel === top || rel.startsWith(`${top}/
 /**
  * The duplicate sets a folder's cleanup suggests. groups: { files: [{ rel,
  * n, s, m }], verified, mode }; scopeRel: the folder ('' for the root);
- * claimed: the caches the walk found, complete unless claimedCut. A copy
- * under a cache is dropped (a copy outside the folder whose path names a
- * cache is too, as a precaution, and any copy inside .git, .hg or .svn),
- * the keep is chosen among the rest, the
- * whole set's, and a set is listed when a copy other than the keep lies in
- * the folder. Returns { sets: [{ keep, copies, sampled, waste, group }], pending },
+ * claimed: the caches the walk found, complete unless claimedCut;
+ * scopeCached: the folder is a cache or lies in one. A copy under a cache
+ * is dropped (every copy in the folder when scopeCached; a copy outside
+ * the folder whose path names a cache or an environment is too, as a
+ * precaution; and any copy inside .git, .hg, .svn, site-packages or
+ * dist-packages), the keep is chosen among the rest, the whole set's, and
+ * a set is listed when a copy other than the keep lies in the folder.
+ * Returns { sets: [{ keep, copies, sampled, waste, group }], pending },
  * pending the unverified groups with a member in the folder.
  */
-export function dupSuggestions(groups, scopeRel, claimed, how, { claimedCut = false } = {}) {
+export function dupSuggestions(groups, scopeRel, claimed, how, { claimedCut = false, scopeCached = false } = {}) {
   const tops = new Set(claimed);
   // Whether a folder above rel (or rel itself) is a cache: each of its prefixes looked up.
   const inCache = (rel) => {
@@ -271,9 +336,9 @@ export function dupSuggestions(groups, scopeRel, claimed, how, { claimedCut = fa
     return tops.has(rel);
   };
   const dropped = (f) => {
-    if (inVcs(f.rel)) return true;
+    if (inVcs(f.rel) || inPackages(f.rel)) return true;
     const inside = under(f.rel, scopeRel);
-    if (inside && inCache(f.rel)) return true;
+    if (inside && (scopeCached || inCache(f.rel))) return true;
     return (!inside || claimedCut) && cacheNamed(f.rel);
   };
   const sets = [];

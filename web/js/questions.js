@@ -17,7 +17,8 @@
  *       sixth question, cleanup: the Cleanup tab's walk under a folder
  *       (reclaim.js over the columns), its caches, big and stale files and
  *       empty folders with their totals; a missing folder or a file is
- *       ENOFOLDER.
+ *       ENOFOLDER. After the review: it counts the site-packages and
+ *       dist-packages folders it leaves alone (pkgs).
  *     - 1.0.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] —
  *       Initial release. After the review: markRegion never works a query
  *       or survey out again, so a region is never held up by a whole-tree
@@ -1135,7 +1136,8 @@ function columnAccess(tree) {
  * caches and build output, big and stale files and empty folders, each
  * { total, bytes, items } with the largest limit items as ref tuples plus
  * the rule's id and label and its words; how many folders hold only hidden
- * files; cache names that could not be read; and the caches' paths
+ * files; cache names that could not be read; the .git and site-packages
+ * folders left alone (vcs, pkgs); and the caches' paths
  * (claimed, the first 1,000), which nothing else lists. A folder that is
  * not there, or a file, is ENOFOLDER: the tree is read, never the disk.
  */
@@ -1155,7 +1157,7 @@ function cleanup(tree, q, ctx) {
   return {
     v: ctx.v, under: tree.relOf(id), sealed: !!errOf(tree, id),
     caches: list(w.caches), stale: list(w.stale), empty: list(w.empty),
-    hiddenOnly: w.hiddenOnly, sealedCaches: w.sealedCaches, vcs: w.vcs,
+    hiddenOnly: w.hiddenOnly, sealedCaches: w.sealedCaches, vcs: w.vcs, pkgs: w.pkgs,
     claimed: w.claimed.slice(0, LIST_MAX), claimedTotal: w.claimed.length,
     ms: Math.round(clock() - t0),
   };
