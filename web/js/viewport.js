@@ -1,11 +1,11 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: 3D Viewport (Terrane Edition - v1.9)
+ *     - Title: 3D Viewport (Terrane Edition - v1.10)
  *     - File Name: viewport.js
  *     - Relative Path: web/js/viewport.js
  *     - Artifact Type: javascript
- *     - Version: 1.9.0
+ *     - Version: 1.10.0
  *     - Date: 11/14/2026
  *     - Update: Saturday, November 14, 2026
  *     - Author: Dennis 'dendogg' Smaltz
@@ -13,6 +13,9 @@
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
  *
  * ✒ Changelog:
+ *     - 1.10.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] —
+ *       A drag whose motion is none leaves the view alone and takes no
+ *       grabbing cursor, so Blender's left and right buttons only click.
  *     - 1.9.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] —
  *       Drags follow a flavor (flavors.js, setFlavor):
  *       Terrane's, Blender's, AutoCAD's and eight more; a walk motion for
@@ -24,13 +27,6 @@
  *       so the floating origin, a turn or a zoom no longer breaks them.
  *       Blender's controls: the middle button orbits, Shift grabs and
  *       moves, Ctrl flies in and out; numpad views (viewAbout).
- *     - 1.7.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] —
- *       Names are part of the boxes: the box shader prints a file's name
- *       on its lid and a folder's in capitals, on a closed mass's lid or
- *       along an open plateau's rim or cut into its riser, from
- *       lettering.js's distance-field atlas. They are lit, shadowed and
- *       hazed with their surface and read upright from the eye; the HTML
- *       file and folder tags are gone, and only mark tags stay in HTML.
  *     Earlier entries: see CHANGELOG.md
  *
  * ✒ Description:
@@ -1575,10 +1571,14 @@ export class Viewport {
       if (!down.moved && Math.hypot(e.clientX - down.x, e.clientY - down.y) < 5) return;
       if (!down.moved) {
         down.moved = true;
+        // A button the flavor keeps for clicking: past the slop it is no
+        // longer a click, and it moves nothing.
+        if (down.mode === 'none') return;
         this.flight = null;
         this.on.hover?.(-1, e);
         el.classList.add('is-dragging');
       }
+      if (down.mode === 'none') return;
       const dx = e.clientX - down.lx;
       const dy = e.clientY - down.ly;
       down.lx = e.clientX;

@@ -1,10 +1,10 @@
 <!--
 ✒ Metadata
-    - Title: Shipped File Changelogs (Terrane Edition - v1.12)
+    - Title: Shipped File Changelogs (Terrane Edition - v1.13)
     - File Name: CHANGELOG.md
     - Relative Path: CHANGELOG.md
     - Artifact Type: docs
-    - Version: 1.12.0
+    - Version: 1.13.0
     - Date: 11/14/2026
     - Update: Saturday, November 14, 2026
     - Author: Dennis 'dendogg' Smaltz
@@ -12,6 +12,9 @@
     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
 
 ✒ Changelog:
+    - 1.13.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — Records viewport.js
+      1.10.0, Blender's buttons kept for clicking; its 1.7.0 entry leaves the header, and this
+      file already holds it.
     - 1.12.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — Records Wave 4, merged
       with main's flavors and Guide window (app.js 1.15.0, floating.css 1.4.0). First, the
       polish of the panels:
@@ -636,6 +639,16 @@ short form is kept too.
 - 1.0.0 (11/09/2026) [dendogg + Anthropic - Claude Fable 5.2] — Initial release.
 
 ## web/js/viewport.js
+
+- 1.10.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — A drag whose motion is none
+  leaves the view alone and takes no grabbing cursor, so Blender's left and right buttons only
+  click. In full: flavors.js 1.1.0 gives Blender's left and right buttons the motion none, on Dennis's account
+  of Blender's hands: the left button selects and never moves the scene, and the right button
+  opens a menu. Until then those presses fell back to Terrane's own meanings, so a left drag
+  slid the ground and a right drag orbited. Past the five-pixel slop the press is no longer a
+  click, so nothing is selected and no menu opens, and the pointer moves nothing. A press
+  released inside the slop is the click it always was: the left selects, the right opens the
+  menu, which every flavor already had.
 
 - 1.9.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — Drags follow a flavor
   (flavors.js, setFlavor): Terrane's, Blender's, AutoCAD's and eight more; a walk

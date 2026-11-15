@@ -5,7 +5,7 @@
  *     - File Name: views.mjs
  *     - Relative Path: tools/ui-scenarios/views.mjs
  *     - Artifact Type: test
- *     - Version: 1.1.0
+ *     - Version: 1.2.0
  *     - Date: 11/14/2026
  *     - Update: Saturday, November 14, 2026
  *     - Author: Dennis 'dendogg' Smaltz
@@ -13,6 +13,10 @@
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
  *
  * ✒ Changelog:
+ *     - 1.2.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] —
+ *       Blender: a left drag and a right drag move nothing (judged as
+ *       every flavor's drags are), a left click selects the block under
+ *       it and a right click opens the menu for it.
  *     - 1.1.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] —
  *       Flavors: every drag of every flavor is made with the mouse and
  *       judged by what the eye did; AutoCAD's middle double click rises;
@@ -280,6 +284,35 @@ export default {
       }
       t.check(`${p.name}: every drag it names does what it says (${Object.keys(drags).length})`, wrong.length === 0, wrong.join('; '));
     }
+
+    // Blender: the left and right buttons only click. The drags above
+    // found that they move nothing; a click selects and a right click
+    // opens the menu, on the block under the pointer.
+    await t.app((T, pose) => { T.api.flavor.set('blender'); T.S.view.flyTo(pose, 0); return true; }, pose0);
+    await t.settle({ quiet: 150 });
+    const target = await t.app((T, x, y) => {
+      const i = T.S.view.pick(x, y);
+      const n = i >= 0 ? T.S.layout.node[i] : null;
+      return n ? n.n : null;
+    }, centre.x, centre.y);
+    const click = async (button) => {
+      const buttons = button === 'right' ? 2 : 1;
+      await t.page.send('Input.dispatchMouseEvent', { type: 'mousePressed', x: centre.x, y: centre.y, button, buttons, clickCount: 1 });
+      await t.page.send('Input.dispatchMouseEvent', { type: 'mouseReleased', x: centre.x, y: centre.y, button, buttons: 0, clickCount: 1 });
+    };
+    const still = await t.app((T) => T.S.view.pose());
+    await click('left');
+    await t.settle({ quiet: 150 });
+    const picked = await t.app((T) => [...T.S.sel].map((n) => n.n));
+    t.check(`Blender: a left click selects the block under it (${target})`, !!target && picked.length === 1 && picked[0] === target, JSON.stringify({ target, picked }));
+    await click('right');
+    await t.waitFor(() => !document.getElementById('menu').hidden && document.querySelectorAll('#menu .menu-item').length > 0, { what: 'the menu after a right click' });
+    const menu = await t.eval(() => [...document.querySelectorAll('#menu .menu-label')].map((x) => x.textContent));
+    const moved = await t.app((T, p) => { const c = T.S.view.pose(); return Math.hypot(c.x - p.x, c.y - p.y, c.z - p.z) + Math.abs(c.yaw - p.yaw) + Math.abs(c.pitch - p.pitch); }, still);
+    t.check(`Blender: a right click opens the menu for it (${menu.length} items: ${menu.slice(0, 3).join(', ')}...) and neither click moves the view`,
+      menu.length > 2 && moved < 1e-6, JSON.stringify({ menu, moved }));
+    await t.key('Escape');
+    await t.waitFor(() => document.getElementById('menu').hidden, { what: 'the menu closed' });
 
     // AutoCAD: a middle double click rises to the overview.
     await t.app((T) => { T.api.flavor.set('autocad'); T.S.view.zoomAt(0.3); return true; });

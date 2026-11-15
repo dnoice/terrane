@@ -1,16 +1,24 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Flavors Test (Terrane Edition - v1.0)
+ *     - Title: Flavors Test (Terrane Edition - v1.1)
  *     - File Name: flavors-test.mjs
  *     - Relative Path: tools/flavors-test.mjs
  *     - Artifact Type: test
- *     - Version: 1.0.0
+ *     - Version: 1.1.0
  *     - Date: 11/14/2026
  *     - Update: Saturday, November 14, 2026
  *     - Author: Dennis 'dendogg' Smaltz
  *     - A.I. Acknowledgement: Anthropic - Claude Opus 5.5
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
+ *
+ * ✒ Changelog:
+ *     - 1.1.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] —
+ *       Blender's left and right buttons, with and without Shift and
+ *       Ctrl, move nothing; the guide's rows for such a button say what
+ *       its click does.
+ *     - 1.0.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] —
+ *       Initial release.
  *
  * ✒ Description:
  *     Checks the flavors in Node: every flavor's drags name a
@@ -75,6 +83,8 @@ for (const [b, mods, want] of before) {
 // Each tool's signature drags.
 const sig = [
   ['blender', 'middle', {}, 'orbit'], ['blender', 'middle', { shift: true }, 'slide'], ['blender', 'middle', { ctrl: true }, 'dolly'],
+  ['blender', 'left', {}, 'none'], ['blender', 'right', {}, 'none'], ['blender', 'left', { shift: true }, 'none'],
+  ['blender', 'left', { ctrl: true }, 'none'], ['blender', 'right', { shift: true }, 'none'], ['blender', 'right', { ctrl: true }, 'none'],
   ['blender', 'left', { alt: true }, 'orbit'], ['blender', 'left', { alt: true, shift: true }, 'slide'], ['blender', 'left', { alt: true, ctrl: true }, 'dolly'],
   ['autocad', 'middle', {}, 'slide'], ['autocad', 'middle', { shift: true }, 'orbit'],
   ['sketchup', 'middle', {}, 'orbit'], ['sketchup', 'middle', { shift: true }, 'slide'],
@@ -113,10 +123,17 @@ for (const p of FLAVORS) {
   const wrong = rows.filter(([k, d]) => {
     if (/double-click|any drag|other drags/.test(k)) return false;
     const pr = parse(k);
-    return !pr || MOTIONS[motionFor(p, pr[0], pr[1])] !== d;
+    if (!pr) return true;
+    const m = motionFor(p, pr[0], pr[1]);
+    // A button with no drag says what its click does after "Nothing".
+    return m === 'none' ? !d.startsWith(`${MOTIONS.none}; a click `) : MOTIONS[m] !== d;
   });
   check(`${p.name}: the guide's ${rows.length} rows say what each drag does`, rows.length >= 4 && wrong.length === 0, JSON.stringify(wrong));
 }
+
+const blenderRows = Object.fromEntries(rowsFor(flavorById('blender')));
+check('Blender\'s guide says its left and right buttons only click: a click selects, a right click opens the menu',
+  blenderRows.Drag === 'Nothing; a click selects' && blenderRows['Right-drag'] === 'Nothing; a click opens the menu', JSON.stringify(blenderRows));
 
 // The palette's commands.
 const added = [];
