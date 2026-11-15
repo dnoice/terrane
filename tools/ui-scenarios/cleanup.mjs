@@ -43,8 +43,9 @@
  *       out, move, one journal entry, the disk checked, Ctrl+Z, a group's
  *       own Move and the toast's Undo, a copy rewritten since verified, the
  *       folder deleted from outside
- *     - cleanup-regions (threshold 0): the service counts, once per count,
- *       equal to the route's own answer; a row not held resolved and
+ *     - cleanup-regions (threshold 0): the service counts, once per count
+ *       (T.asked: its questions go through the region worker), equal to
+ *       the route's own answer; a row not held resolved and
  *       selected; moves unavailable; a late answer dropped
  *
  * ✒ Usage Instructions:
@@ -163,8 +164,18 @@ async function confirm(t) {
   return d;
 }
 
-/** Lines an element's text takes. */
-const LINES = `(e) => { const r = document.createRange(); r.selectNodeContents(e); return new Set([...r.getClientRects()].filter((x) => x.width > 0).map((x) => Math.round(x.top))).size; }`;
+/** Lines an element's visible text takes: a screen reader's words (.sr) are not drawn, so not counted. */
+const LINES = `(e) => {
+  const tops = new Set();
+  const w = document.createTreeWalker(e, NodeFilter.SHOW_TEXT);
+  for (let n = w.nextNode(); n; n = w.nextNode()) {
+    if (!n.nodeValue.trim() || n.parentElement.closest('.sr')) continue;
+    const r = document.createRange();
+    r.selectNodeContents(n);
+    for (const x of r.getClientRects()) if (x.width > 0) tops.add(Math.round(x.top));
+  }
+  return tops.size;
+}`;
 
 /* ====================================================================== */
 
@@ -204,7 +215,8 @@ const cleanup = {
       document.getElementById('ledger-list').focus();
       return true;
     });
-    const opts = await palette(t, 'cleanup', (o) => o.some((x) => x.startsWith('Suggest cleanup')));
+    // The list filtered: Drop to eye level, which holds no c, is gone from it.
+    const opts = await palette(t, 'cleanup', (o) => o.some((x) => x.startsWith('Suggest cleanup')) && !o.some((x) => x.startsWith('Drop to eye level')));
     await t.key('Escape');
     await t.waitFor(() => !document.getElementById('dialog').open);
     t.check(`Ctrl+K "cleanup": Show Cleanup first, and Suggest cleanup for this folder names it (${opts.slice(0, 2).join(' / ')})`,
@@ -252,18 +264,33 @@ const cleanup = {
 
     /* ---- Verify: the copy kept first, named ---- */
     let mark = t.mark();
+    // Its head says how many sets wait to be verified; opened, Verify is in it.
+    const dupHead = await t.eval(() => {
+      const d = document.querySelector('#b-panel-cleanup [data-group=dups]');
+      d.open = true;
+      return d.querySelector('summary .n').textContent;
+    });
+    t.check(`the Duplicates head says how many sets wait to be verified (${dupHead})`, /^\d+ sets? to verify$/.test(dupHead), dupHead);
     await press(t, '#b-panel-cleanup [data-group=dups] .cl-pending .btn');
     const s2 = await drawn(t, 'edge cases', (s) => (s.groups.find((g) => g.id === 'dups')?.rows.length || 0) >= 3, 'the verified set');
     const d2 = grp(s2, 'dups');
+    // Two sets: the strata files (large, so compared by samples), then copy-a/b/c.
+    const at = d2.rows.findIndex((r) => r.name === 'copy-c.dat');
+    const abc = at >= 0 ? d2.rows.slice(at, at + 3) : [];
     t.check(`Verify gives the copy-a/b/c set, the copy kept (newest) first and named (${d2.rows.map((r) => `${r.name}${r.kept ? ' kept' : ''}`).join(', ')})`,
-      d2.rows[0].kept && d2.rows[0].name === 'copy-c.dat' && /^keeps · newest · changed \d\d\/\d\d\/\d{4}$/.test(d2.rows[0].path)
-      && JSON.stringify(d2.rows.slice(1).map((r) => r.name)) === JSON.stringify(['copy-a.dat', 'copy-b.dat']) && s2.groups[0].id === 'dups', JSON.stringify(d2));
+      abc[0]?.kept && /^keeps · newest · changed \d\d\/\d\d\/\d{4}$/.test(abc[0].path)
+      && JSON.stringify(abc.slice(1).map((r) => r.name)) === JSON.stringify(['copy-a.dat', 'copy-b.dat']) && s2.groups[0].id === 'dups', JSON.stringify(d2));
+    const live0 = d2.rows.find((r) => r.name === 'live.bin');
+    const old0 = d2.rows.find((r) => r.name === 'archive-2019.bin');
+    t.check(`the strata set, compared by samples, is probable: its kept row (${live0?.path}), its copy (${old0?.path}) and the note say so; copy-a/b/c is not`,
+      live0?.kept && / · probable$/.test(live0.path) && / · a probable copy, changed /.test(old0?.path || '') && /marked probable/.test(d2.notes[0] || '')
+      && abc.every((r) => !/probable/.test(r.path)), JSON.stringify({ live0, old0, note: d2.notes[0] }));
     const posts = t.requests(mark).filter((r) => r.method === 'POST' && r.path.startsWith('/api/')).map((r) => r.path);
     t.check('Verify posts only /api/hash', posts.length > 0 && posts.every((p) => p === '/api/hash'), JSON.stringify(posts));
     const afterVerify = await t.waitFor(`() => { const s = (${cl})(); return s.focus.startsWith('row:') && s.focus; }`, { timeout: 5000, what: 'focus after Verify' }).catch(() => null);
-    t.check(`Verify's button goes once it has run, and focus goes on to what it found, the set's first row (${afterVerify})`, afterVerify === 'row:edge cases/copy-c.dat', String(afterVerify));
+    t.check(`Verify's button goes once it has run, and focus goes on to what it found, the group's first row (${afterVerify})`, afterVerify === `row:${d2.rows[0].rel}`, String(afterVerify));
 
-    /* ---- the keyboard: into the list, ↓ ↓, Space, Enter, Home ---- */
+    /* ---- the keyboard: into the list, ↓ to copy-b.dat, Space, Enter, Home ---- */
     await t.eval(() => {
       const d = document.querySelector('#b-panel-cleanup [data-group=dups]');
       d.open = true;
@@ -272,7 +299,8 @@ const cleanup = {
     });
     await t.tabTo('#b-panel-cleanup [data-group=dups] .cl-list button.cl-item', { max: 40 });
     const before = await t.eval(cl);
-    await t.keys('ArrowDown', 'ArrowDown');
+    const steps = grp(before, 'dups').rows.findIndex((r) => r.name === 'copy-b.dat');
+    for (let k = 0; k < steps; k++) await t.key('ArrowDown');
     const onB = await t.eval(cl);
     await t.key('Space');
     const left = await drawn(t, 'edge cases', (s) => s.groups.find((g) => g.id === 'dups').rows.some((r) => r.out));
@@ -282,7 +310,7 @@ const cleanup = {
     const aAll = figure(left.move.text);
     const bD = figure(grp(before, 'dups').btn.text);
     const aD = figure(grp(left, 'dups').btn.text);
-    t.check(`↓ ↓ reaches copy-b.dat; Space leaves it out: its box cleared, the row muted, both buttons one less (${bAll} → ${aAll}; ${bD} → ${aD}), said (${live})`,
+    t.check(`↓ (${steps}) reaches copy-b.dat; Space leaves it out: its box cleared, the row muted, both buttons one less (${bAll} → ${aAll}; ${bD} → ${aD}), said (${live})`,
       onB.focus === 'row:edge cases/copy-b.dat' && grp(left, 'dups').rows.find((r) => r.name === 'copy-b.dat').out && grp(left, 'dups').rows.find((r) => r.name === 'copy-b.dat').box === false
       && Number(aAll[0]) === Number(bAll[0]) - 1 && Number(aD[0]) === Number(bD[0]) - 1 && /^Left out copy-b\.dat; the move now takes /.test(live)
       && JSON.stringify(grp(left, 'dups').rows.map((r) => r.name)) === JSON.stringify(grp(before, 'dups').rows.map((r) => r.name)), JSON.stringify({ onB: onB.focus, bAll, aAll, bD, aD, live }));
@@ -295,10 +323,12 @@ const cleanup = {
     const after = await t.eval(cl);
     t.check(`Enter selects and frames it (${sel.primary}), the ledger's cursor following where it is listed, its name said; the tab keeps its folder, with no offer`,
       sel.primary === 'edge cases/copy-b.dat' && (!sel.listed || sel.cursor === 'copy-b.dat') && /copy-b\.dat/.test(sel.live) && after.at === 'edge cases' && after.offer === null, JSON.stringify({ sel, at: after.at, offer: after.offer }));
+    // Enter has framed copy-b.dat (with WebGL the eye flew there): Home from where that left you.
+    const here1 = await t.app((T) => T.api.relPath(T.S.focus));
     await press(t, '#b-panel-cleanup [data-group=dups] button.cl-item[data-rel="edge cases/copy-b.dat"]', 'Home');
     await t.sleep(250);
     const home = await t.app((T) => ({ here: T.api.relPath(T.S.focus), flight: T.S.noGL ? null : !!T.S.view.flight, focus: document.activeElement?.dataset?.rel ?? null }));
-    t.check('Home on the list goes to its first row and never rises to the overview', home.focus === 'edge cases/copy-c.dat' && home.here === here0 && !home.flight, JSON.stringify(home));
+    t.check('Home on the list goes to its first row and never rises to the overview', home.focus === d2.rows[0].rel && home.here === here1 && !home.flight, JSON.stringify({ home, here0, here1 }));
 
     /* ---- a redraw keeps focus: a group's head, a group's Move, the names ---- */
     const redrawn = async (sel) => {
@@ -468,6 +498,7 @@ const cleanupDisk = {
     t.check('old-disk.img is big and stale; empty-a and nested/empty-b are empty folders', grp(s0, 'stale').rows.some((r) => r.name === 'old-disk.img')
       && ['empty-a', 'empty-b'].every((n) => grp(s0, 'empty').rows.some((r) => r.name === n)));
     t.check(`the Empty folders note counts the one folder holding only a hidden file (${grp(s0, 'empty').notes[0]})`, /1 folder here holds only hidden files/.test(grp(s0, 'empty').notes[0]));
+    await t.eval(() => { document.querySelector('#b-panel-cleanup [data-group=dups]').open = true; return true; });
     await press(t, '#b-panel-cleanup [data-group=dups] .cl-pending .btn');
     const s1 = await drawn(t, LAB, (s) => s.groups.find((g) => g.id === 'dups').rows.length >= 2, 'the dup set verified');
     t.check('Verify gives the dup set, keeping the newest, dup-2.bin', grp(s1, 'dups').rows[0].kept && grp(s1, 'dups').rows[0].name === 'dup-2.bin' && grp(s1, 'dups').rows[1].name === 'dup-1.bin');
@@ -583,13 +614,16 @@ const cleanupRegions = {
     t.check('the page draws in regions', regions);
     if (!regions) return;
     await t.waitFor((T) => T.S.survey && !T.S.survey.pending, { timeout: 30000, what: 'the service\'s survey' });
-    let mark = t.mark();
+    // The service's questions go through the region worker, out of the
+    // page's network log: the page counts them (T.asked).
+    const asks = () => t.app((T) => T.asked.cleanup || 0);
+    const c0 = await asks();
     await t.app(() => { document.getElementById('b-tab-cleanup').click(); return true; });
     const s0 = await drawn(t, '', (s) => s.groups.length === 4);
     await t.sleep(400);
-    const q0 = asked(t, mark);
-    t.check(`choosing the tab asks the service once (${q0.length}), and says it counted across every level (${s0.state})`,
-      q0.length === 1 && q0[0] === '' && /Counted by the service across every level\./.test(s0.state || ''), JSON.stringify({ q0, state: s0.state }));
+    const q0 = (await asks()) - c0;
+    t.check(`choosing the tab asks the service once (${q0}), for the root, and says it counted across every level (${s0.state})`,
+      q0 === 1 && s0.at === '' && /Counted by the service across every level\./.test(s0.state || ''), JSON.stringify({ q0, state: s0.state }));
     const direct = await t.app((T) => T.api.ask('cleanup', { under: '', limit: '1000' }));
     t.check('the counts equal the route\'s own answer', ['caches', 'stale', 'empty'].every((k) => grp(s0, k).count === direct[k].total && grp(s0, k).bytes === (k === 'empty' ? 0 : direct[k].bytes)),
       JSON.stringify({ page: s0.groups.map((g) => [g.id, g.count, g.bytes]), direct: ['caches', 'stale', 'empty'].map((k) => [k, direct[k].total, direct[k].bytes]) }));
@@ -625,7 +659,7 @@ const cleanupRegions = {
     });
 
     // Two re-scopes in quick succession: only the last renders.
-    mark = t.mark();
+    const c1 = await asks();
     await t.app((T) => {
       const run = () => T.api.COMMANDS.get('cleanup').items()[0].run();
       T.api.select(T.S.model.find('edge cases'));
@@ -637,13 +671,14 @@ const cleanupRegions = {
     const last = await drawn(t, 'archives', () => true, 'the last re-scope');
     await t.sleep(600);
     const final = await t.eval(cl);
-    t.check(`re-scoped twice quickly, only the last renders (${asked(t, mark).join(', ')})`, last.name === 'archives' && final.at === 'archives' && asked(t, mark).includes('archives'), JSON.stringify(asked(t, mark)));
+    const q1 = (await asks()) - c1;
+    t.check(`re-scoped twice quickly, the service is asked once (${q1}) and only the last renders (${final.at})`, last.name === 'archives' && final.at === 'archives' && q1 === 1, String(q1));
     // Back to the root, whose groups hold something to move, and counted again there.
     await press(t, '#b-panel-cleanup .cl-where');
     await drawn(t, '', (s) => s.groups.length === 4, 'the root');
-    const asks = asked(t, 0).length;
+    const c2 = await asks();
     await t.app((T) => { T.api.refreshDirs(['']); return true; });
-    await t.poll(() => asked(t, 0).length > asks, { timeout: 15000 }).catch(() => null);
+    await t.waitFor((T, k) => (T.asked.cleanup || 0) > k, { args: [c2], timeout: 15000, what: 'the recount asked' }).catch(() => null);
     await drawn(t, '', (s) => s.groups.length === 4, 'the recount');
     const ROOT = await t.app((T) => T.S.info.name);
     const seen = await t.app(() => window.__clStop());

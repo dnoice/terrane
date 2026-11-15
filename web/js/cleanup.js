@@ -25,7 +25,8 @@
  *       folder renamed or moved by Terrane is followed; no copy is offered
  *       inside a cache the folder is or lies in, nor in .git or
  *       site-packages, which are never suggested from; a set of thousands
- *       of copies draws a page of rows, not all of them.
+ *       of copies draws a page of rows, not all of them; the Duplicates
+ *       head names the sets waiting to be verified, never "none".
  *
  * ✒ Description:
  *     The right panel's Cleanup tab: ranked, sized suggestions for
@@ -444,8 +445,9 @@ export function install(api) {
   /** Why a move cannot run here, or null. */
   const moveOff = () => (moving ? 'a move is under way' : waitWhy || api.writable());
 
-  /** A group's figure on its head: its count and the space it frees. */
-  const headFig = (g) => (g.count ? `${fmtCount(g.count)} · ${g.id === 'empty' ? 'no space' : fmtBytes(g.bytes)}` : 'none');
+  /** A group's figure on its head: its count and the space it frees; Duplicates with none verified yet, the sets waiting. */
+  const headFig = (g) => (g.count ? `${fmtCount(g.count)} · ${g.id === 'empty' ? 'no space' : fmtBytes(g.bytes)}`
+    : g.id === 'dups' && result?.pending ? `${plural(result.pending, 'set')} to verify` : 'none');
 
   /** The label of a group's Move button. */
   function groupLabel(g, t) {
