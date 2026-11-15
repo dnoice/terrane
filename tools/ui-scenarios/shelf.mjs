@@ -332,7 +332,7 @@ const shelf = {
     await said(t, /^alpha\.txt is on the shelf \(1 item\)/);
     // With the selection on the shelf, the K entry is Take off the shelf,
     // still among the eight for "shelf".
-    const offOpts = await palette(t, 'shelf', (o) => o.some((x) => x.startsWith('Show Shelf|')));
+    const offOpts = await palette(t, 'shelf', (o) => o.some((x) => x.startsWith('Show Shelf|')) && !o.some((x) => x.startsWith('Drop to eye level|')));
     const offActs = await actionsOf(t);
     t.check(`with the selection on the shelf, Ctrl+K "shelf" offers Take off the shelf with K among its ${offActs.length} actions (${offOpts.find((x) => x.endsWith('|K'))})`,
       offActs.length <= 8 && offOpts.includes('Take off the shelf|1 item selected · Shelf||K') && !offActs.includes('Add to shelf'), JSON.stringify(offOpts));
