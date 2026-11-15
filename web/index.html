@@ -1,18 +1,22 @@
 <!DOCTYPE html>
 <!--
 ✒ Metadata
-    - Title: Terrane Interface (Terrane Edition - v1.9)
+    - Title: Terrane Interface (Terrane Edition - v1.10)
     - File Name: index.html
     - Relative Path: web/index.html
     - Artifact Type: markup
-    - Version: 1.9.0
-    - Date: 11/14/2026
-    - Update: Saturday, November 14, 2026
+    - Version: 1.10.0
+    - Date: 11/15/2026
+    - Update: Sunday, November 15, 2026
     - Author: Dennis 'dendogg' Smaltz
     - A.I. Acknowledgement: Anthropic - Claude Opus 5.5
     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
 
 ✒ Changelog:
+    - 1.10.0 (11/15/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
+      placing banner's here button holds its words in
+      span#placing-here-words, so a folder chosen for Compare (api.pick)
+      can say "Compare with where I am" on the same banner.
     - 1.9.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — The A
       and B squares leave the panel heads, so each tab strip runs the
       panel's full width; the view tools' ] toggle is named for the right
@@ -22,11 +26,6 @@
       heading stood, the Inspector its first tab; #inspector-body is that
       tab's panel. The ledger's strip is named #ledger-tabs. The view
       tools' ] toggle is named for panel B.
-    - 1.7.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — Every
-      title block label holds its words in span.text after an icon (Legend
-      and Status gain theirs), so a narrow cell ends them in an ellipsis.
-      PER SQUARE takes the tight voice; the placing banner lists Cancel
-      before Place where I am, as they are seen.
     Earlier entries: see CHANGELOG.md
 
 ✒ Description:
@@ -146,7 +145,7 @@
         <button class="btn btn-small" id="placing-cancel" type="button" title="Cancel (Escape)">
           <svg class="icon" aria-hidden="true"><use href="vendor/lucide/icons.svg#x"/></svg>Cancel</button>
         <button class="btn btn-primary btn-small" id="placing-here" type="button">
-          <svg class="icon" aria-hidden="true"><use href="vendor/lucide/icons.svg#folder-input"/></svg>Place where I am</button>
+          <svg class="icon" aria-hidden="true"><use href="vendor/lucide/icons.svg#folder-input"/></svg><span id="placing-here-words">Place where I am</span></button>
       </div>
 
       <div class="hud hud-north">

@@ -1,11 +1,11 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Terrane Application (Terrane Edition - v1.22)
+ *     - Title: Terrane Application (Terrane Edition - v1.23)
  *     - File Name: app.js
  *     - Relative Path: web/js/app.js
  *     - Artifact Type: javascript
- *     - Version: 1.22.0
+ *     - Version: 1.23.0
  *     - Date: 11/15/2026
  *     - Update: Sunday, November 15, 2026
  *     - Author: Dennis 'dendogg' Smaltz
@@ -13,6 +13,10 @@
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
  *
  * ✒ Changelog:
+ *     - 1.23.0 (11/15/2026) [dendogg + Anthropic - Claude Opus 5.5] — For
+ *       Compare: C is Compare's; api.pick chooses a folder for a feature
+ *       on the placing banner, through the world's click, the ledger's
+ *       Enter and double-click, Enter on the world and Escape at 20.
  *     - 1.22.0 (11/15/2026) [dendogg + Anthropic - Claude Opus 5.5] — For
  *       the Shelf: K is the Shelf's; a right-panel tab may carry a count
  *       and take dragged rows (drawBTabCounts); api.place starts placing;
@@ -22,11 +26,6 @@
  *       The api offers verifyDuplicates for the Cleanup tab. Verify by
  *       content keeps what it proved by path in whole-tree mode too, so a
  *       file Undo brings back is still verified.
- *     - 1.20.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] —
- *       The far view: under the Kind lens a file's band A is its own
- *       kind's mass colour, washed when hidden; TONE_STEPS comes from
- *       theme.js. A child folder is where you are once it spans half the
- *       view.
  *     Earlier entries: see CHANGELOG.md
  *
  * ✒ Description:
@@ -73,7 +72,8 @@
  *       last change, and a verified group keeps its hash for the features
  *       that act on it
  *     - Placing mode and drag-and-drop for choosing a destination either
- *       in the world, in the ledger, or on a breadcrumb
+ *       in the world, in the ledger, or on a breadcrumb; the same banner
+ *       and clicks choose a folder for a feature (api.pick, Compare)
  *     - After every change only the affected folders are re-read
  *     - Live updates from the service's watcher, merged the same way
  *     - Long operations show progress (bytes, rate, time left, current
@@ -187,7 +187,7 @@ import { buildAgeTable } from './timeline.js';
 import { createRegions, decode, measure } from './regions.js';
 import { massTones } from './strata.js';
 import { FEATURES } from './features.js';
-import { icon } from './icons.js';
+import { icon, ICON } from './icons.js';
 import { countTo } from './motion.js';
 import { createHud } from './hud.js';
 import { startSplash } from './splash.js';
@@ -227,7 +227,8 @@ const S = {
   // again once it has been, failed }); null otherwise. Changes wait while
   // it is set.
   warm: null,
-  placing: null, drag: null,
+  // A folder being chosen for a feature (api.pick): its spec, or null.
+  placing: null, picking: null, drag: null,
   tab: 'contents', sort: { key: 'size', dir: -1 },
   // Panel B's chosen tab (B_TABS): the Inspector unless another is kept.
   bTab: 'inspector',
@@ -301,8 +302,8 @@ function runHooks(reg, ...args) {
 /**
  * The fixed key allocation for plain keys (no Ctrl, Cmd or Alt). A
  * reserved key is refused to any entry whose owner is not its owner. The
- * canvas keeps its travel keys; P is Quick look's; K is the Shelf's;
- * Session and Strata have no keys.
+ * canvas keeps its travel keys; P is Quick look's; K is the Shelf's; C
+ * is Compare's; Session and Strata have no keys.
  */
 const KEY_OWNERS = Object.freeze({
   w: 'viewport', a: 'viewport', s: 'viewport', d: 'viewport', q: 'viewport', e: 'viewport', r: 'viewport', f: 'viewport',
@@ -311,6 +312,7 @@ const KEY_OWNERS = Object.freeze({
   b: 'landmarks', h: 'landmarks', j: 'landmarks',
   p: 'quicklook',
   k: 'shelf',
+  c: 'compare',
 });
 const keyName = (k) => (k.length === 1 ? k.toLowerCase() : k);
 
@@ -3090,6 +3092,7 @@ const tops = (nodes) => nodes.filter((n) => !nodes.some((o) => o !== n && isAnce
 function startPlacing(type, nodes = [...S.sel]) {
   nodes = tops(movable(nodes));
   if (!nodes.length || refuseInside(nodes) || refuseWarm()) return;
+  stopPick();
   closeFloating();
   S.placing = { type, nodes };
   $('placing').hidden = false;
@@ -3102,9 +3105,103 @@ function startPlacing(type, nodes = [...S.sel]) {
 function stopPlacing() {
   if (!S.placing) return;
   S.placing = null;
-  $('placing').hidden = true;
+  if (!S.picking) $('placing').hidden = true;
   $('view').classList.remove('is-placing');
   repaint();
+}
+
+/* ---------- choosing a folder for a feature (api.pick) ---------- */
+
+/** The drawer was hidden for a pick in a narrow window: shown again when it ends. */
+let pickDrawer = false;
+
+/** The placing banner's here button as a pick shows it, or as placing does (words and icon). */
+function hereButton(words, iconName) {
+  $('placing-here-words').textContent = words;
+  $('placing-here').querySelector('use')?.setAttribute('href', `vendor/lucide/icons.svg#${ICON[iconName] || iconName}`);
+}
+
+/**
+ * Starts choosing a folder for a feature, as placing chooses a
+ * destination: the banner with spec.text, the world's click, the ledger's
+ * Enter and double-click, Enter on the world, the banner's here button
+ * and Escape at 20 all choose through pickWith. spec { owner, text, say,
+ * here, ok(node) -> reason | null, take(node, from), cancel(), tip(target,
+ * reason, node), refused(node, reason) }. Placing stops first; a pick
+ * already under way is cancelled. In a narrow window the drawer steps
+ * aside, and comes back when the pick ends.
+ */
+function startPick(spec) {
+  if (!spec || typeof spec.take !== 'function') throw new TypeError('pick: spec.take is required.');
+  stopPlacing();
+  if (S.picking) stopPick();
+  closeFloating();
+  S.picking = spec;
+  $('placing').hidden = false;
+  $('placing-text').textContent = spec.text || 'Choose a folder: click one in the world, or travel to one.';
+  hereButton(spec.here || 'Choose where I am', 'compare');
+  $('view').classList.add('is-picking');
+  if (NARROW.matches && panelShown('inspector')) {
+    pickDrawer = true;
+    togglePanel('inspector');
+  }
+  repaint();
+  if (spec.say) say(spec.say);
+}
+
+/**
+ * Ends a pick: taken (the folder was chosen, spec.take follows) or not
+ * (spec.cancel runs). The banner's words and icon are put back, and a
+ * drawer hidden for the pick comes back.
+ */
+function stopPick(taken = false) {
+  const spec = S.picking;
+  if (!spec) return;
+  S.picking = null;
+  if (!S.placing) $('placing').hidden = true;
+  hereButton('Place where I am', 'move');
+  $('view').classList.remove('is-picking');
+  if (pickDrawer && NARROW.matches && !panelShown('inspector')) {
+    document.body.classList.add('show-inspector');
+    syncPanelToggles();
+    followB();
+  }
+  pickDrawer = false;
+  repaint();
+  if (!taken) {
+    try {
+      spec.cancel?.();
+    } catch (err) {
+      console.error(`pick "${spec.owner}" cancel failed:`, err);
+    }
+  }
+}
+
+/**
+ * Chooses folder n for the pick under way: refused in words with spec.ok's
+ * reason, else taken. from is what was clicked or reached, when it was a
+ * file inside n, so the feature can say its folder was taken.
+ */
+function pickWith(n, from = n) {
+  const spec = S.picking;
+  if (!spec || !n) return;
+  let why = null;
+  try {
+    why = spec.ok?.(n) ?? null;
+  } catch (err) {
+    console.error(`pick "${spec.owner}" ok failed:`, err);
+    why = 'it cannot be chosen';
+  }
+  if (why) {
+    say(spec.refused ? spec.refused(n, why) : `Cannot choose "${n.n}": ${why}.`);
+    return;
+  }
+  stopPick(true);
+  try {
+    spec.take(n, from);
+  } catch (err) {
+    console.error(`pick "${spec.owner}" take failed:`, err);
+  }
 }
 
 function destinationProblem(type, nodes, dest) {
@@ -3453,7 +3550,8 @@ function rowFor(node, { showPath = false, total } = {}) {
   });
   row.addEventListener('dblclick', () => {
     withNode(node, (n) => {
-      if (S.placing && n.d) transfer(S.placing.type, S.placing.nodes, n);
+      if (S.picking) pickWith(n.d ? n : n.p, n);
+      else if (S.placing && n.d) transfer(S.placing.type, S.placing.nodes, n);
       else activate(n);
     });
   });
@@ -4618,6 +4716,10 @@ function wireViewport() {
   v.on.click = (i, e) => {
     closeFloating();
     const node = i >= 0 ? S.layout.node[i] : null;
+    if (S.picking) {
+      if (node && S.layout.type[i] !== BOX.SCREE) pickWith(node.d ? node : node.p, node);
+      return;
+    }
     if (S.placing) {
       if (node) transfer(S.placing.type, S.placing.nodes, node.d ? node : node.p);
       return;
@@ -4627,7 +4729,7 @@ function wireViewport() {
   v.on.moved = onMoved;
   v.on.notice = (text) => notice(text, { kind: 'info' });
   v.on.dblclick = (i, e) => {
-    if (i < 0 || S.placing) return;
+    if (i < 0 || S.placing || S.picking) return;
     const node = S.layout.node[i];
     if (S.layout.type[i] === BOX.SCREE) S.view.zoomAt(0.25, e.clientX, e.clientY);
     else if (S.layout.type[i] === BOX.WALL && S.interior) setFocus(S.interior.root);
@@ -4998,8 +5100,11 @@ function wireControls() {
     cancelAnimationFrame(legendFit);
     legendFit = requestAnimationFrame(fitLegend);
   }).observe($('legend'));
-  $('placing-cancel').onclick = stopPlacing;
-  $('placing-here').onclick = () => S.placing && transfer(S.placing.type, S.placing.nodes, S.focus);
+  $('placing-cancel').onclick = () => (S.picking ? stopPick() : stopPlacing());
+  $('placing-here').onclick = () => {
+    if (S.picking) pickWith(S.focus);
+    else if (S.placing) transfer(S.placing.type, S.placing.nodes, S.focus);
+  };
 }
 
 /** Escape: the first ESCAPE entry that is active is cleared. */
@@ -5145,7 +5250,8 @@ function wireKeys() {
   core({
     id: 'activate', keys: ['Enter'], inList: false, palette: false, when: (c) => !c.t.closest?.('button, summary, a'),
     run: () => {
-      if (S.placing && S.primary?.d) transfer(S.placing.type, S.placing.nodes, S.primary);
+      if (S.picking) pickWith(S.primary ? (S.primary.d ? S.primary : S.primary.p) : S.focus, S.primary || S.focus);
+      else if (S.placing && S.primary?.d) transfer(S.placing.type, S.placing.nodes, S.primary);
       else activate(S.primary);
     },
     guide: [SEL, 'Enter', 'Go to folder / open file'],
@@ -5211,7 +5317,8 @@ function wireKeys() {
   core({ id: 'guide', keys: ['?'], run: () => { showGuide(); } });
 
   ESCAPE.add({ id: 'floating', order: 10, typing: true, active: floatingOpen, clear: closeFloating });
-  ESCAPE.add({ id: 'placing', order: 20, typing: true, active: () => !!S.placing, clear: stopPlacing });
+  // Placing and a feature's pick share the banner, the clicks and this entry.
+  ESCAPE.add({ id: 'placing', order: 20, typing: true, active: () => !!S.placing || !!S.picking, clear: () => (S.picking ? stopPick() : stopPlacing()) });
   ESCAPE.add({
     id: 'kind-filter', order: 30, active: () => S.kindFilter >= 0,
     clear: () => {
@@ -5236,7 +5343,19 @@ function wireKeys() {
   TIP_LINES.add({
     id: 'placing', order: 30,
     lines: (node, c) => {
-      if (c.type === BOX.SCREE || !node.d || !S.placing) return null;
+      if (c.type === BOX.SCREE) return null;
+      if (S.picking) {
+        const target = node.d ? node : node.p;
+        if (!target) return null;
+        let why = null;
+        try {
+          why = S.picking.ok?.(target) ?? null;
+        } catch {
+          why = 'it cannot be chosen';
+        }
+        return S.picking.tip ? S.picking.tip(target, why, node) : why ? `Cannot choose here: ${why}` : 'Click to choose this folder';
+      }
+      if (!node.d || !S.placing) return null;
       const why = destinationProblem(S.placing.type, S.placing.nodes, node);
       return why ? `Cannot place here: ${why}` : 'Click to place here';
     },
@@ -5384,6 +5503,16 @@ const API = Object.freeze({
   // controller's state (S.placing, #placing), which a module cannot drive
   // through the api; the Shelf's Move to… and Copy to… start it.
   place: (type, nodes) => startPlacing(type, nodes),
+  // Choosing a folder for a feature: the placing banner with the
+  // feature's words, the world's click, the ledger's Enter and
+  // double-click, Enter on the world, the banner's here button and Escape
+  // at 20 (spec: { owner, text, say, here, ok(node), take(node), cancel(),
+  // tip, refused }); whether one is under way; and ending it (cancel runs).
+  // Why here: those routes and the banner are the controller's, as
+  // placing's are; Compare's "Compare with…" chooses through it.
+  pick: (spec) => startPick(spec),
+  picking: () => !!S.picking,
+  stopPick: () => stopPick(),
   // A folder's bytes by kind under a head of the caller's words, and its
   // held children in Contents' order.
   composition, contentsOrder,
@@ -5483,7 +5612,8 @@ async function start() {
       } else if (e.key === 'Enter') {
         e.preventDefault();
         // A ref's row is made a node first (select and reveal do it too).
-        if (S.placing && node.d) withNode(node, (n) => transfer(S.placing.type, S.placing.nodes, n));
+        if (S.picking) withNode(node, (n) => pickWith(n.d ? n : n.p, n));
+        else if (S.placing && node.d) withNode(node, (n) => transfer(S.placing.type, S.placing.nodes, n));
         else (TABS.get(S.tab)?.enter || activate)(node);
       } else if (e.key === ' ') {
         e.preventDefault();

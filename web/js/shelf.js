@@ -1,11 +1,11 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Shelf (Terrane Edition - v1.0)
+ *     - Title: Shelf (Terrane Edition - v1.1)
  *     - File Name: shelf.js
  *     - Relative Path: web/js/shelf.js
  *     - Artifact Type: javascript
- *     - Version: 1.0.0
+ *     - Version: 1.1.0
  *     - Date: 11/15/2026
  *     - Update: Sunday, November 15, 2026
  *     - Author: Dennis 'dendogg' Smaltz
@@ -13,6 +13,8 @@
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
  *
  * ✒ Changelog:
+ *     - 1.1.0 (11/15/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
+ *       K guide row names a Compare row too: K there runs this entry.
  *     - 1.0.0 (11/15/2026) [dendogg + Anthropic - Claude Opus 5.5] —
  *       Initial release. After the review: the palette's gathering
  *       commands use the menu's words (Add to shelf, Take off the shelf,
@@ -922,7 +924,7 @@ export function install(api) {
     },
   });
   // Guide rows: K elsewhere, the drag, and the list's own keys, which act inside the tab.
-  api.KEYS.add({ id: 'shelf-k-elsewhere', owner: OWNER, guide: [MANY, 'K', 'In Preview, or on a Cleanup row: put that item on the shelf'] });
+  api.KEYS.add({ id: 'shelf-k-elsewhere', owner: OWNER, guide: [MANY, 'K', 'In Preview, or on a Cleanup or Compare row: put that item on the shelf'] });
   api.KEYS.add({ id: 'shelf-drag', owner: OWNER, guide: [MANY, 'Drag', 'Ledger rows onto the Shelf tab: put them on the shelf'] });
   api.KEYS.add({ id: 'shelf-step', owner: OWNER, guide: [MANY, '↑ ↓  Home  End', 'In the Shelf: the previous / next item, the first / last'] });
   api.KEYS.add({ id: 'shelf-frame', owner: OWNER, guide: [MANY, 'Enter', 'In the Shelf: select the item and frame it in the world'] });

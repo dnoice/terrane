@@ -1,18 +1,22 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Landmarks (Terrane Edition - v1.4)
+ *     - Title: Landmarks (Terrane Edition - v1.5)
  *     - File Name: landmarks.js
  *     - Relative Path: web/js/landmarks.js
  *     - Artifact Type: javascript
- *     - Version: 1.4.0
- *     - Date: 11/14/2026
- *     - Update: Saturday, November 14, 2026
+ *     - Version: 1.5.0
+ *     - Date: 11/15/2026
+ *     - Update: Sunday, November 15, 2026
  *     - Author: Dennis 'dendogg' Smaltz
  *     - A.I. Acknowledgement: Anthropic - Claude Opus 5.5
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
  *
  * ✒ Changelog:
+ *     - 1.5.0 (11/15/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
+ *       inspector's Benchmark section offers Compare with now, and a Places
+ *       row Compare, when the Compare tab started: the folder now beside
+ *       its benchmark, through Compare's own key entry.
  *     - 1.4.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
  *       Places caption carries its words as a title and its heads a span.t;
  *       Set benchmark on a named folder is data-named. The inspector's
@@ -33,11 +37,6 @@
  *       both are in the palette. With a warm start, benchmarks are found
  *       in the tree from the last session and again once it is checked;
  *       B waits for that check, and the changed ones are said only then.
- *     - 1.2.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — A
- *       Find that asks is:benchmark runs again whenever the benchmarks
- *       change, so Findings, its count, the pins and the dimming
- *       follow; J opens a folded return point through api.forceOpen, so
- *       the overview ends that unfold.
  *     Earlier entries: see CHANGELOG.md
  *
  * ✒ Description:
@@ -568,6 +567,10 @@ export function install(api) {
 
   /* ---------- the Places tab ---------- */
 
+  /** Compare's key entry, when that feature started: its run({ node, bench }) opens a folder against its benchmark. */
+  const compareEntry = () => api.KEYS.get('compare') || null;
+  const compareNow = (node) => compareEntry()?.run({ node, bench: true });
+
   const btn = (label, run, { icon: name, k, cls = '', title, danger, off = false, named = false } = {}) => el('button', {
     class: `btn btn-small${danger ? ' btn-danger' : ''}${cls ? ` ${cls}` : ''}`, type: 'button', 'data-k': k, title, disabled: off, onclick: run, 'data-named': named ? '' : null,
   }, name ? icon(name) : null, label);
@@ -618,6 +621,7 @@ export function install(api) {
     out.push(el('div', { class: 'actions' },
       node ? btn('Fly there', () => api.reveal(node), { icon: 'fly', k: `${b.id}:fly`, cls: 'fly' }) : null,
       node ? btn('Measure again', () => bench(node), { icon: 'remeasure', k: `${b.id}:again`, title: 'B' }) : null,
+      node && compareEntry() ? btn('Compare', () => compareNow(node), { icon: 'compare', k: `${b.id}:compare`, title: 'Compare the folder now with this benchmark' }) : null,
       btn('Forget', () => forget(b), { icon: 'clear', k: `${b.id}:forget`, cls: 'forget' })));
     if (node) out.push(...changes(b));
     return out;
@@ -856,7 +860,8 @@ export function install(api) {
       el('div', { class: 'actions-grid' },
         api.actionButton('Measure again', () => bench(node), { icon: 'remeasure', title: 'B' }),
         api.actionButton('Forget', () => forget(b), { icon: 'clear' }),
-        api.actionButton('Show in Places', () => showPlaces(b), { icon: 'places', wide: true })),
+        api.actionButton('Show in Places', () => showPlaces(b), { icon: 'places', wide: true }),
+        compareEntry() ? api.actionButton('Compare with now', () => compareNow(node), { icon: 'compare', wide: true, title: 'The folder now beside this benchmark, in the Compare tab' }) : null),
     ];
   }
 

@@ -1,0 +1,252 @@
+/*
+ * ============================================================================
+ * ✒ Metadata
+ *     - Title: Compare (Terrane Edition - v1.0)
+ *     - File Name: compare.css
+ *     - Relative Path: web/css/components/compare.css
+ *     - Artifact Type: stylesheet
+ *     - Version: 1.0.0
+ *     - Date: 11/15/2026
+ *     - Update: Sunday, November 15, 2026
+ *     - Author: Dennis 'dendogg' Smaltz
+ *     - A.I. Acknowledgement: Anthropic - Claude Opus 5.5
+ *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
+ *
+ * ✒ Changelog:
+ *     - 1.0.0 (11/15/2026) [dendogg + Anthropic - Claude Opus 5.5] —
+ *       Initial release.
+ *
+ * ✒ Description:
+ *     The right panel's Compare tab on the inspector's grid: the head with
+ *     the two sides, each behind its mark (● filled, ○ a ring) in the mark
+ *     slot; the figures as a three-column table; two bars on one scale
+ *     for kind and for last change, with their keys; and four
+ *     disclosures whose rows carry a swatch in the mark slot, the name and
+ *     its line at B, and the size in the figure column.
+ *
+ * ✒ Key Features:
+ *     - Marks are circles, never squares (squares are swatches): 10 px,
+ *       8 px inline in a sentence or a row's line
+ *     - The tables are grids: the first column at A (a key's swatch in
+ *       the mark slot, its words at B), two figure columns right-aligned in
+ *       mono tabular figures, ending one gutter inside the scroll gutter
+ *     - A bar's track runs from B to the right gutter in the soft rule's
+ *       colour; the bar inside it is as long as its folder is large
+ *     - Group heads as the ledger's disclosures: the triangle at A, the
+ *       words at B; rows at A and B as Cleanup's
+ *     - Below 300 px the table keeps its three columns at 84 px figures
+ *     - The world shows a pointer while a folder is being chosen
+ *
+ * ✒ Other Important Information:
+ *     - Dependencies: tokens.css, base.css, controls.css (.btn),
+ *       ledger.css (.item, .rich), inspector.css (.insp-title, .comp,
+ *       .section-title, .actions-grid), preview.css (.pv-where);
+ *       web/js/compare.js builds it
+ *     - Compatible platforms: current evergreen browsers
+ * ----------------------------------------------------------------------------
+ */
+
+/* ---------- the panel ---------- */
+
+#b-panel-compare { display: flex; flex-direction: column; min-height: 0; }
+.cmp-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+  padding-bottom: var(--s-3);
+}
+.cmp-head .insp-name:focus-visible { outline-offset: var(--focus-offset); }
+
+/* ---------- the marks ---------- */
+
+.cmp-mark {
+  display: inline-block;
+  flex: none;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  vertical-align: baseline;
+}
+.cmp-mark.is-0 { background: var(--ink); }
+.cmp-mark.is-1 { background: var(--paper); box-shadow: inset 0 0 0 2px var(--ink); }
+.cmp-mark.is-inline { width: 8px; height: 8px; margin-inline: 1px; }
+.cmp-mark.is-1.is-inline { box-shadow: inset 0 0 0 1.5px var(--ink); }
+
+/* ---------- the head: the two sides and the tools ---------- */
+
+.cmp-sides { margin: 10px 0 0; padding: 0; list-style: none; }
+.cmp-side {
+  appearance: none;
+  display: grid;
+  grid-template-columns: var(--mark-w) minmax(0, 1fr) auto;
+  align-items: baseline;
+  column-gap: var(--mark-gap);
+  width: 100%;
+  min-height: var(--hit-min);
+  padding: 3px 0;
+  border: 0;
+  --sweep-color: var(--mark-wash);
+  background-color: transparent;
+  background-image: linear-gradient(var(--sweep-color), var(--sweep-color));
+  background-repeat: no-repeat;
+  background-size: var(--sweep, 0%) 100%;
+  color: var(--text);
+  font: 500 var(--fs-row) / 1.25 var(--sans);
+  text-align: left;
+  transition: background-size var(--dur-fast) var(--ease-out);
+}
+@media (hover: hover) { .cmp-side:hover { --sweep: 100%; } }
+.cmp-side > .cmp-mark { justify-self: center; align-self: start; margin-top: calc((1.25em - 10px) / 2); }
+.cmp-side-text { min-width: 0; }
+.cmp-side .nm { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cmp-side .path { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-3); font: 400 var(--fs-xs) / 1.3 var(--mono); }
+.cmp-side .fig { color: var(--text-2); font: 400 var(--fs-fig) / 1 var(--mono); font-variant-numeric: tabular-nums; }
+.cmp-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 8px; }
+.cmp-tools .btn { white-space: nowrap; }
+.cmp-tools .pv-where { margin: 0; }
+
+/* ---------- words ---------- */
+
+.cmp-say {
+  margin: 0;
+  padding: var(--s-3) var(--gutter) 6px;
+  font: 600 var(--fs-md) / var(--lh-snug) var(--sans);
+  text-wrap: pretty;
+}
+.cmp-note {
+  margin: 0;
+  padding: 4px var(--gutter) 6px;
+  color: var(--text-2);
+  font-size: var(--fs-row);
+  line-height: var(--lh-snug);
+  text-wrap: pretty;
+}
+.cmp-state {
+  margin: 0;
+  padding: var(--s-2) var(--gutter);
+  border-bottom: var(--border-3);
+  color: var(--text-2);
+  font-size: var(--fs-row);
+  line-height: var(--lh-base);
+  text-wrap: pretty;
+}
+.cmp-state.is-error { color: var(--danger); }
+
+/* ---------- the empty and choosing states ---------- */
+
+.cmp-empty { padding-top: var(--s-2); }
+.cmp-lead { padding-bottom: var(--s-2); }
+.cmp-start-grid, .cmp-start-extra { border-bottom: 0; }
+.cmp-start-grid .btn[data-named] { white-space: normal; text-align: left; }
+.cmp-actions { display: flex; flex-wrap: wrap; gap: 6px; padding: 2px var(--gutter) 10px; }
+.cmp-actions:empty, .cmp-actions:has(> [hidden]:only-child) { display: none; }
+.cmp-actions .btn { white-space: nowrap; }
+.cmp-ways { padding-top: var(--s-2); color: var(--text-3); }
+.cmp-gone { padding-top: var(--s-2); }
+
+/* ---------- the figures ---------- */
+
+.cmp-facts, .cmp-key {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(84px, auto) minmax(84px, auto);
+  width: auto;
+  margin: 4px var(--gutter) var(--s-3);
+  border-collapse: collapse;
+  font: 400 var(--fs-fig) / 1.3 var(--mono);
+}
+.cmp-facts thead, .cmp-facts tbody, .cmp-facts tr,
+.cmp-key thead, .cmp-key tbody, .cmp-key tr { display: contents; }
+.cmp-key thead.sr { display: contents; }
+.cmp-key thead.sr th { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.cmp-facts th, .cmp-facts td, .cmp-key th, .cmp-key td {
+  display: flex;
+  align-items: center;
+  min-height: var(--row-h);
+  padding: 0;
+  border-top: var(--border-3);
+}
+.cmp-facts td, .cmp-key td {
+  justify-content: flex-end;
+  padding-left: var(--s-2);
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  white-space: nowrap;
+}
+/* The head row's marks sit over their figures' right edge, in the key voice. */
+.cmp-facts thead th { min-height: var(--hit-min); justify-content: flex-end; border-top: 0; }
+.cmp-facts thead th:first-child { justify-content: flex-start; }
+.cmp-facts tbody th {
+  min-width: 0;
+  color: var(--text-3);
+  font: 500 var(--fs-3xs) / 1.2 var(--sans);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  text-align: left;
+}
+.cmp-key th {
+  display: grid;
+  grid-template-columns: var(--mark-w) minmax(0, 1fr);
+  column-gap: var(--mark-gap);
+  align-items: center;
+  min-width: 0;
+  font-weight: 400;
+  text-align: left;
+}
+.cmp-key th > .swatch { justify-self: center; }
+.cmp-key-t { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-2); }
+.cmp-key td { color: var(--text-2); }
+.cmp-key tr.is-none th, .cmp-key tr.is-none td { color: var(--text-3); }
+.cmp-key tr.is-none .swatch { opacity: 0.4; }
+
+/* ---------- the bars, on one scale ---------- */
+
+.cmp-bars { display: grid; gap: 6px; padding: 4px var(--gutter) 0; }
+.cmp-bar {
+  display: grid;
+  grid-template-columns: var(--mark-w) minmax(0, 1fr);
+  column-gap: var(--mark-gap);
+  align-items: center;
+}
+.cmp-bar > .cmp-mark { justify-self: center; }
+.cmp-track { position: relative; height: 14px; background: var(--rule-soft); }
+.cmp-track > .comp { height: 14px; margin: 0; box-sizing: border-box; }
+.cmp-none {
+  margin: 0;
+  padding: 0 6px;
+  color: var(--text-2);
+  font: 400 var(--fs-xs) / 14px var(--mono);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ---------- what differs ---------- */
+
+.cmp-groups { padding-bottom: var(--s-3); }
+.cmp-groups .cmp-note { padding: 6px var(--gutter) 8px; }
+.cmp-groups .t .cmp-mark { margin-inline: 2px; vertical-align: 0; }
+.cmp-list { margin: 0; padding: 0; list-style: none; }
+.cmp-row { position: relative; }
+/* A row: the swatch in the mark slot at A, its text at B, the size at the right. */
+#b-panel-compare .cmp-item { grid-template-columns: var(--mark-w) minmax(0, 1fr) auto auto; padding-left: var(--gutter); }
+.cmp-item .cmp-text { min-width: 0; }
+.cmp-item .nm { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cmp-item .path { white-space: normal; overflow-wrap: anywhere; text-overflow: clip; }
+.cmp-item .path .cmp-mark { vertical-align: 0; }
+.cmp-in { display: flex; align-self: center; color: var(--text-3); }
+.cmp-in .icon { width: var(--icon-sm); height: var(--icon-sm); }
+
+/* While a folder is chosen for Compare, the world shows a pointer. */
+#view.is-picking { cursor: pointer; }
+
+/* A narrow right panel keeps the three columns; names end in an ellipsis. */
+@container inspector (max-width: 300px) {
+  .cmp-facts, .cmp-key { grid-template-columns: minmax(0, 1fr) 84px 84px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cmp-side { transition: none; }
+}

@@ -1,11 +1,11 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Icons (Terrane Edition - v1.4)
+ *     - Title: Icons (Terrane Edition - v1.5)
  *     - File Name: icons.js
  *     - Relative Path: web/js/icons.js
  *     - Artifact Type: javascript
- *     - Version: 1.4.0
+ *     - Version: 1.5.0
  *     - Date: 11/15/2026
  *     - Update: Sunday, November 15, 2026
  *     - Author: Dennis 'dendogg' Smaltz
@@ -13,17 +13,14 @@
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
  *
  * ✒ Changelog:
+ *     - 1.5.0 (11/15/2026) [dendogg + Anthropic - Claude Opus 5.5] —
+ *       compare (columns-2), the right panel's Compare tab and its
+ *       actions, and swap (arrow-down-up), its Swap.
  *     - 1.4.0 (11/15/2026) [dendogg + Anthropic - Claude Opus 5.5] — shelf
  *       (inbox), the right panel's Shelf tab and its actions.
  *     - 1.3.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] —
  *       exportCsv (download), legend (swatch-book) and status (activity);
  *       Select all draws list-checks.
- *     - 1.2.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] —
- *       withIcon, which nothing called, is gone, and so are the names keys,
- *       root, status, north, folder and file, which named icons nothing
- *       draws (the north arrow is drawn inline). ICON also names
- *       the icons web/index.html draws by their Lucide names, so the same
- *       action has one icon wherever it appears.
  *     Earlier entries: see CHANGELOG.md
  *
  * ✒ Description:
@@ -119,6 +116,8 @@ export const ICON = Object.freeze({
   markReturn: 'bookmark',
   returnTo: 'arrow-left-right',
   shelf: 'inbox',
+  compare: 'columns-2',
+  swap: 'arrow-down-up',
 });
 
 /**

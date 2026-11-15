@@ -1,11 +1,11 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Feature Modules (Terrane Edition - v1.7)
+ *     - Title: Feature Modules (Terrane Edition - v1.8)
  *     - File Name: features.js
  *     - Relative Path: web/js/features.js
  *     - Artifact Type: javascript
- *     - Version: 1.7.0
+ *     - Version: 1.8.0
  *     - Date: 11/15/2026
  *     - Update: Sunday, November 15, 2026
  *     - Author: Dennis 'dendogg' Smaltz
@@ -13,15 +13,15 @@
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
  *
  * ✒ Changelog:
+ *     - 1.8.0 (11/15/2026) [dendogg + Anthropic - Claude Opus 5.5] —
+ *       Compare, a right-panel tab (compare.js) between Preview and
+ *       Cleanup, after the Shelf; C is Compare's.
  *     - 1.7.0 (11/15/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
  *       Shelf, the right panel's fourth tab (shelf.js), after Cleanup; K
  *       is the Shelf's.
  *     - 1.6.0 (11/15/2026) [dendogg + Anthropic - Claude Opus 5.5] —
  *       Cleanup, the right panel's third tab (cleanup.js), after duplicate
  *       cleanup.
- *     - 1.5.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] —
- *       Preview, panel B's second tab (preview.js), after the totals and
- *       quick searches.
  *     Earlier entries: see CHANGELOG.md
  *
  * ✒ Description:
@@ -59,16 +59,17 @@
  *     - Dependencies: the feature modules it lists: time.js, landmarks.js,
  *       traverse.js, strata.js, interior.js, palette.js, resume.js,
  *       searches.js, quicklook.js, presets.js, preview.js, batch.js,
- *       dupes.js, cleanup.js, shelf.js, copyas.js, exports.js,
+ *       dupes.js, cleanup.js, shelf.js, compare.js, copyas.js, exports.js,
  *       terminal.js, flavors.js
- *     - B_TABS: the Inspector (the controller's) 0, Preview 20, Cleanup
- *       30, Shelf 40
+ *     - B_TABS: the Inspector (the controller's) 0, Preview 20, Compare
+ *       25, Cleanup 30, Shelf 40
  *     - Registry entries a feature adds carry owner: '<feature>', so a
  *       check can tell them from the controller's own
  *     - Compatible platforms: any browser with ES2022 modules
  *     - Key allocation: I is Interiors; T , . < > are Time; B H J are
  *       Landmarks; P is Quick look's; K is the Shelf's (the selection on
- *       or off the shelf); Ctrl+K is the command palette's; Preview binds
+ *       or off the shelf); C is Compare's (the selection's folder with
+ *       another); Ctrl+K is the command palette's; Preview binds
  *       none (its keys act inside its pane, K there the Shelf's entry);
  *       Cleanup binds none (its keys act inside its tab);
  *       F2 with several selected is the batch rename's, through the
@@ -94,10 +95,11 @@ import * as batch from './batch.js';
 import * as dupes from './dupes.js';
 import * as cleanup from './cleanup.js';
 import * as shelf from './shelf.js';
+import * as compare from './compare.js';
 import * as copyas from './copyas.js';
 import * as exportLists from './exports.js';
 import * as terminal from './terminal.js';
 import * as flavors from './flavors.js';
 
 /** Feature modules in install order. */
-export const FEATURES = [time, landmarks, traverse, strata, interior, palette, resume, searches, quicklook, presets, preview, batch, dupes, cleanup, shelf, copyas, exportLists, terminal, flavors];
+export const FEATURES = [time, landmarks, traverse, strata, interior, palette, resume, searches, quicklook, presets, preview, batch, dupes, cleanup, shelf, compare, copyas, exportLists, terminal, flavors];
