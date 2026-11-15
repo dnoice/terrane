@@ -1,11 +1,11 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Application Shell (Terrane Edition - v1.4)
+ *     - Title: Application Shell (Terrane Edition - v1.5)
  *     - File Name: layout.css
  *     - Relative Path: web/css/layout.css
  *     - Artifact Type: stylesheet
- *     - Version: 1.4.0
+ *     - Version: 1.5.0
  *     - Date: 11/14/2026
  *     - Update: Saturday, November 14, 2026
  *     - Author: Dennis 'dendogg' Smaltz
@@ -13,6 +13,9 @@
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
  *
  * ✒ Changelog:
+ *     - 1.5.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
+ *       .ref square goes with the panel letters: a panel head is its tab
+ *       strip, the full width of the panel.
  *     - 1.4.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — A
  *       feature tab's panel in panel B (.b-panel) fills the panel as
  *       #inspector-body does, beside it.
@@ -22,10 +25,6 @@
  *       column heads (Name at B, Size on the size column), keeping the list's
  *       scroll gutter; a caption is one line ending in an ellipsis. Each
  *       scroller is its content's containing block.
- *     - 1.2.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] —
- *       The ledger's count row holds a feature's controls (.sub-tools,
- *       such as Save search…) after its sort keys, and wraps them under
- *       the keys in a narrow ledger.
  *     Earlier entries: see CHANGELOG.md
  *
  * ✒ Description:
@@ -99,16 +98,6 @@ body:not(.no-ledger) #ledger, body:not(.no-inspector) #inspector { transition-de
   border-bottom: var(--border);
 }
 .panel-head h2 { align-self: center; padding-left: var(--gutter); flex: 1; }
-.ref {
-  display: grid;
-  place-items: center;
-  flex: none;
-  width: var(--panel-head-h);
-  background: var(--ink);
-  color: var(--on-ink);
-  font-size: var(--fs-fig);
-  letter-spacing: 0;
-}
 
 /*
  * The ledger's head: at most two rows of one line each, 30 px apiece. The

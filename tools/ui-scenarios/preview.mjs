@@ -1,11 +1,11 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Preview Scenarios (Terrane Edition - v1.0)
+ *     - Title: Preview Scenarios (Terrane Edition - v1.1)
  *     - File Name: preview.mjs
  *     - Relative Path: tools/ui-scenarios/preview.mjs
  *     - Artifact Type: test
- *     - Version: 1.0.0
+ *     - Version: 1.1.0
  *     - Date: 11/14/2026
  *     - Update: Saturday, November 14, 2026
  *     - Author: Dennis 'dendogg' Smaltz
@@ -13,6 +13,9 @@
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
  *
  * ✒ Changelog:
+ *     - 1.1.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] —
+ *       The right panel is named so: the palette details, what ] says
+ *       and the Guide row read "right panel" where they read "Panel B".
  *     - 1.0.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] —
  *       Initial release.
  *
@@ -224,7 +227,7 @@ const preview = {
     // on the Inspector, and no error. Twice, so it ends as it began.
     const wrapRuns = [];
     for (const want of ['off', 'on']) {
-      const opts = await palette(t, 'wrap', (o) => /\(Preview\)\|Panel B$/.test(o[0] || ''));
+      const opts = await palette(t, 'wrap', (o) => /\(Preview\)\|Right panel$/.test(o[0] || ''));
       await t.key('Enter');
       const run = await t.waitFor((T, w) => !document.getElementById('dialog').open && localStorage.getItem('terrane.preview-wrap') === w && /^Preview will/.test(document.getElementById('live').textContent) && {
         live: document.getElementById('live').textContent, kept: localStorage.getItem('terrane.preview-wrap'), bTab: T.S.bTab,
@@ -233,8 +236,8 @@ const preview = {
       wrapRuns.push({ first: opts[0], ...run });
     }
     t.check(`before Preview was ever chosen, the palette's wrap command keeps the choice and says it, panel B on the Inspector (${wrapRuns.map((r) => r.live).join(' / ')})`,
-      wrapRuns.length === 2 && !wrapRuns[0].failed && !wrapRuns[1].failed && wrapRuns[0].first === 'Stop wrapping long lines (Preview)|Panel B' && wrapRuns[0].live === 'Preview will let long lines run on.'
-      && wrapRuns[1].first === 'Wrap long lines (Preview)|Panel B' && wrapRuns[1].live === 'Preview will wrap long lines.' && wrapRuns.every((r) => r.bTab === 'inspector' && !r.mounted), JSON.stringify(wrapRuns));
+      wrapRuns.length === 2 && !wrapRuns[0].failed && !wrapRuns[1].failed && wrapRuns[0].first === 'Stop wrapping long lines (Preview)|Right panel' && wrapRuns[0].live === 'Preview will let long lines run on.'
+      && wrapRuns[1].first === 'Wrap long lines (Preview)|Right panel' && wrapRuns[1].live === 'Preview will wrap long lines.' && wrapRuns.every((r) => r.bTab === 'inspector' && !r.mounted), JSON.stringify(wrapRuns));
 
     // Tab to the strip; the arrows choose and move focus; Home leaves the eye where it was.
     await t.tabTo('#b-tabs [data-btab=inspector]', { max: 120 });
@@ -672,12 +675,12 @@ const preview = {
     await t.sleep(500);
     const hiddenReads = raws(t, mark);
     t.check(`] hides panel B and names it as its label does (${saidHidden}), and a selection change then asks nothing`,
-      hiddenReads.length === 0 && saidHidden === 'Panel B hidden. ] shows it again.', JSON.stringify({ hiddenReads, saidHidden }));
+      hiddenReads.length === 0 && saidHidden === 'Right panel hidden. ] shows it again.', JSON.stringify({ hiddenReads, saidHidden }));
     await t.key(']');
     const saidShown = await t.live();
     const shownAgain = await until(t, 'copy-a.dat', (s) => s.lines > 0, 'Preview after ]');
     t.check(`] shows it again, on Preview (${saidShown}), and Preview reads what is selected now`,
-      shownAgain.shown && raws(t, mark).length <= 1 && saidShown === 'Panel B shown, on Preview. ] hides it.', JSON.stringify({ reads: raws(t, mark), saidShown }));
+      shownAgain.shown && raws(t, mark).length <= 1 && saidShown === 'Right panel shown, on Preview. ] hides it.', JSON.stringify({ reads: raws(t, mark), saidShown }));
 
     /* ---- the palette ---- */
     await t.eval(() => { document.getElementById('ledger-list').focus(); return true; });
@@ -690,9 +693,9 @@ const preview = {
     const viaPalette = await t.waitFor((T) => !document.getElementById('dialog').open && !document.body.classList.contains('no-inspector') && T.S.bTab === 'preview'
       && document.activeElement === document.querySelector('#b-panel-preview .pv-pane') && /^Preview: /.test(document.getElementById('live').textContent) && { live: document.getElementById('live').textContent, wrap: localStorage.getItem('terrane.preview-wrap') }, { what: 'Preview from the palette' })
       .catch(() => t.app((T) => ({ failed: true, dialog: document.getElementById('dialog').open, hidden: document.body.classList.contains('no-inspector'), bTab: T.S.bTab, focus: document.activeElement?.className || document.activeElement?.id, live: document.getElementById('live').textContent })));
-    t.check(`Ctrl+K "preview", Enter: Show Preview (Panel B) is the first match, the wrap command after it; it opens panel B and puts focus in the pane (${viaPalette?.live})`,
-      options[0] === 'Show Preview|Panel B' && options.some((x) => /^(Stop wrapping long lines|Wrap long lines) \(Preview\)\|Panel B$/.test(x)) && !viaPalette.failed && /^Preview: copy-a\.dat/.test(viaPalette.live) && viaPalette.wrap !== 'off',
-      JSON.stringify({ options: options.filter((x) => /Panel B/.test(x)), viaPalette }));
+    t.check(`Ctrl+K "preview", Enter: Show Preview (Right panel) is the first match, the wrap command after it; it opens panel B and puts focus in the pane (${viaPalette?.live})`,
+      options[0] === 'Show Preview|Right panel' && options.some((x) => /^(Stop wrapping long lines|Wrap long lines) \(Preview\)\|Right panel$/.test(x)) && !viaPalette.failed && /^Preview: copy-a\.dat/.test(viaPalette.live) && viaPalette.wrap !== 'off',
+      JSON.stringify({ options: options.filter((x) => /Right panel/.test(x)), viaPalette }));
 
     /* ---- the Guide ---- */
     await t.eval(() => { document.getElementById('ledger-list').focus(); return true; });
@@ -708,7 +711,7 @@ const preview = {
       JSON.stringify(closer.slice(closer.indexOf(P_ROW))) === JSON.stringify([P_ROW, '← →|In Preview: previous / next item',
         'Home  End|In Preview: first / last item, once the text is at its top / end', 'Esc|In Preview, reading one of several: back to the list'])
       && closer.filter((x) => x.startsWith('P|')).length === 1
-      && selecting.includes('[  ]|Hide ledger / panel B') && selecting.includes('← → on tabs|Previous / next tab (Home, End: first, last)'), JSON.stringify({ closer, selecting }));
+      && selecting.includes('[  ]|Hide ledger / right panel') && selecting.includes('← → on tabs|Previous / next tab (Home, End: first, last)'), JSON.stringify({ closer, selecting }));
 
     /* ---- the end: nothing posted, back on the Inspector ---- */
     const posts = t.requests(0).filter((r) => r.method === 'POST' && r.path.startsWith('/api/'));
