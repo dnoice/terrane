@@ -631,7 +631,7 @@ export function install(api) {
     ui.start.setAttribute('aria-disabled', off ? 'true' : 'false');
     const extra = [];
     const two = twoSelected();
-    if (two) extra.push(keyed(api.actionButton('Compare the 2 selected folders', () => compareTwo(two[0], two[1]), { icon: ICON }), 'two'));
+    if (two) extra.push(keyed(api.actionButton('Compare the 2 selected folders', () => compareTwo(two[0], two[1]), { icon: ICON, wide: true }), 'two'));
     const b = f && S.places && !off ? S.places.find(f) : null;
     if (b) extra.push(keyed(api.actionButton(`Compare "${nm}" with its benchmark`, () => compareBench(f), { icon: 'bench', named: true, wide: true }), 'bench'));
     ui.startExtra.replaceChildren(...extra);
@@ -940,11 +940,13 @@ export function install(api) {
       }
     });
     ui.notes.replaceChildren(...notes);
-    ui.figures.replaceChildren(
+    // replaceChildren writes a null as the text "null": the parts left out are dropped first.
+    ui.figures.replaceChildren(...[
       factsTable([d0, d1], R.datas.map((x) => x.ta), lab),
       ...kindsEl(d0, d1, lab),
       ...agesEl(R.datas, lab),
-      api.sectionTitle('What differs', plural(R.res.count.names, 'name')));
+      api.sectionTitle('What differs', plural(R.res.count.names, 'name')),
+    ].filter(Boolean));
     const gs = groupsOf(R, lab);
     const first = gs.find((g) => g.id !== 'same' && g.rows.length);
     ui.groups.replaceChildren(...gs.map((g) => groupEl(g, g === first, lab)));
@@ -1418,8 +1420,10 @@ export function install(api) {
         queue();
         return;
       }
+      // The folders read again: a Set of nodes (or paths), any of them on a side's path.
       const rels = [...pair.sides.map((s) => s.rel), ...trail.flatMap((t) => t.pair.sides.map((s) => s.rel))];
-      if (dirs.some((d) => typeof d === 'string' && rels.some((r) => under(r, d) || under(d, r)))) queue();
+      const read = [...dirs].map((d) => (typeof d === 'string' ? d : d ? api.relPath(d) : null)).filter((d) => d != null);
+      if (read.some((d) => rels.some((r) => under(r, d) || under(d, r)))) queue();
     },
   });
   api.AFTER_SURVEY.add({
