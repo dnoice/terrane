@@ -1,10 +1,10 @@
 <!--
 ✒ Metadata
-    - Title: Terrane Roadmap (Terrane Edition - v1.12)
+    - Title: Terrane Roadmap (Terrane Edition - v1.13)
     - File Name: ROADMAP.md
     - Relative Path: docs/ROADMAP.md
     - Artifact Type: docs
-    - Version: 1.12.0
+    - Version: 1.13.0
     - Date: 11/14/2026
     - Update: Saturday, November 14, 2026
     - Author: Dennis 'dendogg' Smaltz
@@ -12,6 +12,15 @@
     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
 
 ✒ Changelog:
+    - 1.13.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] —
+      Preview, the first of panel B's tabs, is recorded as complete on
+      branch `tab-preview`, waiting to be merged, with its commits, the
+      review, the fixes and the final check lines; where things stand
+      says so, and Next is its merge, then the seven other tabs. The
+      exploration loop names Preview, the build waves say each tab runs
+      on a branch of its own, and the image rules say what the
+      inspector and Quick look may fetch. The Key Features no longer
+      place the Stage 4 exit test on `wave-4`.
     - 1.12.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — Where
       things stand and the build waves record what reached `main` while
       Wave 4 was on its branch: steady drawing conventions and Blender's
@@ -105,8 +114,7 @@
     - Minimum filesystem scope: in, out, and why
     - Interaction requirements written as checkable statements
     - Six stages, each with an exit test; stages 1 to 3 are complete,
-      stage 4's exit test is met on branch `wave-4`, and stages 5 and 6
-      are under way
+      stage 4's exit test is met, and stages 5 and 6 are under way
     - Stage 5's first increment: what was delivered, by which wave,
       what was deferred, and the question each feature answers
     - Build waves: complete on `main`, complete on a branch and waiting
@@ -171,13 +179,21 @@ As of 11/14/2026:
   columns and heights, three uppercase voices, labels and heads on one
   line, values that break only at their separators, nothing cut off
   without an ellipsis, and the `polish` check that measures all of it.
-- **Next:** eight tabs beside the Inspector in the panel on the
-  right, built and merged one at a time: Preview, Cleanup, Shelf, Compare, Activity, Notes and tags,
-  Watch and Connections. The open ground beyond them is what Stage 4
-  still lacks (section 4), the rest of Stage 6, and the Stage 5
-  deferrals in section 4.
+- **Complete, on branch `tab-preview`, waiting to be merged:**
+  Preview, the first of the tabs beside the Inspector. Panel B's head
+  is a tab strip that features fill, the Inspector first and the
+  default; Preview, next to it, is a quick look docked beside the world
+  that follows the selection: a text with numbered lines, a picture
+  from its thumbnail, sound and film in byte ranges, a zip's listing, a
+  link's target, a folder's summary and several selected with their
+  total, each case with nothing to show saying why.
+- **Next:** the merge of `tab-preview` into `main`; then the seven
+  other tabs, built and merged one at a time: Cleanup, Shelf, Compare,
+  Activity, Notes and tags, Watch and Connections. The open ground
+  beyond them is what Stage 4 still lacks (section 4), the rest of
+  Stage 6, and the Stage 5 deferrals in section 4.
 
-Section 5 has the detail for every wave.
+Section 5 has the detail for every wave and for Preview.
 
 ## 1. The exploration loop
 
@@ -189,7 +205,7 @@ One pass through the loop, and what serves each step today.
 | 2. Notice | Something stands out: a large mass, a tall fresh block, a pin, a colour | Lenses (kind, age, size, duplicates), with closed masses at their typical age under the Age lens; survey tab, working sessions and quick searches included; search pins; benchmark tags that say what changed; the time view, where what changed since a date lies flat |
 | 3. Approach | Flies toward it. It opens as it gets close | Wheel flies to the cursor; distance-driven unfolding; contents rise out of the plateau |
 | 4. Orient | Knows where they are without thinking about it | Breadcrumbs, ledger and the address follow the camera; tags on nearby plateaus; benchmarks as survey marks; horizon and haze |
-| 5. Inspect | Selects a thing and reads it | Inspector: path, size and shares, dates, composition, bytes by last change, what changed since a benchmark or a date, what changed with a file, preview, duplicates; Quick look, stepped through a list; what a selection weighs; an archive's contents with I |
+| 5. Inspect | Selects a thing and reads it | Inspector: path, size and shares, dates, composition, bytes by last change, what changed since a benchmark or a date, what changed with a file, preview, duplicates; Preview beside the world, following the selection as it moves; Quick look, stepped through a list; what a selection weighs; an archive's contents with I |
 | 6. Act | Opens, renames, moves, removes | Context menu, keys, placing mode, drag and drop, the command palette; many items renamed with a preview; verified copies cleaned up; names and paths copied; lists saved as CSV; a terminal in the folder; every result stated in words |
 | 7. Confirm | Sees the world change to match the disk | Affected folders re-read; boxes move or rise; Undo offered in the notice |
 | 8. Leave | Goes up, back, or jumps somewhere else | Backspace, Alt+Left, 0, J to a marked return point, Fly there in the Places tab, breadcrumbs, search results and saved searches, survey entries, the command palette (Ctrl+K) |
@@ -469,7 +485,8 @@ to take a second.
 
 Stage 5 is built in waves, Wave 3 took the same method across
 Stages 4 to 6, and Wave 4 to Stage 4 and the polish of the sheet. Each
-wave runs on its own branch (`wave-1`, `wave-2`, `qol`, then `wave-4`)
+wave runs on its own branch (`wave-1`, `wave-2`, `qol`, then `wave-4`),
+and each tab of panel B on one of its own (`tab-preview` first),
 in a separate worktree: its build steps one after
 another, then an adversarial review, a fix step, and a docs and header
 pass. A wave is merged into `main` and pushed only when `npm test`,
@@ -999,6 +1016,110 @@ GPU and the default fixture of 3,126 files:
   in a 96 px column. The tabs now take the TIGHT voice and the column
   is 104 px.
 
+### Complete on branch `tab-preview`: Preview
+
+Preview is the first of the eight tabs planned beside the Inspector,
+built on its own branch, `tab-preview`, made from `main` at the Wave 4
+merge (`855e4de`), in a separate worktree. As the first tab it also
+built panel B's tab strip, which the other seven will join through the
+same registry. Its build steps ran one after another, each with Node
+checks in `npm test` and `ui-check` scenarios run one at a time in both
+passes before it committed; an adversarial review, a fix step and a
+docs and sweep step followed. It waits to be merged into `main`.
+
+1. **The readers** (`4ecfa8e`): what Quick look decided and said moves
+   out of `quicklook.js` into the DOM-free `web/js/readers.js`, which
+   Preview shares: what a file is shown as, the sentence for each case
+   with nothing to show (Quick look's word for word, but a link's, which
+   now names the Inspector and Preview), the text read,
+   what kind of text it is, the largest entries in one pass, a link's
+   target and the steps. `tools/preview-test.mjs` joined `npm test`; it
+   holds Quick look's decisions equal to a copy of what `quicklook.js`
+   decided at `855e4de`, over 356 files and modes, so the sheet and its
+   behaviour are unchanged.
+2. **Panel B's strip** (`389fa87`): the `B_TABS` registry; the
+   Inspector its first tab and the default, the choice kept in this
+   browser; both strips taking ← →, Home and End; the Inspector drawn
+   only while chosen; a "Show <tab>" palette item for every tab; and
+   paper still carrying the Inspector.
+3. **Preview** (`7b3262e`): the tab itself. Its head follows the
+   selection at once and its body once the arrows rest, every read a
+   newer selection overtakes aborted; a text with numbered lines, a
+   picture from its thumbnail only, sound and film in byte ranges, a
+   zip's listing, a link's target, a folder's summary and several
+   selected with their total, and a sentence for each case with
+   nothing to show; its keys in its pane, its guide rows, and the
+   palette's Wrap lines. The scenarios `preview`, `preview-regions` and
+   `preview-disk` are new, and `demo`, `hardening`, `polish` and
+   `seams` check the strip and the tab too.
+4. **Line numbers and End** (`d933522`, `6313994`): a counter reset per
+   chunk numbered every line 1 in Edge 157, because
+   `content-visibility` scopes counters to the chunk, so each line now
+   carries its own number. Chunks not yet drawn take the size their
+   lines will, so one End reaches the end and the scroll bar holds
+   still.
+5. **The review.** An adversarial review found, as high, Home in a
+   scrolled text rising to the overview instead of scrolling it, and
+   the palette's Wrap lines failing before Preview had ever been
+   chosen; as medium, "preview" in the palette ranking the wrap command
+   above Show Preview, a folder's rows and a link's Select replacing a
+   selection of several while one of them was read, and Quick look
+   offered where it shows no more than Preview; and, as low, ↑ ↓ and
+   Enter from the pane, the facts' words, the demo world's zip sizes,
+   the foot, the steps' words, panel B's name and the docs. It has no
+   commit of its own.
+6. **The fixes** (`9ce8734`): every finding, each with a check in
+   `preview`, `preview-disk`, `demo`, `preview-test` or `demo-test`;
+   then a hardening pass: a wrapped text's chunks sized again when the
+   pane's width changes (the check fails with the fix taken out), Enter
+   on where you are saying what works, and an empty folder and an
+   empty file reading nothing.
+7. **Docs and sweep**, in the commit titled "Preview docs and sweep":
+   README, ARCHITECTURE, this roadmap and every header the branch
+   touched, checked against the code. The sweep gave the readers'
+   Node check its changelog entry, made the long forms of `index.html`
+   1.8.0 and `layout.css` 1.4.0 in `CHANGELOG.md` open with their
+   headers' words, and set right what was older than the branch: the
+   README names `flavors-test` among the checks and no longer calls
+   `demo-test` the last of them, and three rows that had fallen out of
+   its verification table rejoin it; ARCHITECTURE names every setting
+   kept in the browser; and this roadmap's image rules say what the
+   inspector and Quick look may fetch, and its Key Features no longer
+   place the Stage 4 exit test on `wave-4`.
+
+Final check lines, on Windows 11 with Edge 157 on an RTX 5050 laptop
+GPU and the default fixture of 3,126 files:
+
+- `node --check` on all 108 script files outside `web/vendor/`: no
+  error;
+- `npm test`: "255 passed, 0 failed", "97 passed, 0 failed",
+  "57 passed, 0 failed", "33 passed, 0 failed", "60 passed, 0 failed",
+  "52 passed, 0 failed", "54 passed, 0 failed", "31 passed, 0 failed",
+  "80 passed, 0 failed", "159 passed, 0 failed", "68 passed, 0 failed",
+  "120 passed, 0 failed", "77 passed, 0 failed" and
+  "58 passed, 0 failed", 1,201 in all, `preview-test` last;
+- `node tools/vendor.mjs --check`:
+  "Every vendored file matches the manifest.";
+- the headers of the 28 files the branch touched that carry one
+  (`package.json`'s is `package.metadata.md`): the digiSpace header in
+  full, the version raised once with the date and the tag, a changelog
+  entry on every new file, and shipped headers within three entries and
+  40 lines; and the long form in `CHANGELOG.md` of every new entry of a
+  file it tracks, opening with its header's words: in rule;
+- Markdown: no line over 100 columns outside tables and fences in the
+  README, ARCHITECTURE, this roadmap, `CHANGELOG.md` and
+  `package.metadata.md`;
+- `node tools/ui-check.mjs --no-shots --port 5300`, both passes, every
+  port it opens between 5300 and 5309: "2974 passed, 0 failed, 8
+  skipped" (1,563 and 3 skipped with WebGL, 1,411 and 5 without), over
+  50 scenarios, 46 of them without WebGL. The skips are, in each pass,
+  what needs `--snapshot`, what needs a synthetic snapshot and a
+  `splash` check the survey's timing left nothing to test, and without
+  WebGL two checks of what is drawn in the world. Draw calls at the
+  baseline (overview 7, selected 9, search 8, duplicate ties 10).
+
+The branch is not yet merged into `main`.
+
 ## 6. Development datasets
 
 Building Terrane against a real directory without risk to it.
@@ -1030,8 +1151,12 @@ directory, so a real snapshot is never written over.
 The rules the image work follows, set by the shape of the real data
 (19,181 images, 35.7 GB, a largest file of 443 MB):
 
-- The browser never requests an original image. The inspector and the
-  hover tip use thumbnails; the tip waits for the pointer to rest.
+- The browser never requests an image's own file over 2 MB, nor an
+  SVG's own file; pictures come through the thumbnail routes. The hover
+  tip and Preview use thumbnails only (a light SVG's is its source, kept
+  in the dataset); the tip waits for the pointer to rest. The inspector
+  and Quick look show a raster's own file only when it has no thumbnail
+  and is 2 MB or less, and never in snapshot mode.
 - Thumbnail URLs carry the image's version and no token, so each is
   cached once, as immutable, across reloads and restarts.
 - The builder is incremental: an image is read again only when its size

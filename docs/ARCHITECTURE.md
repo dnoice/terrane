@@ -1,10 +1,10 @@
 <!--
 ✒ Metadata
-    - Title: Terrane Architecture (Terrane Edition - v1.12)
+    - Title: Terrane Architecture (Terrane Edition - v1.13)
     - File Name: ARCHITECTURE.md
     - Relative Path: docs/ARCHITECTURE.md
     - Artifact Type: docs
-    - Version: 1.12.0
+    - Version: 1.13.0
     - Date: 11/14/2026
     - Update: Saturday, November 14, 2026
     - Author: Dennis 'dendogg' Smaltz
@@ -12,6 +12,20 @@
     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
 
 ✒ Changelog:
+    - 1.13.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] —
+      Preview, on branch `tab-preview`. Scale adds how Preview reads (the
+      body after the arrows rest, superseded reads aborted, the last
+      text and listing kept, nothing done while unseen), topBySize, the
+      text's chunks, the Inspector drawn only while chosen, and the
+      figures measured. The demo world's zips fit their size. The known
+      limitations add Preview's. Visual identity adds panel B's strip
+      and Preview's pane, head and foot, and the stylesheet's preview
+      module. Section 7 adds preview.js and readers.js, the B_TABS
+      registry, Preview in the registries it fills, ESCAPE at 45, the
+      api's panel B calls, every setting kept in the browser (flavor and
+      the Guide's tab were missing), the keys of the tab strips and of
+      Preview's pane, and two hazards: a tab not shown does no work, and
+      two strips share `.tabs`.
     - 1.12.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — Visual
       identity: the grid and alignment the sheet's text stands on (the
       columns A, B and C, the rhythm of control heights, the three
@@ -133,9 +147,9 @@
     - Datasets for development against real data, and the warm cache
     - The visual identity and every drawing convention, and the grid,
       voices and wrapping rules the sheet's text keeps
-    - Feature modules and their seams: registries, the api, sheets,
-      browser storage, key allocation, relation sets, code tables, the
-      shared age table
+    - Feature modules and their seams: registries (panel B's tabs
+      among them), the api, sheets, browser storage, key allocation,
+      relation sets, code tables, the shared age table
     - Measurements, the Stage 4 exit test at five sizes among them, and
       known limitations
 
@@ -672,6 +686,10 @@ Node checks answer through the same code.
 | Fuzzy ranking: a subsequence pre-test rejects most names, the best placement by one pass per query character over preallocated typed arrays, the best few kept in a small sorted buffer | `fuzzy.js` |
 | The palette's places built when it opens and kept until the next survey or refresh; ranked 60 ms after the last key | `palette.js` |
 | Quick searches counted in one walk that tests all four, the first time the section is open after a survey | `presets.js` |
+| Preview follows the selection: its head at once, its body 140 ms after the last step, a read a newer selection overtakes aborted through its signal and a late answer dropped; the last text and the last archive listing kept by path, size and time; nothing read or played while its tab is not on screen or a sheet is open | `preview.js` |
+| A text in Preview as numbered lines in chunks of 200 under `content-visibility`, each chunk given the size its lines will take before it is drawn, so one End reaches the end; sized again when a wrapped pane's width changes | `preview.js` |
+| A folder's or a listing's largest entries found in one pass with a small sorted buffer, never a sort of the whole folder | `readers.js` `topBySize` |
+| The Inspector drawn only while its tab is chosen; otherwise marked stale, and drawn when chosen or printed | `app.js` |
 | Above 100,000 entries the tree kept in the service in typed columns, every figure kept exact along a change's chain, a large folder's held set cached until it changes | `columns.js`, `regions.mjs` |
 | The page holds only the regions near the eye: the layout names the folders it would open, a prefetch from 0.6 of that distance, highest priority first | `layout.js`, `regions.js` |
 | Regions batched under 64 folders, 40,000 entries and about 4 MB an answer, at most two requests in flight, one region's nodes built per task | `columns.js`, `regions.js` |
@@ -880,6 +898,15 @@ walked down by the folder with most folders beneath, each region timed,
 | The survey of 5,000,000 entries, worked out by bucket rather than one sort | about 410 ms, against about 730 ms |
 | Region answers while the tree changes, 5,000,000 entries, a request every 100 ms timed from when it was due, with the page's refresh, search and survey asked as the page asks them (a probe, not kept) | one change a second: median 10.8 ms, 95th percentile 211 ms, 56 of 406 over 100 ms, against 155 ms, 559 ms and 242 of 413 before the survey was paced; one change every 450 ms: 11 ms, 193 ms and 51 of 404, against 16 ms, 269 ms and 139 of 406, when the survey was never asked again |
 
+### Measured (Windows 11, RTX 5050 laptop GPU, Edge 157, 11/14/2026, Preview)
+
+| Measure | Result |
+| ------- | ------ |
+| An arrow held over 15 rows of the fixture, Preview on screen (`preview`) | one read of `GET /api/raw`, with WebGL and without (the check allows two) |
+| An arrow held over 12 rows in the demo world of about 12,000 files (`demo`) | one read, in both passes |
+| An arrow held over 12 rows at 800 by 500, Preview in the drawer (`hardening`) | one read, in both passes |
+| A text of 6,500 lines cut at 256 KB, its 3,745 lines read built as numbered lines (`preview-disk`, `terrane:preview-text`) | 10 ms with WebGL, 11 ms without |
+
 ## 5. Datasets
 
 Two SQLite files per mirrored directory, kept in
@@ -947,7 +974,7 @@ generated directory instead of none. Three modules do it, all in
 
 | Module | Does |
 | ------ | ---- |
-| `demo-world.js` | Builds the tree from one seed: about 12,000 files and 1,700 folders of a made-up studio drive, every date relative to the moment of building. Writes a file's text on demand, to its exact size, and lists a zip's entries. No DOM. |
+| `demo-world.js` | Builds the tree from one seed: about 12,000 files and 1,700 folders of a made-up studio drive, every date relative to the moment of building. Writes a file's text on demand, to its exact size, and lists a zip's entries, their packed bytes and the zip's own records adding up to its size. No DOM. |
 | `demo-service.js` | The service's API over that tree: the same routes, parameters, records, answers and refusals, operations and undo journal, jobs with progress and cancel. Changes live in memory. No DOM. |
 | `demo.js` | Answers `fetch` and `EventSource` for `/api/` in the page, draws thumbnails on a canvas from each image's style and colour, synthesizes a tone for audio, and shows the welcome notice. |
 
@@ -1049,7 +1076,16 @@ Choices and their reasons:
   search does not reach inside, and entry contents and CRCs are not read.
 - Quick look reads the first 256 KB of a text. A picture with no
   thumbnail is shown only when it is 2 MB or less and not an SVG;
-  otherwise it is described.
+  otherwise it is described. Quick look reads the binary data formats
+  (`.sqlite`, `.parquet` and the rest) as text, whose first NUL then
+  says binary content; Preview names them as a kind it does not read.
+- Preview also reads the first 256 KB of a text, and shows a larger one
+  cut, with a sentence, rather than refusing it. A picture reaches it
+  only as a thumbnail, so a picture with none is described. A zip's
+  listing is read whole into a model of its own before its top level
+  shows; that was not measured past about 20,000 entries. The
+  Inspector keeps its own Preview section, a picture's thumbnail or a
+  text's first 16 KB, beside the tab of that name.
 - A batch rename refuses a chain or a swap outright rather than ordering
   it through temporary names, because Undo could not reverse it.
 - `say()` sets the live region's text, so a sentence said twice in a
@@ -1231,13 +1267,29 @@ direction is a survey sheet around a plaster world.
   rows that cannot be renamed on a garnet wash. They are modal, so the
   page's keys rest while one is open, and Escape closes each with focus
   back where it was.
+- **Panel B's tabs**: panel B's head is a tab strip drawn as the
+  ledger's, each tab an icon and a label in the tight voice over the
+  sliding rule, the Inspector first. Should a label no longer fit
+  (`data-crowded`, which two tabs never reach), only the chosen tab
+  keeps its words, and the others keep theirs as their name and title.
+  Preview's head is the inspector's on the panel's grid: the kind's mark
+  at A and its words at B, the name, then "in <folder>" and the facts in
+  mono. Its pane scrolls inside the panel and holds the text beside a
+  gutter of line numbers, the picture on the stipple, the player, the
+  listing or the summary's rows. Each line carries its own number
+  (`data-n`), which CSS draws, so a copy or a screen reader leaves the
+  numbers out; a counter would have reset at every chunk, since
+  `content-visibility` scopes counters. Its foot's key hints are groups
+  that never break, each dot held to the hint before it, so no line
+  begins with one. On paper panel B prints the Inspector whichever tab
+  is chosen, its tab inked as the panel's heading.
 - **Stylesheet structure**: `web/css/terrane.css` declares the layers
   `tokens, fonts, base, layout, components, utilities, motion, print`
   and imports its modules into them: one each for the other layers,
   and for components one per component group (controls, bar, ledger,
   stage, inspector, block, floating, splash) and one per feature (time,
   places, traverse, strata, interior, palette, searches, quicklook,
-  presets, batch). Components read their colours
+  presets, batch, preview). Components read their colours
   from `tokens.css`, never a raw colour (the loading sheet's artwork
   palette is scoped to the sheet); most sizes are tokens too, while
   component-local paddings and gaps are written in place. The grid is
@@ -1269,6 +1321,9 @@ follow: `palette.js` (the command palette, with the DOM-free
 `searches.js` (search history, saved searches and `in:`), both keeping
 their data through the DOM-free `memory.js`; `quicklook.js`;
 `presets.js` (the selection's total and the quick searches);
+`preview.js` (Preview, panel B's second tab, which reads through the
+DOM-free `readers.js` it shares with `quicklook.js`, so the two never
+disagree on what a file is shown as or why it is not);
 `batch.js` (the batch rename, with the DOM-free `rename.js`);
 `dupes.js` (duplicate cleanup); `copyas.js`; `exports.js` (lists as
 CSV, with the DOM-free `csv.js`); `terminal.js`; and `flavors.js`
@@ -1289,30 +1344,31 @@ and the rest still run.
 
 | Registry | An entry | Filled by |
 | -------- | -------- | --------- |
-| `KEYS` | `{ keys, mod, run(c), when, inList, guide, labels, palette, gl }`: the keyboard map, the `?` guide and the palette's actions as one table. `labels` gives one palette item per key (the lenses 1 to 4, the panels `[ ]`), `palette: false` keeps a key out of it (the arrows, Enter, the menu key), and `gl: true` marks it unavailable without WebGL (V, 0) | the controller, Time, Landmarks, Interiors, Palette (Ctrl+K), Quick look (P); guide rows only from Search history, Totals and Batch rename |
-| `ESCAPE` | `{ active(), clear(), typing }`, first active wins: floating surface 10, placing 20, kind filter 30, Time 40, search 50, selection 70, an open archive 80 | the controller, Time, Interiors |
+| `KEYS` | `{ keys, mod, run(c), when, inList, guide, labels, palette, gl }`: the keyboard map, the `?` guide and the palette's actions as one table. `labels` gives one palette item per key (the lenses 1 to 4, the panels `[ ]`), `palette: false` keeps a key out of it (the arrows, Enter, the menu key), and `gl: true` marks it unavailable without WebGL (V, 0) | the controller, Time, Landmarks, Interiors, Palette (Ctrl+K), Quick look (P); guide rows only from Search history, Totals, Batch rename and Preview |
+| `ESCAPE` | `{ active(), clear(), typing }`, first active wins: floating surface 10, placing 20, kind filter 30, Time 40, Preview 45 (reading one of several, with focus in Preview), search 50, selection 70, an open archive 80 | the controller, Time, Preview, Interiors |
 | `PIN_SOURCES` | `{ pins(L, room) }`, added up in order to the 3,000-pin capacity: benchmarks 10, search 20, heavyweights 30 | the controller, Landmarks |
 | `TIP_LINES` | `{ lines(node, { i, type, L }) }`: hover lines after the name and summary: levels 10, Strata 15, matches 20, placing 30, copies 40, pixels 50, Landmarks 50, Time 60, Interiors 70 | the controller, Time, Landmarks, Strata, Interiors |
-| `INSPECTOR.focus`, `INSPECTOR.node` | `{ build(node, ctx) }`: sections of the "You are in" summary (Landmarks 28, Terminal 30) and of a selected item (Changed with it 32, Landmarks 35, Terminal 55, Quick look 62) | the controller, Time, Landmarks, Strata, Interiors, Session traverse, Quick look, Terminal |
+| `INSPECTOR.focus`, `INSPECTOR.node` | `{ build(node, ctx) }`: sections of the "You are in" summary (Landmarks 28, Terminal 30) and of a selected item (Changed with it 32, Landmarks 35, Terminal 55, Quick look 62); built only while the Inspector's tab is chosen | the controller, Time, Landmarks, Strata, Interiors, Session traverse, Quick look, Terminal |
 | `INSPECTOR.many` | `{ build(nodes, ctx) }` with ctx `{ ro, off }`: sections after the Actions grid of a selection of several | Batch rename |
 | `READING` | `{ glyph, title, text }`: a Reading the world row | the controller and every Stage 5 feature |
 | `TABS` | `{ label, draw, list, count, enter, key }`: a ledger tab | the controller, Landmarks (Places) |
+| `B_TABS` | `{ label, icon, title, mount(host), show(host, { focus }), hide(), focusTarget(host) }`: a tab of panel B, the Inspector 0 and Preview 20. The controller draws the strip and gives each feature tab a panel, `div.b-panel#b-panel-<id>` after `#inspector-body`; `mount` runs once, when the tab is first chosen; `show` whenever it is chosen while panel B is on screen, and again when panel B comes back (`]`, the drawer, the 860 px breakpoint); `hide` when it is left or panel B goes; `focusTarget` is where focus goes in it | the controller (the Inspector), Preview |
 | `TAB_SECTIONS` | `{ tab, build() }`: a section a feature adds to a tab another one draws; the tab's draw appends `api.tabSections(tab)` after its own | Search history (Saved searches in Places, 30) |
 | `SURVEY` | `{ build(survey) }`: a Survey tab section: Working sessions 5, Quick searches 7, the controller's lists 10 to 50, Export as CSV 95 | the controller, Session traverse, Totals and quick searches, Export |
 | `LEDGER_SUB` | `{ tab, build(ctx) }`, ctx `{ items, search, focus }`: controls on the Contents or Findings count row, in a `span.sub-tools` after the count, each with a `data-k` so a redraw keeps focus on it; a tool is a 24 px icon button (`btn btn-icon sub-tool`) at the row's end: the selection's total 10, Save search… 50, Export CSV 60 | Totals, Search history, Export |
 | `LAYOUT_OPTS` | `{ options(opts) }`, merged into the layout's one options object | Time (`asOf`), Interiors (`inside`, `aliases`) |
 | `MENU` | `{ items(node, ctx), many(nodes, ctx) }`, at least one: `items` is a group after Open, Reveal and Copy path, or at the end for the folder you are in; `many` follows Copy paths in the menu of several, ctx `{ ro, off }` | Landmarks, Interiors, Session traverse, Remembered view (Copy link), Batch rename, Copy as, Terminal |
-| `COMMANDS` | `{ section, items() }`, each item `{ label, detail, hint, run(), off }`: the palette's actions that have no key, asked each time it opens; `off` is the reason an item cannot run | Landmarks, Session traverse, Palette, Remembered view, Search history, Totals and quick searches, Batch rename, Duplicate cleanup, Copy as, Export, Terminal |
+| `COMMANDS` | `{ section, items() }`, each item `{ label, detail, hint, run(), off }`: the palette's actions that have no key, asked each time it opens; `off` is the reason an item cannot run | Landmarks, Session traverse, Palette (and a "Show <tab>" item for every `B_TABS` entry), Remembered view, Search history, Totals and quick searches, Preview (Wrap lines), Batch rename, Duplicate cleanup, Copy as, Export, Terminal |
 | `RENAME_MANY` | `{ run(nodes) }`, the first entry wins: what F2 does with more than one item selected; with one, F2 is the single rename | Batch rename |
 | `DUP_GROUP` | `{ build(group, ctx) }`, ctx `{ node, where, ro }`: under a group of duplicate candidates, in the inspector's copies (`where: 'inspector'`) and after each group in the Survey (`'survey'`) | Duplicate cleanup |
 | `QUERY.is`, `QUERY.prefix` | `is:<word>` and `<name>:<value>` search tokens; built-in tokens cannot be replaced | Landmarks (`is:benchmark`), Session traverse (`session:N`), Search history (`in:`) |
-| `AFTER_LAYOUT` | `run(L)` at the end of every relayout | Landmarks, Session traverse, Remembered view |
-| `AFTER_REFRESH` | `run(dirs)` once a refresh has pruned selection, focus and trail; `null` after a warm start's check (or its Survey again) | Landmarks, Interiors, Palette |
-| `AFTER_SURVEY` | `run(survey, { full, warm, settled })` after every survey: `full` for a whole survey, `warm` for one of the last session's tree, `settled` for the check's; the age table is rebuilt first, at 10, and the kept view is put back at 80 | the controller and every Stage 5 feature, Palette, Remembered view |
+| `AFTER_LAYOUT` | `run(L)` at the end of every relayout | Landmarks, Session traverse, Remembered view, Preview |
+| `AFTER_REFRESH` | `run(dirs)` once a refresh has pruned selection, focus and trail; `null` after a warm start's check (or its Survey again) | Landmarks, Interiors, Palette, Preview |
+| `AFTER_SURVEY` | `run(survey, { full, warm, settled })` after every survey: `full` for a whole survey, `warm` for one of the last session's tree, `settled` for the check's; the age table is rebuilt first, at 10, and the kept view is put back at 80 | the controller and every Stage 5 feature, Palette, Remembered view, Preview |
 | `AFTER_OP` | `run(body, res)` once the service has carried out a change, before the affected folders are re-read: Undo included (`res.moved`), a batch rename (`res.renamed`, the pairs), and a change or an Undo that stopped part way (`res.partial`, with `res.results` or `res.moved`) | Landmarks |
 | `AFTER_QUERY` | `run(search, query)` whenever the search runs; it may set `search.sort` and `search.note` for Findings | Session traverse, Search history |
-| `AFTER_FOCUS` | `run(dir)` once the folder you are in has changed: `moveFocus`, and a refresh, a warm start's check or Rescan all that moved it (`focusMoved`) | Remembered view |
-| `AFTER_SELECT` | `run(sel, primary)` at the end of every selection change, quiet ones and `selectAll` included | Remembered view, Totals |
+| `AFTER_FOCUS` | `run(dir)` once the folder you are in has changed: `moveFocus`, and a refresh, a warm start's check or Rescan all that moved it (`focusMoved`) | Remembered view, Preview |
+| `AFTER_SELECT` | `run(sel, primary)` at the end of every selection change, quiet ones and `selectAll` included | Remembered view, Totals, Preview |
 
 `AFTER_OP` is what lets Landmarks follow Terrane's own renames and moves,
 and their undo, by path before the tree changes, after a reload too.
@@ -1320,7 +1376,7 @@ and their undo, by path before the tree changes, after a reload too.
 shows them unavailable, with the reason, where they do not apply.
 `AFTER_FOCUS` and `AFTER_SELECT` run often: a hook must be cheap and
 defer anything that is not, as the remembered view saves a second
-later.
+later and Preview reads once the arrows have rested.
 
 ### The api, sheets and browser storage
 
@@ -1352,6 +1408,15 @@ to its answer; `resolveRow(ref)` makes a listed ref a node in its
 list's place; `notAtSize(what)` is the sentence for what the service
 does not answer at that size.
 
+Panel B's tabs added `B_TABS`; `drawBTabs()`, the strip drawn again
+from it; `showBTab(id, { focus })`, a tab shown, panel B opened first
+when `]` or a narrow window hid it, and false for a tab not registered;
+`bTabShown(id)`, whether a tab is on screen, chosen with panel B shown;
+`composition(dir, title)`, a folder's bytes by kind under a head of that
+title; `contentsOrder(dir)`, a folder's held children in the order
+Contents lists them; and `get(route, params, { signal })`, whose signal
+aborts the request. `S.bTab` is the chosen tab.
+
 `ui.js` gains `openSheet(build, { className, label, onKey })`, a sheet
 in the shared dialog for what is richer than `ask()`: the palette,
 Quick look and the batch rename. It takes the floating slot, is modal,
@@ -1366,7 +1431,10 @@ under one key per directory, with `|snapshot` appended for a snapshot:
 `terrane.places.v1|<root>` (benchmarks and the return point),
 `terrane.view.v1|<root>` (the kept view) and
 `terrane.searches.v1|<root>` (history and saved searches), beside the
-one setting `terrane.single-keys`. Every read is checked field by field
+settings kept for every directory: `terrane.single-keys`,
+`terrane.flavor`, `terrane.guide-tab` (the Guide's tab),
+`terrane.panel-b-tab` (panel B's tab) and `terrane.preview-wrap`
+(Preview's Wrap lines). Every read is checked field by field
 before it is used, and saved searches are merged per id before each
 write, so two tabs keep each other's. When the browser refuses storage,
 the view and the searches say so once and keep working in memory until
@@ -1385,9 +1453,16 @@ the chord Ctrl+K, which acts everywhere but in a text field, where the
 browser keeps it. Session traverse, Strata and the rest of Wave 3 bind
 no key: the batch rename takes F2 through `RENAME_MANY`,
 search history claims ArrowUp and ArrowDown inside Find only, and
-Quick look's arrows, Home and End act inside its sheet. Their guide
-rows sit in the guide's sections Finding your way, Looking closer and
-Acting on many.
+Quick look's arrows, Home and End act inside its sheet. Preview binds
+none either: its arrows, Home, End, Enter, P and Esc act inside its
+pane, the content's scroll first, and are kept from the window's
+handler, so Home in a scrolled text goes to its top rather than rising
+to the overview; P there is Quick look's own entry, run on Preview's
+item. Both tab strips, the ledger's and panel B's, take ← →
+(wrapping), Home and End themselves (`stripKeys`), the tab reached
+chosen, under one core guide row, "← → on tabs". Their guide rows sit
+in the guide's sections Finding your way, Looking closer and Acting on
+many.
 `inList` (default true) decides whether a key acts while the ledger list
 has focus; the guide is made from the same table. The guide also holds
 the single-key setting. It is off unless turned on there: a key that
@@ -1481,6 +1556,16 @@ the first survey.
   that walks the whole tree; and makes a listed ref a node before it
   selects, reveals or measures it. B reads the folder's region before
   measuring, and J and the first survey resolve their paths first.
+- **A tab not shown does no work.** A `B_TABS` entry's `show` runs only
+  while panel B is on screen with its tab chosen, and `hide` as soon as
+  either ends; a tab that reads, plays or measures asks
+  `api.bTabShown(id)` before it does, and pauses while a sheet is open,
+  as Preview does. The Inspector is held to the same rule: its sections
+  are built only while its tab is chosen, and printing draws it first.
+- **Two strips share `.tabs`.** The ledger's strip is `#ledger-tabs`,
+  whose buttons carry `data-tab`, and panel B's is `#b-tabs`, whose
+  buttons carry `data-btab`; code that means one strip names it by its
+  id, never by the class.
 - **Focus by its hook.** The address and the kept view follow
   `AFTER_FOCUS`, so code that moves `S.focus` other than through
   `moveFocus` calls `focusMoved(was)` once it has pruned the tree, as a

@@ -21,6 +21,8 @@
       1.2.0 and 2.2.0 entries out; this file already holds them. The review's fixes extend the
       entries of app.js 1.16.0 and index.html 1.8.0 (] named for panel B), and terrane.css
       2.5.0's long form says how Preview numbers its lines now and holds the foot's dots.
+      The docs and sweep make the long forms of index.html 1.8.0 and layout.css 1.4.0 open
+      with their headers' words, as the branch's other new entries do.
     - 1.12.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — Records Wave 4, merged
       with main's flavors and Guide window (app.js 1.15.0, floating.css 1.4.0). First, the
       polish of the panels:
@@ -580,7 +582,7 @@ short form is kept too.
 - 1.8.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — Panel B's head is a tab strip
   (#b-tabs, "Inspector views") where its heading stood, the Inspector its first tab;
   #inspector-body is that tab's panel. The ledger's strip is named #ledger-tabs. The view tools' ]
-  toggle is named for panel B: "Show or hide panel B (])". The aside keeps
+  toggle is named for panel B. In full: the toggle reads "Show or hide panel B (])". The aside keeps
   its name, Inspector; the strip stands after the B reference square, its buttons made by app.js
   from B_TABS; #inspector-body keeps tabindex -1 and gains role tabpanel, labelled by
   #b-tab-inspector.
@@ -1056,8 +1058,8 @@ short form is kept too.
 ## web/css/layout.css
 
 - 1.4.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — A feature tab's panel in panel B
-  (.b-panel) fills the panel as #inspector-body does, beside it: position relative, flex 1,
-  min-height 0, so the tab's own pane scrolls inside it.
+  (.b-panel) fills the panel as #inspector-body does, beside it. In full: it is position
+  relative, flex 1 and min-height 0, so the tab's own pane scrolls inside it.
 
 - 1.3.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — The ledger's head is at most two
   30 px rows of one line: the count row (the count at A, a feature's tools as 24 px icons at its

@@ -12,6 +12,10 @@
  *     - A.I. Acknowledgement: Anthropic - Claude Opus 5.5
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
  *
+ * ✒ Changelog:
+ *     - 1.0.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] —
+ *       Initial release.
+ *
  * ✒ Description:
  *     Checks the readers Quick look and Preview share (web/js/readers.js)
  *     in Node: what each kind of file is shown as, Quick look's sentences
