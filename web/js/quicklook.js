@@ -15,9 +15,11 @@
  * ✒ Changelog:
  *     - 1.2.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
  *       readers move to readers.js, shared with Preview: what a file is
- *       shown as, the sentences (word for word), the text read, the steps;
- *       the sheet and its behaviour are unchanged. Its key entry opens
- *       c.node when given one, so Preview's button opens it on its item.
+ *       shown as, the sentences (word for word but a link's, which names
+ *       the Inspector and Preview), the text read, the steps; the sheet and
+ *       its behaviour are unchanged. Its key entry opens c.node when given
+ *       one, so Preview's button opens it on its item, and its Guide row
+ *       says so (P in Preview has no row of its own).
  *     - 1.1.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — The foot
  *       line's hints are groups that never break (span.hint), each keycap
  *       with its words.
@@ -353,7 +355,7 @@ export function install(api) {
 
   // run(c) opens c.node when one is given (Preview's button), else the
   // selection, as P and the palette do.
-  api.KEYS.add({ id: 'quicklook', owner: OWNER, keys: ['p'], run: (c) => { open(c?.node); }, guide: ['Looking closer', 'P', 'Quick look at the selected file'] });
+  api.KEYS.add({ id: 'quicklook', owner: OWNER, keys: ['p'], run: (c) => { open(c?.node); }, guide: ['Looking closer', 'P', 'Quick look at the selected file, or at Preview\'s item'] });
 
   api.INSPECTOR.node.add({
     id: 'quicklook', order: 62, owner: OWNER,

@@ -24,24 +24,32 @@
  *
  * ✒ Key Features:
  *     - preview (read-only fixture): the strip, Inspector first and drawn,
- *       no raw read before Preview is chosen; the strip's arrows, Home and
- *       End, Home leaving the eye where it was; the tab kept over a
- *       reload; a text file's numbered lines (one read, 256 KB at most);
- *       the cut line, Wrap lines kept, a long line scrolled first; a held
- *       arrow over 15 rows read once or twice; steps in the pane; Quick
- *       look from it and back, Preview asking nothing while the sheet is
- *       open; a picture with no raw read; sound and film in byte ranges,
- *       emptied by a step; zip listings, a damaged zip's sentence, a 7z
+ *       no raw read before Preview is chosen; the palette's wrap command
+ *       before Preview was ever chosen; the strip's arrows, Home and End,
+ *       Home leaving the eye where it was; the tab kept over a reload; a
+ *       text file's numbered lines (one read, 256 KB at most); the foot's
+ *       dots and its two lines at 1600 and 1280 px; the cut line, Wrap
+ *       lines kept, a long line scrolled first; End then Home in a
+ *       scrolled pane (no flight, the location kept) and Home again to
+ *       the first item; a held arrow over 15 rows read once or twice;
+ *       steps in the pane; Quick look from it and back, Preview asking
+ *       nothing while the sheet is open; a picture with no raw read; sound
+ *       and film in byte ranges, emptied by a step; zip listings, P on an
+ *       archive and a link saying why, a damaged zip's sentence, a 7z
  *       asked for nothing; Look inside and I; a link's target; a folder's
- *       summary, its rows and the way back up; four selected, one read and
- *       back; snapshot mode for a moment; ] hiding panel B; the palette's
- *       Show Preview with panel B hidden; the Guide's rows; no POST
+ *       summary, ↓ from the pane to its rows, the way back up; four
+ *       selected, ↓ and Enter from the pane, each step described, back; a
+ *       folder and a link read as one of several keeping the selection;
+ *       snapshot mode for a moment; ] hiding panel B, named so; the
+ *       palette's "preview", Enter with panel B hidden; the Guide's rows,
+ *       one P; no POST
  *     - preview-regions (threshold 0): a folder not held shows its figures
  *       and then its largest rows; a file reads; Findings' refs step
  *     - preview-disk (writes): a text of 6,500 lines cut at 256 KB,
  *       numbered 1 to its last line read, built in one short task
- *       (terrane:preview-text), and one End reaching its end; a file and
- *       a folder deleted from outside; a file grown on disk read again
+ *       (terrane:preview-text), and one End reaching its end, at 1600 px
+ *       and again at 1280 px; a file and a folder deleted from outside; a
+ *       file grown on disk read again
  *
  * ✒ Usage Instructions:
  *     node tools/ui-check.mjs preview preview-regions preview-disk --no-shots --port 5300
@@ -104,6 +112,39 @@ const raws = (t, since) => t.requests(since).filter((r) => r.path === '/api/raw'
   return { path: q.get('path'), max: Number(q.get('max')), status: r.status, range: r.headers?.Range || r.headers?.range || null };
 });
 const asked = (t, since, route) => t.requests(since).filter((r) => r.path === `/api/${route}`).map((r) => new URL(r.url).searchParams.get('path'));
+
+/**
+ * The pane once it has stood still for six frames (the browser scrolls
+ * smoothly; three seconds at most), with where the eye and the location
+ * are, so a check can tell a scroll from a step or a flight.
+ */
+const paneStill = () => new Promise((r) => {
+  const p = document.querySelector('#b-panel-preview .pv-pane');
+  const T = window.__terrane;
+  const stop = performance.now() + 3000;
+  let was = -1;
+  let still = 0;
+  const look = () => requestAnimationFrame(() => {
+    still = p.scrollTop === was ? still + 1 : 0;
+    was = p.scrollTop;
+    if (still < 6 && performance.now() < stop) return look();
+    const v = T.S.view;
+    return r({
+      top: p.scrollTop, atEnd: p.scrollTop + p.clientHeight >= p.scrollHeight - 1, primary: T.S.primary?.n ?? null, here: T.api.relPath(T.S.focus),
+      flight: T.S.noGL ? null : !!v.flight, cam: T.S.noGL ? null : [v.cam?.x, v.cam?.y, v.cam?.z].map((x) => Math.round(x ?? 0)).join(','), pane: document.activeElement === p,
+    });
+  });
+  look();
+});
+
+/** The palette opened by Ctrl+K, query typed: the options as "label|detail", once fn(options) holds. */
+async function palette(t, query, fn = (o) => o.length > 0) {
+  await t.key('Ctrl+K');
+  await t.waitFor(() => document.getElementById('dialog').open && !!document.querySelector('.palette-input'), { what: 'the palette' });
+  await t.type(query);
+  return t.waitFor(`() => { const o = [...document.querySelectorAll('.palette-option')].map((x) => \`\${x.querySelector('.pal-label')?.textContent}|\${x.querySelector('.pal-detail')?.textContent}\`); return (${fn})(o) && o; }`,
+    { what: `the palette's options for "${query}"` });
+}
 
 /** Lines in a text as the gutter numbers them: a final newline ends the last one. */
 const countLines = (text) => (text ? text.split(/\r\n|\n|\r/).length - (/[\r\n]$/.test(text) ? 1 : 0) : 0);
@@ -178,6 +219,23 @@ const preview = {
       && s0.label === 'Inspector views' && JSON.stringify(s0.icons) === JSON.stringify(['info', 'eye']), JSON.stringify(s0));
     t.check('nothing is read from a file before Preview is chosen', rawsAtStart.length === 0, JSON.stringify(rawsAtStart));
 
+    // The palette's wrap command on a page where Preview was never chosen
+    // (its panel not made yet): the choice is kept and said, panel B stays
+    // on the Inspector, and no error. Twice, so it ends as it began.
+    const wrapRuns = [];
+    for (const want of ['off', 'on']) {
+      const opts = await palette(t, 'wrap', (o) => /\(Preview\)\|Panel B$/.test(o[0] || ''));
+      await t.key('Enter');
+      const run = await t.waitFor((T, w) => !document.getElementById('dialog').open && localStorage.getItem('terrane.preview-wrap') === w && /^Preview will/.test(document.getElementById('live').textContent) && {
+        live: document.getElementById('live').textContent, kept: localStorage.getItem('terrane.preview-wrap'), bTab: T.S.bTab,
+        mounted: 'mounted' in (document.getElementById('b-panel-preview')?.dataset || {}),
+      }, { args: [want], what: `the wrap command, ${want}` }).catch(() => t.app((T) => ({ failed: true, live: document.getElementById('live').textContent, kept: localStorage.getItem('terrane.preview-wrap'), bTab: T.S.bTab })));
+      wrapRuns.push({ first: opts[0], ...run });
+    }
+    t.check(`before Preview was ever chosen, the palette's wrap command keeps the choice and says it, panel B on the Inspector (${wrapRuns.map((r) => r.live).join(' / ')})`,
+      wrapRuns.length === 2 && !wrapRuns[0].failed && !wrapRuns[1].failed && wrapRuns[0].first === 'Stop wrapping long lines (Preview)|Panel B' && wrapRuns[0].live === 'Preview will let long lines run on.'
+      && wrapRuns[1].first === 'Wrap long lines (Preview)|Panel B' && wrapRuns[1].live === 'Preview will wrap long lines.' && wrapRuns.every((r) => r.bTab === 'inspector' && !r.mounted), JSON.stringify(wrapRuns));
+
     // Tab to the strip; the arrows choose and move focus; Home leaves the eye where it was.
     await t.tabTo('#b-tabs [data-btab=inspector]', { max: 120 });
     await t.key('ArrowRight');
@@ -221,6 +279,28 @@ const preview = {
     t.check(`the head says the facts and the folder it is in (${readme.facts}; ${readme.where})`,
       new RegExp(`^\\d+ B · ${want} lines · LF · changed \\d\\d/\\d\\d/\\d{4}$`).test(readme.facts) && readme.where === 'in site', JSON.stringify(readme));
     t.check('one raw read, of README.md, at most 256 KB', rr.length === 1 && rr[0].path === README && rr[0].max === 262144, JSON.stringify(rr));
+    // The foot: a hint and its dot never part, so no line begins with one;
+    // docked, it takes two lines at most, at 1600 and at 1280 px.
+    const foot = () => {
+      const f = document.querySelector('#b-panel-preview .pv-foot');
+      // A line for every distinct top among the hints (each one box, never broken).
+      const lines = new Set([...f.querySelectorAll('.hint')].map((h) => Math.round(h.getBoundingClientRect().top / 4))).size;
+      const parted = [...f.querySelectorAll('.sep')].filter((x) => {
+        const before = x.previousElementSibling.getClientRects();
+        return Math.abs(x.getBoundingClientRect().top - before[before.length - 1].top) > 2;
+      }).length;
+      const cs = getComputedStyle(f);
+      const room = Math.round(f.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight));
+      return { lines, parted, room, widths: [...f.children].map((x) => Math.round(x.getBoundingClientRect().width)), text: f.textContent };
+    };
+    const foot1600 = await t.eval(foot);
+    await t.page.send('Emulation.setDeviceMetricsOverride', { width: 1280, height: 800, deviceScaleFactor: 1, mobile: false });
+    await t.sleep(400);
+    const foot1280 = await t.eval(foot);
+    await t.page.send('Emulation.setDeviceMetricsOverride', { width: 1600, height: 1000, deviceScaleFactor: 1, mobile: false });
+    await t.sleep(300);
+    t.check(`the foot keeps each dot with the hint before it and fits two lines, at 1600 px (${foot1600.lines}) and 1280 px (${foot1280.lines}): ${foot1280.text}`,
+      [foot1600, foot1280].every((f) => f.parted === 0 && f.lines <= 2) && /P Quick look/.test(foot1600.text) && !/long line/.test(foot1600.text), JSON.stringify({ foot1600, foot1280 }));
 
     /* ---- a long text: cut, wrap, a long line ---- */
     mark = t.mark();
@@ -249,12 +329,29 @@ const preview = {
     });
     await t.sleep(300);
     t.check('a key held from scrolling stops at the edge: still copy-a.dat', (await t.app((T) => T.S.primary?.n)) === 'copy-a.dat');
+    t.check('with lines running on, the foot says a long line scrolls to its edge first', /a long line scrolls to its edge first/.test(await t.text('#b-panel-preview .pv-foot')));
     await t.reload();
     await goTo(t, 'edge cases/copy-a.dat');
     const afterReload = await until(t, 'copy-a.dat', (s) => s.lines > 0);
     t.check('Wrap lines off is kept over a reload', afterReload.nowrap === true, JSON.stringify(afterReload));
     await t.eval(() => { document.querySelector('#b-panel-preview [data-k=wrap]').click(); return true; });
     t.check('and on again wraps', !(await t.eval(pv)).nowrap);
+    // Wrapped, the cut text runs thousands of rows. End, then Home, in the
+    // pane: the text scrolls to its end and back to its top, and the
+    // window's keys never hear Home (no flight to the overview, the
+    // location kept); at the top, Home steps to the first item.
+    await t.eval(() => { document.querySelector('#b-panel-preview .pv-pane').focus(); return true; });
+    await t.key('End');
+    const atEnd = await t.eval(paneStill);
+    await t.key('Home');
+    const atTop = await t.eval(paneStill);
+    t.check(`End then Home in the pane scrolls the text to its end (${atEnd.top} px) and back to its top (${atTop.top} px), on copy-a.dat, the eye and the location where they were`,
+      atEnd.atEnd && atEnd.top > 0 && atTop.top === 0 && atTop.primary === 'copy-a.dat' && atTop.pane && atTop.here === atEnd.here && !atTop.flight && atTop.cam === atEnd.cam, JSON.stringify({ atEnd, atTop }));
+    const firstItem = await t.app((T) => T.api.listItems()[0]?.n);
+    await t.key('Home');
+    const homed = firstItem === 'copy-a.dat' ? await t.live() : await t.waitFor((T, n) => T.S.primary?.n === n && T.S.primary.n, { args: [firstItem], what: 'Home to the first item' }).catch(() => null);
+    const afterHome = await t.eval(paneStill);
+    t.check(`a second Home, at the top, steps to the first item (${firstItem}), the location kept`, (firstItem === 'copy-a.dat' ? homed === 'First item' : homed === firstItem) && afterHome.here === atEnd.here, JSON.stringify({ firstItem, homed, afterHome }));
 
     /* ---- arrowing fast through the list ---- */
     const bulk = t.manifest.bulk;
@@ -345,6 +442,12 @@ const preview = {
     const site = await until(t, 'site.zip', (s) => s.rows.length > 0);
     t.check(`site.zip lists what it holds and its top level (${site.rows.join(', ')}), with Look inside`,
       JSON.stringify(site.rows) === JSON.stringify(['site']) && site.heads.includes('Top level') && site.tools.includes('Look inside') && asked(t, mark, 'inside').length === 1, JSON.stringify(site));
+    // Quick look would show only its facts: no button, and P says why.
+    await t.eval(() => { document.querySelector('#b-panel-preview .pv-pane').focus(); return true; });
+    await t.key('p');
+    const zipLook = await t.app(() => ({ open: document.getElementById('dialog').open, live: document.getElementById('live').textContent, foot: document.querySelector('#b-panel-preview .pv-foot').textContent }));
+    t.check(`an archive offers no Quick look, and P in the pane says why (${zipLook.live})`,
+      !site.tools.includes('Quick look') && !zipLook.open && zipLook.live === 'Quick look shows no more than Preview for an archive.' && !/Quick look/.test(zipLook.foot), JSON.stringify({ tools: site.tools, zipLook }));
     await goTo(t, A.hazards.path);
     const hz = await until(t, 'hazards.zip', (s) => s.rows.length > 0);
     const hzMarks = await t.eval(() => ({ locked: document.querySelectorAll('#b-panel-preview .swatch.is-locked').length, escape: document.querySelectorAll('#b-panel-preview .swatch.is-escape').length, facts: [...document.querySelectorAll('#b-panel-preview .pv-body .facts dt')].map((d) => d.textContent) }));
@@ -373,6 +476,10 @@ const preview = {
       const ln = await until(t, 'link-to-copy-a', (s) => s.notes.length > 0);
       t.check(`a link says where it points and that it is not followed (${ln.notes[0]})`,
         /^A symbolic link, shown and never followed\. It points to .*copy-a\.dat, which is edge cases\/copy-a\.dat in this directory\.$/.test(ln.notes[0]), JSON.stringify(ln));
+      await t.eval(() => { document.querySelector('#b-panel-preview .pv-pane').focus(); return true; });
+      await t.key('p');
+      const linkLook = await t.app(() => ({ open: document.getElementById('dialog').open, live: document.getElementById('live').textContent }));
+      t.check(`a link offers no Quick look, and P says why (${linkLook.live})`, !ln.tools.includes('Quick look') && !linkLook.open && linkLook.live === 'Quick look shows no more than Preview for a link.', JSON.stringify({ tools: ln.tools, linkLook }));
       await t.eval(() => { document.querySelector('#b-panel-preview .pv-actions .btn').click(); return true; });
       const sel = await t.waitFor((T) => T.S.primary?.n === 'copy-a.dat', { what: 'the link\'s target selected' }).catch(() => false);
       t.check('Select edge cases/copy-a.dat selects it', !!sel);
@@ -383,8 +490,21 @@ const preview = {
     const folder = await until(t, 'archives', (s) => s.rows.length > 0);
     t.check(`a folder shows By kind, By age and Largest, its rows largest first (${folder.rows.slice(0, 3).join(', ')})`,
       ['By kind', 'By age', 'Largest'].every((h) => folder.heads.includes(h)) && folder.kind === 'Folder' && folder.where !== null, JSON.stringify(folder));
-    await t.eval(() => { document.querySelector('#b-panel-preview .pv-rows .item').focus(); return true; });
-    const firstRow = await t.eval(() => document.activeElement.querySelector('.nm').textContent);
+    // From the pane, ↓ scrolls until the first row is in view, then reaches
+    // it; ↑ from the first row goes back to the pane.
+    await t.eval(() => { const p = document.querySelector('#b-panel-preview .pv-pane'); p.scrollTop = 0; p.focus(); return true; });
+    let reached = null;
+    for (let i = 0; i < 30 && !reached; i++) {
+      await t.key('ArrowDown');
+      reached = await t.eval(() => !!document.activeElement?.closest?.('#b-panel-preview .pv-rows button.item') && document.activeElement.querySelector('.nm').textContent);
+      if (reached) reached = { name: reached, presses: i + 1 };
+    }
+    const firstRow = await t.eval(() => document.querySelector('#b-panel-preview .pv-rows button.item .nm').textContent);
+    await t.key('ArrowUp');
+    const upToPane = (await t.eval(pv)).focus;
+    t.check(`↓ from the pane reaches the first of the Largest rows (${reached?.name}, ${reached?.presses} presses), and ↑ from it goes back to the pane`,
+      reached?.name === firstRow && upToPane === 'pane', JSON.stringify({ reached, firstRow, upToPane }));
+    await t.key('ArrowDown');
     await t.key('ArrowDown');
     const second = await t.eval(() => document.activeElement.querySelector('.nm')?.textContent);
     await t.key('ArrowUp');
@@ -419,15 +539,23 @@ const preview = {
       return `${v >= 100 || u === 0 ? Math.round(v) : v >= 10 ? v.toFixed(1) : v.toFixed(2)} ${UNITS[u]}`;
     }, total);
     t.check(`four selected show the list and their total (${many.facts})`, many.kind === 'Selection' && many.facts.startsWith(`${fmt} · 4 files`), JSON.stringify({ many, fmt }));
-    await t.eval(() => { document.querySelector('#b-panel-preview .pv-rows .item').focus(); return true; });
-    const firstSel = await t.eval(() => document.activeElement.querySelector('.nm').textContent);
+    // Focus in the pane, as Show Preview leaves it: ↓ reaches the first
+    // row, ↑ goes back, and Enter on the pane reads the first.
+    await t.eval(() => { document.querySelector('#b-panel-preview .pv-pane').focus(); return true; });
+    const firstSel = await t.eval(() => document.querySelector('#b-panel-preview .pv-rows .item .nm').textContent);
+    await t.key('ArrowDown');
+    const downRow = (await t.eval(pv)).focus;
+    await t.key('ArrowUp');
+    const backUp = (await t.eval(pv)).focus;
     await t.key('Enter');
     const peek = await until(t, firstSel, (s) => s.peek !== null, 'one of the four read');
     const selNow = await t.app((T) => T.S.sel.size);
-    t.check(`Enter on a row reads it while the selection stays whole (${peek.peek})`, peek.peek === '1 of 4 selected' && selNow === 4, JSON.stringify({ peek, selNow }));
+    t.check(`↓ from the pane reaches the first row and ↑ comes back; Enter on the pane reads the first while the selection stays whole (${peek.peek})`,
+      /\/?[^/]+$/.test(downRow) && downRow !== 'pane' && backUp === 'pane' && peek.peek === '1 of 4 selected' && selNow === 4 && peek.focus === 'pane', JSON.stringify({ downRow, backUp, peek, selNow }));
     await t.key('ArrowRight');
     const peek2 = await t.waitFor(() => document.querySelector('#b-panel-preview .pv-peek-text')?.textContent === '2 of 4 selected' && document.getElementById('live').textContent, { what: '→ within the selection' }).catch(() => false);
-    t.check(`→ steps within the selection and says where (${peek2})`, !!peek2 && / 2 of 4 selected$/.test(peek2) && (await t.app((T) => T.S.sel.size)) === 4);
+    // Each step says what it is, as the first did: name, kind, size, then where.
+    t.check(`→ steps within the selection and says what it is and where (${peek2})`, !!peek2 && /^[^,]+, .+, 2 of 4 selected$/.test(peek2) && (await t.app((T) => T.S.sel.size)) === 4);
     await t.key('Escape');
     const listBack = await t.waitFor(() => !document.querySelector('#b-panel-preview .pv-peek:not([hidden])') && document.querySelectorAll('#b-panel-preview .pv-rows .item').length === 4 && {
       focus: document.activeElement?.dataset?.k, live: document.getElementById('live').textContent,
@@ -435,10 +563,95 @@ const preview = {
     const selAfter = await t.app((T) => T.S.sel.size);
     t.check(`Escape returns to the list, on the row read, the selection unchanged (${listBack?.live})`, !!listBack && selAfter === 4 && /\/?[^/]+$/.test(listBack.focus || '') && /Back to the 4 selected/.test(listBack.live), JSON.stringify({ listBack, selAfter }));
 
+    // A folder read as one of several: its Largest rows only list (no
+    // button, so Tab and Enter never reach one), and a click keeps the
+    // selection gathered by hand.
+    await t.app((T) => {
+      const dir = T.S.model.find('archives');
+      const nodes = [T.S.model.find('archives/site'), ...dir.c.filter((c) => !c.d).slice(0, 3)];
+      T.api.selectAll(nodes, nodes[0]);
+      return true;
+    });
+    await until(t, '4 items', (s) => s.rows.length === 4 && s.rows.includes('site'));
+    await t.eval(() => { document.querySelector('#b-panel-preview .pv-rows [data-k="archives/site"]').focus(); return true; });
+    await t.key('Enter');
+    const sitePeek = await until(t, 'site', (s) => s.peek !== null && s.rows.length > 0, 'the folder read as one of four');
+    const rowsThen = await t.eval(() => ({ buttons: document.querySelectorAll('#b-panel-preview .pv-rows button.item').length, still: document.querySelectorAll('#b-panel-preview .pv-rows .item.is-static').length }));
+    await t.eval(() => { document.querySelector('#b-panel-preview .pv-rows .item').click(); return true; });
+    await t.sleep(300);
+    const keptPeek = await t.app((T) => ({ sel: T.S.sel.size, peek: document.querySelector('#b-panel-preview .pv-peek:not([hidden]) .pv-peek-text')?.textContent ?? null, primary: T.S.primary?.n, here: T.api.relPath(T.S.focus) }));
+    t.check(`a folder read as one of four lists its Largest rows without choosing them: a click keeps the 4 selected (${sitePeek.notes.at(-1)})`,
+      rowsThen.buttons === 0 && rowsThen.still > 0 && keptPeek.sel === 4 && keptPeek.peek === sitePeek.peek && keptPeek.here === 'archives' && /only list/.test(sitePeek.notes.at(-1) || ''),
+      JSON.stringify({ sitePeek: sitePeek.peek, rowsThen, keptPeek }));
+    await t.key('Escape');
+    await t.waitFor(() => !document.querySelector('#b-panel-preview .pv-peek:not([hidden])'), { what: 'back to the list' });
+    if (t.manifest.links) {
+      // A link read as one of two: Select offered, unavailable, with why.
+      await t.app((T) => {
+        const nodes = [T.S.model.find('edge cases/link-to-copy-a'), T.S.model.find('edge cases/copy-a.dat')];
+        T.api.setFocus(nodes[1].p);
+        T.api.selectAll(nodes, nodes[0]);
+        return true;
+      });
+      await until(t, '2 items', (s) => s.rows.length === 2 && s.rows.includes('link-to-copy-a'));
+      await t.eval(() => { document.querySelector('#b-panel-preview .pv-rows [data-k="edge cases/link-to-copy-a"]').focus(); return true; });
+      await t.key('Enter');
+      await until(t, 'link-to-copy-a', (s) => s.peek !== null && s.notes.length > 0, 'the link read as one of two');
+      const sel2 = await t.eval(() => {
+        const b = document.querySelector('#b-panel-preview .pv-actions .btn');
+        const was = b.getAttribute('aria-disabled');
+        b.click();
+        return { was, title: b.title };
+      });
+      await t.sleep(200);
+      const linkKept = await t.app((T) => ({ sel: T.S.sel.size, live: document.getElementById('live').textContent }));
+      t.check(`a link read as one of two offers Select as unavailable (${sel2.title}), and pressing it keeps the 2 selected`,
+        sel2.was === 'true' && /^Unavailable: it would replace the 2 selected$/.test(sel2.title) && linkKept.sel === 2 && /unavailable: it would replace the 2 selected\. Esc goes back to the list\.$/.test(linkKept.live), JSON.stringify({ sel2, linkKept }));
+      await t.key('Escape');
+      await t.app((T) => { T.api.setFocus(T.S.model.find('archives')); return true; });
+      await t.settle();
+    } else t.skip('a link read as one of several', 'the fixture could not make symbolic links here');
+
+    /* ---- empty things ---- */
+    const emptyDir = t.manifest.emptyFolders?.recent;
+    if (emptyDir) {
+      await goTo(t, emptyDir);
+      const name = emptyDir.split('/').pop();
+      const ed = await until(t, name, (s) => s.notes.length > 0, 'an empty folder');
+      t.check(`an empty folder says so, with its counts (${ed.facts}), and offers no tools`,
+        ed.kind === 'Empty folder' && ed.notes[0] === 'An empty folder: nothing in it to summarize.' && /^0 B · 0 files · 0 folders$/.test(ed.facts) && ed.tools.length === 0 && ed.rows.length === 0, JSON.stringify(ed));
+    } else t.skip('an empty folder in Preview', 'the fixture lists none');
+    const emptyFile = await t.app((T) => {
+      const stack = [T.S.model.root];
+      while (stack.length) {
+        for (const c of stack.pop().c) {
+          if (c.d) stack.push(c);
+          else if (c.s === 0 && !(c.f & 1)) return T.api.relPath(c);
+        }
+      }
+      return null;
+    });
+    if (emptyFile) {
+      mark = t.mark();
+      await goTo(t, emptyFile);
+      const ef = await until(t, emptyFile.split('/').pop(), (s) => s.notes.length > 0, 'an empty file');
+      t.check(`an empty file says there is nothing to show, reads nothing and offers no Quick look (${emptyFile})`,
+        ef.notes[0] === 'An empty file: there is nothing to show.' && !ef.tools.includes('Quick look') && raws(t, mark).length === 0, JSON.stringify(ef));
+    } else t.skip('an empty file in Preview', 'the fixture holds none');
+    await t.app((T) => { T.api.setFocus(T.S.model.find('archives')); return true; });
+    await t.settle();
+
     /* ---- nothing selected ---- */
     await t.app((T) => { T.api.select(null); return true; });
     const here = await until(t, 'archives', (s) => s.kind === 'You are in');
     t.check('with nothing selected Preview shows the folder you are in', here.kind === 'You are in' && here.where === null && here.heads.includes('Largest'), JSON.stringify(here));
+    // Enter there would go where you already are: it says what does work,
+    // and the foot offers no Enter.
+    await t.eval(() => { document.querySelector('#b-panel-preview .pv-pane').focus(); return true; });
+    await t.key('Enter');
+    const hereEnter = await t.app((T) => ({ live: document.getElementById('live').textContent, at: T.api.relPath(T.S.focus), foot: document.querySelector('#b-panel-preview .pv-foot').textContent }));
+    t.check(`Enter on where you are says what works instead (${hereEnter.live})`,
+      hereEnter.live === 'You are in archives: ← → select its items one by one.' && hereEnter.at === 'archives' && !/Enter/.test(hereEnter.foot), JSON.stringify(hereEnter));
 
     /* ---- snapshot mode, for a moment ---- */
     mark = t.mark();
@@ -453,35 +666,32 @@ const preview = {
     await t.eval(() => { document.getElementById('ledger-list').focus(); return true; });
     await t.key(']');
     await t.waitFor(() => document.body.classList.contains('no-inspector'));
+    const saidHidden = await t.live();
     mark = t.mark();
     await goTo(t, 'edge cases/copy-a.dat');
     await t.sleep(500);
     const hiddenReads = raws(t, mark);
-    const said = await t.live();
-    t.check('] hides panel B, and a selection change then asks nothing', hiddenReads.length === 0, JSON.stringify(hiddenReads));
+    t.check(`] hides panel B and names it as its label does (${saidHidden}), and a selection change then asks nothing`,
+      hiddenReads.length === 0 && saidHidden === 'Panel B hidden. ] shows it again.', JSON.stringify({ hiddenReads, saidHidden }));
     await t.key(']');
+    const saidShown = await t.live();
     const shownAgain = await until(t, 'copy-a.dat', (s) => s.lines > 0, 'Preview after ]');
-    t.check(`] shows it again and Preview reads what is selected now (${said})`, shownAgain.shown && raws(t, mark).length <= 1, JSON.stringify(raws(t, mark)));
+    t.check(`] shows it again, on Preview (${saidShown}), and Preview reads what is selected now`,
+      shownAgain.shown && raws(t, mark).length <= 1 && saidShown === 'Panel B shown, on Preview. ] hides it.', JSON.stringify({ reads: raws(t, mark), saidShown }));
 
     /* ---- the palette ---- */
     await t.eval(() => { document.getElementById('ledger-list').focus(); return true; });
     await t.key(']');
     await t.waitFor(() => document.body.classList.contains('no-inspector'));
-    await t.key('Ctrl+K');
-    await t.waitFor(() => document.getElementById('dialog').open && !!document.querySelector('.palette-input'), { what: 'the palette' });
-    await t.type('preview');
-    // Ranked: only what matches "preview" is listed, Show Preview among it.
-    const options = await t.waitFor(() => {
-      const o = [...document.querySelectorAll('.palette-option')].map((x) => `${x.querySelector('.pal-label')?.textContent}|${x.querySelector('.pal-detail')?.textContent}`);
-      return o.length < 20 && o.some((x) => x.startsWith('Show Preview|')) && o;
-    }, { what: 'Show Preview' });
-    for (let i = 0; i < options.findIndex((x) => x.startsWith('Show Preview|')); i++) await t.key('ArrowDown');
+    // "preview" and Enter, as the palette's own example says: Show Preview
+    // is the first match, above the wrap command.
+    const options = await palette(t, 'preview', (o) => o.length < 20 && o.some((x) => x.startsWith('Show Preview|')));
     await t.key('Enter');
     const viaPalette = await t.waitFor((T) => !document.getElementById('dialog').open && !document.body.classList.contains('no-inspector') && T.S.bTab === 'preview'
-      && document.activeElement === document.querySelector('#b-panel-preview .pv-pane') && /^Preview: /.test(document.getElementById('live').textContent) && { live: document.getElementById('live').textContent }, { what: 'Preview from the palette' })
+      && document.activeElement === document.querySelector('#b-panel-preview .pv-pane') && /^Preview: /.test(document.getElementById('live').textContent) && { live: document.getElementById('live').textContent, wrap: localStorage.getItem('terrane.preview-wrap') }, { what: 'Preview from the palette' })
       .catch(() => t.app((T) => ({ failed: true, dialog: document.getElementById('dialog').open, hidden: document.body.classList.contains('no-inspector'), bTab: T.S.bTab, focus: document.activeElement?.className || document.activeElement?.id, live: document.getElementById('live').textContent })));
-    t.check(`Ctrl+K "preview" offers Show Preview (Panel B) and the wrap command; it opens panel B and puts focus in the pane (${viaPalette?.live})`,
-      options.some((x) => x === 'Show Preview|Panel B') && options.some((x) => /^Preview: (wrap long lines|let long lines run on)\|Panel B$/.test(x)) && !viaPalette.failed && /^Preview: copy-a\.dat/.test(viaPalette.live),
+    t.check(`Ctrl+K "preview", Enter: Show Preview (Panel B) is the first match, the wrap command after it; it opens panel B and puts focus in the pane (${viaPalette?.live})`,
+      options[0] === 'Show Preview|Panel B' && options.some((x) => /^(Stop wrapping long lines|Wrap long lines) \(Preview\)\|Panel B$/.test(x)) && !viaPalette.failed && /^Preview: copy-a\.dat/.test(viaPalette.live) && viaPalette.wrap !== 'off',
       JSON.stringify({ options: options.filter((x) => /Panel B/.test(x)), viaPalette }));
 
     /* ---- the Guide ---- */
@@ -493,10 +703,12 @@ const preview = {
     await t.waitFor(() => !document.getElementById('dialog').open);
     const closer = guide.find(([h]) => h === 'Looking closer')?.[1] || [];
     const selecting = guide.find(([h]) => h === 'Selecting and going places')?.[1] || [];
-    t.check('the Guide lists Preview\'s keys under Looking closer, after Quick look\'s P, and the strips\' arrows under Selecting',
-      JSON.stringify(closer.slice(closer.indexOf('P|Quick look at the selected file'))) === JSON.stringify(['P|Quick look at the selected file', '← →|In Preview: previous / next item',
-        'Home  End|In Preview: first / last item, once the text is at its top / end', 'P|In Preview: Quick look at it', 'Esc|In Preview, reading one of several: back to the list'])
-      && selecting.includes('← → on tabs|Previous / next tab (Home, End: first, last)'), JSON.stringify({ closer, selecting }));
+    const P_ROW = 'P|Quick look at the selected file, or at Preview\'s item';
+    t.check('the Guide lists Preview\'s keys under Looking closer, after Quick look\'s P (one P row), ] as panel B\'s, and the strips\' arrows under Selecting',
+      JSON.stringify(closer.slice(closer.indexOf(P_ROW))) === JSON.stringify([P_ROW, '← →|In Preview: previous / next item',
+        'Home  End|In Preview: first / last item, once the text is at its top / end', 'Esc|In Preview, reading one of several: back to the list'])
+      && closer.filter((x) => x.startsWith('P|')).length === 1
+      && selecting.includes('[  ]|Hide ledger / panel B') && selecting.includes('← → on tabs|Previous / next tab (Home, End: first, last)'), JSON.stringify({ closer, selecting }));
 
     /* ---- the end: nothing posted, back on the Inspector ---- */
     const posts = t.requests(0).filter((r) => r.method === 'POST' && r.path.startsWith('/api/'));
@@ -583,6 +795,31 @@ const previewRegions = {
   },
 };
 
+/**
+ * The text's last line in view once the pane has stood still for six
+ * frames (the browser scrolls smoothly; three seconds at most), with the
+ * sizes the first and last two chunks hold and take.
+ */
+const lastSeen = () => new Promise((r) => {
+  const p = document.querySelector('#b-panel-preview .pv-pane');
+  const until = performance.now() + 3000;
+  let was = -1;
+  let still = 0;
+  const look = () => requestAnimationFrame(() => {
+    still = p.scrollTop === was ? still + 1 : 0;
+    was = p.scrollTop;
+    if (still < 6 && performance.now() < until) return look();
+    const box = p.getBoundingClientRect();
+    const seen = [...document.querySelectorAll('#b-panel-preview .pv-line')].filter((l) => { const b = l.getBoundingClientRect(); return b.height > 0 && b.bottom > box.top && b.top < box.bottom; });
+    const chunks = [...document.querySelectorAll('#b-panel-preview .pv-chunk')];
+    return r({
+      last: seen.at(-1)?.dataset.n ?? null, text: seen.at(-1)?.textContent.slice(0, 5) ?? null, atEnd: p.scrollTop + p.clientHeight >= p.scrollHeight - 1, primary: window.__terrane.S.primary?.n,
+      sizes: chunks.slice(0, 2).concat(chunks.slice(-2)).map((c) => `${c.style.containIntrinsicHeight}/${Math.round(c.getBoundingClientRect().height)}`),
+    });
+  });
+  look();
+});
+
 /** On disk: a file and a folder deleted from outside, a file grown, and a long text measured. */
 const previewDisk = {
   name: 'preview-disk',
@@ -594,9 +831,10 @@ const previewDisk = {
     await t.settle();
     await t.waitFor((T) => T.S.watch === 'live', { timeout: 10000, what: 'the watcher' });
     // Files of the scenario's own.
-    // 6,500 lines of 49 bytes: 318,500 bytes, so the read is cut at 256 KB.
+    // 6,500 lines of 70 bytes: 455,000 bytes, so the read is cut at 256 KB.
+    // Wrapped, a line takes two rows at 1600 px and three at 1280 px.
     const LONG = 6500;
-    const text = (i) => `${String(i + 1).padStart(5, '0')} the quick brown fox jumps over the lazy dog`;
+    const text = (i) => `${String(i + 1).padStart(5, '0')} the quick brown fox jumps over the lazy dog and on to the river`;
     const LINE = text(0).length + 1;
     fs.mkdirSync(t.abs('preview-disk'), { recursive: true });
     fs.writeFileSync(t.abs('preview-disk/grow.txt'), 'one\ntwo\nthree\n');
@@ -628,27 +866,27 @@ const previewDisk = {
     await t.key('End');
     // The browser scrolls smoothly: read once the pane has stood still for
     // six frames (three seconds at most).
-    const visible = await t.eval(() => new Promise((r) => {
-      const p = document.querySelector('#b-panel-preview .pv-pane');
-      const until = performance.now() + 3000;
-      let was = -1;
-      let still = 0;
-      const look = () => requestAnimationFrame(() => {
-        still = p.scrollTop === was ? still + 1 : 0;
-        was = p.scrollTop;
-        if (still < 6 && performance.now() < until) return look();
-        const box = p.getBoundingClientRect();
-        const seen = [...document.querySelectorAll('#b-panel-preview .pv-line')].filter((l) => { const b = l.getBoundingClientRect(); return b.height > 0 && b.bottom > box.top && b.top < box.bottom; });
-        const chunks = [...document.querySelectorAll('#b-panel-preview .pv-chunk')];
-        return r({
-          last: seen.at(-1)?.dataset.n ?? null, text: seen.at(-1)?.textContent.slice(0, 5) ?? null, atEnd: p.scrollTop + p.clientHeight >= p.scrollHeight - 1, primary: window.__terrane.S.primary?.n,
-          sizes: chunks.slice(0, 2).concat(chunks.slice(-2)).map((c) => `${c.style.containIntrinsicHeight}/${Math.round(c.getBoundingClientRect().height)}`),
-        });
-      });
-      look();
-    }));
+    const visible = await t.eval(lastSeen);
     t.check(`one End in the pane reaches the end of the text, line ${read} (${visible.last}), and stays on long.log`,
       visible.last === String(read) && Number(visible.text) === read && visible.atEnd && visible.primary === 'long.log', JSON.stringify(visible));
+    // A narrower window wraps the lines: the chunks are sized again, so
+    // Home and End still reach the top and the end.
+    await t.page.send('Emulation.setDeviceMetricsOverride', { width: 1280, height: 800, deviceScaleFactor: 1, mobile: false });
+    await t.sleep(400);
+    await t.eval(() => { document.querySelector('#b-panel-preview .pv-pane').focus(); return true; });
+    await t.key('Home');
+    await t.eval(lastSeen);
+    await t.key('End');
+    const narrow = await t.eval(lastSeen);
+    await t.page.send('Emulation.setDeviceMetricsOverride', { width: 1600, height: 1000, deviceScaleFactor: 1, mobile: false });
+    await t.sleep(300);
+    t.note(`long.log's first and last two chunks, intrinsic / drawn: ${visible.sizes.join(' ')} at 1600 px; ${narrow.sizes.join(' ')} at 1280 px`);
+    // The chunks are given new sizes, and the one in view, drawn at the
+    // new width, takes the size it was given.
+    const given = (x) => x.split('/')[0];
+    const held = (x) => Math.abs(parseFloat(given(x)) - Number(x.split('/')[1])) <= 1;
+    t.check(`at 1280 px its lines wrap to more rows, the chunks are sized again (${given(visible.sizes[0])} then ${given(narrow.sizes[0])}), and Home and End still reach the end, line ${read} (${narrow.last})`,
+      narrow.last === String(read) && narrow.atEnd && narrow.primary === 'long.log' && given(visible.sizes[0]) !== given(narrow.sizes[0]) && held(narrow.sizes.at(-1)), JSON.stringify({ visible, narrow }));
 
     // A file grown on disk is read again.
     await goTo(t, 'preview-disk/grow.txt');

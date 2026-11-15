@@ -23,7 +23,10 @@
  *     - classify across every case, in snapshot mode too, with and without
  *       the archive predicate
  *     - Quick look's behaviour and sentences against a copy of what
- *       quicklook.js decided and said at 855e4de, as a golden list
+ *       quicklook.js decided and said at 855e4de, as a golden list, a
+ *       link's sentence the one changed on purpose; lookShows true only
+ *       where the sheet shows text, a picture, sound or film
+ *     - Preview's link sentences, a target written as its path named once
  *     - readText: cut, a NUL, a byte order mark, a JSON refusal, a refusal
  *       that is not JSON, an abort
  *     - countLines and textKind: labels, line endings, the byte order
@@ -46,7 +49,7 @@
  */
 
 import {
-  TEXT_MAX, RAW_IMAGE_MAX, BINARY_DATA_EXT, countLines, classify, lookAs, sentence, thumbSentence, readText, textKind,
+  TEXT_MAX, RAW_IMAGE_MAX, BINARY_DATA_EXT, countLines, classify, lookAs, lookShows, sentence, thumbSentence, readText, textKind,
   topBySize, bySizeThenName, selectionRows, linkTarget, STEPS, canScroll, stepIndex, stopPlayer,
 } from '../web/js/readers.js';
 import { KINDS, FLAG_LINK, IMAGE_EXT, TEXT_EXT, extOf, kindOf } from '../web/js/model.js';
@@ -115,7 +118,8 @@ function oldKindOf(node, { snapshot, hostOf }) {
   const ext = extOf(node.n);
   const host = hostOf(node);
   if (host) return { as: 'facts', why: `An entry of ${host.n}. Quick look does not read inside an archive, so nothing in it is fetched.` };
-  if (node.f & FLAG_LINK) return { as: 'facts', why: 'A symbolic link. Quick look does not follow it; the inspector says where it points.' };
+  // The one sentence changed on purpose: a link's names Preview beside the Inspector.
+  if (node.f & FLAG_LINK) return { as: 'facts', why: 'A symbolic link. Quick look does not follow it; the Inspector and Preview say where it points.' };
   if (node.s <= 0) return { as: 'facts', why: 'An empty file: there is nothing to show.' };
   if (IMAGE_EXT.has(ext)) return { as: 'image' };
   if (snapshot) return { as: 'facts', why: 'Snapshot mode holds names, sizes and dates, not contents.' };
@@ -151,7 +155,7 @@ check(`Quick look shows every one of ${nodes.length * 2} files and modes as it d
 
 const GOLDEN = [
   [sentence('entry', entry, { surface: 'quicklook', host: archive }), 'An entry of site.zip. Quick look does not read inside an archive, so nothing in it is fetched.'],
-  [sentence('link', file('l', 0, FLAG_LINK), { surface: 'quicklook' }), 'A symbolic link. Quick look does not follow it; the inspector says where it points.'],
+  [sentence('link', file('l', 0, FLAG_LINK), { surface: 'quicklook' }), 'A symbolic link. Quick look does not follow it; the Inspector and Preview say where it points.'],
   [sentence('empty', file('e.md', 0), { surface: 'quicklook' }), 'An empty file: there is nothing to show.'],
   [sentence('snapshot', file('a.md'), { surface: 'quicklook' }), 'Snapshot mode holds names, sizes and dates, not contents.'],
   [sentence('other', file('report.pdf'), { surface: 'quicklook' }), 'Documents: Quick look shows text, pictures, sound and film. Open hands this file to its own application.'],
@@ -166,8 +170,19 @@ const GOLDEN = [
   [thumbSentence({ status: 'error' }, file('a.png'), { surface: 'quicklook' }), 'This file could not be read as an image.'],
   [thumbSentence(null, file('a.png'), { surface: 'quicklook' }), 'No thumbnail yet. npm run thumbs makes one.'],
 ];
+// Preview offers Quick look only where its sheet shows more than the facts.
+const shows = cases.filter(([, node]) => lookShows(classify(node, { entryOf, archive: isZip }).as)).map(([what]) => what);
+const showsSnap = cases.filter(([, node]) => lookShows(classify(node, { snapshot: true, entryOf, archive: isZip }).as)).map(([what]) => what);
+// A binary data format is read as text by the sheet, which then finds binary content.
+const binaryData = (node) => BINARY_DATA_EXT.has(extOf(node.n));
+check(`Quick look shows more only for text, a picture, sound and film (${shows.length} of ${cases.length}; in snapshot mode the pictures)`,
+  same(shows, ['a photo', 'an svg', 'a film', 'a sound', 'a Markdown file', 'a JSON file', 'a Makefile', 'a Dockerfile', 'a copy-a.dat'])
+  && same(showsSnap, ['a photo', 'an svg'])
+  && nodes.every((node) => [false, true].every((snapshot) => lookShows(classify(node, { snapshot, entryOf }).as)
+    === (newKindOf(node, { snapshot, hostOf: entryOf }).as !== 'facts' && !(binaryData(node) && !snapshot && node.s > 0 && !(node.f & FLAG_LINK))))),
+  `${shows.join(', ')} | ${showsSnap.join(', ')}`);
 const off = GOLDEN.filter(([a, b]) => a !== b);
-check(`Quick look's ${GOLDEN.length} sentences are word for word what quicklook.js said`, off.length === 0, JSON.stringify(off[0] || ''));
+check(`Quick look's ${GOLDEN.length} sentences are word for word what quicklook.js said, a link's naming Preview`, off.length === 0, JSON.stringify(off[0] || ''));
 
 /* ---------- Preview's sentences ---------- */
 
@@ -182,6 +197,10 @@ check('a link\'s sentences: inside, outside, missing, snapshot',
   && sentence('link', file('l', 0, FLAG_LINK), { info: { target: '/etc', outside: true } }) === 'It points to /etc, outside this directory, so Terrane does not follow it.'
   && sentence('link', file('l', 0, FLAG_LINK), { info: { rel: 'gone/x', missing: true } }) === 'It points to gone/x, which is not in this directory now.'
   && sentence('link', file('l', 0, FLAG_LINK), { info: { snapshot: true } }) === 'The snapshot records that this is a symbolic link, not where it points.');
+check('a link whose target is written as its path in the directory names it once',
+  sentence('link', file('Shared', 0, FLAG_LINK), { info: { target: 'Projects', rel: 'Projects' } }) === 'A symbolic link, shown and never followed. It points to Projects in this directory.'
+  && sentence('link', file('l', 0, FLAG_LINK), { info: { target: './Projects', rel: 'Projects' } }) === 'A symbolic link, shown and never followed. It points to ./Projects, which is Projects in this directory.'
+  && sentence('link', file('l', 0, FLAG_LINK), { info: { target: '..', rel: '' } }) === 'A symbolic link, shown and never followed. It points to .., which is the root folder in this directory.');
 check('the cut, the snapshot and a file that went say so plainly',
   sentence('cut', file('copy-a.dat', 2516582)) === 'First 256 KB of 2.40 MB. The rest is not read.'
   && sentence('snapshot', file('a.md')) === 'Snapshot mode holds names, sizes and dates, not contents, so nothing is read from this file. Its facts are above.'

@@ -1,16 +1,24 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Demo World (Terrane Edition - v1.0)
+ *     - Title: Demo World (Terrane Edition - v1.1)
  *     - File Name: demo-world.js
  *     - Relative Path: web/js/demo-world.js
  *     - Artifact Type: javascript
- *     - Version: 1.0.0
- *     - Date: 11/13/2026
- *     - Update: Friday, November 13, 2026
+ *     - Version: 1.1.0
+ *     - Date: 11/14/2026
+ *     - Update: Saturday, November 14, 2026
  *     - Author: Dennis 'dendogg' Smaltz
  *     - A.I. Acknowledgement: Anthropic - Claude Opus 5.5
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
+ *
+ * ✒ Changelog:
+ *     - 1.1.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — A
+ *       zip's listing is fitted to its file: the bulky entries are scaled
+ *       so the packed bytes and the zip's own records add up to its size,
+ *       as Preview shows them side by side.
+ *     - 1.0.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] —
+ *       Initial release.
  *
  * ✒ Description:
  *     Builds the demonstration directory: a made-up creative studio's
@@ -33,8 +41,9 @@
  *     - Survey material: true duplicates and same-size decoys, empty
  *       folders, a sealed folder, hidden files, symbolic links (one
  *       dangling) and a special file
- *     - Archives with interiors: zip files list their entries, other
- *       formats are refused as the service refuses them
+ *     - Archives with interiors: zip files list their entries, packed
+ *       into the zip's own size; other formats are refused as the service
+ *       refuses them
  *     - Contents on demand: textOf() writes a file's text to its exact
  *       size, by kind (READMEs, posts, notes, TypeScript, Python, CSS,
  *       JSON, CSV, logs, notebooks, SVG); binary kinds read as binary
@@ -1241,7 +1250,43 @@ export function entriesOf(node) {
       }
     }
   }
-  return out;
+  return fitTo(out, node.size);
+}
+
+/** A zip's own bytes past its packed entries: a local header and a directory record each, and the end record. */
+const zipOverhead = (entries) => entries.reduce((a, e) => a + 76 + 2 * e.name.length, 22);
+/** Text entries keep their size when a listing is fitted to its file. */
+const FIXED_ENTRY = /\.(txt|md|html|css|js)$/i;
+
+/**
+ * Fits a listing to the zip that holds it: the bulky entries (all but the
+ * small texts) are scaled, packed and unpacked alike, so the packed bytes
+ * and the zip's own records add up to the file's size, as in a real zip.
+ * The rounding left over goes to the largest entry.
+ */
+function fitTo(entries, size) {
+  let fixed = zipOverhead(entries);
+  let elastic = 0;
+  for (const e of entries) {
+    if (FIXED_ENTRY.test(e.name)) fixed += e.packed;
+    else elastic += e.packed;
+  }
+  const room = size - fixed;
+  if (!elastic || room <= 0) return entries;
+  const f = room / elastic;
+  let big = null;
+  let packed = 0;
+  for (const e of entries) {
+    if (!FIXED_ENTRY.test(e.name)) {
+      e.size = Math.round(e.size * f);
+      e.packed = Math.min(e.size, Math.round(e.packed * f));
+      if (!big || e.packed > big.packed) big = e;
+    }
+    packed += e.packed;
+  }
+  big.packed += size - zipOverhead(entries) - packed;
+  big.size = Math.max(big.size, big.packed);
+  return entries;
 }
 
 /**

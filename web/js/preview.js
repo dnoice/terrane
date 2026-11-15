@@ -30,7 +30,9 @@
  *     - Text: the first 256 KB with line numbers (each line's own, drawn
  *       by CSS; chunks of 200 lines under content-visibility, each sized
  *       from its lines), what kind of text it is, its lines, endings and
- *       byte order mark; Wrap lines kept in this browser
+ *       byte order mark; Wrap lines kept in this browser, and from the
+ *       palette even before Preview was chosen; chunks sized again when
+ *       the pane's width changes
  *     - Pictures only through thumbs.js, the largest rung that fits, with
  *       the picture's size and colour; never the original
  *     - Sound and film in the browser's player, in byte ranges, nothing
@@ -39,26 +41,32 @@
  *       locked and escaping entries, its top level; Look inside opens it
  *     - A link's target, read lexically and never followed, with Select
  *     - A folder's summary: by kind, by age, its ten largest entries as
- *       rows that select; in region mode its region is held first
+ *       rows that select; in region mode its region is held first; a
+ *       sealed folder's contents unknown, not counted
  *     - Several selected: the list largest first with a total; Enter
- *       reads one while the selection stays whole, Escape goes back
+ *       reads one (on the pane, the first) while the selection stays
+ *       whole, Escape goes back; what would replace the selection there
+ *       (a folder's rows, a link's Select) only lists or says why
  *     - Keys in its pane: ← → step to the previous and next item of the
  *       list the ledger shows (or the item's folder), Home and End to the
- *       ends, content first; P opens Quick look; Enter opens
+ *       ends, content first and kept from the window's keys; ↑ ↓ reach
+ *       the rows; P opens Quick look where it shows more (text, a
+ *       picture, a player), else says why; Enter opens
  *     - A tab not shown, or a sheet open, does no work: no read, no
  *       player; it is drawn again when it can be seen
  *
  * ✒ Usage Instructions:
  *     Listed in features.js and installed by app.js. Choose PREVIEW on
- *     panel B's tab strip, or Ctrl+K "Show Preview"; select something in
- *     the world or the ledger, or arrow through the list.
+ *     panel B's tab strip, or Ctrl+K "preview", Enter; select something
+ *     in the world or the ledger, or arrow through the list.
  *
  * ✒ Examples:
  *     README.md selected      Markdown text · .md, its numbered lines
  *     → in the pane           the next item of the list, selected
  *     site.zip selected       what it holds, its top level, Look inside
  *     Projects/current        A symbolic link, shown and never followed...
- *     six selected, Enter     reads the row, "2 of 6 selected", Esc back
+ *     six selected, Enter     reads the first, "1 of 6 selected", Esc back
+ *     P on site.zip           Quick look shows no more than Preview for an archive.
  *
  * ✒ Other Important Information:
  *     - Dependencies: readers.js, thumbs.js, ui.js (el), icons.js,
@@ -79,7 +87,7 @@
  */
 
 import {
-  TEXT_MAX, classify, sentence, thumbSentence, readText, textKind, topBySize, selectionRows, linkTarget, STEPS, canScroll, stepIndex, stopPlayer,
+  TEXT_MAX, classify, lookAs, lookShows, sentence, thumbSentence, readText, textKind, topBySize, selectionRows, linkTarget, STEPS, canScroll, stepIndex, stopPlayer,
 } from './readers.js';
 import { thumbs } from './thumbs.js';
 import { el } from './ui.js';
@@ -154,6 +162,8 @@ export function install(api) {
   /* ---------- the subject ---------- */
 
   function subject() {
+    // Reading one of several lasts while it is one of several selected.
+    if (peek && (S.sel.size < 2 || !S.sel.has(peek.node))) peek = null;
     if (peek) return { kind: 'peek', node: peek.node, among: peek.rows };
     if (S.sel.size > 1) return { kind: 'several', nodes: [...S.sel] };
     return { kind: 'one', node: S.primary || S.focus, here: !S.primary };
@@ -161,6 +171,20 @@ export function install(api) {
 
   /** The node Quick look, Enter and the steps act on, or null for the list of several. */
   const shown = (sub = subject()) => (sub.kind === 'several' ? null : sub.node);
+
+  /**
+   * What Quick look would add for node: null when its sheet shows the
+   * text, the picture or the player (as quicklook.js decides, through
+   * lookAs), else the words for why it would show no more than Preview.
+   */
+  function lookWhy(node) {
+    if (!node || node.d) return 'a folder';
+    const { as } = classify(node, { snapshot: !!S.info.snapshot, entryOf: api.hostOf });
+    if (lookAs(as) === 'text' && headText?.key === keyOf(node) && headText.binary) return 'binary content';
+    if (lookShows(as)) return null;
+    return { link: 'a link', entry: 'an archive\'s entry', empty: 'an empty file', snapshot: 'a file in snapshot mode' }[as]
+      || (as === 'archive' || as === 'other-archive' || isZipFamily(node) ? 'an archive' : 'this kind of file');
+  }
 
   /* ---------- the head ---------- */
 
@@ -174,28 +198,36 @@ export function install(api) {
     return `${label}${ext ? ` · .${ext}` : ''}${node.f & FLAG_LINK ? ' · symbolic link' : ''}`;
   }
 
+  // A sealed folder's contents are unknown, not empty: no counts for it.
   const factsOf = (node, extra = []) => (node.d
-    ? api.parts(fmtBytes(node.s), plural(node.fc, 'file'), plural(node.dc, 'folder'))
+    ? api.parts(...(node.e ? ['contents unknown'] : [fmtBytes(node.s), plural(node.fc, 'file'), plural(node.dc, 'folder')]))
     : api.parts(fmtBytes(node.s), ...extra, node.m ? `changed ${fmtDay(node.m)}` : null));
 
   function setFoot(...groups) {
     const kbd = (text) => el('kbd', { text });
     const out = [];
     for (const g of groups) {
-      // A separator of its own, so the drawer can keep only the first hints.
-      if (out.length) out.push(el('span', { class: 'sep', text: ' · ' }));
+      // A separator of its own, so the drawer can keep only the first
+      // hints; it holds to the hint before it, so a line may end on its
+      // dot and never begins with one.
+      if (out.length) out.push(el('span', { class: 'sep', text: ' ·' }), ' ');
       out.push(el('span', { class: 'hint' }, ...g.map((x) => (typeof x === 'string' && x.startsWith('#') ? kbd(x.slice(1)) : x))));
     }
     ui.foot.replaceChildren(...out);
   }
 
   function drawFoot(sub, as) {
+    const look = !lookWhy(shown(sub)) && !!quicklook();
     if (sub.kind === 'several') setFoot(['#↑', '#↓', ' rows'], ['#Enter', ' reads one here'], ['#←', '#→', ' step through them']);
-    else if (sub.kind === 'peek') setFoot(['#←', '#→', ' previous / next selected'], ['#Esc', ' back to the list'], ['#P', ' Quick look']);
-    else if (sub.here) setFoot(['Select a file to read it here'], ['#←', '#→', ' step through the list'], ['#Enter', ' opens']);
+    else if (sub.kind === 'peek') setFoot(['#←', '#→', ' previous / next selected'], ['#Esc', ' back to the list'], ...(look ? [['#P', ' Quick look']] : []));
+    else if (sub.here) setFoot(['Select a file to read it here'], ['#←', '#→', ' step through the list']);
     else {
-      const groups = [['#←', '#→', ' previous / next'], ['#Home', '#End', ' first / last'], ['#P', ' Quick look'], ['#Enter', ' opens']];
-      if (as === 'text') groups.push(['a long line scrolls to its edge first']);
+      // Three hints, two lines docked: the steps, the ends, and the next
+      // thing to do (Quick look where it shows more, else Enter opens).
+      const groups = [['#←', '#→', ' previous / next'], ['#Home', '#End', ' first / last'], look ? ['#P', ' Quick look'] : ['#Enter', ' opens']];
+      // Only while lines run on: the Guide and the pane's description say it always.
+      const binary = headText?.key === keyOf(sub.node) && headText.binary;
+      if (as === 'text' && !wrap && !binary) groups.push(['a long line scrolls to its edge first']);
       setFoot(...groups);
     }
   }
@@ -274,7 +306,8 @@ export function install(api) {
     const node = shown(sub);
     wrapBtn.hidden = as !== 'text' || (headText?.key === keyOf(node) && headText.binary);
     wrapBtn.setAttribute('aria-pressed', String(wrap));
-    lookBtn.hidden = !node || node.d || !quicklook();
+    // Offered only where Quick look shows more: the text, the picture, the player.
+    lookBtn.hidden = !quicklook() || !!lookWhy(node);
     const zip = as === 'archive' && !!interior();
     insideBtn.hidden = !zip;
     if (zip) {
@@ -288,23 +321,42 @@ export function install(api) {
     tools.hidden = [wrapBtn, lookBtn, insideBtn].every((b) => b.hidden);
   }
 
+  /**
+   * Wrap lines on or off, kept in this browser. From the palette it may
+   * run before Preview was ever chosen (no panel yet), or while it is not
+   * on screen: the choice is kept and said, and applies when it shows.
+   */
   function toggleWrap() {
     wrap = !wrap;
     try {
       localStorage.setItem(WRAP_KEY, wrap ? 'on' : 'off');
     } catch { /* not kept: the choice lasts until the page closes */ }
-    ui.wrapBtn.setAttribute('aria-pressed', String(wrap));
-    textView?.classList.toggle('is-nowrap', !wrap);
+    if (ui) {
+      ui.wrapBtn.setAttribute('aria-pressed', String(wrap));
+      textView?.classList.toggle('is-nowrap', !wrap);
+    }
+    if (!ui || !api.bTabShown('preview')) {
+      // Its text is drawn again, from what was read, when it shows.
+      lastKey = null;
+      api.say(wrap ? 'Preview will wrap long lines.' : 'Preview will let long lines run on.');
+      return;
+    }
     sizeChunks();
+    redrawHead();
     api.say(wrap ? 'Long lines wrap.' : 'Long lines run on; ← → scroll them first.');
   }
 
-  function openLook() {
-    const node = shown();
+  /** Quick look on node (Preview's item by default), or why it would show no more. */
+  function openLook(node = shown()) {
     const k = quicklook();
     if (!k) return;
     if (!node) {
-      api.say('Quick look shows one file: Enter on a row reads it here first.');
+      api.say('Quick look shows one file: Down reaches the rows, and P on a row opens it.');
+      return;
+    }
+    const why = lookWhy(node);
+    if (why) {
+      api.say(`Quick look shows no more than Preview for ${why}.`);
       return;
     }
     k.run({ node });
@@ -514,8 +566,11 @@ export function install(api) {
     }
     if (res.binary) {
       headText = { key: k, extra: [], cut: null, binary: true };
+      // Neither Wrap lines nor Quick look has anything to add.
       ui.wrapBtn.hidden = true;
+      ui.lookBtn.hidden = true;
       ui.tools.hidden = [ui.wrapBtn, ui.lookBtn, ui.insideBtn].every((b) => b.hidden);
+      drawFoot(ctx.sub, null);
       out.append(note(sentence('binary', node)));
       return;
     }
@@ -726,15 +781,23 @@ export function install(api) {
       return;
     }
     const label = lt.rel || target.n;
+    // Reading one of several, selecting the target would throw away the
+    // selection gathered: offered, unavailable, with the reason (as Look inside).
+    const off = ctx.sub.kind === 'peek' ? `it would replace the ${fmtCount(S.sel.size)} selected` : null;
     out.append(note(sentence('link', node, { info: { target: st.link, rel: lt.rel } })),
       el('div', { class: 'pv-actions' }, el('button', {
-        class: 'btn btn-small', type: 'button', 'data-named': '', 'data-k': `link:${label}`, title: `Select ${label}`,
+        class: 'btn btn-small', type: 'button', 'data-named': '', 'data-k': `link:${label}`, title: off ? `Unavailable: ${off}` : `Select ${label}`,
+        'aria-disabled': off ? 'true' : 'false',
         onclick: () => {
+          if (off) {
+            api.say(`Select ${label} is unavailable: ${off}. Esc goes back to the list.`);
+            return;
+          }
           api.select(target);
           api.cursorTo(target);
           ui.pane.focus({ preventScroll: true });
         },
-      }, icon('goThere'), `Select ${label}`)));
+      }, icon('goThere'), `Select ${label}`, off ? el('span', { class: 'sr', text: `, unavailable: ${off}` }) : '')));
   }
 
   /* ---------- folders ---------- */
@@ -753,12 +816,16 @@ export function install(api) {
     return [api.sectionTitle('By age'), note(text)];
   }
 
-  /** A row that selects its node and keeps focus in the pane. */
+  /**
+   * A row that acts on its node (onPick) and keeps focus in the pane; with
+   * no onPick, a row that only says (an entry of a folder read while
+   * reading one of several, which choosing would replace).
+   */
   function pickRow(node, second, onPick) {
     const sw = node.d ? el('span', { class: node.e ? 'swatch is-sealed' : 'swatch is-dir' }) : el('span', { class: 'swatch', style: { background: cssHex(KINDS[node.k].color) } });
-    return el('button', { class: 'item', type: 'button', 'data-k': relPath(node), title: api.relLabel(node), onclick: () => onPick(node) }, sw,
-      el('span', {}, el('span', { class: 'nm', text: node.n }), el('span', { class: 'path', text: second })),
-      el('span', { class: 'fig', text: fmtBytes(node.s) }));
+    const parts = [sw, el('span', {}, el('span', { class: 'nm', text: node.n }), el('span', { class: 'path', text: second })), el('span', { class: 'fig', text: fmtBytes(node.s) })];
+    if (!onPick) return el('div', { class: 'item is-static', 'data-k': relPath(node), title: api.relLabel(node) }, ...parts);
+    return el('button', { class: 'item', type: 'button', 'data-k': relPath(node), title: api.relLabel(node), onclick: () => onPick(node) }, ...parts);
   }
 
   const ofRow = (node) => (node.d ? `folder · ${plural(node.fc, 'file')}` : `changed ${fmtAge(node.m)}`);
@@ -797,8 +864,11 @@ export function install(api) {
       }
       if (!ctx.alive() || !dir) return;
     }
-    rows.replaceChildren(...topBySize(dir.c, LARGEST).map((c) => pickRow(c, ofRow(c), chooseRow)));
+    // Reading one of several, a row would replace the selection: it only says.
+    const peeking = ctx.sub.kind === 'peek';
+    rows.replaceChildren(...topBySize(dir.c, LARGEST).map((c) => pickRow(c, ofRow(c), peeking ? null : chooseRow)));
     if (dir.tail) out.append(note(`Its ${fmtCount(dir.c.length)} largest are held; the other ${fmtCount(dir.tail.n)}, ${fmtBytes(dir.tail.s)}, lie in its scree.`));
+    if (peeking) out.append(note(`These rows only list while you read one of the ${fmtCount(S.sel.size)} selected, so the selection stays whole.`));
   }
 
   /* ---------- several ---------- */
@@ -849,7 +919,8 @@ export function install(api) {
       const next = sub.among[go.j];
       peek = { node: next, rows: sub.among };
       queue();
-      api.say(`${next.n}, ${fmtCount(go.j + 1)} of ${fmtCount(sub.among.length)} selected`);
+      // Each step says what it is, as the first did (startPeek).
+      api.say(`${api.describe(next)}, ${fmtCount(go.j + 1)} of ${fmtCount(sub.among.length)} selected`);
       return;
     }
     if (sub.kind === 'several') {
@@ -893,6 +964,13 @@ export function install(api) {
     api.cursorTo(next);
   }
 
+  /** Whether row is wholly in the pane's view. */
+  function inView(row) {
+    const a = row.getBoundingClientRect();
+    const b = ui.pane.getBoundingClientRect();
+    return a.top >= b.top - 1 && a.bottom <= b.bottom + 1;
+  }
+
   function onKey(e) {
     if (e.ctrlKey || e.metaKey || e.altKey) return;
     const t = e.target;
@@ -900,29 +978,52 @@ export function install(api) {
     const { pane } = ui;
     const to = STEPS[e.key];
     if (to !== undefined) {
-      // The content's keys first: the pane scrolls while it can go further.
+      // The content's keys first: the pane scrolls while it can go further,
+      // and the window's keys never hear it (Home would rise to the overview
+      // and cancel the scroll).
       if (!e.repeat) held = null;
       if (t === pane && canScroll(pane, e.key)) {
         held = e.key;
+        e.stopPropagation();
         return;
       }
       // A key held to scroll stops at the edge; pressed again, it steps.
       if (!(e.repeat && held === e.key)) step(to);
     } else if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
-      const row = t instanceof Element ? t.closest('.pv-rows .item') : null;
-      if (!row || !(row instanceof HTMLButtonElement)) return;
+      const down = e.key === 'ArrowDown';
       const rows = [...pane.querySelectorAll('.pv-rows button.item')];
-      const i = rows.indexOf(row);
-      rows[i + (e.key === 'ArrowDown' ? 1 : -1)]?.focus();
+      const row = t instanceof Element ? t.closest('.pv-rows button.item') : null;
+      if (row) {
+        // Between the rows; ↑ from the first goes back to the pane.
+        const next = rows[rows.indexOf(row) + (down ? 1 : -1)];
+        if (next) next.focus();
+        else if (!down) pane.focus({ preventScroll: true });
+      } else if (t === pane) {
+        // From the pane to the first (↓) or last (↑) row once it is in view,
+        // or once the pane cannot scroll that way; until then it scrolls.
+        const target = down ? rows[0] : rows.at(-1);
+        if (!target || (!inView(target) && canScroll(pane, down ? 'End' : 'Home'))) {
+          e.stopPropagation();
+          return;
+        }
+        target.focus();
+      } else return;
     } else if (e.key === 'Enter') {
       if (t !== pane) return;
-      const node = shown();
-      if (node) api.activate(node);
-      else api.say('Enter on a row reads it here.');
+      const sub = subject();
+      const node = shown(sub);
+      // The folder you are in is where Enter would go: say what does work.
+      if (sub.here) api.say(`You are in ${node.n}: ← → select its items one by one.`);
+      else if (node) api.activate(node);
+      else {
+        // Several: Enter reads the first of them, the selection kept whole.
+        const { rows } = selectionRows(sub.nodes, SELECTION_ROWS);
+        if (rows.length) startPeek(rows[0], rows);
+      }
     } else if (e.key === 'p' || e.key === 'P') {
       if (t instanceof Element && t.closest('.pv-rows button.item') && subject().kind === 'several') {
         const node = [...S.sel].find((x) => relPath(x) === t.closest('.item').dataset.k);
-        if (node) quicklook()?.run({ node });
+        if (node) openLook(node);
       } else openLook();
     } else return;
     e.preventDefault();
@@ -944,10 +1045,10 @@ export function install(api) {
     const peekBar = el('div', { class: 'pv-peek', hidden: true }, peekText,
       el('button', { class: 'btn btn-small', type: 'button', title: 'Esc', onclick: back }, icon('up'), 'Back'));
     const wrapBtn = el('button', { class: 'btn btn-small', type: 'button', 'data-k': 'wrap', 'aria-pressed': String(wrap), onclick: toggleWrap }, 'Wrap lines');
-    const lookBtn = el('button', { class: 'btn btn-small', type: 'button', 'data-k': 'look', title: 'P', onclick: openLook }, icon('eye'), 'Quick look');
+    const lookBtn = el('button', { class: 'btn btn-small', type: 'button', 'data-k': 'look', title: 'P', onclick: () => openLook() }, icon('eye'), 'Quick look');
     const insideBtn = el('button', { class: 'btn btn-small', type: 'button', 'data-k': 'inside', title: 'I', onclick: lookInside }, icon('folder-open'), 'Look inside');
     const tools = el('div', { class: 'pv-tools', role: 'toolbar', 'aria-label': 'Preview tools', hidden: true }, wrapBtn, lookBtn, insideBtn);
-    const help = el('p', { class: 'sr', id: 'pv-help', text: 'Left and Right arrows step to the previous and next item, Home and End to the first and last, P opens Quick look, Enter opens it.' });
+    const help = el('p', { class: 'sr', id: 'pv-help', text: 'Left and Right arrows step to the previous and next item, Home and End to the first and last, once a long text is at its edge; Up and Down reach the rows; P opens Quick look; Enter opens it.' });
     const pane = el('div', { class: 'pv-pane', tabindex: '0', role: 'region', 'aria-label': 'Preview', 'aria-describedby': 'pv-help' });
     const foot = el('p', { class: 'pv-foot', 'aria-hidden': 'true' });
     ui = { swatch, kindWords, name: nameEl, where, whereWords, facts, cut, peekBar, peekText, tools, wrapBtn, lookBtn, insideBtn, pane, foot };
@@ -955,6 +1056,16 @@ export function install(api) {
       el('div', { class: 'insp-title pv-head' }, el('div', { class: 'insp-kind' }, swatch, kindWords), nameEl, where, facts, cut),
       peekBar, tools, pane, help, foot);
     pane.addEventListener('keydown', onKey);
+    // A wrapped text's chunks are sized for the pane's width: when it
+    // changes (a breakpoint, the drawer), they are sized again, so End
+    // still reaches the end and the scroll bar holds still.
+    let width = 0;
+    new ResizeObserver(() => {
+      const w = pane.clientWidth;
+      if (!w || w === width) return;
+      width = w;
+      if (wrap && textView?.isConnected && api.bTabShown('preview')) sizeChunks();
+    }).observe(pane);
   }
 
   function show(_host, { focus = false } = {}) {
@@ -979,16 +1090,18 @@ export function install(api) {
   const LOOK = 'Looking closer';
   api.KEYS.add({ id: 'preview-step', owner: OWNER, guide: [LOOK, '← →', 'In Preview: previous / next item'] });
   api.KEYS.add({ id: 'preview-ends', owner: OWNER, guide: [LOOK, 'Home  End', 'In Preview: first / last item, once the text is at its top / end'] });
-  api.KEYS.add({ id: 'preview-look', owner: OWNER, guide: [LOOK, 'P', 'In Preview: Quick look at it'] });
+  // P is Quick look's own row: "Quick look at the selected file, or at Preview's item".
   api.KEYS.add({ id: 'preview-back', owner: OWNER, guide: [LOOK, 'Esc', 'In Preview, reading one of several: back to the list'] });
 
   // Only while reading one of several with focus in Preview, so it never
   // takes Escape from anything else.
-  api.ESCAPE.add({ id: 'preview-peek', order: 45, owner: OWNER, active: () => !!peek && !!panelEl?.contains(document.activeElement), clear: back });
+  api.ESCAPE.add({ id: 'preview-peek', order: 45, owner: OWNER, active: () => !!panelEl?.contains(document.activeElement) && subject().kind === 'peek', clear: back });
 
   api.COMMANDS.add({
     id: 'preview', owner: OWNER, section: 'Preview',
-    items: () => [{ label: wrap ? 'Preview: let long lines run on' : 'Preview: wrap long lines', detail: 'Panel B', run: toggleWrap }],
+    // Worded so that "preview" finds Show Preview first; it runs whether
+    // or not Preview is on screen (toggleWrap keeps the choice and says it).
+    items: () => [{ label: wrap ? 'Stop wrapping long lines (Preview)' : 'Wrap long lines (Preview)', detail: 'Panel B', run: toggleWrap }],
   });
 
   // Each hook only schedules: the work happens once the arrows rest.

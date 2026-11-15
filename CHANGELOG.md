@@ -18,7 +18,9 @@
       entries leave their headers with these releases. app.js's header rolls its 1.13.0 entry
       out, index.html's its 1.5.0 and layout.css's its 1.1.0; this file already holds them.
       Then the Preview tab: features.js 1.5.0 and terrane.css 2.5.0, whose headers roll their
-      1.2.0 and 2.2.0 entries out; this file already holds them.
+      1.2.0 and 2.2.0 entries out; this file already holds them. The review's fixes extend the
+      entries of app.js 1.16.0 and index.html 1.8.0 (] named for panel B), and terrane.css
+      2.5.0's long form says how Preview numbers its lines now and holds the foot's dots.
     - 1.12.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — Records Wave 4, merged
       with main's flavors and Guide window (app.js 1.15.0, floating.css 1.4.0). First, the
       polish of the panels:
@@ -138,7 +140,8 @@ short form is kept too.
 - 1.16.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — Panel B's head is a tab strip
   from B_TABS, the Inspector first and the default, the choice kept in this browser; both strips
   take the arrows, Home and End. The Inspector draws only while chosen. The api gains B_TABS,
-  drawBTabs, showBTab, bTabShown, composition's title, contentsOrder and get's signal. In full:
+  drawBTabs, showBTab, bTabShown, composition's title, contentsOrder and get's signal. ] is panel
+  B's toggle in its labels and in what it says, which names the tab it shows. In full:
   B_TABS is a registry of { id, owner, order, label, icon, title, mount(host), show(host,
   { focus }), hide(), focusTarget(host) }, frozen with the others, and the controller's own
   entry is the Inspector (order 0, icon info, show draws it, focusTarget #inspector-body). S
@@ -155,7 +158,9 @@ short form is kept too.
   showBTab opens panel B quietly when ] hid it (or the drawer in a narrow window) and chooses
   the tab, focus in it on request; bTabShown says whether a tab is on screen. togglePanel and
   the 860 px breakpoint's change tell the chosen tab through followB (show when panel B comes
-  back, hide when it goes), and ] names panel B by the tab it shows. drawInspector only marks
+  back, hide when it goes). ] is labelled "Hide or show panel B" in the palette and "Hide ledger /
+  panel B" in the Guide, and says "Panel B hidden. ] shows it again." or "Panel B shown, on
+  Preview. ] hides it.", naming the tab it shows. drawInspector only marks
   the Inspector stale while another tab is chosen, so no GET /api/stat and no 16 KB read
   happen for a panel no one sees; choosing it draws it, and beforeprint draws a stale one and
   shows it for the print. start() restores the kept tab after installFeatures and drawTabs,
@@ -574,7 +579,8 @@ short form is kept too.
 
 - 1.8.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — Panel B's head is a tab strip
   (#b-tabs, "Inspector views") where its heading stood, the Inspector its first tab;
-  #inspector-body is that tab's panel. The ledger's strip is named #ledger-tabs. The aside keeps
+  #inspector-body is that tab's panel. The ledger's strip is named #ledger-tabs. The view tools' ]
+  toggle is named for panel B: "Show or hide panel B (])". The aside keeps
   its name, Inspector; the strip stands after the B reference square, its buttons made by app.js
   from B_TABS; #inspector-body keeps tabindex -1 and gains role tabpanel, labelled by
   #b-tab-inspector.
@@ -622,9 +628,10 @@ short form is kept too.
   after quicklook.css: panel B's Preview tab, its head, tools, pane and foot. The head reuses the
   inspector's title, kind and name on the panel's grid (the mark at A, the words at B) with "in
   <folder>" and the facts in mono under them; the tools are small buttons that wrap whole; the
-  pane scrolls inside the panel and holds the numbered text (CSS counters per chunk, since
-  content-visibility scopes them), the picture on the stipple, the player, the listing and the
-  summary's rows; the foot's key hints are groups that never break.
+  pane scrolls inside the panel and holds the numbered text (each line's own number, drawn from
+  data-n, since content-visibility scopes a counter to its chunk), the picture on the stipple, the
+  player, the listing and the summary's rows; the foot's key hints are groups that never break,
+  each dot held to the hint before it by a no-break space, so no line begins with one.
 
 - 2.4.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — Imports
   components/palette.css: the command palette's field, its options with the highlighter

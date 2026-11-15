@@ -15,7 +15,8 @@
  * ✒ Changelog:
  *     - 1.0.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] —
  *       Initial release: the readers Quick look and Preview share, moved
- *       out of quicklook.js with its sentences kept word for word.
+ *       out of quicklook.js with its sentences kept word for word but a
+ *       link's, which now names the Inspector and Preview.
  *
  * ✒ Description:
  *     What a preview of a file needs to decide and to say, without the
@@ -29,8 +30,13 @@
  *       entry, link, empty, image, snapshot, video, audio, archive, another
  *       archive format, binary data, text or other, in that order
  *     - sentence(as, node, { surface, host, info }): the words for each
- *       case with nothing to show, Quick look's exactly as they were, and
- *       Preview's own; thumbSentence for a picture with no thumbnail
+ *       case with nothing to show, Quick look's as they were (a link's
+ *       names the Inspector and Preview), and Preview's own, a link
+ *       written as its path named once; thumbSentence for a picture with
+ *       no thumbnail
+ *     - lookAs(as) and lookShows(as): what Quick look's sheet shows for a
+ *       classification, and whether that is more than the facts (the
+ *       text, the picture, the player), so Preview offers it only then
  *     - readText(url, { signal }): the text, whether the service cut it,
  *       a NUL as binary content, a UTF-8 byte order mark; a refusal throws
  *       the service's sentence; an abort rethrows its AbortError
@@ -131,6 +137,17 @@ export function lookAs(as) {
   return as;
 }
 
+/**
+ * Whether Quick look's sheet shows more of a classification than its
+ * facts and a sentence: the text, the picture or the player. A binary
+ * data format is not one: Quick look reads it as text and finds binary
+ * content. Preview offers Quick look only where this holds.
+ */
+export function lookShows(as) {
+  const look = lookAs(as);
+  return as !== 'binary-data' && (look === 'text' || look === 'image' || look === 'audio' || look === 'video');
+}
+
 const kindLabel = (node) => KINDS[node.k ?? kindOf(node.n)]?.label ?? 'Other';
 
 /**
@@ -145,7 +162,7 @@ export function sentence(as, node, { surface = 'preview', host = null, info = {}
   if (surface === 'quicklook') {
     switch (as) {
       case 'entry': return `An entry of ${host.n}. Quick look does not read inside an archive, so nothing in it is fetched.`;
-      case 'link': return 'A symbolic link. Quick look does not follow it; the inspector says where it points.';
+      case 'link': return 'A symbolic link. Quick look does not follow it; the Inspector and Preview say where it points.';
       case 'empty': return 'An empty file: there is nothing to show.';
       case 'snapshot': return 'Snapshot mode holds names, sizes and dates, not contents.';
       case 'binary': return 'Binary content: no text preview.';
@@ -163,6 +180,8 @@ export function sentence(as, node, { surface = 'preview', host = null, info = {}
       if (info.unknown) return 'A symbolic link, shown and never followed. Where it points could not be read.';
       if (info.outside) return `It points to ${info.target}, outside this directory, so Terrane does not follow it.`;
       if (info.missing) return `It points to ${info.rel}, which is not in this directory now.`;
+      // A target written as its root-relative path names the place once.
+      if (info.target === info.rel) return `A symbolic link, shown and never followed. It points to ${info.target} in this directory.`;
       return `A symbolic link, shown and never followed. It points to ${info.target}, which is ${info.rel || 'the root folder'} in this directory.`;
     }
     case 'empty': return 'An empty file: there is nothing to show.';

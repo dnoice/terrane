@@ -19,7 +19,9 @@
  *       photo drawn from the 480 px rung (never the file's own picture),
  *       Projects/current's target selected by its button, a zip listed and
  *       a sound's player; demo-regions reads a folder's summary once its
- *       region has landed. Both end on the Inspector.
+ *       region has landed. Both end on the Inspector. Shared names its
+ *       target once, Private's contents are unknown rather than counted,
+ *       and the zip's packed bytes fit its size.
  *     - 1.2.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] —
  *       pages(port), the stand-in GitHub Pages, is exported, so the
  *       polish scenario serves the demo world the same way. demo-regions
@@ -56,8 +58,9 @@
  *     - Search (is:dup), an archive's interior, and a download arriving
  *       by the event stream
  *     - Quick look on a text file, a photo, an audio file and a film
- *     - Preview on a README, a photo (from its 480 px rung), a link, a zip
- *       and a sound; and, in regions, a folder's summary
+ *     - Preview on a README, a photo (from its 480 px rung), a link, a
+ *       link written as its path, a sealed folder, a zip whose facts fit
+ *       its size, and a sound; and, in regions, a folder's summary
  *     - Not one request to /api/ reaches the network
  *     - demo-regions: the same world in regions (?regions), with the
  *       status saying so, a folder read by its path, a rename and Undo
@@ -282,6 +285,7 @@ const pvState = () => {
   return {
     done: P?.querySelector('.pv-pane')?.dataset.shown ?? null,
     kind: P?.querySelector('.pv-kind-words')?.textContent ?? null,
+    facts: P?.querySelector('.pv-facts')?.textContent ?? null,
     lines: P?.querySelectorAll('.pv-line').length ?? 0,
     first: P?.querySelector('.pv-line')?.textContent ?? null,
     img: img ? { src: img.getAttribute('src').slice(0, 22), natural: img.naturalWidth, complete: img.complete } : null,
@@ -379,8 +383,22 @@ async function previewIn(t, photo) {
   await t.eval(() => { document.querySelector('#b-panel-preview .pv-actions .btn').click(); return true; });
   const target = await t.until((T) => T.S.primary && T.api.relPath(T.S.primary) === 'Projects/tidepool-web', { timeout: 5000 });
   t.check('and its button selects Projects/tidepool-web', !!target);
+  // A link whose target is written as its path names the place once.
+  const shared = await previewOf(t, 'Shared', (s) => s.notes.length > 0);
+  t.check(`Shared, a link at the root, names where it points once (${shared?.notes[0]})`, shared?.notes[0] === 'A symbolic link, shown and never followed. It points to Projects in this directory.', JSON.stringify(shared));
+  // A sealed folder's contents are unknown, not empty: no counts.
+  const sealed = await previewOf(t, 'Private', (s) => s.notes.length > 0);
+  t.check(`Private, a sealed folder, says its contents are unknown rather than counting nothing (${sealed?.kind}; ${sealed?.facts})`,
+    /^Sealed folder · E[A-Z]+$/.test(sealed?.kind || '') && sealed.facts === 'contents unknown' && /could not be read/.test(sealed.notes[0] || ''), JSON.stringify(sealed));
   const zip = await previewOf(t, 'Downloads/fonts-pack.zip', (s) => s.rows.length > 0);
   t.check(`a zip is listed: what it holds and its top level (${zip?.rows.slice(0, 3).join(', ')})`, zip?.heads.includes('Top level') && zip.rows.length > 0, JSON.stringify(zip));
+  // Its facts agree with its size: its entries packed into the file.
+  const fit = await t.app(async (T) => {
+    const node = T.S.model.find('Downloads/fonts-pack.zip');
+    const ins = await T.api.get('inside', { path: 'Downloads/fonts-pack.zip' });
+    return { size: node.s, packed: ins.packed, unpacked: ins.unpacked, files: ins.files, shown: document.querySelector('#b-panel-preview .pv-body .facts')?.textContent ?? '' };
+  });
+  t.check(`and its packed bytes fit its size (${fit.shown})`, fit.packed <= fit.size && fit.size <= fit.packed + 1024 + fit.files * 512, JSON.stringify(fit));
   const song = await t.app((T) => T.api.relPath(T.S.model.find('Music/Podcasts').c.find((c) => /\.mp3$/.test(c.n))));
   const sound = await previewOf(t, song, (s) => !!s.player);
   t.check(`a sound gets the browser's player, with the demo's note (${sound?.notes.at(-1)})`, sound?.player === 'audio' && /tone made in the page/.test(sound.notes.at(-1) || ''), JSON.stringify(sound));

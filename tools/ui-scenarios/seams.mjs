@@ -20,7 +20,8 @@
  *       hides, ArrowRight moves on, and a tab removed leaves panel B on the
  *       Inspector. The ledger's strip is read by its id (#ledger-tabs), and
  *       ArrowRight on a ledger tab chooses the next one. The guide's
- *       Selecting rows gain "← → on tabs" after "[  ]".
+ *       Selecting rows gain "← → on tabs" after "[  ]", which now reads
+ *       "Hide ledger / panel B".
  *     - 1.10.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — A
  *       LEDGER_SUB control stands on the count row after the count, where the
  *       polished head puts a feature's tools.
@@ -127,7 +128,7 @@
 /** The guide as the hard-coded showGuide drew it before the key table. */
 const GUIDE = [
   ['Travelling', [['Wheel', 'Fly toward what is under the cursor'], ['W A S D', 'Move (Shift: faster)'], ['Q  E', 'Turn'], ['R  F', 'Rise / descend'], ['Numpad 1 3 7', 'Front, right, top (Ctrl: the far side)'], ['Numpad 2 4 6 8', 'Orbit in steps'], ['Numpad .', 'Frame the selection'], ['V', 'Drop to eye level'], ['0', 'Rise to the overview'], ['G', 'Fly to the selection'], ['Double-click', 'Fly to folder / open file']]],
-  ['Selecting and going places', [['Click', 'Select'], ['Ctrl+click', 'Add to selection'], ['← →', 'Previous / next sibling'], ['↑ ↓', 'Parent / first child'], ['Enter', 'Go to folder / open file'], ['Backspace', 'Up one level'], ['Alt+←', 'Back'], ['/', 'Find'], ['Esc', 'Cancel, clear'], ['[  ]', 'Hide ledger / inspector'], ['← → on tabs', 'Previous / next tab (Home, End: first, last)'], ['1 – 4', 'Lens']]],
+  ['Selecting and going places', [['Click', 'Select'], ['Ctrl+click', 'Add to selection'], ['← →', 'Previous / next sibling'], ['↑ ↓', 'Parent / first child'], ['Enter', 'Go to folder / open file'], ['Backspace', 'Up one level'], ['Alt+←', 'Back'], ['/', 'Find'], ['Esc', 'Cancel, clear'], ['[  ]', 'Hide ledger / panel B'], ['← → on tabs', 'Previous / next tab (Home, End: first, last)'], ['1 – 4', 'Lens']]],
   ['Changing things', [['N', 'New folder'], ['F2', 'Rename'], ['M', 'Move to…'], ['Ctrl+D', 'Duplicate'], ['Del', 'Remove to holding area'], ['Ctrl+Z', 'Undo'], ['Ctrl+C', 'Copy path'], ['Drag a row', 'Drop on a folder, breadcrumb or plateau'], ['Menu key', 'Context menu'], ['F5', 'Re-read folder']]],
 ];
 

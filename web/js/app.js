@@ -18,7 +18,8 @@
  *       the default, the choice kept in this browser; both strips take the
  *       arrows, Home and End. The Inspector draws only while chosen. The
  *       api gains B_TABS, drawBTabs, showBTab, bTabShown, composition's
- *       title, contentsOrder and get's signal.
+ *       title, contentsOrder and get's signal. ] is panel B's toggle in its
+ *       labels and in what it says, which names the tab it shows.
  *     - 1.15.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
  *       sheet's polish: the ledger head in two rows (the count and its tools,
  *       then the keys over the columns; Select all an icon) with one-line
@@ -4651,10 +4652,9 @@ function togglePanel(which) {
   syncPanelToggles();
   // Panel B's chosen tab hears it go (its reads stop) or come back.
   if (which === 'inspector') followB();
-  // Panel B is named by the tab it shows: "Inspector", or "Preview".
-  const name = which === 'ledger' ? 'Ledger' : B_TABS.get(S.bTab)?.label || 'Inspector';
-  const key = which === 'ledger' ? '[' : ']';
-  say(shown ? `${name} hidden. ${key} shows it again.` : `${name} shown. ${key} hides it.`);
+  // Panel B is named as ] is labelled, and on showing, the tab it shows.
+  if (which === 'ledger') say(shown ? 'Ledger hidden. [ shows it again.' : 'Ledger shown. [ hides it.');
+  else say(shown ? 'Panel B hidden. ] shows it again.' : `Panel B shown, on ${B_TABS.get(S.bTab)?.label || 'Inspector'}. ] hides it.`);
 }
 
 /* ---------- panel B's tabs ---------- */
@@ -5029,8 +5029,8 @@ function wireKeys() {
   core({ id: 'find', keys: ['/'], run: () => { $('q').focus(); }, guide: [SEL, '/', 'Find'] });
   core({ id: 'guide-escape', guide: [SEL, 'Esc', 'Cancel, clear'] });
   core({
-    id: 'panels', keys: ['[', ']'], labels: { '[': 'Hide or show the ledger', ']': 'Hide or show the inspector' },
-    run: (c) => { togglePanel(c.k === '[' ? 'ledger' : 'inspector'); }, guide: [SEL, '[  ]', 'Hide ledger / inspector'],
+    id: 'panels', keys: ['[', ']'], labels: { '[': 'Hide or show the ledger', ']': 'Hide or show panel B' },
+    run: (c) => { togglePanel(c.k === '[' ? 'ledger' : 'inspector'); }, guide: [SEL, '[  ]', 'Hide ledger / panel B'],
   });
   // The ledger's tabs and panel B's take these keys themselves (stripKeys).
   core({ id: 'guide-tab-strips', guide: [SEL, '← → on tabs', 'Previous / next tab (Home, End: first, last)'] });
