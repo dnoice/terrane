@@ -1,10 +1,10 @@
 <!--
 ✒ Metadata
-    - Title: Terrane Roadmap (Terrane Edition - v1.15)
+    - Title: Terrane Roadmap (Terrane Edition - v1.16)
     - File Name: ROADMAP.md
     - Relative Path: docs/ROADMAP.md
     - Artifact Type: docs
-    - Version: 1.15.0
+    - Version: 1.16.0
     - Date: 11/14/2026
     - Update: Saturday, November 14, 2026
     - Author: Dennis 'dendogg' Smaltz
@@ -12,6 +12,9 @@
     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
 
 ✒ Changelog:
+    - 1.16.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] —
+      The panel letters are gone, on Dennis's ruling: where things stand
+      and the build waves call the inspector's side the right panel.
     - 1.15.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] —
       The precise terrain's first part is on `main`, from the art
       direction in docs/ART-DIRECTION.md; Next is its second part, then
@@ -188,7 +191,7 @@ As of 11/14/2026:
   line, values that break only at their separators, nothing cut off
   without an ellipsis, and the `polish` check that measures all of it.
 - **Complete, on `main`:**
-  Preview, the first of the tabs beside the Inspector. Panel B's head
+  Preview, the first of the tabs beside the Inspector. The right panel's head
   is a tab strip that features fill, the Inspector first and the
   default; Preview, next to it, is a quick look docked beside the world
   that follows the selection: a text with numbered lines, a picture
@@ -502,7 +505,7 @@ to take a second.
 Stage 5 is built in waves, Wave 3 took the same method across
 Stages 4 to 6, and Wave 4 to Stage 4 and the polish of the sheet. Each
 wave runs on its own branch (`wave-1`, `wave-2`, `qol`, then `wave-4`),
-and each tab of panel B on one of its own (`tab-preview` first),
+and each tab of the right panel on one of its own (`tab-preview` first),
 in a separate worktree: its build steps one after
 another, then an adversarial review, a fix step, and a docs and header
 pass. A wave is merged into `main` and pushed only when `npm test`,

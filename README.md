@@ -1,10 +1,10 @@
 <!--
 ✒ Metadata
-    - Title: Terrane Readme (Terrane Edition - v1.21)
+    - Title: Terrane Readme (Terrane Edition - v1.22)
     - File Name: README.md
     - Relative Path: README.md
     - Artifact Type: docs
-    - Version: 1.21.0
+    - Version: 1.22.0
     - Date: 11/14/2026
     - Update: Saturday, November 14, 2026
     - Author: Dennis 'dendogg' Smaltz
@@ -12,6 +12,9 @@
     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
 
 ✒ Changelog:
+    - 1.22.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] —
+      The panel letters are gone: Travelling, Looking further and the
+      project map call the inspector's side the right panel.
     - 1.21.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] —
       What was verified records the precise terrain's first part:
       machined edges, a satin finish and the kinds in mineral tones.
@@ -571,8 +574,8 @@ lets single-key shortcuts act wherever focus is.
 The panel on the right, B, opens on the Inspector, and the tabs beside
 it on its strip read the same selection another way (Preview, under
 Looking further). `]`, or its toggle in the view tools, hides and shows
-panel B and says which tab it shows. Below 860 px wide (or at 200%
-zoom) panel B folds away, and `]` or the toggle opens it as a drawer
+the right panel and says which tab it shows. Below 860 px wide (or at
+200% zoom) the right panel folds away, and `]` or the toggle opens it as a drawer
 over the world, on the tab chosen. On either panel's tab strip, ← and →
 move to the previous and next tab, Home and End to the first and last,
 and the tab reached is shown; Home there stays on the strip rather than
@@ -709,11 +712,11 @@ of the list shown, Contents or Findings, Home and End to the first and
 last; a long line or a long text scrolls to its edge first, and a
 player keeps its own keys.
 
-**Preview.** Panel B's second tab is a quick look docked beside the
-world. It follows the selection, so a folder or a search can be read
-through item by item, from the ledger or the world, without opening
-anything or covering the view. Choose PREVIEW on panel B's strip, or
-Ctrl+K, "preview", Enter, which opens panel B too when `]` or a narrow
+**Preview.** The right panel's second tab is a quick look docked
+beside the world. It follows the selection, so a folder or a search can
+be read through item by item, from the ledger or the world, without
+opening anything or covering the view. Choose PREVIEW on the right
+panel's strip, or Ctrl+K, "preview", Enter, which opens the right panel too when `]` or a narrow
 window hid it and puts focus in the tab. The Inspector stays the
 default, and the tab chosen is kept in this browser. Preview's head
 says at once what the item is, the folder it is in (a button back up
@@ -1053,7 +1056,7 @@ web/css/components/  controls, bar, ledger, stage, inspector, block, floating,
                      places, traverse, strata, interior, palette, searches,
                      quicklook, presets, batch, preview
 web/css/*.css        also: fonts, base, layout, utilities, motion, print
-web/js/app.js        controller: state, service calls, panels and panel B's
+web/js/app.js        controller: state, service calls, panels and the right panel's
                      tab strip, progress, the warm start, and the
                      registries feature modules fill
 web/js/elsewhere.js  a page opened from disk says how to start the service
@@ -1103,7 +1106,7 @@ web/js/quicklook.js  Quick look: P, a file in a large sheet
 web/js/readers.js    what Quick look and Preview show a file as, the words
                      for what they cannot show, the text read, DOM-free
 web/js/presets.js    the selection's total, Quick searches, gathering by keyboard
-web/js/preview.js    Preview: panel B's second tab, a quick look docked beside
+web/js/preview.js    Preview: the right panel's second tab, a quick look docked beside
                      the world that follows the selection
 web/js/batch.js      Batch rename: F2 on several, its rules and preview
 web/js/rename.js     the batch rename's names and refusals, DOM-free

@@ -1,11 +1,11 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Polish Scenario (Terrane Edition - v1.1)
+ *     - Title: Polish Scenario (Terrane Edition - v1.2)
  *     - File Name: polish.mjs
  *     - Relative Path: tools/ui-scenarios/polish.mjs
  *     - Artifact Type: test
- *     - Version: 1.1.0
+ *     - Version: 1.2.0
  *     - Date: 11/14/2026
  *     - Update: Saturday, November 14, 2026
  *     - Author: Dennis 'dendogg' Smaltz
@@ -13,6 +13,9 @@
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
  *
  * ✒ Changelog:
+ *     - 1.2.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] —
+ *       The uppercase-voice check no longer skips .ref: the panel letters
+ *       are gone.
  *     - 1.1.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — Panel
  *       B's tab strip shares the class .tabs: C2 reads both strips' labels
  *       by id, and at 800 px checks each strip's tabs inside their own
@@ -479,7 +482,7 @@ function INSTALL() {
       for (const e of inRegions) {
         const cs = getComputedStyle(e);
         if (cs.textTransform !== 'uppercase' || !ownText(e) || !/[A-Za-z]/.test([...e.childNodes].filter((n) => n.nodeType === 3).map((n) => n.nodeValue).join(''))) continue;
-        if (e.closest('.wordmark, .ref')) continue;
+        if (e.closest('.wordmark')) continue;
         const fs = parseFloat(cs.fontSize);
         const fw = Number(cs.fontWeight);
         const st = parseFloat(cs.fontStretch) || 100;
