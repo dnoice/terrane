@@ -1,10 +1,10 @@
 <!--
 ✒ Metadata
-    - Title: Terrane Readme (Terrane Edition - v1.19)
+    - Title: Terrane Readme (Terrane Edition - v1.20)
     - File Name: README.md
     - Relative Path: README.md
     - Artifact Type: docs
-    - Version: 1.19.0
+    - Version: 1.20.0
     - Date: 11/14/2026
     - Update: Saturday, November 14, 2026
     - Author: Dennis 'dendogg' Smaltz
@@ -12,6 +12,21 @@
     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
 
 ✒ Changelog:
+    - 1.20.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] —
+      Preview, merged into `main`. Looking further gains Preview,
+      panel B's second tab, with its keys, what it shows and why it
+      shows nothing where it does; Quick look names Preview's button.
+      Travelling says what panel B holds, that `]` names the tab it
+      shows, that the narrow window's drawer opens on the tab chosen,
+      and that both tab strips take the arrows, Home and End. The
+      safety model says what Preview reads. The commands name
+      flavors-test and preview-test; the project map lists preview.js,
+      readers.js, preview.css, preview-test and the preview scenarios,
+      and no longer calls demo-test the last of npm test. What was
+      verified records the final sweep of the branch, and the three
+      rows recorded on `main` after Wave 4's sweep join the table; Not
+      verified adds what Preview could not see. The project map lists
+      docs/ART-DIRECTION.md, the art direction for the world's blocks.
     - 1.19.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] —
       Launch: `--flavor <id>`, the flavor every page that opens the
       service starts in once; Developing against real data: `npm run dev`
@@ -146,10 +161,11 @@
     entries, how to develop and check it against real data without
     touching that data, how to read and travel its world and find a
     place again, and what it shows beyond the ground plane: a date
-    scrub, landmarks, working sessions, strata, archive interiors and a
-    quick look at a file. Also what it can do to files, one or many at a
-    time, how those actions are kept safe, and where to start when
-    continuing development.
+    scrub, landmarks, working sessions, strata, archive interiors, a
+    quick look at a file and Preview, which reads the selection beside
+    the world. Also what it can do to files, one or many at a time, how
+    those actions are kept safe, and where to start when continuing
+    development.
 
 ✒ Key Features:
     - Launch instructions for Windows, macOS and Linux, and the warm
@@ -161,16 +177,17 @@
       synthetic snapshots of millions of entries, and the scale harness
     - The visual language in one table, the features' conventions
       included
-    - Travel, selection and operation controls
+    - Travel, selection and operation controls, and the two panels'
+      tab strips
     - Finding your way: the command palette, the remembered view and its
       address, search history, saved searches and `in:`
     - Looking further: time, landmarks, working sessions, strata,
-      archive interiors, Quick look, totals and quick searches, with
-      their keys and where places and searches are kept
+      archive interiors, Quick look, Preview, totals and quick searches,
+      with their keys and where places and searches are kept
     - Acting on many: the batch rename, duplicate cleanup, copy as, lists
       saved as CSV and a terminal opened in a folder
     - Safety model and its limits, the archive listing, the new routes,
-      the warm cache and the region routes included
+      the warm cache, the region routes and what Preview reads included
     - The checks (npm test, ui-check), what was verified, and what was
       not
     - Project map for continuing development
@@ -385,7 +402,7 @@ It does four things:
 | `npm run thumbs -- --huge` | Also thumbnail images over 80 megapixels, one at a time |
 | `npm run thumbs -- --heavy-svg` | Also render SVGs over 512 KB through Inkscape |
 | `node server/terrane.mjs --snapshot <folder>` | Serve a snapshot without the dev runner |
-| `npm test` | The service smoke test on a throwaway directory, then the Node checks of landmarks (`places-test`), working sessions (`relations-test`), strata (`strata-test`), archive interiors (`interior-test`), finding your way (`finding-test`), the batch rename (`rename-test`), CSV export (`export-test`), the warm start and its check (`warm-test`), the service's tree, its regions and questions (`regions-test`), the page's region mode against the whole model (`partial-test`) and the demo world and its service (`demo-test`) |
+| `npm test` | The service smoke test on a throwaway directory, then the Node checks of landmarks (`places-test`), working sessions (`relations-test`), strata (`strata-test`), archive interiors (`interior-test`), finding your way (`finding-test`), the batch rename (`rename-test`), CSV export (`export-test`), the warm start and its check (`warm-test`), the service's tree, its regions and questions (`regions-test`), the page's region mode against the whole model (`partial-test`), the demo world and its service (`demo-test`), the flavors (`flavors-test`) and the readers Quick look and Preview share (`preview-test`) |
 | `npm run ui-check` | Drive the page in headless Edge or Chrome, keyboard only, with and without WebGL, on a fresh fixture in the OS temp folder; compares draw calls with the recorded baseline |
 | `npm run ui-check -- time --pass nogl` | One scenario in one pass; `npm run ui-check -- --list` names every scenario |
 | `node tools/make-synthetic.mjs --entries 1m --out <folder>` | A synthetic structure snapshot of a million entries; see Synthetic snapshots and the scale harness |
@@ -548,8 +565,15 @@ world or the ledger list has focus: click the world, or Tab to it, and
 they work. Ctrl and Alt shortcuts act everywhere. A setting in the guide
 lets single-key shortcuts act wherever focus is.
 
-Below 860 px wide (or at 200% zoom) the inspector folds away, and `]` or
-its toggle in the view tools opens it as a drawer over the world.
+The panel on the right, B, opens on the Inspector, and the tabs beside
+it on its strip read the same selection another way (Preview, under
+Looking further). `]`, or its toggle in the view tools, hides and shows
+panel B and says which tab it shows. Below 860 px wide (or at 200%
+zoom) panel B folds away, and `]` or the toggle opens it as a drawer
+over the world, on the tab chosen. On either panel's tab strip, ← and →
+move to the previous and next tab, Home and End to the first and last,
+and the tab reached is shown; Home there stays on the strip rather than
+rising to the overview.
 
 ### Finding your way
 
@@ -607,7 +631,9 @@ snapshot's are kept apart from the live directory's.
 | H | Mark a return point where you stand |
 | J | Fly back to the return point; J again comes back |
 | I | Look inside the zip archive you are on; I again, or Escape with nothing selected, closes it |
-| P | Quick look at the selected file; ← → step through the list shown, and P or Escape closes it |
+| P | Quick look at the selected file, or at Preview's item; ← → step through the list shown, and P or Escape closes it |
+| ← → in Preview | The previous and next item of the list shown; Home and End the first and last. A long text scrolls to its edge first |
+| ↓ ↑, Enter, Esc in Preview | Reach the rows below; open the file or go into the folder, or with several selected read the first; back to the list of several |
 | `session:N` in Find | The N-th newest working session (`session:1` is the newest) |
 
 **Time.** The world looks back to one of 19 dates on a fixed ladder, from
@@ -668,17 +694,63 @@ Nothing inside can be changed, opened or revealed. The interior closes
 when the archive changes on disk, and is unavailable in snapshot mode.
 Other formats are named and refused, and search does not reach inside.
 
-**Quick look.** P, the inspector's Quick look or the palette shows the
-selected file in a large sheet before anything is opened: its text, the
-first 256 KB with line numbers; its picture, as the 480 px thumbnail, or
-the file itself only when it is 2 MB or less and not an SVG; its sound
-or film, in the browser's own player, which reads it in byte ranges and
-never plays by itself. A link, an archive entry and any other kind get
+**Quick look.** P, the inspector's Quick look, Preview's or the palette
+shows the selected file in a large sheet before anything is opened: its
+text, the first 256 KB with line numbers; its picture, as the 480 px
+thumbnail, or the file itself only when it is 2 MB or less and not an
+SVG; its sound or film, in the browser's own player, which reads it in
+byte ranges and never plays by itself. A link, an archive entry and any other kind get
 their facts and a sentence, and so does everything but a picture's
 thumbnail in snapshot mode. ← and → step to the previous and next file
 of the list shown, Contents or Findings, Home and End to the first and
 last; a long line or a long text scrolls to its edge first, and a
 player keeps its own keys.
+
+**Preview.** Panel B's second tab is a quick look docked beside the
+world. It follows the selection, so a folder or a search can be read
+through item by item, from the ledger or the world, without opening
+anything or covering the view. Choose PREVIEW on panel B's strip, or
+Ctrl+K, "preview", Enter, which opens panel B too when `]` or a narrow
+window hid it and puts focus in the tab. The Inspector stays the
+default, and the tab chosen is kept in this browser. Preview's head
+says at once what the item is, the folder it is in (a button back up
+to it) and its facts; its body follows once the arrows rest, so holding
+an arrow through a list reads only where you stop, and a read a newer
+selection overtakes is stopped. It shows:
+
+- a text's first 256 KB with its lines numbered, what kind of text it
+  is, its lines and line endings; Wrap lines, kept in this browser and
+  also in the palette, lets long lines run on instead;
+- a picture through its thumbnail only, the largest that fits, with its
+  size in pixels and its colour; never the file itself;
+- sound and film in the browser's own player, read in byte ranges,
+  never playing by itself, and stopped by the next step;
+- a zip archive's listing: what it holds, unpacked and packed, its
+  locked and escaping entries and its top level, with Look inside (I);
+- a symbolic link's target, never followed, with Select when the
+  target lies inside the directory;
+- a folder's summary: its bytes by kind, by age, and its ten largest
+  entries, each a row that selects it;
+- several selected: what they are, largest first, and what they weigh.
+  Enter on a row (or on the pane, the first) reads one while the
+  selection stays whole, ← → step through them, and Esc goes back to
+  the list.
+
+Where there is nothing to show, Preview says why in one sentence beside
+the facts: a sealed folder, an empty folder or file, snapshot mode (no
+contents are read there, though a picture's thumbnail still shows), an
+entry of an open archive, a kind it does not read, an item removed from
+outside since, or a read that failed, with Try again. In a very large
+directory a folder's largest entries arrive once its region does; the
+demo world plays one tone for every sound and one film for every video,
+and says so. In the pane, ← and → step to the previous and next item of
+the list the ledger shows, or of the item's folder, Home and End to the
+first and last, and a long text scrolls to its edge first; ↓ and ↑
+reach the rows; Enter opens a file or goes into a folder; P, or the
+Quick look button, opens Quick look where its sheet shows more (a
+text, a picture, a player), with focus back in Preview when it closes,
+and elsewhere says why it would not. While Preview is not on screen,
+or a sheet covers the page, it reads and plays nothing.
 
 **Totals and quick searches.** While more than one item is selected,
 the Contents and Findings count rows say what the selection weighs, as
@@ -817,6 +889,13 @@ that cannot be read.
 - Sound and film are read in byte ranges of at most 8 MiB, after the
   same checks as any preview; snapshot mode refuses every read of a
   file's bytes.
+- Preview only reads, and sends nothing that changes the disk: a
+  text's first 256 KB, and sound and film in byte ranges, through
+  `GET /api/raw`; a zip's listing through `GET /api/inside`; a link's
+  target through `GET /api/stat`, read from the link's text and never
+  followed; each with the checks of any preview. A picture reaches it
+  only through the thumbnail routes, never as the file. In snapshot
+  mode it asks for no file's bytes at all.
 - The warm cache holds what a snapshot holds: names, sizes, dates and
   flags, never what a file contains. It is written only from a survey of
   the whole directory that ran to its end, and read back only when its
@@ -898,12 +977,10 @@ time.
 | Wave 4's Scale on branch `wave-4`, Windows 11 (11/14/2026), Node 26.13: `npm test`, now twelve suites. `regions-test` holds the column tree's figures equal to `model.js` and `timeline.js` for every folder at 20,000 and 120,000 entries, its changes equal to the model's, Find equal to the page's search for 21 queries, the survey, sessions and places equal too, the generator, and the region routes and questions through the service in snapshot and live mode, 47 malformed requests refused, outside changes with a page listening and without, and a folder that keeps growing; `partial-test` holds a layout from regions equal box for box to the whole model's at twelve eye positions, the budget, and refills that keep held tail entries | 1,065 passed (255, 97, 57, 33, 60, 52, 54, 31, 80, 159, 68 and 119), none failed. In Node: a 300,000-entry tree built in 36 ms, a 20,000-file folder's region in 1.5 ms, and over 120,000 entries Find in 25 ms, the survey in 7 ms and sessions in 13 ms |
 | The Stage 4 exit test on Windows 11 (11/14/2026), 16 cores and 31.6 GB, Edge 157 on an RTX 5050 laptop GPU: `node tools/scale.mjs`, then the same with `--nogl`, on the final tree of Wave 4, over synthetic snapshots of seed 11 at five sizes, one point at a time with the service given an explicit heap; the tour from the overview eight levels down by keyboard, two searches, the Survey, and in regions the budget halved and a walk down again | Met at every size, with WebGL and without, every check passed. With WebGL, at 100,000 entries (held whole), 400,000, 1,000,000, 2,000,000 and 5,000,000 (in regions): peak script heap 28.6, 28.8, 42.1, 42.2, 41.7 MB; 26.8, 12.3, 13.1, 14.8, 12.6 MB after the tour; longest task 13.4, 12.6, 13.3, 13.0, 12.1 ms of script, none over 16 ms; first box 610, 529, 552, 1,162, 2,544 ms from a cold start. Without WebGL the peak was 19.1, 9.2, 7.1, 7.9, 7.9 MB. With the budget halved at 5,000,000 entries, letting regions go took 4.4 ms of script |
 | The final sweep of Wave 4 on Windows 11 (11/14/2026): `node --check` on every script outside `web/vendor/`, `npm test`, `npm run vendor -- --check`, the header of every file the branch touched, Markdown line lengths, and `node tools/ui-check.mjs --no-shots --port 5270` in both passes with Edge 157 on an RTX 5050 laptop GPU and the default fixture of 3,126 files: the earlier scenarios plus `views`, `polish`, `regions`, `regions-warm`, `regions-outside`, `regions-switch`, `demo-regions` and `scale` | No syntax error in 104 scripts; 1,142 passed, none failed; every vendored file matches the manifest; 85 headers in rule; no Markdown line over 100 columns; 2566 passed, 0 failed, 8 skipped (1,359 and 3 with WebGL, 1,207 and 5 without: what needs `--snapshot`, what needs a synthetic snapshot, the `splash` check for a sheet gone before the first look, and without WebGL two checks of the world); draw calls at the baseline. All of it after `main`'s steady conventions, flavors and Guide window were merged in; the first full run of the merged tree found ten `polish` failures in the Guide's tabs and key column, fixed first. Merged into `main` as Terrane 1.5.0 |
-
 | Steady conventions and Blender's view controls on Windows 11 (11/14/2026), Edge 157 on an RTX 5050 laptop GPU: `npm test`, and `node tools/ui-check.mjs --no-shots`, both passes, on the default fixture, with the new `views` scenario (hatching and bands drawn with the floating origin moved and moved back under the same eye; the middle button's orbit, grab and fly; the numpad views). With the old origin-relative coordinates put back, the same check finds 6,045 and 11,984 pixels moved | `npm test`: 797 passed, 0 failed. The interface check: 1424 passed, 0 failed, 6 skipped; 7 of 840,160 pixels differ with the fix |
-
 | Flavors on Windows 11 (11/14/2026), Edge 157 on an RTX 5050 laptop GPU: `npm test` with the new `flavors-test`, and `node tools/ui-check.mjs --no-shots`, both passes, on the default fixture, with `views` making every drag of every flavor with the mouse and judging what the eye did | `npm test`: 874 passed, 0 failed (77 in `flavors-test`). The interface check: 1438 passed, 1 failed, 6 skipped; the failure was the full-upload picture in `transitions`, one byte of one pixel a level apart, which the check now ignores while still counting anything over two levels (`transitions` again: 33 passed, 0 failed) |
-
 | The Guide window on Windows 11 (11/14/2026), Edge 157 on an RTX 5050 laptop GPU: `npm test`, and `node tools/ui-check.mjs --no-shots`, both passes, on the default fixture, with `seams`, `strata`, `time` and `interiors` reading Reading the world from the Guide's tab and `hardening` reaching the single-key setting in its Settings tab | `npm test`: 874 passed, 0 failed. The interface check: 1439 passed, 0 failed, 6 skipped |
+| Preview's final sweep on branch `tab-preview`, Windows 11 (11/14/2026): `node --check` on every script outside `web/vendor/`; `npm test`, now fourteen suites, `preview-test` last (Quick look's decisions against a copy of what it decided before its readers moved, over 356 files and modes; the text read through a fake fetch; the largest entries against a full sort over 1,000 random folders; 17 link targets); `npm run vendor -- --check`; the header of every file the branch touched; Markdown line lengths; and `node tools/ui-check.mjs --no-shots --port 5300` in both passes with Edge 157 on an RTX 5050 laptop GPU and the default fixture of 3,126 files: the earlier scenarios plus `preview`, `preview-regions` and `preview-disk`, with Preview's checks in `demo`, `demo-regions`, `hardening`, `polish` and `seams` | No syntax error in 108 scripts; 1,201 passed (255, 97, 57, 33, 60, 52, 54, 31, 80, 159, 68, 120, 77 and 58), none failed; every vendored file matches the manifest; 28 headers in rule; no Markdown line over 100 columns; 2974 passed, 0 failed, 8 skipped (1,563 and 3 with WebGL, 1,411 and 5 without, the same skips as before); draw calls at the baseline. An arrow held over 15 rows of the fixture, over 12 rows of the demo world and over 12 rows at 800 by 500 read one text each time, in both passes; a text cut at 256 KB built its 3,745 numbered lines in 10 and 11 ms. Merged into `main` after `main`'s Blender fix and `--flavor` were merged into the branch and checked again |
 
 Not verified: running on macOS; frame rate at street level in the largest
 trees on a hardware GPU; Open and Reveal reaching a desktop application on
@@ -936,7 +1013,14 @@ macOS, on Linux, in Firefox and Safari, on the 2-core software
 rasterizer, and with a screen reader; the budget reached in free
 travel rather than in the tour's halved step; the warm check of a
 large live directory on real disks; and the palette's path queries
-timed at 5,000,000 entries.
+timed at 5,000,000 entries. From Preview: panel B's strip and Preview's
+pane with a screen reader; Preview showing a real photograph's
+thumbnail or playing real sound and film (the fixture's media are
+zeros and the demo world draws its pictures in the page, so the checks
+prove the thumbnail and byte-range requests and the sentences that
+follow a failure); the strip crowded, which only happens with more than
+two tabs; a zip of more than about 20,000 entries, whose listing Preview
+reads whole into a model of its own; and Preview in Firefox and Safari.
 
 ## Continuing development
 
@@ -963,10 +1047,11 @@ web/css/tokens.css   the colours, type and space scales, named sizes, shadows,
 web/css/components/  controls, bar, ledger, stage, inspector, block, floating,
                      splash (the loading sheet), and one per feature: time,
                      places, traverse, strata, interior, palette, searches,
-                     quicklook, presets, batch
+                     quicklook, presets, batch, preview
 web/css/*.css        also: fonts, base, layout, utilities, motion, print
-web/js/app.js        controller: state, service calls, panels, progress, the
-                     warm start, and the registries feature modules fill
+web/js/app.js        controller: state, service calls, panels and panel B's
+                     tab strip, progress, the warm start, and the
+                     registries feature modules fill
 web/js/elsewhere.js  a page opened from disk says how to start the service
 web/js/demo.js       the demo world in the page: answers /api/ and the event
                      stream, draws pictures, sounds and film
@@ -1011,7 +1096,11 @@ web/js/resume.js     Remembered view and links: a reload, the address, Copy link
 web/js/searches.js   Search history, saved searches and in:
 web/js/memory.js     what resume.js and searches.js keep, DOM-free
 web/js/quicklook.js  Quick look: P, a file in a large sheet
+web/js/readers.js    what Quick look and Preview show a file as, the words
+                     for what they cannot show, the text read, DOM-free
 web/js/presets.js    the selection's total, Quick searches, gathering by keyboard
+web/js/preview.js    Preview: panel B's second tab, a quick look docked beside
+                     the world that follows the selection
 web/js/batch.js      Batch rename: F2 on several, its rules and preview
 web/js/rename.js     the batch rename's names and refusals, DOM-free
 web/js/dupes.js      Duplicate cleanup: keep one verified copy
@@ -1047,7 +1136,7 @@ tools/regions-test.mjs  the column tree, its regions and questions against
 tools/partial-test.mjs  the page's region mode against the whole model, with
                      no service
 tools/demo-test.mjs  the demo world and service in Node, against the real
-                     scanner and model (last in npm test)
+                     scanner and model
 tools/ui-check.mjs   headless browser check; scenarios in tools/ui-scenarios/,
                      among them hardening.mjs, finding.mjs (palette, resume,
                      searches), looking.mjs (quicklook, presets,
@@ -1056,15 +1145,18 @@ tools/ui-check.mjs   headless browser check; scenarios in tools/ui-scenarios/,
                      demo.mjs, polish.mjs (alignment, wrapping and clipping
                      in the demo world at three window sizes), regions.mjs
                      (regions, regions-warm, regions-outside,
-                     regions-switch), scale.mjs (synthetic snapshots only)
-                     and views.mjs (steady conventions, Blender's controls)
+                     regions-switch), scale.mjs (synthetic snapshots only),
+                     views.mjs (steady conventions, Blender's controls) and
+                     preview.mjs (preview, preview-regions, preview-disk)
 tools/flavors-test.mjs  every flavor in Node (in npm test)
+tools/preview-test.mjs  the readers Quick look and Preview share, in Node
+                     (last in npm test)
 tools/make-fixture.mjs  the synthetic tree the checks run on (npm run fixture)
 tools/make-synthetic.mjs  synthetic structure snapshots, 1,000 to 10,000,000
                      entries, written without a file
 tools/scale.mjs      the scale measurement over synthetic trees
 tools/vendor.mjs     fetch and verify the vendored browser libraries
-docs/                ARCHITECTURE.md, ROADMAP.md
+docs/                ARCHITECTURE.md, ROADMAP.md, ART-DIRECTION.md
 ```
 
 There is no build step. Edit a file and reload the page. A feature lives
@@ -1072,7 +1164,9 @@ in its own module, listed in `web/js/features.js`, and reaches the
 controller only through the registries it is handed; `docs/ARCHITECTURE.md`
 section 7 describes them. The design decisions and their trade-offs are in
 `docs/ARCHITECTURE.md`; the staged plan, the minimum filesystem scope and
-the exploration loop are in `docs/ROADMAP.md`.
+the exploration loop are in `docs/ROADMAP.md`. The look the world's blocks
+are built toward, Precision Architectural Terrain, is in
+`docs/ART-DIRECTION.md`.
 
 For GitHub Pages (deploy from the `main` branch, root folder), the root
 `index.html` forwards visitors to `web/`, so the interface keeps a

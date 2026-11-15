@@ -2,11 +2,11 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Demo Test (Terrane Edition - v1.1)
+ *     - Title: Demo Test (Terrane Edition - v1.2)
  *     - File Name: demo-test.mjs
  *     - Relative Path: tools/demo-test.mjs
  *     - Artifact Type: test
- *     - Version: 1.1.0
+ *     - Version: 1.2.0
  *     - Date: 11/14/2026
  *     - Update: Saturday, November 14, 2026
  *     - Author: Dennis 'dendogg' Smaltz
@@ -14,6 +14,10 @@
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
  *
  * ✒ Changelog:
+ *     - 1.2.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — Every
+ *       zip of the world holds its entries packed into its own size, with
+ *       a few hundred bytes of records each, as Preview shows the two side
+ *       by side.
  *     - 1.1.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
  *       region routes: info.regions; the root region equals a column tree
  *       built from the demo's own records; every folder's record equals
@@ -169,6 +173,13 @@ const parentsFirst = inside.records.every(([id, pid]) => {
 });
 check('a zip lists its entries, parents before children', inside.records[0][1] === -1 && parentsFirst && inside.records[0][2] === zip.name);
 check('and its totals add up', inside.files === inside.records.reduce((a, r) => a + r[5].length / 4, 0) && inside.folders === inside.records.length - 1);
+// Preview shows a zip's size beside its packed and unpacked bytes: they
+// agree as a real zip's do, its entries packed into the file with a few
+// hundred bytes of records each.
+const zips = files.filter(([n]) => n.arc && W.extOf(n.name) === 'zip').map(([n]) => [n, W.insideOf(n)]);
+const misfit = zips.filter(([n, z]) => !(z.packed <= n.size && n.size <= z.packed + 1024 + z.files * 512 && z.packed <= z.unpacked + z.files * 512));
+check(`every zip's entries are packed into its size (${zips.length} zips)`, zips.length >= 4 && misfit.length === 0,
+  misfit.slice(0, 3).map(([n, z]) => `${n.name}: size ${n.size}, packed ${z.packed}, unpacked ${z.unpacked}`).join('; '));
 
 /* ---------- scan parity with the real scanner ---------- */
 section('Scan parity');

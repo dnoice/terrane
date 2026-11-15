@@ -1,11 +1,11 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Feature Modules (Terrane Edition - v1.4)
+ *     - Title: Feature Modules (Terrane Edition - v1.5)
  *     - File Name: features.js
  *     - Relative Path: web/js/features.js
  *     - Artifact Type: javascript
- *     - Version: 1.4.0
+ *     - Version: 1.5.0
  *     - Date: 11/14/2026
  *     - Update: Saturday, November 14, 2026
  *     - Author: Dennis 'dendogg' Smaltz
@@ -13,6 +13,9 @@
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
  *
  * ✒ Changelog:
+ *     - 1.5.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] —
+ *       Preview, panel B's second tab (preview.js), after the totals and
+ *       quick searches.
  *     - 1.4.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
  *       flavors' palette commands, Flavor (flavors.js).
  *     - 1.3.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
@@ -26,12 +29,6 @@
  *       duplicate cleanup (dupes.js); and copy as (copyas.js). Then,
  *       getting things in and out: lists saved as CSV (exports.js);
  *       and a terminal opened in a folder (terminal.js).
- *     - 1.2.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
- *       third: Session traverse, working sessions as a search and a route
- *       (traverse.js). The fourth: Strata, bytes by last change and the
- *       Age lens's typical age for closed masses (strata.js). The fifth:
- *       Interiors, a zip archive looked inside as a walled floor
- *       (interior.js).
  *     Earlier entries: see CHANGELOG.md
  *
  * ✒ Description:
@@ -68,13 +65,14 @@
  * ✒ Other Important Information:
  *     - Dependencies: the feature modules it lists: time.js, landmarks.js,
  *       traverse.js, strata.js, interior.js, palette.js, resume.js,
- *       searches.js, quicklook.js, presets.js, batch.js, dupes.js,
- *       copyas.js, exports.js, terminal.js
+ *       searches.js, quicklook.js, presets.js, preview.js, batch.js,
+ *       dupes.js, copyas.js, exports.js, terminal.js, flavors.js
  *     - Registry entries a feature adds carry owner: '<feature>', so a
  *       check can tell them from the controller's own
  *     - Compatible platforms: any browser with ES2022 modules
  *     - Key allocation: I is Interiors; T , . < > are Time; B H J are
  *       Landmarks; P is Quick look's; Ctrl+K is the command palette's;
+ *       Preview binds none (its keys act inside its pane);
  *       F2 with several selected is the batch rename's, through the
  *       controller's own F2; Session, Strata, the remembered view,
  *       searches, duplicate cleanup, copy as, the exports and the
@@ -93,6 +91,7 @@ import * as resume from './resume.js';
 import * as searches from './searches.js';
 import * as quicklook from './quicklook.js';
 import * as presets from './presets.js';
+import * as preview from './preview.js';
 import * as batch from './batch.js';
 import * as dupes from './dupes.js';
 import * as copyas from './copyas.js';
@@ -101,4 +100,4 @@ import * as terminal from './terminal.js';
 import * as flavors from './flavors.js';
 
 /** Feature modules in install order. */
-export const FEATURES = [time, landmarks, traverse, strata, interior, palette, resume, searches, quicklook, presets, batch, dupes, copyas, exportLists, terminal, flavors];
+export const FEATURES = [time, landmarks, traverse, strata, interior, palette, resume, searches, quicklook, presets, preview, batch, dupes, copyas, exportLists, terminal, flavors];

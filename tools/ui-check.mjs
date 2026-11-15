@@ -2,11 +2,11 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Interface Check (Terrane Edition - v1.6)
+ *     - Title: Interface Check (Terrane Edition - v1.7)
  *     - File Name: ui-check.mjs
  *     - Relative Path: tools/ui-check.mjs
  *     - Artifact Type: test
- *     - Version: 1.6.0
+ *     - Version: 1.7.0
  *     - Date: 11/14/2026
  *     - Update: Saturday, November 14, 2026
  *     - Author: Dennis 'dendogg' Smaltz
@@ -14,6 +14,12 @@
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
  *
  * ✒ Changelog:
+ *     - 1.7.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — A
+ *       tab's first page also forgets panel B's chosen tab
+ *       (terrane.panel-b-tab) and Preview's wrap (terrane.preview-wrap),
+ *       so a scenario that leaves Preview chosen never starts the next one
+ *       with the Inspector undrawn. A request's record keeps its headers
+ *       (a media element's Range among them).
  *     - 1.6.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — For
  *       the scale measurements: a snapshot's data carries its meta (the
  *       newest structure-*.db in the folder, or the .db given), offered
@@ -91,8 +97,9 @@
  *       WebSocket; no Puppeteer, no Playwright
  *     - Pages open with single-key shortcuts turned on (the guide's
  *       setting), so a scenario's letter keys act wherever focus is
- *     - A tab's first page starts with no kept view and no search
- *       history; a reload in the same tab keeps both, as for a person
+ *     - A tab's first page starts with no kept view, no search history,
+ *       the Inspector as panel B's tab and Preview's lines wrapped; a
+ *       reload in the same tab keeps them, as for a person
  *     - Per-feature scenario files in tools/ui-scenarios/, each a module
  *       whose default export is one scenario or a list of them
  *     - Keyboard-only steps: real key events (Tab, Enter, Escape, arrows,
@@ -532,13 +539,15 @@ class Page {
     // The page starts with single-key shortcuts off; scenarios press letters
     // wherever focus happens to be, so turn them on as the guide's setting
     // does. The hardening scenario clears it to check the default.
-    // A tab's first page also forgets the kept view and the searches, so
-    // every scenario starts fresh, while a reload in it brings them back.
+    // A tab's first page also forgets the kept view, the searches, panel
+    // B's chosen tab and Preview's wrap, so every scenario starts fresh
+    // (on the Inspector), while a reload in it brings them back.
     await page.send('Page.addScriptToEvaluateOnNewDocument', {
       source: [
         "try { localStorage.setItem('terrane.single-keys', 'everywhere'); } catch {}",
         "try { if (!sessionStorage.getItem('terrane.check.opened')) { sessionStorage.setItem('terrane.check.opened', '1');",
-        "for (const k of Object.keys(localStorage)) if (k.startsWith('terrane.view.') || k.startsWith('terrane.searches.')) localStorage.removeItem(k); } } catch {}",
+        "for (const k of Object.keys(localStorage)) if (k.startsWith('terrane.view.') || k.startsWith('terrane.searches.')",
+        "|| k === 'terrane.panel-b-tab' || k === 'terrane.preview-wrap') localStorage.removeItem(k); } } catch {}",
       ].join(' '),
     });
     await page.send('Page.navigate', { url });
@@ -561,10 +570,11 @@ class Page {
         this.errors.push(`console.${p.type}: ${p.args.map((a) => a.value ?? a.description ?? '').join(' ')}`);
       } else if (msg.method === 'Log.entryAdded') this.log.push(`${p.entry.level}: ${p.entry.text}`);
       else if (msg.method === 'Network.requestWillBeSent') {
-        const r = { method: p.request.method, url: p.request.url, status: 0 };
+        const r = { method: p.request.method, url: p.request.url, status: 0, headers: p.request.headers || {} };
         byId.set(p.requestId, r);
         this.requests.push(r);
-      } else if (msg.method === 'Network.responseReceived' && byId.has(p.requestId)) byId.get(p.requestId).status = p.response.status;
+      } else if (msg.method === 'Network.requestWillBeSentExtraInfo' && byId.has(p.requestId)) Object.assign(byId.get(p.requestId).headers, p.headers);
+      else if (msg.method === 'Network.responseReceived' && byId.has(p.requestId)) byId.get(p.requestId).status = p.response.status;
     });
   }
 

@@ -1,11 +1,11 @@
 <!DOCTYPE html>
 <!--
 ✒ Metadata
-    - Title: Terrane Interface (Terrane Edition - v1.7)
+    - Title: Terrane Interface (Terrane Edition - v1.8)
     - File Name: index.html
     - Relative Path: web/index.html
     - Artifact Type: markup
-    - Version: 1.7.0
+    - Version: 1.8.0
     - Date: 11/14/2026
     - Update: Saturday, November 14, 2026
     - Author: Dennis 'dendogg' Smaltz
@@ -13,6 +13,11 @@
     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
 
 ✒ Changelog:
+    - 1.8.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — Panel
+      B's head is a tab strip (#b-tabs, "Inspector views") where its
+      heading stood, the Inspector its first tab; #inspector-body is that
+      tab's panel. The ledger's strip is named #ledger-tabs. The view
+      tools' ] toggle is named for panel B.
     - 1.7.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — Every
       title block label holds its words in span.text after an icon (Legend
       and Status gain theirs), so a narrow cell ends them in an ellipsis.
@@ -28,9 +33,6 @@
       the control that had it. The placing banner's buttons carry icons,
       and Cancel names its key; Find's example tokens are single-spaced,
       so the whole line fits the field at full width.
-    - 1.5.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — An As
-      of cell in the title block: a stepper for the date the world looks
-      back to (earlier, the date or Now, later), reachable by Tab.
     Earlier entries: see CHANGELOG.md
 
 ✒ Description:
@@ -133,7 +135,7 @@
       <div class="panel-head">
         <span class="ref">A</span>
         <!-- The tab buttons are made by app.js from its TABS registry. -->
-        <div class="tabs" role="tablist" aria-label="Ledger views"></div>
+        <div class="tabs" id="ledger-tabs" role="tablist" aria-label="Ledger views"></div>
       </div>
       <div id="ledger-sub" class="panel-sub"></div>
       <div id="ledger-list" class="ledger-body"></div>
@@ -201,7 +203,7 @@
         <button class="btn btn-icon" id="v-ledger" type="button" title="Show or hide the ledger ([)" aria-label="Show or hide the ledger" aria-pressed="true">
           <svg class="icon" aria-hidden="true"><use href="vendor/lucide/icons.svg#panel-left"/></svg>
         </button>
-        <button class="btn btn-icon" id="v-inspector" type="button" title="Show or hide the inspector (])" aria-label="Show or hide the inspector" aria-pressed="true">
+        <button class="btn btn-icon" id="v-inspector" type="button" title="Show or hide panel B (])" aria-label="Show or hide panel B" aria-pressed="true">
           <svg class="icon" aria-hidden="true"><use href="vendor/lucide/icons.svg#panel-right"/></svg>
         </button>
       </div>
@@ -210,8 +212,13 @@
     </section>
 
     <aside id="inspector" aria-label="Inspector">
-      <div class="panel-head"><span class="ref">B</span><h2>Inspector</h2></div>
-      <div id="inspector-body" tabindex="-1"></div>
+      <div class="panel-head">
+        <span class="ref">B</span>
+        <!-- The tab buttons are made by app.js from its B_TABS registry:
+             the Inspector first, then the tabs features add. -->
+        <div class="tabs" id="b-tabs" role="tablist" aria-label="Inspector views"></div>
+      </div>
+      <div id="inspector-body" role="tabpanel" aria-labelledby="b-tab-inspector" tabindex="-1"></div>
     </aside>
   </main>
 

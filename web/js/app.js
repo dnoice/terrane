@@ -1,11 +1,11 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Terrane Application (Terrane Edition - v1.16)
+ *     - Title: Terrane Application (Terrane Edition - v1.17)
  *     - File Name: app.js
  *     - Relative Path: web/js/app.js
  *     - Artifact Type: javascript
- *     - Version: 1.16.0
+ *     - Version: 1.17.0
  *     - Date: 11/14/2026
  *     - Update: Saturday, November 14, 2026
  *     - Author: Dennis 'dendogg' Smaltz
@@ -13,6 +13,13 @@
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
  *
  * ✒ Changelog:
+ *     - 1.17.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] —
+ *       Panel B's head is a tab strip from B_TABS, the Inspector first and
+ *       the default, the choice kept in this browser; both strips take the
+ *       arrows, Home and End. The Inspector draws only while chosen. The
+ *       api gains B_TABS, drawBTabs, showBTab, bTabShown, composition's
+ *       title, contentsOrder and get's signal. ] is panel B's toggle in its
+ *       labels and in what it says, which names the tab it shows.
  *     - 1.16.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] —
  *       A flavor the service was started with (--flavor, in /api/info) is
  *       taken once by this browser; a choice made in the guide since holds.
@@ -42,10 +49,6 @@
  *       search and survey asked again at a pace the service bears, and
  *       Findings turned page by page. A search's answer in region mode is
  *       painted and listed once as it lands, not twice in one task.
- *     - 1.14.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] —
- *       The Guide is one window in four tabs: Keys, Mouse, Reading the
- *       world and Settings, the last one opened kept. Reading the world
- *       leaves the inspector for it, so the inspector's space is free.
  *     Earlier entries: see CHANGELOG.md
  *
  * ✒ Description:
@@ -106,7 +109,7 @@
  *       the one lock in runOp know the graft, and nothing inside is ever
  *       fetched, changed, opened or revealed
  *     - Seams for features: ordered registries (KEYS, ESCAPE, PIN_SOURCES,
- *       TIP_LINES, INSPECTOR focus, node and many, READING, TABS, SURVEY,
+ *       TIP_LINES, INSPECTOR focus, node and many, READING, TABS, B_TABS, SURVEY,
  *       LAYOUT_OPTS, MENU, COMMANDS, LEDGER_SUB, TAB_SECTIONS,
  *       RENAME_MANY, DUP_GROUP) and hook lists
  *       (AFTER_LAYOUT, AFTER_REFRESH, AFTER_SURVEY, AFTER_OP, AFTER_QUERY,
@@ -137,6 +140,12 @@
  *       or an open archive, nor a folder standing open
  *     - Instruments over the world: a north arrow that turns with the
  *       camera and back to north on a click, and a storage scale
+ *     - Panel B's tab strip (B_TABS): the Inspector first and the
+ *       default, a feature's tabs beside it, each with a panel of its own;
+ *       the chosen tab kept in this browser; a tab not shown (another
+ *       chosen, ] or a closed drawer) does no work, the Inspector included
+ *     - Both tab strips take the arrows, Home and End themselves, the tab
+ *       reached chosen, so Home on a tab no longer rises to the overview
  *
  * ✒ Usage Instructions:
  *     Loaded by web/index.html as a module; start the service and open the
@@ -160,6 +169,9 @@
  *         api.RENAME_MANY.add({ id: 'batch', run: (nodes) => openSheet(nodes) });
  *         api.MENU.add({ id: 'copyas', many: (nodes, ctx) => [{ label, run }] });
  *         api.DUP_GROUP.add({ id: 'dupes', build: (group, ctx) => el(...) });
+ *         api.B_TABS.add({ id: 'preview', order: 20, label: 'Preview', icon: 'eye',
+ *           mount: (host) => {}, show: (host, { focus }) => {}, hide: () => {} });
+ *         api.showBTab('preview', { focus: true });   // panel B opened if hidden
  *     Every entry has a unique id; order (default 50) places it.
  *
  * ✒ Other Important Information:
@@ -238,6 +250,8 @@ const S = {
   warm: null,
   placing: null, drag: null,
   tab: 'contents', sort: { key: 'size', dir: -1 },
+  // Panel B's chosen tab (B_TABS): the Inspector unless another is kept.
+  bTab: 'inspector',
   // The Findings order a person chose; null keeps the search's own default.
   findSort: null,
   layoutTimer: 0, surveyTimer: 0,
@@ -434,6 +448,22 @@ const TABS = registry('TABS', (x) => {
   needs('TABS', 'draw')(x);
 });
 
+/**
+ * B_TABS: panel B's tabs, the Inspector first: { id, owner, order, label,
+ * icon, title?, mount?(host), show(host, { focus }), hide?(),
+ * focusTarget?(host) }. The controller draws the strip from it and keeps
+ * a panel for each feature tab (div.b-panel#b-panel-<id>; the Inspector's
+ * is #inspector-body). mount(host) runs once, the first time the tab is
+ * chosen; show(host, { focus }) whenever it is chosen while panel B is on
+ * screen, and again when panel B comes back (], the drawer, the
+ * breakpoint); hide() when it is left or panel B goes. A tab that is not
+ * shown does no work.
+ */
+const B_TABS = registry('B_TABS', (x) => {
+  if (typeof x.label !== 'string') throw new TypeError(`B_TABS: "${x.id}" needs a label.`);
+  needs('B_TABS', 'show')(x);
+});
+
 /** LAYOUT_OPTS: { id, order, options(opts) -> object | null }, merged into buildLayout's options. */
 const LAYOUT_OPTS = registry('LAYOUT_OPTS', needs('LAYOUT_OPTS', 'options'));
 
@@ -556,7 +586,7 @@ const TAB_SECTIONS = registry('TAB_SECTIONS', (x) => {
   needs('TAB_SECTIONS', 'build')(x);
 });
 
-for (const reg of [KEYS, ESCAPE, PIN_SOURCES, TIP_LINES, INSPECTOR.focus, INSPECTOR.node, INSPECTOR.many, READING, TABS, LAYOUT_OPTS, AFTER_LAYOUT, AFTER_REFRESH, AFTER_SURVEY, AFTER_OP, MENU, AFTER_QUERY, SURVEY,
+for (const reg of [KEYS, ESCAPE, PIN_SOURCES, TIP_LINES, INSPECTOR.focus, INSPECTOR.node, INSPECTOR.many, READING, TABS, B_TABS, LAYOUT_OPTS, AFTER_LAYOUT, AFTER_REFRESH, AFTER_SURVEY, AFTER_OP, MENU, AFTER_QUERY, SURVEY,
   COMMANDS, LEDGER_SUB, AFTER_FOCUS, AFTER_SELECT, TAB_SECTIONS, RENAME_MANY, DUP_GROUP]) Object.freeze(reg);
 
 /* ====================================================================== */
@@ -577,8 +607,14 @@ async function asError(res) {
   return err;
 }
 
-async function get(route, params = {}) {
-  const res = await fetch(`/api/${route}?${new URLSearchParams(params)}`, { headers: { 'X-Terrane-Token': TOKEN } });
+/**
+ * GET /api/<route>, resolving to its JSON; a refusal throws the service's
+ * sentence. signal lets a caller drop a request it no longer needs (an
+ * archive listing a moved selection left behind): the service stops
+ * reading when its request goes away.
+ */
+async function get(route, params = {}, { signal } = {}) {
+  const res = await fetch(`/api/${route}?${new URLSearchParams(params)}`, { headers: { 'X-Terrane-Token': TOKEN }, signal });
   if (!res.ok) throw await asError(res);
   return res.json();
 }
@@ -3407,9 +3443,9 @@ const byName = (a, b) => a.n.localeCompare(b.n, undefined, { numeric: true, sens
  * and inside an open archive, whose folders the table does not hold, by
  * the last change alone, oldest first, then the name.
  */
-function untouchedOrder() {
+function untouchedOrder(dir = S.focus) {
   const ages = S.ages;
-  if (!ages || hostOf(S.focus)) return (a, b) => changedAt(a) - changedAt(b) || byName(a, b);
+  if (!ages || hostOf(dir)) return (a, b) => changedAt(a) - changedAt(b) || byName(a, b);
   const steps = new Map();
   const stepOf = (n) => {
     let k = steps.get(n);
@@ -3419,14 +3455,22 @@ function untouchedOrder() {
   return (a, b) => stepOf(b) - stepOf(a) || changedAt(a) - changedAt(b) || byName(a, b);
 }
 
-function sortedContents() {
+/**
+ * A folder's held children in Contents' order (S.sort: name, size,
+ * changed, or Untouched by typical age): the one comparator Contents
+ * lists with, so a feature that steps through a folder the ledger does not
+ * show steps in the order a person sees there.
+ */
+function contentsOrder(folder) {
   const { key, dir } = S.sort;
-  const items = [...S.focus.c];
+  const items = [...folder.c];
   const cmp = key === 'name' ? byName : key === 'date' ? (a, b) => changedAt(a) - changedAt(b)
-    : key === 'untouched' ? untouchedOrder() : (a, b) => a.s - b.s;
+    : key === 'untouched' ? untouchedOrder(folder) : (a, b) => a.s - b.s;
   items.sort((a, b) => cmp(a, b) * dir);
   return items;
 }
+
+const sortedContents = () => contentsOrder(S.focus);
 
 /** A tab's label, in a span that can shorten with an ellipsis when the ledger is narrow. */
 const tabLabel = (tab) => el('span', { class: 'tab-label', text: tab.label });
@@ -3435,15 +3479,20 @@ const tabLabel = (tab) => el('span', { class: 'tab-label', text: tab.label });
 const TAB_ICON = { contents: 'contents', findings: 'findings', survey: 'survey', journal: 'journal' };
 const tabIcon = (tab) => icon(tab.icon || TAB_ICON[tab.id] || 'list-tree');
 
-/** Moves the tab underline and the lens plate under their chosen items. */
+/**
+ * Moves the tab underlines and the lens plate under their chosen items.
+ * The class .tabs is shared by the ledger's strip and panel B's, so each
+ * is named by its id.
+ */
 function slideIndicators() {
-  slideIndicator(document.querySelector('.tabs'), document.querySelector('.tabs [aria-selected=true]'));
+  slideIndicator($('ledger-tabs'), $('ledger-tabs').querySelector('[aria-selected=true]'));
+  slideIndicator($('b-tabs'), $('b-tabs').querySelector('[aria-selected=true]'));
   slideIndicator($('lens'), document.querySelector('#lens [aria-checked=true]'));
 }
 
-/** The tab buttons, made from TABS. */
+/** The ledger's tab buttons, made from TABS. */
 function drawTabs() {
-  document.querySelector('.tabs').replaceChildren(...[...TABS].map((tab) => el('button', {
+  $('ledger-tabs').replaceChildren(...[...TABS].map((tab) => el('button', {
     role: 'tab', type: 'button', 'data-tab': tab.id, 'aria-selected': String(tab.id === S.tab), title: tab.label,
     onclick: () => {
       S.tab = tab.id;
@@ -3501,7 +3550,8 @@ function drawLedgerNow(keepScroll) {
   const key = [S.tab, S.focus, S.sort.key, S.sort.dir, S.query].map((v) => (typeof v === 'object' ? v?.n : v)).join('|') + '|' + (S.tab === 'contents' ? relPath(S.focus) : '') + (tab.key ? `|${tab.key()}` : '');
   if (key === ledgerKey) keepScroll = true;
   ledgerKey = key;
-  document.querySelectorAll('.tabs [role=tab]').forEach((b) => {
+  // The ledger's strip only: panel B's tabs share the class .tabs.
+  $('ledger-tabs').querySelectorAll('[role=tab]').forEach((b) => {
     b.setAttribute('aria-selected', String(b.dataset.tab === S.tab));
     const t = TABS.get(b.dataset.tab);
     if (t?.count) {
@@ -3876,11 +3926,12 @@ function sectionTitle(text, figure = null, sep = ' · ') {
 const shareBar = (part, whole) => el('span', { class: 'share' }, el('i', { style: { width: `${whole ? Math.min(100, (part / whole) * 100) : 0}%` } }));
 const pct = (part, whole) => (whole ? `${((part / whole) * 100).toFixed(part / whole < 0.1 ? 1 : 0)}%` : '0%');
 
-function composition(dir) {
+/** A folder's bytes by kind: the bar and its key under a section head (title, Composition by default). */
+function composition(dir, title = 'Composition') {
   const parts = KINDS.map((k, i) => ({ k, bytes: dir.ks[i] })).filter((p) => p.bytes > 0).sort((a, b) => b.bytes - a.bytes);
   if (!parts.length) return [];
   return [
-    sectionTitle('Composition'),
+    sectionTitle(title),
     el('div', { class: 'comp', role: 'img', 'aria-label': parts.map((p) => `${p.k.label} ${pct(p.bytes, dir.s)}`).join(', ') },
       parts.map((p) => el('i', { style: { width: `${(p.bytes / dir.s) * 100}%`, background: cssHex(p.k.color) }, title: `${p.k.label} ${fmtBytes(p.bytes)}` }))),
     el('ul', { class: 'comp-key' }, parts.slice(0, 6).map((p) => el('li', {}, el('span', { class: 'swatch', style: { background: cssHex(p.k.color) } }), el('span', { text: p.k.label }), el('span', { text: pct(p.bytes, dir.s) })))),
@@ -3920,7 +3971,18 @@ function settleInspector(host, subject) {
   inspectTimer = setTimeout(() => host.classList.remove('is-entering'), 600);
 }
 
+/**
+ * Draws the Inspector, while it is panel B's chosen tab. Under another
+ * tab it is only marked stale and draws when chosen again (or before
+ * printing), so it fetches nothing while it cannot be seen.
+ */
+let inspectorStale = false;
 function drawInspector() {
+  if (S.bTab !== 'inspector') {
+    inspectorStale = true;
+    return;
+  }
+  inspectorStale = false;
   const t0 = performance.now();
   const host = $('inspector-body');
   keepFocus(host, drawInspectorNow, host);
@@ -4587,9 +4649,171 @@ function togglePanel(which) {
   else if (NARROW.matches) b.toggle('show-inspector', !shown);
   else b.toggle('no-inspector', shown);
   syncPanelToggles();
-  const name = which === 'ledger' ? 'Ledger' : 'Inspector';
-  const key = which === 'ledger' ? '[' : ']';
-  say(shown ? `${name} hidden. ${key} shows it again.` : `${name} shown. ${key} hides it.`);
+  // Panel B's chosen tab hears it go (its reads stop) or come back.
+  if (which === 'inspector') followB();
+  // Panel B is named as ] is labelled, and on showing, the tab it shows.
+  if (which === 'ledger') say(shown ? 'Ledger hidden. [ shows it again.' : 'Ledger shown. [ hides it.');
+  else say(shown ? 'Panel B hidden. ] shows it again.' : `Panel B shown, on ${B_TABS.get(S.bTab)?.label || 'Inspector'}. ] hides it.`);
+}
+
+/* ---------- panel B's tabs ---------- */
+
+/** Panel B's chosen tab, kept in this browser for every directory. */
+const B_TAB_KEY = 'terrane.panel-b-tab';
+
+/** A tab's panel: #inspector-body for the Inspector, else #b-panel-<id>. */
+const panelOf = (id) => (id === 'inspector' ? $('inspector-body') : $(`b-panel-${id}`));
+
+/** Runs one of a B_TABS entry's functions; one that throws is reported and the page goes on. */
+function bCall(entry, fn, ...args) {
+  try {
+    return entry?.[fn]?.(...args);
+  } catch (err) {
+    console.error(`B_TABS "${entry.id}" ${fn} failed:`, err);
+    return undefined;
+  }
+}
+
+/** Whether panel B was on screen at the last look (followB). */
+let bShown = null;
+
+/**
+ * Tells panel B's chosen tab when the panel comes and goes (], the
+ * drawer, the 860 px breakpoint): show(host) when it is on screen again,
+ * hide() when it is not, so a tab no one can see does no work.
+ */
+function followB() {
+  const now = panelShown('inspector');
+  if (now === bShown) return;
+  bShown = now;
+  const entry = B_TABS.get(S.bTab);
+  if (now) bCall(entry, 'show', panelOf(S.bTab), { focus: false });
+  else bCall(entry, 'hide');
+}
+
+/** Marks panel B's strip crowded when a label no longer fits, so only the chosen tab keeps its words. */
+function fitBTabs() {
+  const strip = $('b-tabs');
+  delete strip.dataset.crowded;
+  const crowded = [...strip.querySelectorAll('.tab-label')].some((l) => l.scrollWidth > l.clientWidth + 0.5);
+  if (crowded) strip.dataset.crowded = '';
+}
+
+/**
+ * Panel B's strip, made from B_TABS with the ledger's icons and labels;
+ * every tab stays in the Tab order, as the ledger's do. A feature tab's
+ * panel is made when missing, after #inspector-body in registry order,
+ * and the panel of a tab no longer registered is removed. A chosen tab
+ * that is gone leaves panel B on the Inspector, not remembered, so a
+ * feature that failed to start does not erase the choice kept.
+ */
+function drawBTabs() {
+  const tabs = [...B_TABS];
+  $('b-tabs').replaceChildren(...tabs.map((tab) => el('button', {
+    role: 'tab', type: 'button', id: `b-tab-${tab.id}`, 'data-btab': tab.id, 'aria-controls': panelOf(tab.id)?.id || `b-panel-${tab.id}`,
+    'aria-selected': String(tab.id === S.bTab), title: tab.title || tab.label,
+    onclick: () => chooseBTab(tab.id),
+  }, tabIcon(tab), tabLabel(tab))));
+  let after = $('inspector-body');
+  const keep = new Set();
+  for (const tab of tabs) {
+    if (tab.id === 'inspector') continue;
+    let host = $(`b-panel-${tab.id}`);
+    if (!host) host = el('div', { class: 'b-panel', id: `b-panel-${tab.id}`, role: 'tabpanel', 'aria-labelledby': `b-tab-${tab.id}`, hidden: true });
+    if (after.nextElementSibling !== host) after.after(host);
+    after = host;
+    keep.add(host);
+  }
+  for (const host of $('inspector').querySelectorAll('.b-panel')) if (!keep.has(host)) host.remove();
+  // The buttons are new: their aria-controls name the panels made above.
+  for (const b of $('b-tabs').querySelectorAll('[role=tab]')) b.setAttribute('aria-controls', panelOf(b.dataset.btab).id);
+  if (!B_TABS.get(S.bTab)) chooseBTab('inspector', { remember: false });
+  fitBTabs();
+  requestAnimationFrame(slideIndicators);
+}
+
+/**
+ * Chooses panel B's tab id: the last one hears hide(), the panels follow,
+ * the new one is mounted once and shown when panel B is on screen, and the
+ * choice is kept (remember). focus 'tab' puts focus on its button, 'panel'
+ * in its panel (focusTarget, else the panel); with neither, focus left in
+ * a panel now hidden goes to the chosen tab's button.
+ */
+function chooseBTab(id, { focus = null, remember = true } = {}) {
+  const entry = B_TABS.get(id);
+  if (!entry) return false;
+  const was = B_TABS.get(S.bTab);
+  const at = document.activeElement;
+  const lost = at && at !== document.body && [...$('inspector').querySelectorAll('#inspector-body, .b-panel')].some((p) => p !== panelOf(id) && p.contains(at));
+  if (was && was !== entry) bCall(was, 'hide');
+  S.bTab = id;
+  for (const b of $('b-tabs').querySelectorAll('[role=tab]')) b.setAttribute('aria-selected', String(b.dataset.btab === id));
+  for (const tab of B_TABS) {
+    const p = panelOf(tab.id);
+    if (p) p.hidden = tab.id !== id;
+  }
+  const host = panelOf(id);
+  if (entry.mount && host && !('mounted' in host.dataset)) {
+    host.dataset.mounted = '';
+    bCall(entry, 'mount', host);
+  }
+  if (panelShown('inspector')) bCall(entry, 'show', host, { focus: focus === 'panel' });
+  if (remember) {
+    try {
+      localStorage.setItem(B_TAB_KEY, id);
+    } catch { /* not kept: the choice lasts until the page closes */ }
+  }
+  const button = $(`b-tab-${id}`);
+  slideIndicator($('b-tabs'), button);
+  if (focus === 'tab') button?.focus({ preventScroll: true });
+  else if (focus === 'panel') (bCall(entry, 'focusTarget', host) || host)?.focus({ preventScroll: true });
+  else if (lost) button?.focus({ preventScroll: true });
+  return true;
+}
+
+/**
+ * Shows panel B's tab id, opening panel B first if ] hid it (or the
+ * drawer in a narrow window), quietly; with focus, focus goes into its
+ * panel. false for a tab that is not registered.
+ */
+function showBTab(id, { focus = false } = {}) {
+  if (!B_TABS.get(id)) return false;
+  if (!panelShown('inspector')) {
+    const b = document.body.classList;
+    if (NARROW.matches) b.add('show-inspector');
+    else b.remove('no-inspector');
+    syncPanelToggles();
+    // chooseBTab shows it: followB must not show it a second time.
+    bShown = true;
+  }
+  chooseBTab(id, { focus: focus ? 'panel' : null });
+  return true;
+}
+
+/** Whether panel B's tab id is on screen: chosen, with panel B shown. */
+const bTabShown = (id) => S.bTab === id && panelShown('inspector');
+
+/**
+ * The keys of a tab strip (the ledger's and panel B's): ArrowRight and
+ * ArrowLeft move to the next and previous tab, wrapping; Home and End to
+ * the first and last; the tab reached is chosen, as the Guide's strip
+ * does. They are kept from the window's handler, so Home on a tab no
+ * longer rises to the overview. Ctrl, Meta and Alt are left alone (Alt+←
+ * is Back); Enter and Space keep the buttons' click.
+ */
+function stripKeys(strip, pick) {
+  strip.addEventListener('keydown', (e) => {
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
+    const tab = e.target.closest?.('[role=tab]');
+    if (!tab || !strip.contains(tab)) return;
+    const tabs = [...strip.querySelectorAll('[role=tab]')];
+    const i = tabs.indexOf(tab);
+    const j = { ArrowRight: (i + 1) % tabs.length, ArrowLeft: (i - 1 + tabs.length) % tabs.length, Home: 0, End: tabs.length - 1 }[e.key];
+    if (j === undefined) return;
+    e.preventDefault();
+    e.stopPropagation();
+    pick(tabs[j].dataset.tab ?? tabs[j].dataset.btab);
+  });
 }
 
 function wireControls() {
@@ -4623,13 +4847,44 @@ function wireControls() {
   $('v-go').onclick = () => (S.primary ? reveal(S.primary) : notice('Select something first, then fly to it.', { kind: 'info', ms: 2500 }));
   $('v-ledger').onclick = () => togglePanel('ledger');
   $('v-inspector').onclick = () => togglePanel('inspector');
-  NARROW.addEventListener('change', syncPanelToggles);
+  NARROW.addEventListener('change', () => {
+    syncPanelToggles();
+    followB();
+  });
   syncPanelToggles();
+  stripKeys($('ledger-tabs'), (id) => {
+    S.tab = id;
+    drawLedger();
+    $('ledger-tabs').querySelector(`[data-tab="${CSS.escape(id)}"]`)?.focus({ preventScroll: true });
+  });
+  stripKeys($('b-tabs'), (id) => chooseBTab(id, { focus: 'tab' }));
   $('q-clear').onclick = () => { clearQuery(); $('q').focus(); };
-  // Tabs and the lens switch are flexible; their indicators follow resizes.
-  const ro = new ResizeObserver(() => slideIndicators());
-  ro.observe(document.querySelector('.tabs'));
+  // Tabs and the lens switch are flexible; their indicators follow
+  // resizes, and panel B's strip is fitted again.
+  const ro = new ResizeObserver(() => {
+    fitBTabs();
+    slideIndicators();
+  });
+  ro.observe($('ledger-tabs'));
+  ro.observe($('b-tabs'));
   ro.observe($('lens'));
+  // Printing shows the Inspector whichever tab is chosen: drawn first if
+  // it went stale, and shown for the print only.
+  let printing = false;
+  window.addEventListener('beforeprint', () => {
+    if (S.bTab === 'inspector') return;
+    if (inspectorStale) {
+      drawInspectorNow();
+      inspectorStale = false;
+    }
+    $('inspector-body').hidden = false;
+    printing = true;
+  });
+  window.addEventListener('afterprint', () => {
+    if (!printing) return;
+    printing = false;
+    $('inspector-body').hidden = S.bTab !== 'inspector';
+  });
   // The legend shows whole chips at any width: fitted again when it resizes.
   new ResizeObserver(() => {
     cancelAnimationFrame(legendFit);
@@ -4792,9 +5047,11 @@ function wireKeys() {
   core({ id: 'find', keys: ['/'], run: () => { $('q').focus(); }, guide: [SEL, '/', 'Find'] });
   core({ id: 'guide-escape', guide: [SEL, 'Esc', 'Cancel, clear'] });
   core({
-    id: 'panels', keys: ['[', ']'], labels: { '[': 'Hide or show the ledger', ']': 'Hide or show the inspector' },
-    run: (c) => { togglePanel(c.k === '[' ? 'ledger' : 'inspector'); }, guide: [SEL, '[  ]', 'Hide ledger / inspector'],
+    id: 'panels', keys: ['[', ']'], labels: { '[': 'Hide or show the ledger', ']': 'Hide or show panel B' },
+    run: (c) => { togglePanel(c.k === '[' ? 'ledger' : 'inspector'); }, guide: [SEL, '[  ]', 'Hide ledger / panel B'],
   });
+  // The ledger's tabs and panel B's take these keys themselves (stripKeys).
+  core({ id: 'guide-tab-strips', guide: [SEL, '← → on tabs', 'Previous / next tab (Home, End: first, last)'] });
   core({
     id: 'lens', keys: ['1', '2', '3', '4'], labels: { 1: 'Lens: kind', 2: 'Lens: age', 3: 'Lens: size', 4: 'Lens: duplicates' },
     run: (c) => { setLens(['kind', 'age', 'size', 'dup'][Number(c.k) - 1]); }, guide: [SEL, '1 – 4', 'Lens'],
@@ -4910,6 +5167,9 @@ function wireKeys() {
   READING.add({ id: 'empty', order: 70, glyph: 'g-empty', title: 'Hollow', text: 'An empty folder.' });
   READING.add({ id: 'pin', order: 80, glyph: 'g-pin', title: 'Pin', text: 'Vermilion marks a search match; ink marks a heavyweight file.' });
 
+  // Panel B's first tab, and the default: the Inspector, drawn when chosen.
+  B_TABS.add({ id: 'inspector', order: 0, label: 'Inspector', icon: 'info', show: () => drawInspector(), focusTarget: () => $('inspector-body') });
+
   TABS.add({ id: 'contents', order: 10, label: 'Contents', list: true, draw: drawContents });
   TABS.add({
     id: 'findings', order: 20, label: 'Findings', list: true, draw: drawFindings, count: () => (S.search ? S.search.total ?? S.search.list.length : null), enter: (node) => reveal(node),
@@ -4954,7 +5214,7 @@ function wireKeys() {
  */
 const API = Object.freeze({
   S, KEY_OWNERS,
-  KEYS, ESCAPE, PIN_SOURCES, TIP_LINES, INSPECTOR, READING, TABS, LAYOUT_OPTS, AFTER_LAYOUT, AFTER_REFRESH, AFTER_SURVEY, AFTER_OP, MENU, QUERY,
+  KEYS, ESCAPE, PIN_SOURCES, TIP_LINES, INSPECTOR, READING, TABS, B_TABS, LAYOUT_OPTS, AFTER_LAYOUT, AFTER_REFRESH, AFTER_SURVEY, AFTER_OP, MENU, QUERY,
   AFTER_QUERY, SURVEY, COMMANDS, LEDGER_SUB, AFTER_FOCUS, AFTER_SELECT, TAB_SECTIONS, RENAME_MANY, DUP_GROUP,
   get, post, runOp, refreshDirs, writable, isAttached, hostOf, relPath, absPath, relLabel,
   // The service's own mode, without the wait of a warm start: what refuses
@@ -5000,6 +5260,13 @@ const API = Object.freeze({
   select, selectAll, setFocus, reveal, activate, describe, say, forceOpen, overview, setLens, copyText,
   rescan: fullScan,
   drawAll, drawTabs, drawLedger, drawInspector, drawLegend, drawStatus, runQuery, setQuery, tabSections,
+  // Panel B: its strip drawn again from B_TABS, a tab shown (panel B
+  // opened first when hidden; focus: true puts focus in it), and whether
+  // a tab is on screen now.
+  drawBTabs, showBTab, bTabShown,
+  // A folder's bytes by kind under a head of the caller's words, and its
+  // held children in Contents' order.
+  composition, contentsOrder,
   el, notice, section, itemButton, actionButton, fact, shareBar, pct,
   // A value from parts that break only at their " · " separators, and a
   // section's head with its figure at the right.
@@ -5107,6 +5374,16 @@ async function start() {
   });
   installFeatures(FEATURES);
   drawTabs();
+  // Panel B's kept tab, if a feature still registers it; storage is not
+  // rewritten, so a feature that failed to start keeps the choice.
+  let keptB = null;
+  try {
+    keptB = localStorage.getItem(B_TAB_KEY);
+  } catch { /* nothing kept */ }
+  S.bTab = keptB && B_TABS.get(keptB) ? keptB : 'inspector';
+  drawBTabs();
+  chooseBTab(S.bTab, { remember: false });
+  bShown = panelShown('inspector');
   wireViewport();
   wireControls();
   wireKeys();

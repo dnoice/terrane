@@ -1,11 +1,11 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Hardening Scenarios (Terrane Edition - v1.6)
+ *     - Title: Hardening Scenarios (Terrane Edition - v1.7)
  *     - File Name: hardening.mjs
  *     - Relative Path: tools/ui-scenarios/hardening.mjs
  *     - Artifact Type: test
- *     - Version: 1.6.0
+ *     - Version: 1.7.0
  *     - Date: 11/14/2026
  *     - Update: Saturday, November 14, 2026
  *     - Author: Dennis 'dendogg' Smaltz
@@ -13,6 +13,11 @@
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
  *
  * ✒ Changelog:
+ *     - 1.7.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
+ *       narrow window's tabs are the ledger's, read by their strip's id
+ *       (#ledger-tabs); with the drawer open at 800 px every tab of panel
+ *       B's strip fits it, the chosen one's label whole, Preview reads a
+ *       text inside it, and an arrow held over 12 rows reads at most twice.
  *     - 1.6.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — A
  *       whole tree's sessions are now found in a quiet moment after its
  *       survey: after Rescan all the check asks that they are the new
@@ -378,7 +383,7 @@ const hardening = {
     await narrow(t, true);
     const n0 = await t.eval(() => {
       const r = (s) => document.querySelector(s)?.getBoundingClientRect();
-      const tabs = [...document.querySelectorAll('.tabs [role=tab]')].map((b) => b.getBoundingClientRect().right);
+      const tabs = [...document.querySelectorAll('#ledger-tabs [role=tab]')].map((b) => b.getBoundingClientRect().right);
       return {
         insp: getComputedStyle(document.getElementById('inspector')).visibility,
         pressed: document.getElementById('v-inspector').getAttribute('aria-pressed'),
@@ -392,8 +397,64 @@ const hardening = {
     await t.tabTo('#view', { max: 80 });
     await t.key(']');
     await t.sleep(400);
-    const n1 = await t.eval(() => ({ vis: getComputedStyle(document.getElementById('inspector')).visibility, w: document.getElementById('inspector').getBoundingClientRect().width, pressed: document.getElementById('v-inspector').getAttribute('aria-pressed') }));
+    const n1 = await t.eval(() => {
+      const box = document.getElementById('inspector').getBoundingClientRect();
+      const tabs = [...document.querySelectorAll('#b-tabs [role=tab]')].map((b) => {
+        const r = b.getBoundingClientRect();
+        const l = b.querySelector('.tab-label');
+        return { id: b.dataset.btab, left: r.left, right: r.right, cut: !!l && l.scrollWidth > l.clientWidth + 0.5 && b.getAttribute('aria-selected') === 'true' };
+      });
+      return {
+        vis: getComputedStyle(document.getElementById('inspector')).visibility, w: box.width, pressed: document.getElementById('v-inspector').getAttribute('aria-pressed'),
+        bTabsFit: tabs.length > 0 && tabs.every((x) => x.left >= box.left - 0.5 && x.right <= box.right + 0.5 && !x.cut), tabs,
+      };
+    });
     t.check(`] opens the inspector as a drawer (${Math.round(n1.w)} px wide) and its toggle says pressed`, n1.vis === 'visible' && n1.w > 150 && n1.pressed === 'true', JSON.stringify(n1));
+    t.check(`every tab of panel B's strip fits the drawer, the chosen one's label whole (${n1.tabs.map((x) => x.id).join(', ')})`, n1.bTabsFit, JSON.stringify(n1.tabs));
+    // Preview reads in the drawer: its text inside the drawer's edges.
+    await t.app((T) => {
+      T.api.select(T.S.model.find('archives/site/README.md'));
+      T.api.showBTab('preview');
+      return true;
+    });
+    const drawerPv = await t.waitFor(() => {
+      const P = document.getElementById('b-panel-preview');
+      const pane = P?.querySelector('.pv-pane');
+      if (pane?.dataset.shown !== 'README.md') return false;
+      const box = document.getElementById('inspector').getBoundingClientRect();
+      const r = pane.getBoundingClientRect();
+      return { lines: P.querySelectorAll('.pv-line').length, inside: r.left >= box.left - 0.5 && r.right <= box.right + 0.5 && r.height > 40, page: document.documentElement.scrollWidth <= innerWidth };
+    }, { what: 'Preview in the drawer' }).catch(() => null);
+    t.check(`Preview reads in the drawer at 800 px (${drawerPv?.lines} lines), its pane inside the drawer, nothing past the page's edge`,
+      !!drawerPv && drawerPv.lines > 0 && drawerPv.inside && drawerPv.page, JSON.stringify(drawerPv));
+    // An arrow held in the list at 800 px, Preview in the drawer: the
+    // body waits for the arrows to rest, so the rows are read once or twice.
+    await t.app((T) => { T.api.setFocus(T.S.model.find('bulk-write')); return true; });
+    await t.until((T) => T.api.relPath(T.S.focus) === 'bulk-write', { timeout: 15000 });
+    await t.settle();
+    const rows = await t.app((T) => {
+      T.S.tab = 'contents';
+      T.api.drawLedger();
+      const items = T.api.listItems();
+      T.api.select(items[0]);
+      T.api.cursorTo(items[0]);
+      document.getElementById('ledger-list').focus();
+      return items.map((n) => n.n);
+    });
+    await t.waitFor((_T, n) => document.querySelector('#b-panel-preview .pv-pane')?.dataset.shown === n, { args: [rows[0]], what: 'the first row in Preview' });
+    const heldMark = t.mark();
+    for (let i = 0; i < 12; i++) await t.key('ArrowDown');
+    await t.waitFor((_T, n) => document.querySelector('#b-panel-preview .pv-pane')?.dataset.shown === n, { args: [rows[12]], what: 'the 13th row in Preview' });
+    await t.sleep(300);
+    const heldReads = t.requests(heldMark).filter((r) => r.path === '/api/raw').length;
+    t.note(`at 800 by 500, ↓ held over 12 rows: ${heldReads} read${heldReads === 1 ? '' : 's'} of the files passed`);
+    t.check(`at 800 px an arrow held over 12 rows reads at most twice (${heldReads})`, heldReads <= 2, String(heldReads));
+    await t.app((T) => {
+      document.getElementById('b-tab-inspector').click();
+      T.api.select(null);
+      return true;
+    });
+    await t.tabTo('#view', { max: 80 });
     await t.key(']');
     await t.sleep(400);
     const n2 = await t.eval(() => ({ vis: getComputedStyle(document.getElementById('inspector')).visibility, pressed: document.getElementById('v-inspector').getAttribute('aria-pressed') }));

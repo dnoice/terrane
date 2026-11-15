@@ -1,11 +1,11 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Inspector (Terrane Edition - v1.2)
+ *     - Title: Inspector (Terrane Edition - v1.3)
  *     - File Name: inspector.css
  *     - Relative Path: web/css/components/inspector.css
  *     - Artifact Type: stylesheet
- *     - Version: 1.2.0
+ *     - Version: 1.3.0
  *     - Date: 11/14/2026
  *     - Update: Saturday, November 14, 2026
  *     - Author: Dennis 'dendogg' Smaltz
@@ -13,6 +13,9 @@
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
  *
  * ✒ Changelog:
+ *     - 1.3.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — Panel
+ *       B's tab strip (#b-tabs, drawn as the ledger's): once a label no
+ *       longer fits (data-crowded), only the chosen tab keeps its words.
  *     - 1.2.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — Facts in
  *       a 116 px label column, each label on one line, each value on its
  *       baseline in parts that break only at a separator, every row at least
@@ -27,8 +30,7 @@
  *       its lines together; a path fills each line of its block instead
  *       of breaking ragged at its hyphens; sizes come from the type
  *       scale.
- *     - 1.0.0 (11/12/2026) [dendogg + Anthropic - Claude Opus 5.5] —
- *       Initial release.
+ *     Earlier entries: see CHANGELOG.md
  *
  * ✒ Description:
  *     Panel B: everything known about the selection or about the folder
@@ -49,6 +51,8 @@
  *     - Preview frame on a stippled ground with the image's average colour
  *       as its placeholder (set inline by thumbs.js)
  *     - Reading glyphs drawn in CSS with the world's own conventions
+ *     - Panel B's tab strip: too crowded for every label, each tab shows
+ *       its icon and only the chosen one its words as well
  *
  * ✒ Other Important Information:
  *     - Dependencies: tokens.css, base.css, controls.css, ledger.css
@@ -56,6 +60,19 @@
  *     - Compatible platforms: current evergreen browsers
  * ----------------------------------------------------------------------------
  */
+
+/* Panel B's strip, crowded (app.js's fitBTabs sets data-crowded when a
+   label no longer fits): each tab shows its icon and only the chosen one
+   its label as well. The others keep their label as their name, and as
+   their title, as the ledger's do in a narrow ledger. */
+#b-tabs[data-crowded] button:not([aria-selected='true']) .tab-label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
 
 #inspector-body.is-entering > * {
   animation: fade-up var(--dur-base) var(--ease-out-expo) both;

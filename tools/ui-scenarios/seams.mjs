@@ -1,11 +1,11 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Controller Seams Scenario (Terrane Edition - v1.10)
+ *     - Title: Controller Seams Scenario (Terrane Edition - v1.11)
  *     - File Name: seams.mjs
  *     - Relative Path: tools/ui-scenarios/seams.mjs
  *     - Artifact Type: test
- *     - Version: 1.10.0
+ *     - Version: 1.11.0
  *     - Date: 11/14/2026
  *     - Update: Saturday, November 14, 2026
  *     - Author: Dennis 'dendogg' Smaltz
@@ -13,6 +13,15 @@
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
  *
  * ✒ Changelog:
+ *     - 1.11.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] —
+ *       Panel B's tabs: B_TABS is frozen and holds the controller's
+ *       Inspector; a registered tab gets its button after the Inspector's,
+ *       Enter shows its panel and calls show once, the Inspector's panel
+ *       hides, ArrowRight moves on, and a tab removed leaves panel B on the
+ *       Inspector. The ledger's strip is read by its id (#ledger-tabs), and
+ *       ArrowRight on a ledger tab chooses the next one. The guide's
+ *       Selecting rows gain "← → on tabs" after "[  ]", which now reads
+ *       "Hide ledger / panel B".
  *     - 1.10.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — A
  *       LEDGER_SUB control stands on the count row after the count, where the
  *       polished head puts a feature's tools.
@@ -83,6 +92,8 @@
  *     - Any data, both passes; pins and hover lines need WebGL
  *     - The guide, the Reading rows and the tab buttons are compared with
  *       the text the hard-coded versions produced
+ *     - Panel B's strip from B_TABS: a tab registered, chosen by Enter,
+ *       shown once, stepped past with ArrowRight and removed
  *     - The fixed key allocation: reserved and taken keys are refused,
  *       owners may bind theirs (or already hold them through their
  *       feature), inList is honoured, and a run() that returns false
@@ -117,7 +128,7 @@
 /** The guide as the hard-coded showGuide drew it before the key table. */
 const GUIDE = [
   ['Travelling', [['Wheel', 'Fly toward what is under the cursor'], ['W A S D', 'Move (Shift: faster)'], ['Q  E', 'Turn'], ['R  F', 'Rise / descend'], ['Numpad 1 3 7', 'Front, right, top (Ctrl: the far side)'], ['Numpad 2 4 6 8', 'Orbit in steps'], ['Numpad .', 'Frame the selection'], ['V', 'Drop to eye level'], ['0', 'Rise to the overview'], ['G', 'Fly to the selection'], ['Double-click', 'Fly to folder / open file']]],
-  ['Selecting and going places', [['Click', 'Select'], ['Ctrl+click', 'Add to selection'], ['← →', 'Previous / next sibling'], ['↑ ↓', 'Parent / first child'], ['Enter', 'Go to folder / open file'], ['Backspace', 'Up one level'], ['Alt+←', 'Back'], ['/', 'Find'], ['Esc', 'Cancel, clear'], ['[  ]', 'Hide ledger / inspector'], ['1 – 4', 'Lens']]],
+  ['Selecting and going places', [['Click', 'Select'], ['Ctrl+click', 'Add to selection'], ['← →', 'Previous / next sibling'], ['↑ ↓', 'Parent / first child'], ['Enter', 'Go to folder / open file'], ['Backspace', 'Up one level'], ['Alt+←', 'Back'], ['/', 'Find'], ['Esc', 'Cancel, clear'], ['[  ]', 'Hide ledger / panel B'], ['← → on tabs', 'Previous / next tab (Home, End: first, last)'], ['1 – 4', 'Lens']]],
   ['Changing things', [['N', 'New folder'], ['F2', 'Rename'], ['M', 'Move to…'], ['Ctrl+D', 'Duplicate'], ['Del', 'Remove to holding area'], ['Ctrl+Z', 'Undo'], ['Ctrl+C', 'Copy path'], ['Drag a row', 'Drop on a folder, breadcrumb or plateau'], ['Menu key', 'Context menu'], ['F5', 'Re-read folder']]],
 ];
 
@@ -176,7 +187,7 @@ export default {
     await t.settle();
     const start = await t.app(async (T) => {
       const a = T.api;
-      const regs = ['KEYS', 'ESCAPE', 'PIN_SOURCES', 'TIP_LINES', 'READING', 'TABS', 'LAYOUT_OPTS', 'AFTER_LAYOUT', 'AFTER_REFRESH', 'AFTER_SURVEY', 'AFTER_OP', 'MENU', 'AFTER_QUERY', 'SURVEY',
+      const regs = ['KEYS', 'ESCAPE', 'PIN_SOURCES', 'TIP_LINES', 'READING', 'TABS', 'B_TABS', 'LAYOUT_OPTS', 'AFTER_LAYOUT', 'AFTER_REFRESH', 'AFTER_SURVEY', 'AFTER_OP', 'MENU', 'AFTER_QUERY', 'SURVEY',
         'COMMANDS', 'LEDGER_SUB', 'AFTER_FOCUS', 'AFTER_SELECT', 'TAB_SECTIONS', 'RENAME_MANY', 'DUP_GROUP'];
       const mod = await import(new URL('js/features.js', document.baseURI).href);
       // A feature's entries carry its owner; the controller's carry none, or 'core'.
@@ -199,7 +210,9 @@ export default {
         owners: { ...a.KEY_OWNERS },
         ownersFrozen: Object.isFrozen(a.KEY_OWNERS),
         features: Array.isArray(mod.FEATURES),
-        tabs: [...document.querySelectorAll('.tabs [role=tab]')].filter((b) => !a.TABS.get(b.dataset.tab)?.owner).map((b) => `${b.dataset.tab}:${b.textContent}:${b.getAttribute('aria-selected')}`),
+        tabs: [...document.querySelectorAll('#ledger-tabs [role=tab]')].filter((b) => !a.TABS.get(b.dataset.tab)?.owner).map((b) => `${b.dataset.tab}:${b.textContent}:${b.getAttribute('aria-selected')}`),
+        bTabs: [...document.querySelectorAll('#b-tabs [role=tab]')].filter((b) => !a.B_TABS.get(b.dataset.btab)?.owner).map((b) => `${b.dataset.btab}:${b.textContent}:${b.getAttribute('aria-selected')}`),
+        bTab: T.S.bTab,
       };
     });
     const ids = start.ids;
@@ -214,7 +227,7 @@ export default {
       && same(ids.TIP_LINES, ['levels', 'matches', 'placing', 'copies', 'pixels']), JSON.stringify([ids.ESCAPE, ids.PIN_SOURCES, ids.TIP_LINES]));
     t.check('the inspector, Reading and tab registries hold the controller entries in order',
       same(ids.focus, ['title', 'facts', 'composition']) && same(ids.node, ['title', 'path', 'facts', 'composition', 'copies', 'actions', 'preview'])
-      && ids.READING.length === 8 && same(ids.TABS, ['contents', 'findings', 'survey', 'journal']), JSON.stringify([ids.focus, ids.node, ids.TABS]));
+      && ids.READING.length === 8 && same(ids.TABS, ['contents', 'findings', 'survey', 'journal']) && same(ids.B_TABS, ['inspector']), JSON.stringify([ids.focus, ids.node, ids.TABS, ids.B_TABS]));
     t.check('layout options, hooks, menu items and search tokens start empty, apart from the age table\'s survey hook',
       !ids.LAYOUT_OPTS.length && !ids.AFTER_LAYOUT.length && !ids.AFTER_REFRESH.length && !ids.AFTER_OP.length && !ids.MENU.length && !ids.AFTER_QUERY.length
       && same(ids.AFTER_SURVEY, ['ages']) && start.tokens === 0, JSON.stringify(ids.AFTER_SURVEY));
@@ -228,6 +241,7 @@ export default {
     t.check('the key allocation is fixed: I Interiors, T , . < > Time, B H J Landmarks, P Quick look, the canvas keeps W A S D Q E R F',
       same(start.owners, OWNERS) && start.ownersFrozen, JSON.stringify(start.owners));
     t.check('the tab buttons are made from TABS, Contents selected', same(start.tabs, ['contents:Contents:true', 'findings:Findings:false', 'survey:Survey:false', 'journal:Journal:false']), JSON.stringify(start.tabs));
+    t.check('panel B\'s strip is made from B_TABS, the Inspector first and chosen', same(start.bTabs, ['inspector:Inspector:true']) && start.bTab === 'inspector', JSON.stringify([start.bTabs, start.bTab]));
 
     // The guide, made from the key table, says what it said before.
     await t.key('?');
@@ -428,7 +442,7 @@ export default {
       a.drawTabs();
       a.drawLedger();
     });
-    const tabs = await t.app((T) => [...document.querySelectorAll('.tabs [role=tab]')].filter((b) => !T.api.TABS.get(b.dataset.tab)?.owner).map((b) => `${b.dataset.tab}:${b.textContent}`));
+    const tabs = await t.app((T) => [...document.querySelectorAll('#ledger-tabs [role=tab]')].filter((b) => !T.api.TABS.get(b.dataset.tab)?.owner).map((b) => `${b.dataset.tab}:${b.textContent}`));
     t.check('a registered tab gets a button in order, with its figure', same(tabs, ['contents:Contents', 'findings:Findings', 'survey:Survey', 'seam:Seam7', 'journal:Journal']), JSON.stringify(tabs));
     await t.tabTo('[role=tab][data-tab=seam]', { back: true });
     await t.key('Enter');
@@ -444,9 +458,81 @@ export default {
       T.api.TABS.remove('seam');
       T.api.drawTabs();
       T.api.drawLedger();
-      return { tab: T.S.tab, n: [...document.querySelectorAll('.tabs [role=tab]')].filter((b) => !T.api.TABS.get(b.dataset.tab)?.owner).length, list: !document.getElementById('ledger-list').hidden };
+      return { tab: T.S.tab, n: [...document.querySelectorAll('#ledger-tabs [role=tab]')].filter((b) => !T.api.TABS.get(b.dataset.tab)?.owner).length, list: !document.getElementById('ledger-list').hidden };
     });
     t.check('a tab that goes away leaves the ledger on Contents', gone.tab === 'contents' && gone.n === 4 && gone.list, JSON.stringify(gone));
+
+    // The ledger's strip takes the arrows: ArrowRight chooses the next tab.
+    await t.tabTo('#ledger-tabs [data-tab=contents]', { back: true });
+    await t.key('ArrowRight');
+    const ledgerNext = await t.waitFor((T) => T.S.tab === 'findings' && {
+      tab: T.S.tab, focus: document.activeElement?.dataset?.tab, selected: document.querySelector('#ledger-tabs [data-tab=findings]').getAttribute('aria-selected'),
+    }, { what: 'Findings chosen by ArrowRight' }).catch(async () => t.app((T) => ({ tab: T.S.tab, focus: document.activeElement?.dataset?.tab })));
+    t.check('ArrowRight on a ledger tab chooses the next one and moves focus with it',
+      ledgerNext.tab === 'findings' && ledgerNext.focus === 'findings' && ledgerNext.selected === 'true', JSON.stringify(ledgerNext));
+    await t.app((T) => {
+      T.S.tab = 'contents';
+      T.api.drawLedger();
+      return true;
+    });
+
+    // Panel B's strip from B_TABS: a tab registered by a feature.
+    await t.app((T) => {
+      const a = T.api;
+      window.__seamB = { shown: 0, hidden: 0, mounted: 0, focus: [] };
+      a.B_TABS.add({
+        id: 'seam-b', owner: 'seams', order: 10, label: 'Seam B', icon: 'eye',
+        mount: (host) => { window.__seamB.mounted++; host.append(a.el('p', { class: 'note seam-b-note', text: 'Drawn by a registered panel B tab.' })); },
+        show: (host, { focus }) => { window.__seamB.shown++; window.__seamB.focus.push(!!focus); },
+        hide: () => { window.__seamB.hidden++; },
+      });
+      a.drawBTabs();
+      return true;
+    });
+    const bReg = await t.app((T) => ({
+      ids: [...document.querySelectorAll('#b-tabs [role=tab]')].map((b) => b.dataset.btab),
+      panel: !!document.getElementById('b-panel-seam-b'), hidden: document.getElementById('b-panel-seam-b')?.hidden,
+      labelled: document.getElementById('b-panel-seam-b')?.getAttribute('aria-labelledby'), controls: document.getElementById('b-tab-seam-b')?.getAttribute('aria-controls'),
+      shown: window.__seamB.shown,
+    }));
+    t.check('a registered B tab gets its button right after the Inspector\'s, and a hidden panel of its own',
+      bReg.ids[0] === 'inspector' && bReg.ids[1] === 'seam-b' && bReg.panel && bReg.hidden && bReg.labelled === 'b-tab-seam-b' && bReg.controls === 'b-panel-seam-b' && bReg.shown === 0, JSON.stringify(bReg));
+    await t.tabTo('#b-tabs [data-btab=seam-b]', { max: 120 });
+    await t.key('Enter');
+    const bShown = await t.waitFor((T) => T.S.bTab === 'seam-b' && {
+      shown: window.__seamB.shown, mounted: window.__seamB.mounted, insp: document.getElementById('inspector-body').hidden,
+      panel: !document.getElementById('b-panel-seam-b').hidden && document.getElementById('b-panel-seam-b').textContent,
+      selected: document.getElementById('b-tab-seam-b').getAttribute('aria-selected'), kept: localStorage.getItem('terrane.panel-b-tab'),
+    }, { what: 'the seam tab chosen' });
+    t.check('Enter on it shows its panel, mounts it and calls show once, and the Inspector\'s panel hides',
+      bShown.shown === 1 && bShown.mounted === 1 && bShown.insp === true && bShown.panel === 'Drawn by a registered panel B tab.' && bShown.selected === 'true' && bShown.kept === 'seam-b', JSON.stringify(bShown));
+    await t.key('ArrowRight');
+    const bNext = await t.waitFor((T) => T.S.bTab !== 'seam-b' && {
+      bTab: T.S.bTab, focus: document.activeElement?.dataset?.btab, hidden: window.__seamB.hidden,
+    }, { what: 'ArrowRight past the seam tab' });
+    const want = await t.app((T) => T.api.B_TABS.ids()[2] || 'inspector');
+    t.check(`ArrowRight moves on to the next tab (${want}), focus with it, and the seam tab hears hide()`,
+      bNext.bTab === want && bNext.focus === want && bNext.hidden === 1, JSON.stringify(bNext));
+    await t.app((T) => {
+      T.api.showBTab('seam-b');
+      return true;
+    });
+    const bGone = await t.app((T) => {
+      T.api.B_TABS.remove('seam-b');
+      T.api.drawBTabs();
+      return {
+        bTab: T.S.bTab, panel: !!document.getElementById('b-panel-seam-b'), insp: document.getElementById('inspector-body').hidden,
+        ids: [...document.querySelectorAll('#b-tabs [role=tab]')].map((b) => b.dataset.btab), kept: localStorage.getItem('terrane.panel-b-tab'),
+      };
+    });
+    t.check('a B tab removed leaves panel B on the Inspector, its panel gone, the choice kept in storage untouched',
+      bGone.bTab === 'inspector' && !bGone.panel && bGone.insp === false && !bGone.ids.includes('seam-b') && bGone.kept === 'seam-b', JSON.stringify(bGone));
+    await t.eval(() => {
+      try {
+        localStorage.removeItem('terrane.panel-b-tab');
+      } catch { /* not kept */ }
+      return true;
+    });
 
     // Layout options and the hooks.
     await t.settle();
@@ -827,7 +913,7 @@ export default {
 
     const end = await t.app((T) => {
       const a = T.api;
-      return Object.fromEntries([...['KEYS', 'ESCAPE', 'PIN_SOURCES', 'TIP_LINES', 'READING', 'TABS', 'LAYOUT_OPTS', 'AFTER_LAYOUT', 'AFTER_REFRESH', 'AFTER_SURVEY', 'AFTER_OP', 'MENU', 'AFTER_QUERY', 'SURVEY',
+      return Object.fromEntries([...['KEYS', 'ESCAPE', 'PIN_SOURCES', 'TIP_LINES', 'READING', 'TABS', 'B_TABS', 'LAYOUT_OPTS', 'AFTER_LAYOUT', 'AFTER_REFRESH', 'AFTER_SURVEY', 'AFTER_OP', 'MENU', 'AFTER_QUERY', 'SURVEY',
         'COMMANDS', 'LEDGER_SUB', 'AFTER_FOCUS', 'AFTER_SELECT', 'TAB_SECTIONS', 'RENAME_MANY', 'DUP_GROUP'].map((n) => [n, a[n].ids()]),
         ['focus', a.INSPECTOR.focus.ids()], ['node', a.INSPECTOR.node.ids()], ['many', a.INSPECTOR.many.ids()]]);
     });

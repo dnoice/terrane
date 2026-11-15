@@ -5,14 +5,17 @@
  *     - File Name: finding.mjs
  *     - Relative Path: tools/ui-scenarios/finding.mjs
  *     - Artifact Type: test
- *     - Version: 1.0.0
- *     - Date: 11/13/2026
- *     - Update: Friday, November 13, 2026
+ *     - Version: 1.0.1
+ *     - Date: 11/14/2026
+ *     - Update: Saturday, November 14, 2026
  *     - Author: Dennis 'dendogg' Smaltz
  *     - A.I. Acknowledgement: Anthropic - Claude Opus 5.5
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
  *
  * ✒ Changelog:
+ *     - 1.0.1 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
+ *       tab kept after a reload is read from the ledger's strip by its id
+ *       (#ledger-tabs), since panel B's strip shares the class .tabs.
  *     - 1.0.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] —
  *       Initial release.
  *
@@ -251,7 +254,7 @@ const resume = {
     await t.reload();
     const back = await t.waitFor((T, r) => T.S.lens === 'age' && T.S.tab === 'survey' && T.api.relPath(T.S.focus) === r && T.S.sel.size === 2 && {
       names: [...T.S.sel].map((n) => n.n).sort(), primary: T.S.primary?.n, live: document.getElementById('live').textContent,
-      lensButton: document.querySelector('#lens [aria-checked=true]')?.dataset.lens, tabButton: document.querySelector('.tabs [aria-selected=true]')?.dataset.tab,
+      lensButton: document.querySelector('#lens [aria-checked=true]')?.dataset.lens, tabButton: document.querySelector('#ledger-tabs [aria-selected=true]')?.dataset.tab,
     }, { args: [TARGET], timeout: 15000, what: 'the view put back after a reload' });
     t.check('after a reload the lens, the Survey tab, the folder and the two selected items are back',
       same(back.names, picked.names) && back.primary === picked.primary && back.lensButton === 'age' && back.tabButton === 'survey', JSON.stringify(back));
