@@ -1,16 +1,24 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Flavors (Terrane Edition - v1.0)
+ *     - Title: Flavors (Terrane Edition - v1.1)
  *     - File Name: flavors.js
  *     - Relative Path: web/js/flavors.js
  *     - Artifact Type: javascript
- *     - Version: 1.0.0
+ *     - Version: 1.1.0
  *     - Date: 11/14/2026
  *     - Update: Saturday, November 14, 2026
  *     - Author: Dennis 'dendogg' Smaltz
  *     - A.I. Acknowledgement: Anthropic - Claude Opus 5.5
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
+ *
+ * ✒ Changelog:
+ *     - 1.1.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] —
+ *       Blender's left and right buttons never move the view, as in
+ *       Blender: a click selects and a right click opens the menu. The
+ *       guide's rows say what such a click does.
+ *     - 1.0.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] —
+ *       Initial release.
  *
  * ✒ Description:
  *     Flavors: the ways a person can steer the world with the mouse, named after the
@@ -32,6 +40,8 @@
  *       Alt with any, Ctrl, Shift, then the bare button, the flavor's own
  *       before Terrane's at each step; a press a flavor leaves alone keeps
  *       Terrane's meaning, so nothing a person knows stops working
+ *     - A flavor can give a button no drag at all (none): Blender's left
+ *       and right buttons only click, selecting and opening the menu
  *     - A double click of the middle button can rise to the overview, as
  *       zoom extents does in AutoCAD and SketchUp
  *     - rowsFor(flavor) gives the guide's rows for a flavor, in the order
@@ -95,8 +105,8 @@ export const FLAVORS = Object.freeze([
   },
   {
     id: 'blender', name: 'Blender', also: [],
-    drags: { middle: 'orbit', 'shift+middle': 'slide', 'ctrl+middle': 'dolly', 'alt+left': 'orbit', 'shift+alt+left': 'slide', 'ctrl+alt+left': 'dolly' },
-    note: 'Alt with the left button stands in for the middle one, as Emulate 3 Button Mouse does. The numpad views work in every flavor.',
+    drags: { left: 'none', right: 'none', middle: 'orbit', 'shift+middle': 'slide', 'ctrl+middle': 'dolly', 'alt+left': 'orbit', 'shift+alt+left': 'slide', 'ctrl+alt+left': 'dolly' },
+    note: 'As in Blender, the left and right buttons never move the view: a click selects and a right click opens the menu. Alt with the left button stands in for the middle one, as Emulate 3 Button Mouse does. The numpad views work in every flavor.',
   },
   {
     id: 'autocad', name: 'AutoCAD', also: ['Fusion 360', 'Revit'],
@@ -189,6 +199,12 @@ export function motionFor(flavor, button, mods = {}) {
 }
 
 const PRESS = { left: 'Drag', middle: 'Middle-drag', right: 'Right-drag' };
+
+/**
+ * What a button with no drag still does when clicked, so the guide's row
+ * says more than "Nothing" for the buttons Blender keeps for clicking.
+ */
+const CLICK = { left: 'a click selects', right: 'a click opens the menu' };
 const MOD_WORD = { shift: 'Shift', ctrl: 'Ctrl', alt: 'Alt' };
 
 function pressLabel(key, own) {
@@ -213,7 +229,8 @@ export function rowsFor(flavor) {
     if (seen.has(key)) return;
     seen.add(key);
     const motion = own[key] || BASE[key];
-    rows.push([pressLabel(key, own), MOTIONS[motion]]);
+    const click = motion === 'none' && CLICK[key];
+    rows.push([pressLabel(key, own), click ? `${MOTIONS.none} (${click})` : MOTIONS[motion]]);
   };
   for (const k of Object.keys(own)) add(k);
   for (const k of Object.keys(BASE)) add(k);

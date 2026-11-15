@@ -1,10 +1,10 @@
 <!--
 ✒ Metadata
-    - Title: Terrane Readme (Terrane Edition - v1.17)
+    - Title: Terrane Readme (Terrane Edition - v1.18)
     - File Name: README.md
     - Relative Path: README.md
     - Artifact Type: docs
-    - Version: 1.17.0
+    - Version: 1.18.0
     - Date: 11/14/2026
     - Update: Saturday, November 14, 2026
     - Author: Dennis 'dendogg' Smaltz
@@ -12,6 +12,9 @@
     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
 
 ✒ Changelog:
+    - 1.18.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] —
+      Travelling: in Blender's flavor the left and right buttons never
+      move the view; a click selects and a right-click opens the menu.
     - 1.17.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] —
       Wave 4's polish of the sheet: the project map lists polish.mjs,
       and What was verified records its runs and those of every
@@ -519,7 +522,9 @@ it does there:
 | Unreal Engine | Alt+drag | Middle-drag | Alt+right-drag |
 | Google Earth | Shift+drag | Drag | Right-drag |
 
-In Unity and Unreal Engine the right button looks around, and holding
+In Blender's flavor, as in Blender, the left and right buttons never
+move the view: a click selects and a right-click opens the menu. In
+Unity and Unreal Engine the right button looks around, and holding
 it while you press W A S D flies; Unreal's left drag walks forward and
 back and turns. In AutoCAD and SketchUp a middle double-click rises to
 the overview. A drag a flavor leaves alone keeps Terrane's meaning,
