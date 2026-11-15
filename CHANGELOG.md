@@ -642,13 +642,13 @@ short form is kept too.
 
 - 1.10.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — A drag whose motion is none
   leaves the view alone and takes no grabbing cursor, so Blender's left and right buttons only
-  click. In full: flavors.js 1.1.0 gives Blender's left and right buttons the motion none, on Dennis's account
-  of Blender's hands: the left button selects and never moves the scene, and the right button
-  opens a menu. Until then those presses fell back to Terrane's own meanings, so a left drag
-  slid the ground and a right drag orbited. Past the five-pixel slop the press is no longer a
-  click, so nothing is selected and no menu opens, and the pointer moves nothing. A press
-  released inside the slop is the click it always was: the left selects, the right opens the
-  menu, which every flavor already had.
+  click. In full: flavors.js 1.1.0 gives Blender's left and right buttons the motion none, on
+  Dennis's account of Blender's hands: the left button selects and never moves the scene, and
+  the right button opens a menu. Until then those presses fell back to Terrane's own meanings,
+  so a left drag slid the ground and a right drag orbited. Past the five-pixel slop the press is
+  no longer a click, so nothing is selected and no menu opens, and the pointer moves nothing. A
+  press released inside the slop is the click it always was: the left selects, the right opens
+  the menu, which every flavor already had.
 
 - 1.9.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — Drags follow a flavor
   (flavors.js, setFlavor): Terrane's, Blender's, AutoCAD's and eight more; a walk

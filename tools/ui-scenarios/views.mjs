@@ -1,7 +1,7 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: View Controls Scenario (Terrane Edition - v1.1)
+ *     - Title: View Controls Scenario (Terrane Edition - v1.2)
  *     - File Name: views.mjs
  *     - Relative Path: tools/ui-scenarios/views.mjs
  *     - Artifact Type: test
