@@ -230,7 +230,7 @@ export function rowsFor(flavor) {
     seen.add(key);
     const motion = own[key] || BASE[key];
     const click = motion === 'none' && CLICK[key];
-    rows.push([pressLabel(key, own), click ? `${MOTIONS.none}; ${click}` : MOTIONS[motion]]);
+    rows.push([pressLabel(key, own), click ? `${MOTIONS.none} (${click})` : MOTIONS[motion]]);
   };
   for (const k of Object.keys(own)) add(k);
   for (const k of Object.keys(BASE)) add(k);

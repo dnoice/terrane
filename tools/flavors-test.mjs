@@ -126,14 +126,14 @@ for (const p of FLAVORS) {
     if (!pr) return true;
     const m = motionFor(p, pr[0], pr[1]);
     // A button with no drag says what its click does after "Nothing".
-    return m === 'none' ? !d.startsWith(`${MOTIONS.none}; a click `) : MOTIONS[m] !== d;
+    return m === 'none' ? !d.startsWith(`${MOTIONS.none} (a click `) : MOTIONS[m] !== d;
   });
   check(`${p.name}: the guide's ${rows.length} rows say what each drag does`, rows.length >= 4 && wrong.length === 0, JSON.stringify(wrong));
 }
 
 const blenderRows = Object.fromEntries(rowsFor(flavorById('blender')));
 check('Blender\'s guide says its left and right buttons only click: a click selects, a right click opens the menu',
-  blenderRows.Drag === 'Nothing; a click selects' && blenderRows['Right-drag'] === 'Nothing; a click opens the menu', JSON.stringify(blenderRows));
+  blenderRows.Drag === 'Nothing (a click selects)' && blenderRows['Right-drag'] === 'Nothing (a click opens the menu)', JSON.stringify(blenderRows));
 
 // The palette's commands.
 const added = [];
