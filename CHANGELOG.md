@@ -1,17 +1,24 @@
 <!--
 ✒ Metadata
-    - Title: Shipped File Changelogs (Terrane Edition - v1.17)
+    - Title: Shipped File Changelogs (Terrane Edition - v1.18)
     - File Name: CHANGELOG.md
     - Relative Path: CHANGELOG.md
     - Artifact Type: docs
-    - Version: 1.17.0
-    - Date: 11/14/2026
-    - Update: Saturday, November 14, 2026
+    - Version: 1.18.0
+    - Date: 11/15/2026
+    - Update: Sunday, November 15, 2026
     - Author: Dennis 'dendogg' Smaltz
     - A.I. Acknowledgement: Anthropic - Claude Opus 5.5
     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
 
 ✒ Changelog:
+    - 1.18.0 (11/15/2026) [dendogg + Anthropic - Claude Opus 5.5] — Records the second part of the
+      precise terrain: layout.js 1.6.0, whose 1.3.0 entry leaves its header; this file already
+      holds it. Then its look: viewport.js 1.12.0, app.js 1.20.0 and tokens.css 1.6.0, whose
+      1.9.0, 1.17.0 and 1.3.0 entries leave their headers; this file already holds them. The
+      review's fixes extend the entries of layout.js 1.6.0, viewport.js 1.12.0 and app.js
+      1.20.0, whose header words they open with. app.js's entry, written as 1.19.0 on its
+      branch, is 1.20.0 here: main's 1.19.0 removed the panel letters first.
     - 1.17.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — Records the panel letters'
       removal: app.js 1.19.0, index.html 1.9.0, layout.css 1.5.0 and palette.js 1.3.0, whose
       1.16.0, 1.6.0, 1.2.0 and 1.0.0 entries leave their headers; this file holds the first
@@ -151,6 +158,33 @@ entry's long form, the header's words are copied in to open it, so the
 short form is kept too.
 
 ## web/js/app.js
+
+- 1.20.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — The far view: under the Kind
+  lens a file's band A is its own kind's mass colour, washed when hidden; TONE_STEPS comes from
+  theme.js. A child folder is where you are once it spans half the view. In full: paint()
+  gives a FILE box band A = mixHex(clay, its folder's dominant kind, 0.56), the closed mass's
+  own colour, when the Kind lens is on with no kind filter, no search
+  and nothing being placed, and the box is neither selected nor crossed; bands B and C are its
+  own colour and both shares 1, so a file has no strata. The colour is made once per folder per
+  paint (a Map keyed by folder) and only where the folder has kinds (node.p?.ks). Everywhere
+  else band A is the box's colour as before, and a selected box keeps the mark's yellow. The
+  shader (viewport.js 1.12.0) leans a file a few pixels wide on screen toward band A. TONE_STEPS
+  is imported from theme.js, frozen there, instead of a copy of its own, and extTones' comment
+  gives its present steps (12 % darker to 14 % lighter). updateWhere takes a child folder under
+  the centre of the view as where you are once its long side spans half the view's width (0.42
+  before). layout.js 1.6.0's channels give a block nearly all of its slot, where a gap of 6 % of
+  its own side had trimmed a big child by about 12 %, so arriving at a folder put the location
+  in its largest child more often: Enter on the fixture's largest folder landed in its child
+  (the core scenario), and going to Projects in the demo world landed in data-pipeline. At half
+  the view, going to a folder leaves you in it unless one of its folders spans nearly all of
+  it, and in free flight the location goes down into a child a little nearer.
+  After the review of the piece, a file's band A is its own kind's mass colour, mixHex(clay,
+  KINDS[its kind].color, 0.56), the colour a folder of that kind takes when it closes, washed
+  toward paper by 0.4 when the file is hidden, as its own colour is; one colour per kind and
+  wash in a paint (a Map keyed by kind × 2 + hidden), and no longer only where the folder has
+  kinds. Band A had been its folder's dominant kind's mass colour, unwashed, which the far view
+  leaned a lesser kind and a hidden file toward: at the Downloads pose its PDFs went grey-mauve
+  and its images salmon, toward the archives' bronze.
 
 - 1.19.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — The right panel is called the right
   panel: ] is labelled "Hide or show the right panel" and says so; the Guide's row reads "Hide
@@ -725,6 +759,78 @@ short form is kept too.
 
 ## web/js/layout.js
 
+- 1.6.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — Everything in a folder is measured
+  in its unit (unitOf, layout.unit): plates half a unit thick, files one even channel apart, a
+  folder a street of three or 0.12 / 0.88 of its square, every block exactly 0.04 S from the
+  edge (rows laid again so footprints stay size); a file's height is one recency scale per
+  folder, from its tile (layout.tile, TILE_H), slabs too. In full: the second part of the
+  precise terrain, the
+  layout side of the art direction in docs/ART-DIRECTION.md (points 4, 5 and 6). A folder's unit
+  is unitOf(w, d) = min(0.045 × its short side S, 9), the old riser formula, so every height
+  measured in it keeps its value: RISER_RATIO and RISER_MAX become UNIT_RATIO and UNIT_MAX
+  (exported, with unitOf and MARGIN), and SLAB_RISER becomes SLAB_UNIT (0.08). place() takes
+  the plateau's thickness and the unit it stands in: a plateau is min(0.5 × the parent's unit,
+  0.1 × its own short side) thick (PLATE, PLATE_SIDE), the root half its own unit (4.5, was 9),
+  an open archive's floor 0.02 of its file's short side (FLOOR_PLATE), like its walls; every
+  plateau wider than 200 is now 4.5 thick and sibling plateaus share one thickness, where the
+  riser had been 4.5 % of each plateau's own side and varied up to 6.3 times between siblings.
+  Spacing: the file channel is S × min(0.012, 0.1 / sqrt(kids(dir))), a folder among the
+  children (open, closed, empty or sealed) takes three times it, and each child is inset by
+  half its channel on every side, at most a quarter of its slot's short side, which replaces a
+  gap of 6 % of the block's own short side that made big blocks stand in wide streets and small
+  ones nearly touch; the pad is 0.04 S less half a file channel, so a file stands 0.04 S from
+  the edge and a folder about 0.052 S. Before squarify each weight w (bytes + eps) becomes
+  (c + r sqrt(w))^2, c its channel, r solved so the weights fill the inner area (kept raw when
+  r is not positive), rewritten in place; area per byte within a folder on the demo world is
+  1.014 at the median and 1.136 at worst (1.058 and 1.113 before). A file's height is still
+  unit × (0.35 + 3.4 × fresh^2), but its hard cap (1.8 × side + 0.15 × riser) is replaced by a
+  soft one: above 0.6 of capH = 0.9 × side + min(0.15 × unit, 0.1 × side) it eases toward capH,
+  so height rises with freshness and no tile is taller than it is wide (12 of 74 files at the
+  projects pose were). Closed masses, empty and sealed folders, the scree and crossed slabs keep
+  their numbers, measured in the unit. layout.unit (Float64Array, push's new trailing argument)
+  gives each box the unit of the folder it stands in: the root its own, a scree its folder's,
+  an archive's walls and floor the folder that holds the file. Every folder's arrangement moves
+  once, since the compensated weights make squarify choose other rows (in the demo world
+  Projects and Music trade places at the overview), and folders open at somewhat different
+  distances. A layout costs 12 to 15 % more per box (Node, a 150,000-file synthetic tree from
+  six eyes, about 1,100 boxes a layout). tools/smoke-test.mjs checks the unit, the plates, the
+  channels, the margins, area per byte and the tiles on the demo world from three eyes.
+  After the review of the piece, three things changed. Heights: the soft cap made a fresh
+  file's height depend on its own footprint (in tidepool-web/src/components the eight files
+  changed that day stood 1.94 to 3.61 units, TideChart.module.css lower than a file changed 15
+  days before). A folder now has one recency scale. Its tile is the side of the tile its
+  lower-quartile entry would take, sqrt((size + eps) × area per weight) less a file channel
+  (at least half that square), the entry TILE_Q 0.75 of the way down by size among the 5,000
+  largest, so a folder held in part has the whole folder's tile and the partial layout still
+  equals the whole one; its height unit is min(unit, TILE_H × tile), TILE_H 0.24, so a fresh
+  file of the tile's size stands 0.9 of its side; and every file stands its height unit ×
+  (0.35 + 3.4 × fresh^2), with neither depending on the eye. On the demo world every folder's
+  files sit on one scale, two files changed within an hour of each other stand within 0.01 %,
+  0.3 % of files stand taller than wide (10 % in 391c5a7, none under the soft cap) and 3 over
+  1.5 times, the tallest a fresh zero-byte socket beside a 7 MB file; components' freshest
+  stand 2.6 units and its two-year-old 0.34. A crossed slab is measured in the height unit too,
+  min(height unit × 0.08, side × 0.05), so it never stands over the oldest file beside it: in
+  the unit, a folder whose height unit is far under its unit had files rise going back in time.
+  layout.tile gives every box its folder's tile, the root its own. Streets: a folder's channel
+  is the wider of three file channels and GROUP_SIDE (0.12 / 0.88) of the side its square
+  would have, so two folders facing each other part by at least 6 % of each one's slot, what
+  the old rule gave large masses; from the overview's eye Archive's Backups and Discs stand
+  32.1 apart (11.9 in the reviewed build, 25.5 in 391c5a7), Photos' years 16.0 to 19.6 (9.9;
+  12.2 to 16.1) and Projects' masses 17.0 to 24.3 (9.7; 12.6 to 21.9), where three file
+  channels had let the nearer mass hide the street. Margin: on a side at the plateau's edge
+  every block gives up half a file's channel, so every block stands exactly 0.04 S from the
+  edge (a folder had stood its wider half channel in, which the wider streets would have made
+  up to 0.07 S). Which sides lie at the edge is the rows' doing: squarify records its rows and
+  their direction (plan) and, when a folder lies at an edge, every slot is weighed again for
+  the channel it gives up (the mean of its sides') and the same rows are laid once more, so
+  area per byte stays within 1.141 on the demo world (it reached 1.6 with the edges alone). A
+  slot the quarter guard binds keeps the quarter all round. place()'s working arrays (weights,
+  slots, channels, square roots, edges and the plan) are kept for each depth from one layout to
+  the next (scratchAt) and the compensation is one function (compensate), so a layout allocates
+  none of them: on the 150,000-file synthetic tree from six eyes a layout now costs 6 to 8 %
+  more per box than in 391c5a7 (the reviewed build 12 to 15 %), with every box where it stood
+  before the arrays were kept.
+
 - 1.5.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — Region mode: a folder's count is
   kids(dir), so one held in part puts its tail's entries and bytes in its scree; a folder whose
   children are not held (u) stands as a closed mass and goes into layout.want when it would
@@ -754,6 +860,95 @@ short form is kept too.
 - 1.0.0 (11/09/2026) [dendogg + Anthropic - Claude Fable 5.2] — Initial release.
 
 ## web/js/viewport.js
+
+- 1.12.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — Quiet foundations; names in a
+  strict vocabulary (INK, LETTER_MIN, LID_FILE, LID_MASS, RIM, a LADDER of 2^(1/4) with a step
+  up to reach the floor), gated and faded on the smaller of seen and facing size; the far view
+  leans the files of a folder whose tile (aShare.z) is 2 to 6 px toward their kind's mass
+  colour; small boxes lose their halo and creases. frame() follows its box. In full: the second
+  part of the precise
+  terrain, points 6 to 9 of docs/ART-DIRECTION.md. Foundations: a plateau's plate (aRole DIR)
+  leans its bevel's normal by 0.3 (every other box 0.55), its side shade reaches 0.84 at the
+  foot (others 0.66), and its riser loses the two fine courses, which aliased into a beaded
+  band from the overview; its contact shadow's soft edge is min(half its footprint, 1.5 × its
+  thickness + 0.01 × its footprint) at 0.55 of the strength, where it had reached 8 % of the
+  footprint and left a wide grey halo around every nested plateau. Names: one ink rule,
+  INK = { split 0.2, keep 0.1, dark 0.75, pale 0.9, cover 0.95 }: a surface over 0.2 linear
+  luminance takes a deep tone of itself toward ink, a darker one a pale tone toward paper
+  (uLightL, linear THEME.paper; uPaperL stays chalk for the drawing conventions). The rule it
+  replaces split at 0.11 with ink at half strength, which gave 2.2 to 3.4:1 on mid tones (Code,
+  Documents, Video's lighter tones, Archives, Images) and switched ink between the extensions
+  of three kinds; the least contrast is now 3.42:1 over every kind tone and its hidden wash,
+  the masses, clay, plaster, mark, garnet and the age and size ramps, and 6.5 to 7.3:1 on
+  plaster. nameContrast(hex) is the same rule in JavaScript. The floors are a face's own,
+  LETTER_MIN [7, 6] and LETTER_FULL [9, 8] CSS pixels for a file and a folder (4.5 and 6.5 for
+  both before), sent to the shader in device pixels as uLetterPx from resize(), and measured
+  as the art direction's figures were: the capitals' height as they would stand facing the eye
+  at their distance (cap × pixels per unit / distance; the shader works it from vViewDist and
+  uPxScale). Measured as seen on a slanted lid instead, the same floors left four names at the
+  overview and one at the music pose, where the brief expects about a dozen; and a name that
+  would stand under 4.5 px on screen (LETTER_FLAT, the old floor) is left off too, so a slant
+  never prints a smudge. A name's code carries a quiet bit, (slot + 1) × 4 + mode + 1 for a
+  file's or a scree's, which picks its floor, and the riser's mod 4 test is unchanged. Sizes:
+  a file's or a scree's capitals are at most 0.12 of its lid's short side with 10 % margins
+  (0.17 before, the same share as a
+  folder's, so .DS_Store printed at 16.5 px and the symlink current at 26.6), a closed mass's
+  or a bare plateau's 0.15 with 12 % margins and at most 0.45 of its depth, an open plateau's
+  rim name 0.6 of the band the layout's MARGIN leaves, and a riser's 0.5 of the plate as before.
+  Then each size is set on its folder's ladder, U × 2^(floor(2 log2(cap / U)) / 2) with U the
+  layout's unit for the box, and the score with it; a name the step takes under its floor is
+  left off. The names of one folder come in steps of the square root of two of its unit, where
+  a mass's name had taken 0.079 to 0.17 of its side by the length of its name. letterChosen
+  keeps what was chosen, with its size facing the eye (px), for checks. Selection keeps the
+  mark's yellow with its ink frames: no treatment was found more deliberate and as findable
+  from the overview. The far view: the
+  vertex shader works out the footprint's width on screen (footPx, device pixels, from the
+  distance it already measures for the conventions' period) and vFar = 0.7 × (1 − smoothstep(8,
+  32 px)); a FILE box mixes its colour toward aBandA by vFar, which under the Kind lens paint
+  sets to the colour its folder takes when it closes, so from far off a folder of tiny files
+  reads as one mass in its kind's colour. The contact shadow takes uPxScale and fades out
+  between 3 and 12 device pixels of footprint (uHaloPx), so tiny far blocks keep no dark halo.
+  A box whose shortest side stands under 8 pixels on screen fades its bevel's lean and its
+  creases out from there to 2 (an inked outline keeps its edge): removing the riser's courses
+  had not removed the beaded band along a far plate, which came from the two creases and a
+  sub-pixel lean meeting on a face two or three pixels tall.
+  No mesh, attribute or draw call is added, and no work per frame on the CPU. A flight frame()
+  starts keeps its box's key and foot (this.aim); when setLayout brings a layout in which that
+  box has moved, as it does when what was gathered into scree comes out of it while the eye
+  nears, the flight's destination moves by as much, so the eye comes to rest looking at the
+  box. frame() had aimed at the layout before the flight only: with the new layout's
+  arrangement a reveal of archives/site/README.md in the fixture came to rest over a sibling
+  folder, and the location went into it (the looking scenario). No other flight changes.
+  After the review of the piece, the names and the far view changed. The floors gate the
+  smaller of a name's capitals as seen on screen and as facing the eye, so a slanted name
+  either reads or is left off, and LETTER_FLAT is gone: at the overview 2020, 2025 and 2026
+  had printed at 4.5 px as seen, and at the street ThemeSwitch.module.css at 4.8 px at full
+  ink. The shader fades a name on the same smaller size, from a pixel under its floor to
+  LETTER_FULL [8, 7], a pixel over it (letterFades), so a name chosen at its floor stands at
+  half ink and one a pixel over at full ink, where DOWNLOADS and FOOTAGE had stood at 10 and
+  16 %. The shares are named and exported: LID_FILE 0.16, LID_MASS 0.2 within 0.08 of the
+  lid's edges (0.12 before), RIM 0.75 of the rim band (never over 0.9) and RISER 0.5 of the
+  plate (never over 0.6). The ladder steps by LADDER, the fourth root of two, to the step
+  nearest the size, never past the room, and takes the next step up, within the room and a
+  step of the share, when the nearest falls under the floor; flooring to steps of the square
+  root of two had cut a size by up to 29 % and dropped names that read. On the demo world at
+  one pinned moment, at 1600 by 1000, the overview prints 11 names, all 6 px or more as seen,
+  Archive's on its rim and Music's again (the reviewed build printed 10, 4 of them that large;
+  391c5a7 15, 10 of them), and the Projects pose 20, all that large (11 of 15; 19 of 28). At
+  1280 by 800 the rooms of most top-level blocks are under the floor at the overview: STUDIO,
+  DESIGN, BACKUPS and DISCS print (1 of 4 that large in the reviewed build, 5 of 10 in
+  391c5a7). Where the files stand, at the components poses, the reviewed build and this one
+  print about as many, each now at its floor or more.
+  The far view no longer leans by a tile's own footprint toward its folder's dominant kind,
+  which recoloured lesser kinds and split one-kind folders by tile size (the Video folders'
+  larger tiles deep purple, their smaller grey-mauve). Each file carries its folder's tile
+  (layout.tile) as aShare's third part, written by setLayout, the shares going to three per box
+  in setPaint: the boxes' shader has no attribute to spare (a separate aTile failed to link,
+  too many attributes). A file leans toward band A, its own kind's mass colour under the Kind
+  lens, by FAR_LEAN 0.7 × (1 − smoothstep(FAR_PX[0] 2, FAR_PX[1] 6 CSS px, its tile on
+  screen)), so a folder's files lean alike at one distance and only a folder whose entries are
+  a few pixels wide leans at all: no file at the ten look poses, 111 files by at most 9 % at a
+  pose low across Projects. letterChosen keeps each name's score (seen) and px (facing).
 
 - 1.11.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — A machined finish: a narrow bevel
   with a gentle lean, flat lids, a satin roughness (0.6); pins are slimmer and lit as the boxes are.
@@ -1107,6 +1302,12 @@ short form is kept too.
 - 1.0.0 (11/12/2026) [dendogg + Anthropic - Claude Opus 5.5] — Initial release.
 
 ## web/css/tokens.css
+
+- 1.6.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — --plaster-2 and --plaster-5 follow
+  THEME.plaster's quieter ramp. In full: --plaster-2 #d8ded9 (was #e2e7e2) and --plaster-5
+  #e6ebe6 (was #f8faf7), the twins of theme.js 1.2.0's plaster[2] and [5]; --plaster-0 is
+  unchanged. The ramp's luminance runs 0.646 to 0.820, a tone lighter each level at half the old
+  step, so the inspector's elevation glyph matches the quieter plateaus.
 
 - 1.5.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — The file-kind pigments follow KINDS
   into mineral tones. In full: --k-code #2e8377, --k-document #4a6593, --k-image #bb6466,

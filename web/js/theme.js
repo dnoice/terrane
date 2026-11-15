@@ -1,18 +1,24 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Theme Constants (Terrane Edition - v1.1)
+ *     - Title: Theme Constants (Terrane Edition - v1.2)
  *     - File Name: theme.js
  *     - Relative Path: web/js/theme.js
  *     - Artifact Type: javascript
- *     - Version: 1.1.0
- *     - Date: 11/13/2026
- *     - Update: Friday, November 13, 2026
+ *     - Version: 1.2.0
+ *     - Date: 11/14/2026
+ *     - Update: Saturday, November 14, 2026
  *     - Author: Dennis 'dendogg' Smaltz
  *     - A.I. Acknowledgement: Anthropic - Claude Opus 5.5
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
  *
  * ✒ Changelog:
+ *     - 1.2.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
+ *       plaster ramp is quieter: each level a tone lighter at half the old
+ *       step (0xcdd4cf to 0xe6ebe6, was to 0xf8faf7), so the innermost
+ *       plateau is no longer near white and every plateau sits a little
+ *       more neutral than what stands on it. TONE_STEPS, the extensions'
+ *       steps within a kind, lives here, frozen; app.js imports it.
  *     - 1.1.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] —
  *       The header points at web/css/tokens.css, where the twins of
  *       these colours live since the layered stylesheet, and names the
@@ -32,7 +38,9 @@
  *     - Semantic colours: mark (selection), signal (search), garnet
  *       (duplicates and destructive), verdigris (destination, live and
  *       benchmarks)
- *     - Plaster ramp for plateaus, lighter with each level of elevation
+ *     - Plaster ramp for plateaus, a quiet half step lighter with each
+ *       level of elevation (luminance 0.65 to 0.82)
+ *     - TONE_STEPS: the five steps an extension takes within its kind
  *     - Sequential ramps for the Age and Size lenses
  *
  * ✒ Other Important Information:
@@ -50,10 +58,17 @@ export const THEME = {
   garnet: 0x9b1c3a,
   verdigris: 0x1f7f73,
   clay: 0xb4bcb7,
-  plaster: [0xcdd4cf, 0xd8ded9, 0xe2e7e2, 0xebefea, 0xf2f5f1, 0xf8faf7],
+  plaster: [0xcdd4cf, 0xd3d9d4, 0xd8ded9, 0xdde3de, 0xe2e7e2, 0xe6ebe6],
   ageRamp: [0xd9ddd6, 0xb9cfc4, 0x86b8a8, 0x4f9c8b, 0x1f7f73, 0x0f5a52],
   sizeRamp: [0xdcdfd8, 0xd9c9a8, 0xd9a877, 0xd17f4d, 0xc2552f, 0x9b2a1d],
 };
+
+/**
+ * The steps a kind's colour takes for its extensions, as shares toward
+ * black (negative) or white (positive): a folder of .tsx and .css reads
+ * as two tones of one kind.
+ */
+export const TONE_STEPS = Object.freeze([-0.12, -0.06, 0, 0.07, 0.14]);
 
 export function mixHex(a, b, t) {
   const ar = (a >> 16) & 255, ag = (a >> 8) & 255, ab = a & 255;

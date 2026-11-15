@@ -1,18 +1,29 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Hardening Scenarios (Terrane Edition - v1.7)
+ *     - Title: Hardening Scenarios (Terrane Edition - v1.8)
  *     - File Name: hardening.mjs
  *     - Relative Path: tools/ui-scenarios/hardening.mjs
  *     - Artifact Type: test
- *     - Version: 1.7.0
- *     - Date: 11/14/2026
- *     - Update: Saturday, November 14, 2026
+ *     - Version: 1.8.0
+ *     - Date: 11/15/2026
+ *     - Update: Sunday, November 15, 2026
  *     - Author: Dennis 'dendogg' Smaltz
  *     - A.I. Acknowledgement: Anthropic - Claude Opus 5.5
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
  *
  * ✒ Changelog:
+ *     - 1.8.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
+ *       names' vocabulary, with WebGL: at the overview and in the largest
+ *       folder every printed name's capitals, as seen and facing the eye,
+ *       stand at or above its face's floor (7 px a file's, 6 px a
+ *       folder's; the seen size is measured again from the GPU's slot),
+ *       its size is a step of the fourth root of two of its folder's unit
+ *       as chosen and as the GPU holds it (the square root of two before:
+ *       a deliberate change of what the check asserts), and a file's or a
+ *       scree's carries the quiet bit. In the demo world, at 1600 by 1000
+ *       and 1280 by 800, every top-level block 120 px wide at the overview
+ *       whose name reads at its floor carries it.
  *     - 1.7.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
  *       narrow window's tabs are the ledger's, read by their strip's id
  *       (#ledger-tabs); with the drawer open at 800 px every tab of panel
@@ -65,6 +76,12 @@
  *       from another server it runs the demo world; neither asks a
  *       service for anything
  *     - Frames redrawn only for a hover place no labels (WebGL pass)
+ *     - The names' vocabulary at two poses: every printed name at or over
+ *       its face's floor as seen and facing the eye, on its folder's
+ *       ladder, a file's in the quiet face (WebGL pass)
+ *     - The names at the demo world's overview, wide and at 1280 by 800:
+ *       every top-level block 120 px wide whose name reads there carries
+ *       it, and the ones whose room is too small are noted (WebGL pass)
  *     - On disk: the refresh chain survives a folder deleted from outside,
  *       and the address and the kept view leave it, after a reload too;
  *       the time view's Since section follows the table a change rebuilt,
@@ -76,7 +93,9 @@
  *
  * ✒ Other Important Information:
  *     - Dependencies: tools/ui-check.mjs (the context t); node:http for the
- *       stand-in other server, on the ui-check port plus five
+ *       stand-in other server, on the ui-check port plus five; the page's
+ *       js/viewport.js, js/lettering.js and js/layout.js for the names'
+ *       floors, slots and vocabulary
  *     - Compatible platforms: Node.js 22.5+
  * ----------------------------------------------------------------------------
  */
@@ -377,6 +396,100 @@ const hardening = {
       });
       t.check(`names are printed on the boxes at the overview (${nm.count}: ${nm.lid} on lids or rims, ${nm.riser} on risers), each on a box that is drawn, and no file or folder tag stands over the world`,
         nm.count > 0 && nm.off === 0 && !nm.waiting && nm.tags === 0, JSON.stringify(nm));
+
+      /* ---- the names' vocabulary: floors, the ladder and the quiet face ---- */
+      // At the overview and one folder down, every printed name: its
+      // capitals, as seen on screen and facing the eye, at or above its
+      // face's floor (as chosen, and as seen measured again here from what
+      // the GPU holds), its size a step of the fourth root of two of its
+      // folder's unit (as chosen and as the GPU holds it), and a file's or
+      // a scree's name in the quiet face.
+      const vocab = { names: 0, files: 0, bad: [] };
+      for (const pose of ['overview', 'folder']) {
+        if (pose === 'folder') {
+          await t.app((T) => { T.api.setFocus(T.S.model.root.c.filter((c) => c.d).sort((a, b) => b.s - a.s)[0]); return true; });
+          await t.settle();
+        }
+        const got = await t.app(async (T) => {
+          const v = T.S.view;
+          const L = v.layout;
+          const frame = () => new Promise((r) => requestAnimationFrame(() => r()));
+          for (let k = 0; k < 120 && (v.letterWait || !v.letterCount); k++) await frame();
+          const VP = await import(new URL('js/viewport.js', document.baseURI).href);
+          const LT = await import(new URL('js/lettering.js', document.baseURI).href);
+          const A = v.aLetter.array;
+          const g = L.geo;
+          const by = new Map((v.letterChosen || []).map((e) => [e.i, e]));
+          const bad = [];
+          let names = 0;
+          let files = 0;
+          let least = Infinity;
+          // The reading frame every name shares, and the capitals' height as
+          // seen: the cap segment at the name's centre, projected.
+          const q = (((v.letterQ ?? 0) % 4) + 4) % 4;
+          const rx = [1, 0, -1, 0][q], rz = [0, 1, 0, -1][q], ux = [0, 1, 0, -1][q], uz = [-1, 0, 1, 0][q];
+          const V3 = v.camera.position.constructor;
+          const seenOf = (i, face) => {
+            const o = i * 6;
+            const code = Math.floor(A[i * 4]);
+            const riser = code % 4 === 2;
+            const on = riser ? g[o + 4] : Math.min(g[o + 3], g[o + 5]);
+            const slotH = A[i * 4 + 1] * on;
+            const sc = slotH / LT.SLOT.h;
+            const cap = sc * v.letters.cap[face];
+            const tw = (A[i * 4] - code) * LT.SLOT.w - LT.PAD;
+            const cxr = A[i * 4 + 2] * on + (tw / 2 + LT.PAD) * sc;
+            const cyr = A[i * 4 + 3] * on + slotH / 2;
+            const dr = Math.abs(ux) * g[o + 3] + Math.abs(uz) * g[o + 5];
+            let a;
+            let b;
+            if (riser) {
+              const x = g[o] - (ux * dr) / 2;
+              const z = g[o + 2] - (uz * dr) / 2;
+              a = new V3(x, g[o + 1] - cap / 2, z);
+              b = new V3(x, g[o + 1] + cap / 2, z);
+            } else {
+              const x = g[o] + rx * cxr + ux * cyr;
+              const z = g[o + 2] + rz * cxr + uz * cyr;
+              const y = g[o + 1] + g[o + 4] / 2;
+              a = new V3(x - (ux * cap) / 2, y, z - (uz * cap) / 2);
+              b = new V3(x + (ux * cap) / 2, y, z + (uz * cap) / 2);
+            }
+            a.project(v.camera);
+            b.project(v.camera);
+            return Math.hypot(((b.x - a.x) / 2) * v.w, ((b.y - a.y) / 2) * v.h);
+          };
+          for (const i of v.lettered.keys()) {
+            const e = by.get(i);
+            const code = Math.floor(A[i * 4]);
+            const quiet = L.type[i] === 1 || L.type[i] === 3;
+            const face = quiet ? LT.FACE.FILE : LT.FACE.DIR;
+            names++;
+            if (quiet) files++;
+            if (!e) { bad.push(`${L.node[i].n}: not among the chosen`); continue; }
+            if (!(Math.min(e.px, e.score) >= VP.LETTER_MIN[face])) bad.push(`${L.node[i].n}: ${e.px.toFixed(2)} px facing, ${e.score.toFixed(2)} seen, under the floor ${VP.LETTER_MIN[face]}`);
+            const seen = seenOf(i, face);
+            least = Math.min(least, seen / VP.LETTER_MIN[face]);
+            if (!(seen >= VP.LETTER_MIN[face] * 0.98)) bad.push(`${L.node[i].n}: its capitals stand ${seen.toFixed(2)} px as seen, under the floor ${VP.LETTER_MIN[face]}`);
+            const k = 4 * Math.log2(e.cap / L.unit[i]);
+            if (Math.abs(k - Math.round(k)) > 1e-6) bad.push(`${L.node[i].n}: ${e.cap} is off the ladder of ${L.unit[i]}`);
+            const o = i * 6;
+            const on = code % 4 === 2 ? g[o + 4] : Math.min(g[o + 3], g[o + 5]);
+            const gpu = (A[i * 4 + 1] * on * v.letters.cap[face]) / LT.SLOT.h;
+            if (Math.abs(gpu - e.cap) > 1e-4 * e.cap) bad.push(`${L.node[i].n}: the GPU holds ${gpu}, chosen ${e.cap}`);
+            if ((code % 2 === 1) !== quiet) bad.push(`${L.node[i].n}: quiet bit ${code % 2} on a ${quiet ? 'file' : 'folder'}`);
+          }
+          return { names, files, least, bad: bad.slice(0, 6) };
+        });
+        vocab.names += got.names;
+        vocab.files += got.files;
+        vocab.least = Math.min(vocab.least ?? Infinity, got.least);
+        vocab.bad.push(...got.bad.map((b) => `${pose}: ${b}`));
+      }
+      t.check(`every printed name stands at or above its face's floor as seen and facing the eye (the least ${vocab.least.toFixed(2)} times it, as seen), on its folder's ladder, the GPU's size the chosen one, and a file's in the quiet face (${vocab.names} names, ${vocab.files} of files or screes, at two poses)`,
+        vocab.names > 0 && vocab.bad.length === 0, JSON.stringify(vocab.bad));
+      await t.key('0');
+      await t.settle();
     }
 
     /* ---- a narrow window: 800 by 500, as 200% zoom ---- */
@@ -492,6 +605,95 @@ const hardening = {
         t.check(`opened from another server, the page runs the demo world (${demo?.files} files) and says so`,
           !!demo && demo.files === demo.want && /Demo world/.test(demo.status), JSON.stringify(demo));
         t.check(`and sends nothing to /api/ (${asked.length} requests)`, asked.length === 0, JSON.stringify(asked));
+        if (t.gl) {
+          // The names at the overview, in the demo world, wide and at a
+          // narrow canvas: every top-level block at least 120 px wide on
+          // screen whose name reads at its floor at the largest size the
+          // vocabulary reaches there (a closed mass's from LID_MASS of its
+          // lid, an open plateau's from RIM of its rim band: the top step
+          // of its folder's ladder within the room and a step of the share)
+          // carries it, so no name that reads is dropped for its rounding.
+          for (const [w, h] of [[1600, 1000], [1280, 800]]) {
+            await t.page.send('Emulation.setDeviceMetricsOverride', { width: w, height: h, deviceScaleFactor: 1, mobile: false });
+            await t.sleep(400);
+            await t.app((T) => { T.api.overview(); return true; });
+            await t.settle();
+            const cov = await t.app(async (T) => {
+              const v = T.S.view;
+              const frame = () => new Promise((r) => requestAnimationFrame(() => r()));
+              for (let k = 0; k < 120 && (v.letterWait || !v.letterCount); k++) await frame();
+              const VP = await import(new URL('js/viewport.js', document.baseURI).href);
+              const LT = await import(new URL('js/lettering.js', document.baseURI).href);
+              const LY = await import(new URL('js/layout.js', document.baseURI).href);
+              const L = v.layout;
+              const g = L.geo;
+              const q = (((v.letterQ ?? 0) % 4) + 4) % 4;
+              const rx = [1, 0, -1, 0][q], rz = [0, 1, 0, -1][q], ux = [0, 1, 0, -1][q], uz = [-1, 0, 1, 0][q];
+              const V3 = v.camera.position.constructor;
+              const ps = v.h / (2 * Math.tan((44 * Math.PI) / 360));
+              const at = (x, y, z) => { const p = new V3(x, y, z).project(v.camera); return [((p.x + 1) / 2) * v.w, ((1 - p.y) / 2) * v.h]; };
+              const floor = VP.LETTER_MIN[LT.FACE.DIR];
+              const rows = [];
+              for (const ch of T.S.model.root.c) {
+                const i = L.index.get(ch);
+                if (!ch.d || i === undefined || i >= v.n) continue;
+                const o = i * 6;
+                const top = g[o + 1] + g[o + 4] / 2;
+                const xs = [];
+                for (const sx of [-1, 1]) for (const sz of [-1, 1]) xs.push(at(g[o] + (sx * g[o + 3]) / 2, top, g[o + 2] + (sz * g[o + 5]) / 2)[0]);
+                const wide = Math.max(...xs) - Math.min(...xs);
+                if (wide < 120) continue;
+                const open = L.type[i] === LY.BOX.DIR && L.top[i] - top > g[o + 4] * 1e-6;
+                const wr = Math.abs(rx) * g[o + 3] + Math.abs(rz) * g[o + 5];
+                const dr = Math.abs(ux) * g[o + 3] + Math.abs(uz) * g[o + 5];
+                const foot = Math.min(g[o + 3], g[o + 5]);
+                const m = v.letters.measure(ch.n, LT.FACE.DIR);
+                const per = v.letters.cap[LT.FACE.DIR] / m.tw;
+                let size;
+                let room;
+                let cyr = 0;
+                if (open) {
+                  const band = foot * LY.MARGIN;
+                  size = band * VP.RIM;
+                  room = Math.min(band * 0.9, (wr - band * 4) * per);
+                  cyr = -dr / 2 + band / 2;
+                } else {
+                  const mg = Math.min(wr, dr) * 0.08;
+                  size = Math.min(wr, dr) * VP.LID_MASS;
+                  room = Math.min((wr - mg * 2) * per, (dr - mg * 2) * 0.45);
+                }
+                // The largest size the vocabulary reaches here: the top step of
+                // the folder's ladder within the room and a step of the share.
+                const most = Math.min(room, size * VP.LADDER);
+                const U = L.unit[i];
+                const cap = U * 2 ** (Math.floor(4 * Math.log2(most / U) + 1e-9) / 4);
+                // As seen: the capitals' height, and the name's width over its
+                // characters, as placeLetters measures them.
+                const x = g[o] + ux * cyr;
+                const z = g[o + 2] + uz * cyr;
+                const a = at(x - (ux * cap) / 2, top, z - (uz * cap) / 2);
+                const b = at(x + (ux * cap) / 2, top, z + (uz * cap) / 2);
+                const half = cap / per / 2;
+                const l = at(x - rx * half, top, z - rz * half);
+                const r = at(x + rx * half, top, z + rz * half);
+                const seen = Math.min(Math.hypot(b[0] - a[0], b[1] - a[1]), (Math.hypot(r[0] - l[0], r[1] - l[1]) / m.chars) * 1.3);
+                const facing = (cap * ps) / Math.hypot(x - v.cam.x, top - v.cam.y, z - v.cam.z);
+                rows.push({ n: ch.n, wide: Math.round(wide), open, named: v.lettered.has(i), reads: Math.min(seen, facing) >= floor * 1.02, seen: Math.round(seen * 10) / 10, facing: Math.round(facing * 10) / 10 });
+              }
+              return rows;
+            });
+            const owed = cov.filter((r) => r.reads);
+            const dropped = owed.filter((r) => !r.named);
+            const short = cov.filter((r) => !r.reads).map((r) => `${r.n} (${r.open ? 'open' : 'closed'}, ${r.wide} px wide, its name ${r.seen} px as seen)`);
+            t.note(`at ${w} by ${h}, the overview's top-level blocks 120 px wide or more: ${cov.filter((r) => r.named).length} of ${cov.length} named; too small a room for a name at its floor: ${short.join(', ') || 'none'}`);
+            // Wide, some are owed a name; at the narrow canvas the rooms are
+            // smaller than the floor allows for most, and none may be dropped.
+            t.check(`at ${w} by ${h}, every top-level block 120 px wide or more at the overview whose name reads at its floor there carries it (${owed.length - dropped.length} of ${owed.length}; ${cov.length} blocks that wide)`,
+              (w < 1600 || owed.length >= 2) && cov.length >= 4 && dropped.length === 0, JSON.stringify(dropped));
+          }
+          await t.page.send('Emulation.setDeviceMetricsOverride', { width: 1600, height: 1000, deviceScaleFactor: 1, mobile: false });
+          await t.sleep(400);
+        }
       }
       for (const [what, url] of [['a file on disk', pathToFileURL(path.join(WEB, 'index.html')).href]]) {
         const mark = t.mark();

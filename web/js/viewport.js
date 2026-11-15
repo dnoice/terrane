@@ -1,29 +1,31 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: 3D Viewport (Terrane Edition - v1.11)
+ *     - Title: 3D Viewport (Terrane Edition - v1.12)
  *     - File Name: viewport.js
  *     - Relative Path: web/js/viewport.js
  *     - Artifact Type: javascript
- *     - Version: 1.11.0
- *     - Date: 11/14/2026
- *     - Update: Saturday, November 14, 2026
+ *     - Version: 1.12.0
+ *     - Date: 11/15/2026
+ *     - Update: Sunday, November 15, 2026
  *     - Author: Dennis 'dendogg' Smaltz
  *     - A.I. Acknowledgement: Anthropic - Claude Opus 5.5
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
  *
  * ✒ Changelog:
+ *     - 1.12.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] —
+ *       Quiet foundations; names in a strict vocabulary (INK, LETTER_MIN,
+ *       LID_FILE, LID_MASS, RIM, a LADDER of 2^(1/4) with a step up to
+ *       reach the floor), gated and faded on the smaller of seen and
+ *       facing size; the far view leans the files of a folder whose tile
+ *       (aShare.z) is 2 to 6 px toward their kind's mass colour; small
+ *       boxes lose their halo and creases. frame() follows its box.
  *     - 1.11.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] —
  *       A machined finish: a narrow bevel with a gentle lean, flat lids,
  *       a satin roughness (0.6); pins are slimmer and lit as the boxes are.
  *     - 1.10.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] —
  *       A drag whose motion is none leaves the view alone and takes no
  *       grabbing cursor, so Blender's left and right buttons only click.
- *     - 1.9.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] —
- *       Drags follow a flavor (flavors.js, setFlavor):
- *       Terrane's, Blender's, AutoCAD's and eight more; a walk motion for
- *       Unreal's left drag, and a middle double click that rises to the
- *       overview where a flavor asks for it.
  *     Earlier entries: see CHANGELOG.md
  *
  * ✒ Description:
@@ -44,10 +46,20 @@
  *       dimensions, so drawing conventions cost no extra geometry; the
  *       patterns take one period per box, from the eye's distance to
  *       it, blended between octaves, so they never slide or break
+ *     - Quiet foundations: a plateau's plate leans its bevel less, shades
+ *       its foot less and casts a narrower, lighter contact shadow
+ *     - The far view: a file in a folder whose entries stand 2 to 6 px
+ *       wide on screen leans toward its band A (under the Kind lens its
+ *       own kind's mass colour), the whole folder alike; a box under 12
+ *       px wide casts no contact halo, and a box a few pixels thin keeps
+ *       flat, uncreased faces, so far off the world reads as organised
+ *       masses
  *     - A place, not a diagram: perspective camera inside the scene, with
  *       sky, horizon, haze, a surveyed ground plane and sun shadows at a
  *       three-quarter angle to the view that
  *       follow the eye down to any scale
+ *     - A flight to a box (frame) follows it while the layout refines on
+ *       the way, so the eye comes to rest looking at it
  *     - Travel by pointer: the wheel flies toward whatever is under the
  *       cursor; each drag means what the flavor says (slide,
  *       orbit, look, dolly or walk). Terrane's own: drag and middle-drag
@@ -75,6 +87,15 @@
  *       size (distance fields), faded in as they grow legible, the 96
  *       largest at once, and no extra draw call; the ledger and the
  *       inspector read the same names to assistive technology
+ *     - A strict vocabulary for names: a file's 0.16 of its lid in the
+ *       quiet face, a closed mass's 0.2, a plateau's 0.75 of its rim band;
+ *       every size the step of the fourth root of two of its folder's unit
+ *       nearest it (or the next, to reach the floor within a step of the
+ *       share); none whose capitals stand under 7 px (a file) or 6 px
+ *       (a folder), as seen on screen or facing the eye, whichever is
+ *       smaller, and each at half ink or more; one ink rule (INK) that
+ *       reads at 3.4:1 or more on every surface, which nameContrast states
+ *       in JavaScript
  *     - Honors prefers-reduced-motion by cutting flights and transitions
  *     - A layout with more boxes than the buffers hold draws as many as
  *       fit and states how many were left out; it never throws
@@ -97,6 +118,7 @@
  *     view.setPins([{ i, color, peak, upright }]);
  *     view.setMarks([{ i, text, cls }]);   // HTML tags over peaks, up to 12
  *     view.letterCount;                    // names printed on boxes now
+ *     nameContrast(0x2e8377);              // a name's contrast on a colour
  *     view.frame(index);  view.overview();  view.eye;  view.look();
  *     view.flyTo(view.pose());             // the eye and heading, and back
  *     view.viewAbout('top');               // 'front', 'back', 'right', 'left',
@@ -121,7 +143,7 @@
  */
 
 import * as THREE from '../vendor/three/three.module.js';
-import { BOX, STYLE, WORLD } from './layout.js';
+import { BOX, STYLE, WORLD, MARGIN } from './layout.js';
 import { Lettering, FACE, SLOT, ATLAS, PAD } from './lettering.js';
 import { motionFor, flavorById } from './flavors.js';
 
@@ -147,15 +169,57 @@ const MARK_BOX = { ch: 6.6, pad: 14, up: 19, down: 24 };
 const MARK_GAP = 2;
 /**
  * Names printed on the boxes (lettering.js sets them): at most
- * LETTERS_MAX at once, none whose capitals would stand under LETTER_MIN_PX
- * on screen (the shader fades them in from there to LETTER_FULL_PX), and
- * at most LETTER_EVAL candidates measured exactly in a pass, the largest
- * first.
+ * LETTERS_MAX at once, none whose capitals would stand under its face's
+ * LETTER_MIN, in CSS pixels, indexed by FACE (a file's or a scree's 7, a
+ * folder's 6), and at most LETTER_EVAL candidates measured exactly in a
+ * pass, the largest first. A name's size is the smaller of its capitals'
+ * height as seen on screen (a lid at a slant shows them flatter) and as
+ * they would stand facing the eye at their distance, so a slanted name
+ * either reads or is left off. The shader fades a name in over a pixel
+ * either side of its floor, to LETTER_FULL, so a name chosen at its floor
+ * stands at half ink and one a pixel over it at full ink.
  */
 const LETTERS_MAX = 96;
-const LETTER_MIN_PX = 4.5;
-const LETTER_FULL_PX = 6.5;
+export const LETTER_MIN = Object.freeze([7, 6]);
+export const LETTER_FULL = Object.freeze([8, 7]);
 const LETTER_EVAL = 360;
+/**
+ * The vocabulary's sizes, as shares: a file's capitals at most LID_FILE of
+ * its lid's short side, a closed mass's (or a bare plateau's) LID_MASS, an
+ * open plateau's RIM of its rim band (the layout's margin) and RISER of
+ * its riser. Each is then set on its folder's ladder: the step of LADDER
+ * of the unit it stands in nearest that size, never past the room the
+ * box has, or the next step up when the nearest would fall under the
+ * floor and the next stays within the room and a step of the share.
+ */
+export const LID_FILE = 0.16;
+export const LID_MASS = 0.2;
+export const RIM = 0.75;
+const RISER = 0.5;
+export const LADDER = 2 ** 0.25;
+// The shader's fades, [file from, file full, folder from, folder full], in
+// device pixels at a pixel ratio pr: from a pixel under each floor.
+const letterFades = (pr) => [FACE.FILE, FACE.DIR].flatMap((f) => [(2 * LETTER_MIN[f] - LETTER_FULL[f]) * pr, LETTER_FULL[f] * pr]);
+/**
+ * The far view: a file whose folder's tile (layout.tile, the side of the
+ * tile its folder's lower-quartile entry would take) stands under
+ * FAR_PX[1] CSS pixels on screen leans toward its band A, its kind's mass
+ * colour under the Kind lens, by up to FAR_LEAN under FAR_PX[0]. The
+ * measure is the folder's, so its files lean alike at one distance, and
+ * only a folder whose entries are a few pixels wide leans at all.
+ */
+export const FAR_PX = Object.freeze([2, 6]);
+const FAR_LEAN = 0.7;
+/**
+ * A name's ink, the same rule for every surface: on a surface whose linear
+ * luminance is over `split`, a deep tone (the surface kept at `keep`,
+ * taken `dark` of the way to ink); on a darker one, a pale tone (`pale` of
+ * the way to paper); laid at `cover` of the letter's coverage. Every
+ * colour a name is printed on reads at 3.4:1 or more (nameContrast).
+ */
+export const INK = Object.freeze({ split: 0.2, keep: 0.1, dark: 0.75, pale: 0.9, cover: 0.95 });
+// A number as GLSL reads it.
+const glf = (x) => (Number.isInteger(x) ? x.toFixed(1) : String(x));
 // The sun's 4096 x 4096 shadow map costs more to draw than the view does.
 // While boxes travel it is redrawn on every fourth frame at most, and again
 // on the frame where they arrive.
@@ -337,22 +401,47 @@ function linear(hex) {
 }
 
 /**
+ * The contrast of a name printed on a surface of colour `hex` (sRGB), as
+ * the shader's ink rule gives it: the WCAG ratio of the surface's linear
+ * luminance and the inked letter's, before lighting.
+ */
+export function nameContrast(hex) {
+  const base = linear(hex);
+  const ink = linear(THEME.ink);
+  const light = linear(THEME.paper);
+  const lum = (v) => 0.2126 * v[0] + 0.7152 * v[1] + 0.0722 * v[2];
+  const l = lum(base);
+  const to = l > INK.split
+    ? base.map((x, k) => x * INK.keep + (ink[k] - x * INK.keep) * INK.dark)
+    : base.map((x, k) => x + (light[k] - x) * INK.pale);
+  const got = lum(base.map((x, k) => x + (to[k] - x) * INK.cover));
+  return (Math.max(l, got) + 0.05) / (Math.min(l, got) + 0.05);
+}
+
+/**
  * The boxes' material: a satin finish (MeshStandardMaterial) whose shader
  * gives every box the look of a made object instead of a diagram's cell,
  * from its own dimensions and with no extra geometry:
  * - lettering: a box's name printed on its lid, or for an open plateau
  *   along its rim or carved into the riser that faces the eye, read from
  *   lettering.js's distance-field atlas (uLetters) through aLetter; it is
- *   lit, shadowed, dimmed and hazed as the surface it is on, and fades in
- *   as its capitals pass LETTER_MIN_PX on screen
+ *   lit, shadowed, dimmed and hazed as the surface it is on, inked by the
+ *   one rule INK sets, and fades in as its capitals pass its face's
+ *   LETTER_MIN on screen (uLetterPx, in device pixels)
  * - rounded edges: within a bevel the normal leans toward the edge, so a
  *   rim catches the sun and the far side falls into shade; the bevel is a
  *   share of the box's short side, never under about a pixel and a half
  * - contact shade: a side darkens toward the foot of its box, where it
  *   meets the ground or the plateau it stands on
  * - strata: a closed mass shows, on its sides, bands of what it holds,
- *   from aBandA at the foot to aBandC at the top in the shares aShare;
- *   a plateau's riser shows two fine courses
+ *   from aBandA at the foot to aBandC at the top in the shares aShare.xy
+ * - the far view: a file whose folder's tile (aShare.z) stands 2 to 6 px
+ *   wide on screen leans toward its aBandA (under the Kind lens its own
+ *   kind's mass colour), so from far away a folder of tiny files reads as
+ *   one mass in its kinds' colours
+ * - quiet foundations: a plateau's plate leans its bevel less, shades
+ *   its foot less and casts a lighter, narrower contact shadow, so it
+ *   sets out the structure without competing with what stands on it
  * - a soft crease at each edge in the box's own darker tone, so two blocks
  *   of one colour still part; ink only where it means something (an
  *   empty folder's outline, hatching, stipple, bands, the crossed
@@ -368,32 +457,47 @@ function boxMaterial(letters) {
   // Device pixels per world unit at a distance of one, for the period of
   // the drawing conventions (resize keeps it current).
   mat.userData.pxScale = { value: 800 };
+  // The faces' fades in device pixels: a file's from and full, a folder's
+  // from and full (resize keeps it current).
+  mat.userData.letterPx = { value: new THREE.Vector4(...letterFades(1)) };
+  // The far view: a file whose folder's tile is under uFarPx.y device
+  // pixels on screen leans toward its band A, fully (FAR_LEAN) under
+  // uFarPx.x (resize keeps it current).
+  mat.userData.farPx = { value: new THREE.Vector2(FAR_PX[0], FAR_PX[1]) };
   const lin = (hex) => new THREE.Vector3(...linear(hex));
   mat.onBeforeCompile = (shader) => {
     shader.uniforms.uInk = { value: srgb(THEME.ink) };
     shader.uniforms.uPaper = { value: srgb(THEME.chalk) };
     shader.uniforms.uInkL = { value: lin(THEME.ink) };
     shader.uniforms.uPaperL = { value: lin(THEME.chalk) };
+    // A pale name's tone: paper, a step lighter than the chalk the
+    // conventions wash toward.
+    shader.uniforms.uLightL = { value: lin(THEME.paper) };
+    shader.uniforms.uLetterPx = mat.userData.letterPx;
     shader.uniforms.uLetters = { value: letters.texture };
     shader.uniforms.uLetterAxes = mat.userData.letterAxes;
     shader.uniforms.uSunDir = mat.userData.sunDir;
     shader.uniforms.uPxScale = mat.userData.pxScale;
+    shader.uniforms.uFarPx = mat.userData.farPx;
     shader.vertexShader = shader.vertexShader
       .replace('#include <common>', `#include <common>
         attribute vec4 aLetter;
         flat varying vec4 vLetter;
         uniform float uPxScale;
+        uniform vec2 uFarPx;
         flat varying vec2 vStripe;
+        flat varying float vFar;
         attribute float aStyle;
         attribute float aDim;
         attribute float aRole;
         attribute vec3 aBandA;
         attribute vec3 aBandB;
         attribute vec3 aBandC;
-        attribute vec2 aShare;
+        attribute vec3 aShare;
         varying vec3 vBoxLocal;
         varying vec3 vBoxScale;
         varying vec3 vWorldP;
+        varying float vViewDist;
         varying float vStyle;
         varying float vDim;
         varying float vRole;
@@ -403,6 +507,8 @@ function boxMaterial(letters) {
         varying vec2 vShare;`)
       .replace('#include <begin_vertex>', `#include <begin_vertex>
         vBoxLocal = position;
+        // How far the eye is, for a name's size facing it.
+        vViewDist = length((modelViewMatrix * instanceMatrix * vec4(position, 1.0)).xyz);
         vLetter = aLetter;
         vBoxScale = vec3(length(instanceMatrix[0].xyz), length(instanceMatrix[1].xyz), length(instanceMatrix[2].xyz));
         vWorldP = (instanceMatrix * vec4(position, 1.0)).xyz;
@@ -416,6 +522,11 @@ function boxMaterial(letters) {
           float nearD = max(length(max(abs(eye) - vBoxScale * 0.5, 0.0)), 1e-30);
           float lod = log2(nearD / uPxScale * 12.0);
           vStripe = vec2(exp2(floor(lod)), fract(lod));
+          // The far view: how wide its folder's tile stands on screen, in
+          // device pixels, and how far a file leans to its band A (the
+          // tile, aShare.z, is zero on every other box).
+          float tilePx = aShare.z * uPxScale / nearD;
+          vFar = aShare.z > 0.0 ? ${glf(FAR_LEAN)} * (1.0 - smoothstep(uFarPx.x, uFarPx.y, tilePx)) : 0.0;
         }
         vStyle = aStyle;
         vDim = aDim;
@@ -423,21 +534,26 @@ function boxMaterial(letters) {
         vBandA = aBandA;
         vBandB = aBandB;
         vBandC = aBandC;
-        vShare = aShare;`);
+        vShare = aShare.xy;`);
     shader.fragmentShader = shader.fragmentShader
       .replace('#include <common>', `#include <common>
         uniform vec3 uInk;
         uniform vec3 uPaper;
         uniform vec3 uInkL;
         uniform vec3 uPaperL;
+        uniform vec3 uLightL;
+        uniform vec4 uLetterPx;
         uniform sampler2D uLetters;
         uniform vec4 uLetterAxes;
         uniform vec3 uSunDir;
+        uniform float uPxScale;
         flat varying vec4 vLetter;
         flat varying vec2 vStripe;
+        flat varying float vFar;
         varying vec3 vBoxLocal;
         varying vec3 vBoxScale;
         varying vec3 vWorldP;
+        varying float vViewDist;
         varying float vStyle;
         varying float vDim;
         varying float vRole;
@@ -498,11 +614,17 @@ function boxMaterial(letters) {
           return min(max(min(smn * 0.07, foot * 0.025), px * 1.15), smn * 0.2);
         }`)
       .replace('#include <color_fragment>', `#include <color_fragment>
+        // The far view: a file in a folder whose entries are a few pixels
+        // wide leans toward its band A, under the Kind lens its own kind's
+        // mass colour, so far off the folder reads as one mass in its
+        // kinds' colours.
+        if (vFar > 0.0) diffuseColor.rgb = mix(diffuseColor.rgb, vBandA, vFar);
         // Lettering. aLetter is (code, slot height, slot left, slot foot):
-        // code is (slot + 1) * 4 + 2 on a riser, with where the name ends
-        // in its slot (0 to 1) as its fraction; the rest are in the box's
-        // short footprint side, or its height on a riser, so a name scales
-        // with its box while the box travels.
+        // code is (slot + 1) * 4, plus 2 on a riser and 1 for a file's (or
+        // a scree's) quiet face, with where the name ends in its slot (0 to
+        // 1) as its fraction; the rest are in the box's short footprint
+        // side, or its height on a riser, so a name scales with its box
+        // while the box travels.
         float letterCov = 0.0;
         float letterShade = 0.0;
         float letterLit = 0.0;
@@ -511,6 +633,7 @@ function boxMaterial(letters) {
           float textEnd = vLetter.x - code;
           float slot = floor(code / 4.0) - 1.0;
           float riser = step(1.5, mod(code, 4.0));
+          float quiet = mod(code, 2.0);
           vec2 lp = vBoxLocal.xz * vBoxScale.xz;
           float xr = dot(lp, uLetterAxes.xy);
           float yr = mix(dot(lp, uLetterAxes.zw), vBoxLocal.y * vBoxScale.y, riser);
@@ -531,6 +654,10 @@ function boxMaterial(letters) {
             float aa = clamp(max(tpp.x, tpp.y) / ${2 * PAD}.0 * 0.6, 0.008, 0.3);
             // Capitals this many pixels tall: the slot's cap share over v's rate.
             float capPx = 0.4375 / max(length(vec2(gx.y, gy.y)) * ${ATLAS.h / SLOT.h}.0, 1e-12);
+            // And as they would stand facing the eye at this distance; the
+            // smaller of the two is the size a name's floor is measured in
+            // (as placeLetters does).
+            float capFace = 0.4375 * slotH * uPxScale / max(vViewDist, 1e-30);
             // Small type is set a little heavier, as print is: the outline
             // moves out by up to a twentieth of the field's reach.
             float edge = 0.5 - 0.05 * (1.0 - smoothstep(8.0, 22.0, capPx));
@@ -545,8 +672,9 @@ function boxMaterial(letters) {
             float far = smoothstep(edge - aa, edge + aa, textureGrad(uLetters, st - toSun, gx, gy).r);
             letterShade = letterCov * (1.0 - near);
             letterLit = letterCov * (1.0 - far);
-            // Capitals fade in as they grow legible.
-            float legible = smoothstep(${LETTER_MIN_PX}, ${LETTER_FULL_PX}, capPx);
+            // Capitals fade in as they grow legible, over a pixel either side
+            // of their face's floor, seen or facing, whichever is smaller.
+            float legible = smoothstep(mix(uLetterPx.z, uLetterPx.x, quiet), mix(uLetterPx.w, uLetterPx.y, quiet), min(capPx, capFace));
             letterCov *= legible;
             letterShade *= legible;
             letterLit *= legible;
@@ -567,13 +695,6 @@ function boxMaterial(letters) {
             seam *= step(0.004, vShare.x) * step(vShare.x, 0.996);
             diffuseColor.rgb *= 1.0 - 0.22 * seam;
           }
-          // A plateau's riser: two fine courses, as laid stone.
-          if (vRole < 0.5 && side > 0.5) {
-            float lw = px / max(vBoxScale.y, 1e-6);
-            float c3 = abs(fract(h * 3.0 + 0.5) - 0.5) / 3.0;
-            float course = (1.0 - smoothstep(0.0, lw * 1.1, c3)) * step(0.1, h) * step(h, 0.9);
-            diffuseColor.rgb *= 1.0 - 0.07 * course * smoothstep(2.0, 6.0, vBoxScale.y / px);
-          }
           // A fine grain, as fired clay or cast plaster has, in the box's
           // own coordinates so it never swims, gone before it could shimmer.
           {
@@ -585,13 +706,13 @@ function boxMaterial(letters) {
             float n = fract(sin(dot(gi, vec2(12.9898, 78.233))) * 43758.5453);
             diffuseColor.rgb *= 1.0 + (n - 0.5) * 0.03 * (1.0 - smoothstep(0.0, 0.06, px / max(smn0(), 1e-6)));
           }
-          // A name in the surface's own ink: a deep tone of a light or
-          // mid surface, a pale one of a dark surface.
+          // A name in the surface's own ink (INK): a deep tone of a light
+          // or mid surface, a pale one of a dark surface.
           if (letterCov > 0.0) {
             vec3 base = diffuseColor.rgb;
             float lum = dot(base, vec3(0.2126, 0.7152, 0.0722));
-            vec3 ink = lum > 0.11 ? mix(base * 0.14, uInkL, 0.5) : mix(base, uPaperL, 0.82);
-            diffuseColor.rgb = mix(base, ink, letterCov * 0.92);
+            vec3 ink = lum > ${glf(INK.split)} ? mix(base * ${glf(INK.keep)}, uInkL, ${glf(INK.dark)}) : mix(base, uLightL, ${glf(INK.pale)});
+            diffuseColor.rgb = mix(base, ink, letterCov * ${glf(INK.cover)});
             // The cut's walls: the shaded floor deeper, the lit wall the
             // surface's own colour, a little brighter.
             diffuseColor.rgb *= 1.0 - 0.5 * letterShade;
@@ -604,10 +725,11 @@ function boxMaterial(letters) {
             float m = min(rim.x, rim.y) / max(min(vBoxScale.x, vBoxScale.z) * 0.5, 1e-6);
             diffuseColor.rgb *= mix(0.985, 1.0, smoothstep(0.0, 0.4, m));
           }
-          // Contact shade toward the foot of every side.
+          // Contact shade toward the foot of every side; a plateau's plate
+          // takes a lighter one, so a foundation stays quiet.
           float foot = min(vBoxScale.x, vBoxScale.z);
           float reach = max(min(vBoxScale.y * 0.45, foot * 0.3), px * 2.0);
-          float ao = mix(0.66, 1.0, smoothstep(0.0, reach, h * vBoxScale.y));
+          float ao = mix(vRole < 0.5 ? 0.84 : 0.66, 1.0, smoothstep(0.0, reach, h * vBoxScale.y));
           diffuseColor.rgb *= mix(1.0, ao, side);
         }`)
       .replace('#include <normal_fragment_maps>', `#include <normal_fragment_maps>
@@ -621,8 +743,12 @@ function boxMaterial(letters) {
           vec3 e = (0.5 - a) * vBoxScale;
           vec3 t = clamp(1.0 - e / r, 0.0, 1.0) * (vec3(1.0) - abs(face));
           t = t * t * (3.0 - 2.0 * t);
-          // A gentle lean: the arris catches a little light, never a rim of it.
-          vec3 bent = normalize(face + s * t * 0.55);
+          // A box a few pixels thin on screen keeps flat faces: a lean
+          // under a pixel only beads along it.
+          t *= smoothstep(2.0, 8.0, smn0() / boxPixel());
+          // A gentle lean: the arris catches a little light, never a rim of
+          // it; a plateau's plate leans less, so its rim stays quiet.
+          vec3 bent = normalize(face + s * t * (vRole < 0.5 ? 0.3 : 0.55));
           normal = normalize((viewMatrix * vec4(bent, 0.0)).xyz);
         }`)
       .replace('#include <dithering_fragment>', `#include <dithering_fragment>
@@ -690,6 +816,10 @@ function boxMaterial(letters) {
           col = mix(col, uInk, crossInk * 0.85);
           float edge = 1.0 - smoothstep(fw * 0.7 * edgeW, fw * (0.7 * edgeW + 1.0), mid);
           edge *= smoothstep(3.0, 16.0, smid / fw) * 0.74 + 0.06;
+          // Nor a crease on a face a few pixels thin, such as a far
+          // plateau's plate: the two creases would meet and bead along it.
+          // An inked outline keeps its edge.
+          edge *= mix(smoothstep(2.0, 8.0, smn / max(length(fwidth(vWorldP)) * 0.7071, 1e-6)), 1.0, inked);
           // Ink for the conventions that need an outline; a soft crease in
           // the box's own tone for every other edge.
           vec3 crease = col * 0.62;
@@ -709,9 +839,11 @@ function boxMaterial(letters) {
  * (uSun). Inside, the box itself hides it; around it, it reads as the
  * occlusion and drop shadow that seat a block on its plateau. Dimmed boxes
  * cast less, the haze fades it, and the screes and an archive's walls cast
- * none.
+ * none. A plateau's is narrower and lighter, and a box a few pixels wide
+ * on screen loses its shade (uHaloPx), so far off tiny blocks keep no dark
+ * halo. pxScale is the boxes' own uniform, so resize keeps both current.
  */
-function contactMaterial() {
+function contactMaterial(pxScale, haloPx) {
   return new THREE.ShaderMaterial({
     transparent: true,
     depthWrite: false,
@@ -721,6 +853,8 @@ function contactMaterial() {
       uSun: { value: new THREE.Vector2(0.7, -0.7) },
       uShade: { value: new THREE.Color(THEME.ink) },
       uStrength: { value: 0.5 },
+      uPxScale: pxScale,
+      uHaloPx: haloPx,
     },
     vertexShader: `
       #include <common>
@@ -729,6 +863,8 @@ function contactMaterial() {
       attribute float aRole;
       attribute float aDim;
       uniform vec2 uSun;
+      uniform float uPxScale;
+      uniform vec2 uHaloPx;
       varying vec2 vP;
       varying vec2 vHalf;
       varying float vSoft;
@@ -737,8 +873,11 @@ function contactMaterial() {
         vec3 c = instanceMatrix[3].xyz;
         vec3 s = vec3(length(instanceMatrix[0].xyz), length(instanceMatrix[1].xyz), length(instanceMatrix[2].xyz));
         float foot = min(s.x, s.z);
-        // The soft edge: wider for a taller box, never past half its footprint.
-        float soft = max(min(foot * 0.5, s.y * 1.1 + foot * 0.08), foot * 0.05);
+        bool plate = aRole < 0.5;
+        // The soft edge: wider for a taller box, never past half its
+        // footprint. A plateau's is set by its thin plate alone and is
+        // lighter, so nested plateaus keep no wide grey halo.
+        float soft = plate ? min(foot * 0.5, s.y * 1.5 + foot * 0.01) : max(min(foot * 0.5, s.y * 1.1 + foot * 0.08), foot * 0.05);
         vec2 off = uSun * min(s.y * 0.5, foot * 0.5);
         vec2 halfSize = s.xz * 0.5;
         vec2 ext = halfSize + vec2(soft) + abs(off);
@@ -747,7 +886,12 @@ function contactMaterial() {
         vHalf = halfSize;
         vSoft = soft;
         bool none = (aRole > ${BOX.SCREE - 0.5} && aRole < ${BOX.SCREE + 0.5}) || aRole > ${BOX.WALL - 0.5};
-        vKeep = none ? 0.0 : 1.0 - 0.85 * aDim;
+        vKeep = none ? 0.0 : (1.0 - 0.85 * aDim) * (plate ? 0.55 : 1.0);
+        // A box a few pixels wide on screen casts no halo.
+        vec3 cv = (modelViewMatrix * instanceMatrix * vec4(0.0, 0.0, 0.0, 1.0)).xyz;
+        vec3 eye = transpose(mat3(viewMatrix)) * (-cv);
+        float nearD = max(length(max(abs(eye) - s * 0.5, 0.0)), 1e-30);
+        vKeep *= smoothstep(uHaloPx.x, uHaloPx.y, foot * uPxScale / nearD);
         // A hair above the surface below the box, so it never fights it.
         float base = c.y - s.y * 0.5 + max(foot * 0.0012, s.y * 0.004);
         vec4 mvPosition = viewMatrix * modelMatrix * vec4(c.x + local.x, base, c.z + local.y, 1.0);
@@ -879,7 +1023,10 @@ export class Viewport {
     this.aBandA = new THREE.InstancedBufferAttribute(new Float32Array(CAPACITY * 3), 3);
     this.aBandB = new THREE.InstancedBufferAttribute(new Float32Array(CAPACITY * 3), 3);
     this.aBandC = new THREE.InstancedBufferAttribute(new Float32Array(CAPACITY * 3), 3);
-    this.aShare = new THREE.InstancedBufferAttribute(new Float32Array(CAPACITY * 2), 2);
+    // aShare's third part is a file's folder's tile (layout.tile), for the
+    // far view, zero on every other box: the boxes' shader has no
+    // attribute to spare, so it rides with the shares.
+    this.aShare = new THREE.InstancedBufferAttribute(new Float32Array(CAPACITY * 3), 3);
     // A printed name per box: (code, slot height, slot left, slot foot),
     // zero for none. See boxMaterial.
     this.aLetter = new THREE.InstancedBufferAttribute(new Float32Array(CAPACITY * 4), 4);
@@ -905,7 +1052,9 @@ export class Viewport {
     contactGeo.rotateX(-Math.PI / 2);
     contactGeo.setAttribute('aRole', this.aRole);
     contactGeo.setAttribute('aDim', this.aDim);
-    const contact = new THREE.InstancedMesh(contactGeo, contactMaterial(), CAPACITY);
+    // A contact shade fades out under 12 device pixels of footprint.
+    this.haloPx = { value: new THREE.Vector2(3, 12) };
+    const contact = new THREE.InstancedMesh(contactGeo, contactMaterial(mesh.material.userData.pxScale, this.haloPx), CAPACITY);
     contact.instanceMatrix = mesh.instanceMatrix;
     contact.count = 0;
     contact.frustumCulled = false;
@@ -1217,7 +1366,10 @@ export class Viewport {
     const span = Math.max(g[o + 3], g[o + 5], (topY - baseY) * 1.6);
     const pitch = Math.max(-0.95, Math.min(-0.5, this.cam.pitch));
     const aspect = this.w / this.h;
-    return this.flyTo(Viewport.vantage(g[o], baseY + (topY - baseY) * 0.4, g[o + 2], span * 1.7 * Math.max(1, 1.3 / aspect), this.cam.yaw, pitch));
+    this.flyTo(Viewport.vantage(g[o], baseY + (topY - baseY) * 0.4, g[o + 2], span * 1.7 * Math.max(1, 1.3 / aspect), this.cam.yaw, pitch));
+    // The flight follows the box while the layout refines on the way (see
+    // setLayout): what comes out of scree as the eye nears can move it.
+    this.aim = this.flight ? { key: this.layout.key[index], x: g[o], y: baseY, z: g[o + 2], to: this.flight.to } : null;
   }
 
   /** Drops to just above the surface at the centre of the view. */
@@ -1308,10 +1460,29 @@ export class Viewport {
     this.relationsStale = true;
     this.layout = layout;
     this.n = n;
+    // A flight frame() started follows its box: the destination moves by
+    // as much as the box's foot moved in the refined layout, so the eye
+    // still comes to rest looking at it.
+    const aim = this.aim;
+    if (aim && this.flight && this.flight.to === aim.to) {
+      const j = layout.index.get(aim.key);
+      if (j !== undefined && j < n) {
+        const dx = g[j * 6] - aim.x;
+        const dy = g[j * 6 + 1] - g[j * 6 + 4] / 2 - aim.y;
+        const dz = g[j * 6 + 2] - aim.z;
+        aim.to.x += dx; aim.to.y += dy; aim.to.z += dz;
+        aim.x += dx; aim.y += dy; aim.z += dz;
+      }
+    } else this.aim = null;
     this.mesh.count = n;
     this.contact.count = n;
     this.aRole.array.set(layout.type.subarray(0, n));
     upload(this.aRole, n);
+    // The far view's measure: a file's folder's tile, nothing on the rest
+    // (a layout without tiles, such as a check's stand-in, leans nothing);
+    // setPaint below uploads it with the shares.
+    const sh = this.aShare.array;
+    for (let i = 0; i < n; i++) sh[i * 3 + 2] = layout.type[i] === BOX.FILE && layout.tile ? layout.tile[i] : 0;
     this.selIndex = -1;
     this.hoverIndex = -1;
     this.setPaint(paint);
@@ -1345,7 +1516,8 @@ export class Viewport {
    * Colours, styles and dims, one per box; bands (three colours per box,
    * from the foot up) and shares (where the first two bands end, 0 to 1)
    * give a closed mass its strata. Without them every band is the box's
-   * own colour.
+   * own colour. The shares ride in aShare beside the far view's tile,
+   * which setLayout writes.
    */
   setPaint({ color, style, dim, bands, shares }) {
     this.paintNow = { color, style, dim, bands, shares };
@@ -1366,14 +1538,14 @@ export class Viewport {
         A[o] = a[0]; A[o + 1] = a[1]; A[o + 2] = a[2];
         B[o] = b[0]; B[o + 1] = b[1]; B[o + 2] = b[2];
         C[o] = c[0]; C[o + 1] = c[1]; C[o + 2] = c[2];
-        sh[i * 2] = shares[i * 2];
-        sh[i * 2 + 1] = shares[i * 2 + 1];
+        sh[o] = shares[i * 2];
+        sh[o + 1] = shares[i * 2 + 1];
       } else {
         A[o] = B[o] = C[o] = v[0];
         A[o + 1] = B[o + 1] = C[o + 1] = v[1];
         A[o + 2] = B[o + 2] = C[o + 2] = v[2];
-        sh[i * 2] = 1;
-        sh[i * 2 + 1] = 1;
+        sh[o] = 1;
+        sh[o + 1] = 1;
       }
     }
     this.aStyle.array.set(style.subarray(0, n));
@@ -1382,7 +1554,7 @@ export class Viewport {
     upload(this.aStyle, n);
     upload(this.aDim, n);
     for (const a of [this.aBandA, this.aBandB, this.aBandC]) upload(a, n * 3);
-    upload(this.aShare, n * 2);
+    upload(this.aShare, n * 3);
     this.invalidate();
   }
 
@@ -1777,8 +1949,16 @@ export class Viewport {
    * name reads upright from the eye, along the box axes nearest the view,
    * and turns a quarter only once the view has turned about eleven degrees
    * past the diagonal. The largest LETTERS_MAX names whose capitals reach
-   * LETTER_MIN_PX are printed; boxes in front hide what they cover, so no
-   * overlap test is needed.
+   * their face's LETTER_MIN, as seen and facing the eye, are printed;
+   * boxes in front hide what they cover, so no overlap test is needed. A
+   * strict vocabulary: a file's capitals are LID_FILE of its lid's short
+   * side, a closed mass's LID_MASS, a plateau's RIM of its rim band (the
+   * layout's margin) or RISER of its riser, each within the room the box
+   * has, and every size is set on its folder's ladder, the step of LADDER
+   * of the unit it stands in nearest it (or the next up, within a step of
+   * the share, when the nearest would fall under the floor), so the names
+   * of one folder come in a few sizes and a name too small to read is
+   * left off.
    */
   #placeLetters() {
     const L = this.layout;
@@ -1809,9 +1989,11 @@ export class Viewport {
         if (dist > hazeLimit) continue;
         const foot = Math.min(g[o + 3], g[o + 5]);
         const open = t === BOX.DIR && L.top[i] - (g[o + 1] + g[o + 4] / 2) > g[o + 4] * 1e-6;
-        const most = open ? Math.max(foot * 0.035 * 0.6, g[o + 4] * 0.5) : foot * 0.17;
+        const quiet = t === BOX.FILE || t === BOX.SCREE;
+        // The largest it could carry, with a ladder step's rounding.
+        const most = (open ? Math.max(foot * MARGIN * RIM, g[o + 4] * RISER) : foot * (quiet ? LID_FILE : LID_MASS)) * LADDER;
         const px = most * this.#scaleAt(dist);
-        if (px >= LETTER_MIN_PX) cand.push([px, i, open]);
+        if (px >= LETTER_MIN[quiet ? FACE.FILE : FACE.DIR]) cand.push([px, i, open]);
       }
       cand.sort((p, r) => r[0] - p[0]);
       const P = [new THREE.Vector3(), new THREE.Vector3(), new THREE.Vector3(), new THREE.Vector3()];
@@ -1863,29 +2045,66 @@ export class Viewport {
         const per = capPx / m.tw;
         const top = cy + sy / 2;
         let best = null;
-        const consider = (mode, cap, cxr, cyr, unit) => {
-          if (!(cap > 0)) return;
+        const U = L.unit?.[i];
+        // A place a name could stand: the size its share gives it and the
+        // room the box has there. The size is set on the folder's ladder,
+        // the step of LADDER of its unit nearest it, never past the room;
+        // then measured as seen and as facing the eye, and a name reads
+        // only when both reach its face's floor. One that falls short takes
+        // the next step when that stays within the room and a step of its
+        // share, so a name is not left off only for its rounding. The
+        // place where it is seen larger wins.
+        const consider = (mode, size, room, cxr, cyr, unit) => {
+          const want = Math.min(size, room);
+          if (!(want > 0)) return;
+          let cap = want;
+          let next = 0;
+          if (U > 0) {
+            let k = Math.round(4 * Math.log2(want / U));
+            if (U * 2 ** (k / 4) > room) k--;
+            cap = U * 2 ** (k / 4);
+            next = U * 2 ** ((k + 1) / 4);
+            if (next > Math.min(room, size * LADDER)) next = 0;
+          }
           const vertical = mode === 2;
           const x = cx + rx * cxr + ux * cyr;
           const z = cz + rz * cxr + uz * cyr;
           if (vertical && (c.x - x) * -ux + (c.z - z) * -uz <= 0) return;
-          const score = seen(x, vertical ? cy : top, z, cap, (cap / per) / 2, vertical, m.chars);
-          if (score >= LETTER_MIN_PX && (!best || score > best.score)) best = { mode, cap, cxr, cyr, unit, score };
+          const y = vertical ? cy : top;
+          const at = this.#scaleAt(this.#distTo(x, y, z));
+          let score = seen(x, y, z, cap, (cap / per) / 2, vertical, m.chars);
+          let px = cap * at;
+          if (Math.min(score, px) < LETTER_MIN[face] && next > 0) {
+            cap = next;
+            score = seen(x, y, z, cap, (cap / per) / 2, vertical, m.chars);
+            px = cap * at;
+          }
+          if (Math.min(score, px) >= LETTER_MIN[face] && (!best || score > best.score)) best = { mode, cap, cxr, cyr, unit, score, px };
         };
         if (open) {
-          const pad = foot * 0.035;
-          const room = (wr - pad * 4) * per;
+          // The rim band: the margin the layout leaves between the
+          // plateau's edge and everything on it.
+          const band = foot * MARGIN;
+          const room = (wr - band * 4) * per;
           // Along the rim, in the band between the edge and the contents.
           // A folder's name is set in capitals, which have no descenders,
-          // so it can fill more of the band, and of the riser.
-          consider(0, Math.min(pad * 0.6, room), 0, -dr / 2 + pad / 2, foot);
+          // so it can fill RIM of the band (never more than 0.9), and RISER
+          // of the riser (never more than 0.6).
+          consider(0, band * RIM, Math.min(band * 0.9, room), 0, -dr / 2 + band / 2, foot);
           // Carved into the riser that faces the eye.
-          consider(2, Math.min(sy * 0.5, room), 0, -dr / 2, sy);
-        } else {
+          consider(2, sy * RISER, Math.min(sy * 0.6, room), 0, -dr / 2, sy);
+        } else if (face === FACE.FILE) {
+          // A file's or a scree's name: quieter, LID_FILE of its lid.
           const mg = Math.min(wr, dr) * 0.1;
-          consider(0, Math.min(Math.min(wr, dr) * 0.17, (wr - mg * 2) * per, (dr - mg * 2) * 0.5), 0, 0, foot);
+          consider(0, Math.min(wr, dr) * LID_FILE, Math.min((wr - mg * 2) * per, (dr - mg * 2) * 0.5), 0, 0, foot);
+        } else {
+          // A closed mass's or a bare plateau's: confident, LID_MASS of its lid,
+          // within 0.08 of its edges.
+          const mg = Math.min(wr, dr) * 0.08;
+          consider(0, Math.min(wr, dr) * LID_MASS, Math.min((wr - mg * 2) * per, (dr - mg * 2) * 0.45), 0, 0, foot);
         }
-        if (best) chosen.push({ i, m, ...best });
+        if (!best) continue;
+        chosen.push({ i, m, face, ...best });
       }
       chosen.sort((p, r) => r.score - p.score);
       // The names on the boxes now, then the ones set this frame.
@@ -1896,7 +2115,7 @@ export class Viewport {
         const slotH = SLOT.h * s;
         const xs = (e.mode === 2 ? 0 : e.cxr) - (e.m.tw * s) / 2 - PAD * s;
         const ys = (e.mode === 2 ? 0 : e.cyr) - slotH / 2;
-        want.set(e.i, [(slot + 1) * 4 + e.mode + (PAD + e.m.tw) / SLOT.w, slotH / e.unit, xs / e.unit, ys / e.unit]);
+        want.set(e.i, [(slot + 1) * 4 + e.mode + (e.face === FACE.FILE ? 1 : 0) + (PAD + e.m.tw) / SLOT.w, slotH / e.unit, xs / e.unit, ys / e.unit]);
         return true;
       };
       const later = chosen.filter((e) => !write(e));
@@ -1904,6 +2123,8 @@ export class Viewport {
         letters.flush(frame);
         for (const e of later) if (!write(e)) waiting++;
       }
+      // What was chosen, with its size, score and px, for a check to read.
+      this.letterChosen = chosen;
     }
     // Write what changed: names gone, then names new or moved.
     const A = this.aLetter.array;
@@ -1984,7 +2205,11 @@ export class Viewport {
     this.w = Math.max(50, p.clientWidth);
     this.h = Math.max(50, p.clientHeight);
     this.renderer.setSize(this.w, this.h, false);
-    this.mesh.material.userData.pxScale.value = (this.h * this.renderer.getPixelRatio()) / (2 * Math.tan((FOV * Math.PI) / 360));
+    const pr = this.renderer.getPixelRatio();
+    this.mesh.material.userData.pxScale.value = (this.h * pr) / (2 * Math.tan((FOV * Math.PI) / 360));
+    this.mesh.material.userData.letterPx.value.set(...letterFades(pr));
+    this.mesh.material.userData.farPx.value.set(FAR_PX[0] * pr, FAR_PX[1] * pr);
+    this.haloPx.value.set(3 * pr, 12 * pr);
     this.invalidate();
   }
 

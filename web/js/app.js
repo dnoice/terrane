@@ -1,18 +1,23 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Terrane Application (Terrane Edition - v1.19)
+ *     - Title: Terrane Application (Terrane Edition - v1.20)
  *     - File Name: app.js
  *     - Relative Path: web/js/app.js
  *     - Artifact Type: javascript
- *     - Version: 1.19.0
- *     - Date: 11/14/2026
- *     - Update: Saturday, November 14, 2026
+ *     - Version: 1.20.0
+ *     - Date: 11/15/2026
+ *     - Update: Sunday, November 15, 2026
  *     - Author: Dennis 'dendogg' Smaltz
  *     - A.I. Acknowledgement: Anthropic - Claude Opus 5.5
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
  *
  * ✒ Changelog:
+ *     - 1.20.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] —
+ *       The far view: under the Kind lens a file's band A is its own
+ *       kind's mass colour, washed when hidden; TONE_STEPS comes from
+ *       theme.js. A child folder is where you are once it spans half the
+ *       view.
  *     - 1.19.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] —
  *       The right panel is called the right panel: ] is labelled "Hide or
  *       show the right panel" and says so; the Guide's row reads "Hide
@@ -20,13 +25,6 @@
  *     - 1.18.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] —
  *       Extensions step half as far within their kind, and a closed mass's
  *       strata are its own body colour leaning toward each kind.
- *     - 1.17.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] —
- *       Panel B's head is a tab strip from B_TABS, the Inspector first and
- *       the default, the choice kept in this browser; both strips take the
- *       arrows, Home and End. The Inspector draws only while chosen. The
- *       api gains B_TABS, drawBTabs, showBTab, bTabShown, composition's
- *       title, contentsOrder and get's signal. ] is panel B's toggle in its
- *       labels and in what it says, which names the tab it shows.
  *     Earlier entries: see CHANGELOG.md
  *
  * ✒ Description:
@@ -149,7 +147,7 @@
  *         api.DUP_GROUP.add({ id: 'dupes', build: (group, ctx) => el(...) });
  *         api.B_TABS.add({ id: 'preview', order: 20, label: 'Preview', icon: 'eye',
  *           mount: (host) => {}, show: (host, { focus }) => {}, hide: () => {} });
- *         api.showBTab('preview', { focus: true });   // panel B opened if hidden
+ *         api.showBTab('preview', { focus: true });   // the right panel opened if hidden
  *     Every entry has a unique id; order (default 50) places it.
  *
  * ✒ Other Important Information:
@@ -179,7 +177,7 @@ import { anchorOf, poseRelative, vantage } from './places.js';
 import { buildLayout, BOX, STYLE, AUX } from './layout.js';
 import { Viewport } from './viewport.js';
 import { FLAVORS, flavorById, rowsFor, labelOf, DEFAULT_FLAVOR, startingFlavor } from './flavors.js';
-import { THEME, mixHex, ramp, cssHex } from './theme.js';
+import { THEME, TONE_STEPS, mixHex, ramp, cssHex } from './theme.js';
 import { el, openMenu, closeFloating, floatingOpen, ask, notice, tip, hideTip, slideIndicator, VirtualList } from './ui.js';
 import { thumbs } from './thumbs.js';
 import { buildAgeTable } from './timeline.js';
@@ -2213,7 +2211,10 @@ function updateWhere() {
         if (i === undefined) continue;
         const o = i * 6;
         if (Math.abs(p.point.x - L.geo[o]) <= L.geo[o + 3] / 2 && Math.abs(p.point.z - L.geo[o + 2]) <= L.geo[o + 5] / 2) {
-          if (Math.max(L.geo[o + 3], L.geo[o + 5]) >= width * 0.42) next = ch;
+          // A child is where you are once it spans half the view's width,
+          // so arriving at a folder leaves you in it unless one of its
+          // folders spans nearly all of it.
+          if (Math.max(L.geo[o + 3], L.geo[o + 5]) >= width * 0.5) next = ch;
           break;
         }
       }
@@ -2337,12 +2338,11 @@ function screeHasMatch(i) {
 
 /**
  * A kind's colour in a tone of its own for each extension: one of five
- * steps from 22 % darker to 24 % lighter, the same for every file of that
- * extension, so a folder of .tsx and .css reads as two families of one
- * kind.
+ * steps from 12 % darker to 14 % lighter (TONE_STEPS, theme.js), the same
+ * for every file of that extension, so a folder of .tsx and .css reads as
+ * two families of one kind.
  */
 const extTones = new Map();
-const TONE_STEPS = [-0.12, -0.06, 0, 0.07, 0.14];
 // Common neighbours get steps apart (.ts and .tsx, .tsx and .css, .jpg
 // and .png, .mov and .mp4); any other extension takes a step by its hash.
 const TONE_OF = {
@@ -2418,6 +2418,14 @@ function paint() {
   // the file); locked entries are hatched and twins half-banded.
   const I = S.interior;
   const room = I ? L.chamber : null;
+  // The far view: under the Kind lens, with nothing filtered, searched or
+  // being placed, a file's band A is its own kind's mass colour (the
+  // colour a folder of that kind takes when it closes), washed as its
+  // own colour is when it is hidden; the shader leans the files of a
+  // folder whose entries are a few pixels wide toward it, so far off the
+  // folder reads as one mass in its kinds' colours. One colour per kind.
+  const far = S.lens === 'kind' && filter < 0 && !search && !placing;
+  const massOf = far ? new Map() : null;
 
   for (let i = 0; i < n; i++) {
     const node = L.node[i];
@@ -2495,7 +2503,19 @@ function paint() {
       bands[i * 3] = st.a; bands[i * 3 + 1] = st.b; bands[i * 3 + 2] = st.c;
       shares[i * 2] = st.s1; shares[i * 2 + 1] = st.s2;
     } else {
-      bands[i * 3] = bands[i * 3 + 1] = bands[i * 3 + 2] = c;
+      let a = c;
+      if (far && type === BOX.FILE && !picked && L.aux[i] !== AUX.CROSSED) {
+        const hidden = !!(node.f & FLAG_HIDDEN);
+        const k = node.k * 2 + (hidden ? 1 : 0);
+        a = massOf.get(k);
+        if (a === undefined) {
+          a = mixHex(THEME.clay, KINDS[node.k].color, 0.56);
+          if (hidden) a = mixHex(a, THEME.paper, 0.4);
+          massOf.set(k, a);
+        }
+      }
+      bands[i * 3] = a;
+      bands[i * 3 + 1] = bands[i * 3 + 2] = c;
       shares[i * 2] = shares[i * 2 + 1] = 1;
     }
   }

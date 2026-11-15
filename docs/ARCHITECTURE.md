@@ -1,17 +1,28 @@
 <!--
 ✒ Metadata
-    - Title: Terrane Architecture (Terrane Edition - v1.14)
+    - Title: Terrane Architecture (Terrane Edition - v1.15)
     - File Name: ARCHITECTURE.md
     - Relative Path: docs/ARCHITECTURE.md
     - Artifact Type: docs
-    - Version: 1.14.0
-    - Date: 11/14/2026
-    - Update: Saturday, November 14, 2026
+    - Version: 1.15.0
+    - Date: 11/15/2026
+    - Update: Sunday, November 15, 2026
     - Author: Dennis 'dendogg' Smaltz
     - A.I. Acknowledgement: Anthropic - Claude Opus 5.5
     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
 
 ✒ Changelog:
+    - 1.15.0 (11/15/2026) [dendogg + Anthropic - Claude Opus 5.5] —
+      The precise terrain's second part. The spatial model: a folder's
+      unit replaces the step of 4.5 % of each plateau's width, and the
+      location is a child once it spans half the view. Scale adds the
+      part's measurements. Visual identity: the material follows part
+      one's machined bevel, and adds the spacing, the foundations, the
+      heights, the far view and the names' vocabulary with their
+      numbers; the crossed slab is measured in the height unit. The
+      known limitations add names at 1280 by 800 and a flight begun
+      close by. Section 7's code tables add layout.unit and
+      layout.tile.
     - 1.14.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] —
       The panel letters are gone: the right panel is named so wherever a
       person reads it; the code's names (B_TABS and its calls) stay.
@@ -215,8 +226,13 @@ above were replaced.
 - **One continuous world.** The whole authorized directory is laid out
   once in world coordinates. Nothing is re-rooted. A folder has a
   location, and going to it is a flight.
-- **Self-similar scale.** A plateau's step height is 4.5% of its own
-  width. A folder ten levels down looks, from ten of its own widths away,
+- **Self-similar scale.** Everything inside a folder is measured in
+  that folder. Its unit is 4.5% of its short side, at most 9 world units
+  (`unitOf`); the plates its child folders stand on are half that unit,
+  its files' heights are set in it (or in a smaller height unit where
+  its files are small), and the channels between its blocks and the
+  margin at its edge are shares of its short side. A folder ten
+  levels down looks, from ten of its own widths away,
   like the root does from ten of its widths away. Depth is scale, and you
   shrink as you descend: travel speed, eye height, near clipping, haze
   distance and the sun's shadow frustum are all proportional to your
@@ -229,10 +245,12 @@ above were replaced.
   rebuilt whenever the eye has moved more than 12% of its altitude; boxes
   that persist do not move, new ones rise out of their parent.
 - **Location derived from the camera.** "Where you are" is the deepest
-  folder under the centre of the view that still fills a good part of
-  it. Breadcrumbs, ledger and legend follow. Without WebGL there is no
-  camera, so going to a folder sets the location directly and a relayout
-  leaves it in place.
+  folder under the centre of the view whose long side still spans half
+  the view's width (0.42 until the even channels let a block keep
+  nearly all of its slot, when arriving at a folder began to land in
+  its largest child). Breadcrumbs, ledger and legend follow. Without
+  WebGL there is no camera, so going to a folder sets the location
+  directly and a relayout leaves it in place.
 - **An environment.** Sky, horizon, altitude-scaled haze, a surveyed
   ground plane running to the horizon, and terrain the eye cannot pass
   through.
@@ -910,6 +928,23 @@ walked down by the folder with most folders beneath, each region timed,
 | An arrow held over 12 rows at 800 by 500, Preview in the drawer (`hardening`) | one read, in both passes |
 | A text of 6,500 lines cut at 256 KB, its 3,745 lines read built as numbered lines (`preview-disk`, `terrane:preview-text`) | 10 ms with WebGL, 11 ms without |
 
+### Measured (Windows 11, RTX 5050 laptop GPU, Edge 157, 11/15/2026, the precise terrain)
+
+The second part of the precise terrain, on the demo world pinned to one
+moment (12,087 files) unless a row says otherwise, against `391c5a7`,
+the `main` it was made from.
+
+| Measure | Result |
+| ------- | ------ |
+| A layout's cost per box, in Node, over a 150,000-file synthetic tree from six eyes (about 1,100 boxes a layout) | 6 to 8 % more than at `391c5a7`, with the working arrays kept per depth (12 to 15 % before they were) |
+| Area per byte within a folder, once the channels are taken out and given back | within 1.141 of each other at worst; 1.113 at `391c5a7`; the smoke test allows 1.2 |
+| The street between two folders, from the overview's eye | Archive's Backups and Discs 32.1 apart (25.5); Photos' years 16.0 to 19.6 (12.2 to 16.1); Projects' masses 17.0 to 24.3 (12.6 to 21.9) |
+| Files taller than wide | 0.3 %, 3 of them over 1.5 times (10 % at `391c5a7`); two files of a folder changed within an hour stand within 0.01 % |
+| Names printed, and those 6 px or more as seen | the overview at 1600 by 1000: 11 of 11 (10 of 15); at 1280 by 800: 4 of 4 (5 of 10); the Projects pose at 1600 by 1000: 20 of 20 (19 of 28); no printed name under 5 px as seen |
+| A name's contrast on what it is printed on (`smoke-test`) | at least 3.44:1 on each of the 193 colours a name can be printed on (the least on the Images kind's second tone); 6.50 to 7.26:1 on the six plasters |
+| Draw calls | at the baseline: overview 7, selected 9, search 8, duplicate ties 10 |
+| The `scale` scenario on a 400,000-entry synthetic snapshot, in regions | longest script task 13.2 ms against the reviewed build's 12.8 ms on the same snapshot, after a first run whose one 18 ms frame did not recur; heap 26.7 MB at its peak. The 5,000,000-entry tour was not run, for want of free memory |
+
 ## 5. Datasets
 
 Two SQLite files per mirrored directory, kept in
@@ -1053,6 +1088,15 @@ Choices and their reasons:
   until duplicate cleanup hashes the group again before it moves
   anything.
 - Shadows soften at very small scales.
+- A name is never printed under its floor, so at a small window a large
+  block can carry none: at 1280 by 800 the demo world's Video, Archive,
+  Photos, Projects, Music and Downloads stand unnamed at the overview,
+  since the largest name the vocabulary can set on them measures 2.5 to
+  5.7 px as seen. The ledger names them.
+- A flight to a folder follows its box while the layout refines, but
+  one begun close by can come to rest higher than it aimed: in one
+  probe, archives/site was looked past, onto the archive beside it, and
+  the location became archives.
 - Touch input is limited to one-finger slide and tap.
 - The time view, working sessions and strata read modification times:
   the last change, never a creation or an arrival. A copy, a checkout, an
@@ -1108,15 +1152,75 @@ direction is a survey sheet around a plaster world.
   the conventions (hatch, hollow, the crossed footprint) and the
   selection, and the names are set in the sheet's own two faces, which
   is what ties the two halves together.
-- **Material**: the boxes are a model's pieces, not a diagram's cells.
-  Their fragment shader rounds every edge (the normal leans into a bevel
-  that never falls under about a pixel and a half), shades each side
-  toward its foot, softens each edge to a crease in the box's own tone,
-  and gives a closed mass strata on its sides: what it holds by kind,
-  largest at the foot. A second instanced mesh, sharing the boxes'
-  matrices, lays a soft contact shadow under each, and the sun keeps a
-  three-quarter angle to the view so its shadows fall in sight. Within a
-  kind, each extension takes a tone of the kind's colour.
+- **Material**: the boxes are a model's pieces, not a diagram's cells,
+  machined rather than moulded. Their fragment shader gives every edge
+  a narrow bevel (the lesser of 7% of the box's shortest side and 2.5%
+  of its footprint's, never under about a pixel nor over a fifth of the
+  shortest side) whose normal leans gently, 0.55, so the arris catches
+  a little light and never a rim of it. Lids stay flat, with the
+  faintest falloff toward their edge, and the finish is satin
+  (roughness 0.6). The shader shades each side toward its foot, softens
+  each edge to a crease in the box's own tone, and gives a closed mass
+  strata on its sides: what it holds by kind, largest at the foot, each
+  band its body colour leaning 62% toward the kind. A second instanced
+  mesh, sharing the boxes' matrices, lays a soft contact shadow under
+  each, and the sun keeps a three-quarter angle to the view so its
+  shadows fall in sight. The kinds are mineral pigments, and within a
+  kind each extension takes one of five tones, 12% darker to 14%
+  lighter (`TONE_STEPS` in `theme.js`).
+- **Spacing**: the negative space is set in the folder's own measure,
+  S its short side (`layout.js`). A folder's files stand one channel
+  apart, S × min(1.2%, 0.1 / √entries), so a crowded folder keeps its
+  seams in proportion. A folder among them stands in a street, the
+  wider of three file channels and 0.12 / 0.88 of the side its square
+  would have, so two large masses part by at least 6% of each one's
+  slot, as the old gap of 6% of each block's own side gave them, and
+  groups read apart from files. Each slot is inset by half its channel,
+  at most a quarter of its short side, and on a side at the plateau's
+  edge by half a file's channel, so every block stands exactly 4% of S
+  (`MARGIN`) from the edge. Before the treemap divides the folder, each
+  weight w becomes (c + r√w)², c the channel its slot gives up and r
+  solved so the weights fill the inner area, so a footprint with its
+  channel taken out is still its share of the bytes; where a folder
+  lands on the edge, every slot is weighed again for the channel it
+  actually gives up and the same rows are laid once more.
+- **Foundations**: a plateau stands on a plate half the unit of the
+  folder it stands in, at most a tenth of its own short side (`PLATE`,
+  `PLATE_SIDE`), so siblings share one thickness; the root's plate is
+  4.5 thick and an open archive's floor 2% of its file's short side,
+  as its walls are shares of it. The plaster ramp (`THEME.plaster`,
+  whose twins are the `--plaster-*` tokens) runs from #cdd4cf to
+  #e6ebe6, half the old step a level, so a plateau stays a little more
+  neutral than what stands on it and the innermost is no longer near
+  white. A plate leans its bevel 0.3 rather than 0.55, shades its foot
+  to 0.84 rather than 0.66, and casts a narrower contact shadow (its
+  soft edge the lesser of half its footprint and 1.5 times its
+  thickness plus 1% of its footprint) at 0.55 of the strength.
+- **Heights**: a file stands its folder's height unit × (0.35 + 3.4
+  f²), f its freshness, from 1 now to 0 at ten years. The height unit
+  is the lesser of the folder's unit and 0.24 (`TILE_H`) of its tile,
+  the side the tile of its lower-quartile entry by size would have
+  (`layout.tile`, from the 5,000 largest, so a folder held in part has
+  the whole folder's tile). A folder has one recency scale: files of
+  one age stand equal, and a fresh file the tile's size stands 0.9 of
+  its side, while a much smaller one may stand taller than wide. A
+  closed mass keeps its own rule, taller the more levels it hides, and
+  plates stand for nesting alone: three forms of one family.
+- **The far view**: under the Kind lens, with no kind filter, no search
+  and nothing being placed, paint gives a file a band A of its own
+  kind's mass colour (clay mixed 56% toward the kind, then 40% toward
+  paper when the file is hidden), one colour per kind and wash a paint;
+  a selected or crossed file keeps its own. The vertex shader measures
+  the folder's tile on screen (it travels in `aShare.z`, since one more
+  attribute would pass WebGL's limit) and leans the file toward band A
+  by up to 0.7 while the tile stands 2 to 6 CSS px (`FAR_PX`), so a
+  folder's files lean together and only while they are a few pixels
+  wide. A box's contact halo fades out as its footprint falls from 12
+  to 3 px on screen, and a box under 8 px thin on screen loses its
+  bevel's lean and its creases by degrees, all of them under 2 px (an
+  inked outline stays), so far plates read as clean lines and tiny
+  blocks keep no dark ring. None of it adds a mesh, an attribute, a draw call or
+  per-frame work that grows with the boxes.
 - **Names on the blocks**: a name is part of its box, not a tag over
   it. The same shader prints a file's name on its lid in DM Mono and a
   folder's in Archivo expanded capitals: on a closed mass's lid, along
@@ -1128,6 +1232,28 @@ direction is a survey sheet around a plaster world.
   along the box axes nearest the view, and fade in as they grow
   legible. Boxes in front hide what they cover, so names need no
   overlap test. Only the benchmarks' mark tags are still HTML.
+  A strict vocabulary sets their size (`viewport.js`). A file's or a
+  scree's capitals take at most 0.16 of its lid's short side
+  (`LID_FILE`), in the quieter face; a closed mass's or a bare
+  plateau's 0.2, inside margins of 0.08 of its short side (`LID_MASS`);
+  an open plateau's 0.75 of its rim band, the layout's margin (`RIM`);
+  a riser's half its height. Each size is then set on its folder's
+  ladder, the unit it stands in times a power of the fourth root of two
+  (`LADDER`): the step nearest it, never past the room the box has, or
+  one step up when the nearest would fall under the floor and the next
+  stays within the room and a step of the share, so names of one size
+  mark blocks of one rank. A name is printed only when its capitals stand
+  7 px (a file's or a scree's) or 6 px (a folder's) or more
+  (`LETTER_MIN`), measured as seen and as they would stand facing the
+  eye at their distance, whichever is smaller; the shader fades it from
+  a pixel under that floor to full ink a pixel over it (`LETTER_FULL`),
+  so a printed name stands at half ink or more. One rule inks every
+  name (`INK`): on a surface whose linear luminance is over 0.2, a deep
+  tone (the surface kept at 0.1, taken 0.75 of the way to ink), on a
+  darker one a pale tone (0.9 of the way to paper), laid at 0.95 of the
+  letter's coverage. `nameContrast(hex)` states it in JavaScript, and
+  the smoke test holds every colour a name can be printed on at 3:1 or
+  more.
 - **Colour is semantic only**: highlighter yellow is selection and hover
   everywhere; vermilion is search; garnet is duplicates and destructive
   actions; verdigris is destinations, live state and benchmarks; nine
@@ -1143,7 +1269,8 @@ direction is a survey sheet around a plaster world.
 - **Crossed footprint (the time view)**: when the world looks back to a
   date, the layout marks a box `AUX.CROSSED` if it changed after that
   date. A file or an empty folder lies flat as a slab, the lesser of 8%
-  of its plateau's step and 5% of its own short side, and so does a
+  of its folder's height unit and 5% of its own short side, so it never
+  stands over the oldest file beside it, and so does a
   closed mass that kept none of its bytes. Paint gives it
   `STYLE.CROSSED` and washes its colour 60% toward paper, once; the
   shader draws only the footprint's two diagonals in ink on its top and
@@ -1509,6 +1636,11 @@ branch draws plain. `buildLayout(root, options)` passes one options
 object whole: `cam`, `grain`, `now`, `force`, `aliases`, and a feature's
 own keys, `asOf` from Time and `inside` from Interiors. A layout never
 holds more than 70,000 boxes; the viewport's buffers hold 72,000.
+Beside each box's geometry it gives `layout.unit[i]`, the unit of the
+folder the box stands in, and `layout.tile[i]`, that folder's tile;
+the viewport sizes names from the first and the far view reads the
+second. `unitOf`, `MARGIN`, `UNIT_MAX` and `TILE_H` are exported; the
+viewport sizes a rim name from `MARGIN`, and the checks read them all.
 
 ### The shared age table
 
