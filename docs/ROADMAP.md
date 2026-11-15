@@ -1,17 +1,24 @@
 <!--
 ✒ Metadata
-    - Title: Terrane Roadmap (Terrane Edition - v1.15)
+    - Title: Terrane Roadmap (Terrane Edition - v1.16)
     - File Name: ROADMAP.md
     - Relative Path: docs/ROADMAP.md
     - Artifact Type: docs
-    - Version: 1.15.0
-    - Date: 11/14/2026
-    - Update: Saturday, November 14, 2026
+    - Version: 1.16.0
+    - Date: 11/15/2026
+    - Update: Sunday, November 15, 2026
     - Author: Dennis 'dendogg' Smaltz
     - A.I. Acknowledgement: Anthropic - Claude Opus 5.5
     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
 
 ✒ Changelog:
+    - 1.16.0 (11/15/2026) [dendogg + Anthropic - Claude Opus 5.5] —
+      The precise terrain's second part is recorded as complete on
+      branch `precision-terrain-2`, waiting to be merged, with its
+      commits, the review, the fixes, the brief's points as met and the
+      final check lines; where things stand says so, and Next is its
+      merge, then the seven other tabs. Preview's section no longer
+      says its branch waits to be merged, which its merge had left.
     - 1.15.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] —
       The precise terrain's first part is on `main`, from the art
       direction in docs/ART-DIRECTION.md; Next is its second part, then
@@ -140,7 +147,7 @@
 
 ## Where things stand
 
-As of 11/14/2026:
+As of 11/15/2026:
 
 - **Complete, on `main`:** Stages 1 to 3, Wave 0 (the Stage 5
   groundwork), the 1.2.0 interface, the load screen's first cut, Wave 1
@@ -201,15 +208,24 @@ As of 11/14/2026:
   mineral tones, extensions half a step apart within their kind, a
   closed mass's strata from its own body colour, and pins lit with the
   boxes. Merged in the commit titled "Merge precision-terrain: the precise terrain, part one".
-- **Next:** the precise terrain, part two: the spacing, the
-  foundations, the proportions, the names and the far view of
-  `docs/ART-DIRECTION.md`. Then the seven other tabs, built and merged
+- **Complete on branch `precision-terrain-2`, waiting to be merged:**
+  the precise terrain, part two, the rest of `docs/ART-DIRECTION.md`:
+  the spacing (one even channel between a folder's files, wider streets
+  between groups, one margin at every plateau's edge), quiet
+  foundations (thin plates of one thickness per level, a quieter
+  plaster), files on one recency scale per folder, names in a strict
+  vocabulary that never prints one too small to read, and a far view
+  in which a folder of tiny files reads as one mass in its kinds'
+  colours.
+- **Next:** merging the precise terrain's second part into `main`.
+  Then the seven other tabs, built and merged
   one at a time: Cleanup, Shelf, Compare, Activity, Notes and tags,
   Watch and Connections. The open ground
   beyond them is what Stage 4 still lacks (section 4), the rest of
   Stage 6, and the Stage 5 deferrals in section 4.
 
-Section 5 has the detail for every wave and for Preview.
+Section 5 has the detail for every wave, for Preview and for the
+precise terrain's second part.
 
 ## 1. The exploration loop
 
@@ -1135,6 +1151,154 @@ GPU and the default fixture of 3,126 files:
   `splash` check the survey's timing left nothing to test, and without
   WebGL two checks of what is drawn in the world. Draw calls at the
   baseline (overview 7, selected 9, search 8, duplicate ties 10).
+
+The branch is merged into `main`, as this section's first paragraph says.
+
+### Complete on branch `precision-terrain-2`: the precise terrain, part two
+
+The layout and lettering side of the art direction in
+`docs/ART-DIRECTION.md`: its points 4, 5, 6, 7, 8 and 9. Part one
+(machined edges, a satin finish with flat lids, the kinds in mineral
+tones, extensions half a step apart, a closed mass's strata from its
+own body colour, pins lit) is on `main`, and this part builds on it.
+It ran on its own branch, `precision-terrain-2`, made from `main` at
+`391c5a7`, in a separate worktree: three build commits, an adversarial
+review, a fix step, and a docs and sweep step. Every visual decision
+was shot before and after at the same poses of the demo world, pinned
+to one moment, and compared with the brief point by point.
+
+1. **The folder's unit and its spacing** (`5cf1acf`): everything inside
+   a folder is measured in that folder. Its unit is 4.5 % of its short
+   side, at most 9 (`unitOf`, `layout.unit`). A plateau stands on a
+   plate half its parent's unit thick, at most a tenth of its own side,
+   so sibling plateaus share one thickness where the old riser, 4.5 %
+   of each plateau's own side, had varied up to 6.3 times between them;
+   the root's plate is 4.5 thick. A folder's files stand one channel
+   apart, 1.2 % of its short side or narrower in a crowded folder,
+   where every block had kept a gap of 6 % of its own short side, so big
+   blocks had stood in wide streets and small ones nearly touched; a
+   file stands 4 % of the short side in from the plateau's edge; and
+   the weights are compensated for the channels, so area still follows
+   bytes.
+2. **Quiet foundations, names in a strict vocabulary and the far view**
+   (`293ca36`): the plaster ramp steps half as far per level and no
+   longer reaches near white (`theme.js`, `tokens.css`); a plate leans
+   its bevel less, shades its foot less and casts a narrower, lighter
+   contact shadow. Names are inked by one rule (`INK`) that reads at
+   3.4:1 or more on every surface, kept to floors (`LETTER_MIN`, 7 px
+   for a file, 6 for a folder) and sized on a ladder of the folder's
+   unit, a file's in a quieter face. A box a few pixels wide casts no
+   contact halo. A child folder becomes where you are once it spans half
+   the view's width (0.42 before), because blocks now keep more of their
+   slot and arriving at a folder had begun to land in its largest
+   child; and a flight `frame()` starts follows its box while the
+   layout refines on the way, so the eye comes to rest looking at it.
+3. **Flat faces far off** (`59db001`): a box under 8 px thin on screen
+   fades its bevel's lean and its creases, which removes a beaded band
+   along far plates.
+4. **The review.** An adversarial review found, as high, the far view
+   leaning a folder's lesser kinds and hidden files toward its dominant
+   kind's colour (Downloads' PDFs went grey-mauve and its images
+   salmon); folder names lost at the overview (4 of 10 printed names
+   legible at 1600 by 1000, against 10 of 15 at `391c5a7`); and heights
+   under a soft cap following each file's footprint, so files changed
+   the same day stood 1.94 to 3.61 units. As medium: streets between
+   large folders narrower than before (Backups to Discs 11.9 against
+   25.5), and a name's floor measured as it would stand facing the eye,
+   which printed names under 5 px as seen. As low: before and after
+   shots of two different demo worlds, missing checks, and the docs. It
+   has no commit of its own.
+5. **The fixes** (`3d92411`): under the Kind lens a file's far colour is
+   its own kind's mass colour, washed when the file is hidden, and a
+   folder's files lean together, only while the tile of its
+   lower-quartile entry stands 2 to 6 px on screen (`FAR_PX`). A folder
+   has one recency scale: its height unit is the lesser of its unit and
+   0.24 of that tile (`TILE_H`), and a crossed slab is measured in it
+   too. A folder's street is the wider of three file channels and
+   0.12 / 0.88 of the side its square would have, so two large masses
+   part at least as far as the old rule had them, and every block
+   stands exactly 4 % of the short side from the edge, the rows laid
+   again where a folder meets it. The ladder steps by the fourth root
+   of two, with one step up to reach the floor, and a name is gated and
+   faded on the smaller of its size as seen and as facing the eye. The
+   shots were taken again with the page's clock pinned. The layout's
+   working arrays are kept per depth, so a layout costs 6 to 8 % more
+   per box than at `391c5a7` (12 to 15 % in the reviewed build).
+6. **Docs and sweep**, in the commit titled "The precise terrain, part
+   two docs and sweep": README, ARCHITECTURE, this roadmap,
+   `CHANGELOG.md` and every header the branch touched, checked against
+   the code. The sweep also set right what was older than the branch:
+   ARCHITECTURE's material had not followed part one's machined bevel,
+   and this roadmap's Preview section still said its branch waited to
+   be merged.
+
+The brief's points, as met:
+
+- **(4) Proportions.** Three forms of one family: plates that stand
+  for nesting, closed masses that keep their own rule, and file tiles
+  on one recency scale per folder. Every encoding is kept: footprint
+  is size, a file's height is how recently it changed, and a closed
+  mass stands taller the more levels it hides. 0.3 % of the demo
+  world's files stand taller than wide, against 10 % at `391c5a7`.
+- **(5) Spacing.** One even channel between a folder's files, a street
+  at least three channels wide beside a folder, and one margin, 4 % of
+  the short side, at every plateau's edge. In the shots the tile
+  folder at Projects is an even grid instead of pavement, and Backups
+  and Discs read as two masses, 32.1 apart from the overview's eye
+  (25.5 at `391c5a7`).
+- **(6) Foundations.** Plates of one thickness per level, a plaster
+  ramp a half step lighter per level and a little more neutral than
+  what stands on it, and a lighter bevel, foot shade and contact
+  shadow on every plate. Video's four nested trays read as thin lines.
+- **(7) Names.** One ink rule at 3.4:1 or more on every surface (6.5 to
+  7.3:1 on plaster), floors of 7 and 6 px, sizes on a ladder of the
+  folder's unit, and file names in the quieter face. At 1600 by 1000
+  the overview prints 11 names, every one legible (10 of 15 at
+  `391c5a7`), and the Projects pose 20 of 20 (19 of 28). Not met: at
+  1280 by 800 six top-level blocks (Video, Archive, Photos, Projects,
+  Music and Downloads) carry no name, since the largest the vocabulary
+  can set on them stands 2.5 to 5.7 px as seen, under the floor.
+- **(8) Selection.** Unchanged: the mark's yellow with its ink frames,
+  as part one left it, findable from the overview.
+- **(9) The far view.** Under the Kind lens a folder's files lean
+  toward their kind's mass colour while their tile stands 2 to 6 px on
+  screen, the contact halo fades out under 12 px, and a thin box keeps
+  flat faces, so the overview reads as distinct masses in their kinds'
+  colours. No mesh, attribute, draw call or per-frame work that grows
+  with the boxes was added.
+
+Final check lines, on Windows 11 with Edge 157 on an RTX 5050 laptop
+GPU:
+
+- `node --check` on all 108 script files outside `web/vendor/`: no
+  error;
+- `npm test`: "274 passed, 0 failed", "97 passed, 0 failed",
+  "57 passed, 0 failed", "33 passed, 0 failed", "60 passed, 0 failed",
+  "52 passed, 0 failed", "54 passed, 0 failed", "31 passed, 0 failed",
+  "80 passed, 0 failed", "159 passed, 0 failed", "68 passed, 0 failed",
+  "120 passed, 0 failed", "91 passed, 0 failed" and
+  "58 passed, 0 failed", 1,234 in all;
+- `node tools/vendor.mjs --check`:
+  "Every vendored file matches the manifest.";
+- the headers of the 14 files the branch touched: the digiSpace header
+  in full, the version raised once with the date and the tag, shipped
+  headers within three entries and 40 lines, and the long form in
+  `CHANGELOG.md` of every new entry of a file it tracks, opening with
+  its header's words: in rule;
+- Markdown: no line over 100 columns outside tables and fences in the
+  README, ARCHITECTURE, this roadmap and `CHANGELOG.md`;
+- `node tools/ui-check.mjs --no-shots --port 5309`, both passes, run by
+  the fix step after its last change to the code, on the default
+  fixture of 3,126 files: "2990 passed, 0 failed, 8 skipped". Draw
+  calls at the baseline (overview 7, selected 9, search 8, duplicate
+  ties 10);
+- the `scale` scenario on a 400,000-entry synthetic snapshot, in
+  regions: every check passed on a rerun, the longest script task
+  13.2 ms against the reviewed build's 12.8 ms on the same snapshot,
+  after a first run whose one 18 ms frame failed the 16 ms budget and
+  did not recur; the heap 26.7 MB at its peak. The 5,000,000-entry
+  tour was not run: the machine had 2.8 GB of memory free, and the
+  scale harness needs 6 GB for a million entries or more.
 
 The branch is not yet merged into `main`.
 

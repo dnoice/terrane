@@ -1,17 +1,28 @@
 <!--
 ✒ Metadata
-    - Title: Terrane Readme (Terrane Edition - v1.21)
+    - Title: Terrane Readme (Terrane Edition - v1.22)
     - File Name: README.md
     - Relative Path: README.md
     - Artifact Type: docs
-    - Version: 1.21.0
-    - Date: 11/14/2026
-    - Update: Saturday, November 14, 2026
+    - Version: 1.22.0
+    - Date: 11/15/2026
+    - Update: Sunday, November 15, 2026
     - Author: Dennis 'dendogg' Smaltz
     - A.I. Acknowledgement: Anthropic - Claude Opus 5.5
     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
 
 ✒ Changelog:
+    - 1.22.0 (11/15/2026) [dendogg + Anthropic - Claude Opus 5.5] —
+      The precise terrain's second part, on branch
+      `precision-terrain-2`. Reading the world: the gaps between blocks
+      (even channels, wider streets, one margin), thin plates of one
+      thickness per level, one recency scale per folder, files leaning
+      toward their kind's mass colour from far off, the names'
+      vocabulary and floors, and why every folder's arrangement moved
+      once. Travelling: a child folder is where you are once it spans
+      half the view. The project map says what layout.js, viewport.js
+      and theme.js now hold. What was verified records the branch's
+      final runs; Not verified adds what it could not see.
     - 1.21.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] —
       What was verified records the precise terrain's first part:
       machined edges, a satin finish and the kinds in mineral tones.
@@ -480,9 +491,11 @@ node tools/scale.mjs --points 1m,2m,5m --service-only
 | What you see | What it means |
 | ------------ | ------------- |
 | Ground area of a plateau or block | Its share of the parent folder's bytes |
-| Elevation | Nesting. Each level stands one step up, one tone lighter, one scale smaller |
-| Height of a file block | Recency. Fresh files stand tall; untouched ones wear down over ten years |
+| Gaps between blocks | Grouping. A folder's files stand one narrow, even channel apart; a folder among them stands in a street at least three times as wide; every block stands the same margin in from its plateau's edge |
+| Elevation | Nesting. Each level stands on a thin plate, a half tone lighter and one scale smaller. Sibling plateaus share one thickness, and the plaster stays a little quieter than what stands on it |
+| Height of a file block | Recency. Fresh files stand tall; untouched ones wear down over ten years. A folder's files share one scale, so two files of one age in a folder stand equal |
 | Colour of a file block | The lens: kind, age (last change), size, or duplicates. Under the Kind lens each extension takes a tone of its kind's colour, so .tsx and .css read as two families of code |
+| Files in one muted tone, far off | Under the Kind lens, a folder whose files stand only 2 to 6 px wide on screen: each leans toward the colour its kind takes on a closed mass, so the folder reads as one mass in its kinds' colours. Nearer, each takes its own tone again |
 | Tinted closed mass | A folder seen from too far to read. Its sides show its strata, what it holds by kind with the largest at the foot. Taller means more levels inside. It opens as you approach. Under the Age lens its colour is its typical age: half its bytes have not changed since then |
 | Stippled tile (scree) | Items too small to see from here, with their count and size. Its lid says how many |
 | Hatched mass | Sealed: the folder could not be read |
@@ -503,10 +516,22 @@ node tools/scale.mjs --points 1m,2m,5m --service-only
 | Storage scale (bottom left) | How much storage a square that size holds at this height |
 
 Names are printed on the blocks themselves, lit and shadowed with them:
-a file's on its lid, a folder's in capitals on a closed mass's lid, or
-along an open plateau's rim, or cut into the riser that faces you. They
-read upright from where you stand and come into view as they grow large
-enough to read.
+a file's on its lid in the quieter mono face, a folder's in capitals on
+a closed mass's lid, along an open plateau's rim in its margin, or cut
+into the riser that faces you. They read upright from where you stand.
+Their sizes keep to a short ladder measured in the folder they stand
+in, so names of one size mark blocks of one rank, and a file's name is
+set smaller than a folder's. A name comes into view only once its
+capitals stand 7 px tall (a file's) or 6 px (a folder's), as seen and
+as they would stand facing you, whichever is smaller; a block too small
+for that carries no name, and the ledger and the inspector still give
+it. The ink is dark on a light surface and pale on a dark one, and
+reads at 3.4:1 or more on every kind's colour and on the plaster.
+
+The even channels changed how every folder's rows fall, so each
+folder's arrangement moved once when they came in: in the demo world,
+Projects and Music traded places at the overview. A block's area still
+follows its bytes, and the arrangement holds still from then on.
 
 The Guide (`?`, or the Guide button) lists the same conventions in its
 Reading the world tab, the features' rows included, beside its Keys,
@@ -559,7 +584,10 @@ right-click without moving opens the menu in every flavor, and the
 keys are the same in all of them. The choice is kept in this browser
 for every directory.
 
-The breadcrumbs and the Contents tab follow the folder you are in. Clicking
+The breadcrumbs and the Contents tab follow the folder you are in: the
+deepest folder under the middle of the view whose long side spans at
+least half the view's width, so flying to a folder leaves you in it
+rather than in its largest child. Clicking
 a breadcrumb, a ledger row, a search result or a survey entry flies you
 there. Everything can also be done from the ledger with the keyboard alone;
 the 3D view is never the only route. Press `?` in the app for the full key
@@ -985,6 +1013,7 @@ time.
 | The Guide window on Windows 11 (11/14/2026), Edge 157 on an RTX 5050 laptop GPU: `npm test`, and `node tools/ui-check.mjs --no-shots`, both passes, on the default fixture, with `seams`, `strata`, `time` and `interiors` reading Reading the world from the Guide's tab and `hardening` reaching the single-key setting in its Settings tab | `npm test`: 874 passed, 0 failed. The interface check: 1439 passed, 0 failed, 6 skipped |
 | Preview's final sweep on branch `tab-preview`, Windows 11 (11/14/2026): `node --check` on every script outside `web/vendor/`; `npm test`, now fourteen suites, `preview-test` last (Quick look's decisions against a copy of what it decided before its readers moved, over 356 files and modes; the text read through a fake fetch; the largest entries against a full sort over 1,000 random folders; 17 link targets); `npm run vendor -- --check`; the header of every file the branch touched; Markdown line lengths; and `node tools/ui-check.mjs --no-shots --port 5300` in both passes with Edge 157 on an RTX 5050 laptop GPU and the default fixture of 3,126 files: the earlier scenarios plus `preview`, `preview-regions` and `preview-disk`, with Preview's checks in `demo`, `demo-regions`, `hardening`, `polish` and `seams` | No syntax error in 108 scripts; 1,201 passed (255, 97, 57, 33, 60, 52, 54, 31, 80, 159, 68, 120, 77 and 58), none failed; every vendored file matches the manifest; 28 headers in rule; no Markdown line over 100 columns; 2974 passed, 0 failed, 8 skipped (1,563 and 3 with WebGL, 1,411 and 5 without, the same skips as before); draw calls at the baseline. An arrow held over 15 rows of the fixture, over 12 rows of the demo world and over 12 rows at 800 by 500 read one text each time, in both passes; a text cut at 256 KB built its 3,745 numbered lines in 10 and 11 ms. Merged into `main` after `main`'s Blender fix and `--flavor` were merged into the branch and checked again |
 | The precise terrain, part one, on branch `precision-terrain`, Windows 11 (11/14/2026), Edge 157 on an RTX 5050 laptop GPU: before and after shots of six poses of the demo world (overview, Projects, Photos, components, the street, Music); `npm test`; and, after `main` with Preview was merged in, `node tools/ui-check.mjs` scenarios views, interiors, landmarks, time, transitions, seams, preview, strata and polish, each on its own | `npm test`: 1,215 passed, 0 failed. views 33, interiors 118, landmarks 127 (2 skipped), time 80, transitions 33, seams 135, preview 158, strata 76 and polish 1,200 passed, none failed. The first landmarks run found its check of the benchmarks' draw call naming the pins by their unlit material; it now finds the pin mesh by its own count. A selection fill leaning from the box's colour toward the mark was tried and dropped: a teal box turned olive. Merged into `main` |
+| The precise terrain, part two, on branch `precision-terrain-2`, Windows 11 (11/15/2026), Edge 157 on an RTX 5050 laptop GPU: before and after shots of the demo world pinned to one moment (12,087 files), 13 poses at 1600 by 1000 and 1280 by 800, of `391c5a7`, the reviewed build and the fixed one; `npm test`; `node tools/ui-check.mjs --no-shots --port 5309`, both passes, after the last change to the code; the `scale` scenario on a 400,000-entry synthetic snapshot in regions; then the docs and sweep: `node --check` on every script outside `web/vendor/`, `npm test`, `node tools/vendor.mjs --check`, the header of every file the branch touched and Markdown line lengths | `npm test`: 1,234 passed, 0 failed (274 in the smoke test). The interface check: 2990 passed, 0 failed, 8 skipped; draw calls at the baseline (overview 7, selected 9, search 8, duplicate ties 10). At 400,000 entries the longest script task was 13.2 ms against the reviewed build's 12.8 ms on the same snapshot (a first run's one 18 ms frame did not recur), and the heap 26.7 MB at its peak; the 5,000,000-entry tour was not run, for want of free memory. The sweep: no syntax error in 108 scripts; `npm test` 1,234 passed, 0 failed; every vendored file matches the manifest; 14 headers in rule; no Markdown line over 100 columns. Tried and dropped: a name's floor measured only as it would stand facing the eye, behind a flatness gate, which printed names under 5 px as seen (the floor is now the smaller of the two, with larger shares and a step up the ladder to keep names); and a soft cap on heights, which made a fresh file's height follow its footprint (each folder has one recency scale instead). Not yet merged into `main` |
 
 Not verified: running on macOS; frame rate at street level in the largest
 trees on a hardware GPU; Open and Reveal reaching a desktop application on
@@ -1025,6 +1054,13 @@ prove the thumbnail and byte-range requests and the sentences that
 follow a failure); the strip crowded, which only happens with more than
 two tabs; a zip of more than about 20,000 entries, whose listing Preview
 reads whole into a model of its own; and Preview in Firefox and Safari.
+From the precise terrain's second part: the 5,000,000-entry tour with
+the new layout (the machine had too little free memory, so 400,000
+entries were measured); the look of real directories, other window
+sizes than 1600 by 1000 and 1280 by 800, and other browsers (every shot
+was of the demo world in Edge); and a flight to a folder begun close
+by, which in one probe came to rest higher than it aimed and looked
+past the folder's plate.
 
 ## Continuing development
 
@@ -1072,11 +1108,14 @@ web/js/regions.js    the page's region client: asks, holds and lets go,
 web/js/region-worker.js  fetches and decodes region answers off the main
                      thread
 web/js/layout.js     the spatial language and level of detail; BOX, STYLE, AUX;
+                     a folder's unit, channels, margin and height unit;
                      the regions it wants opened
-web/js/viewport.js   3D world, camera, picking, transitions, relation lines
+web/js/viewport.js   3D world, camera, picking, transitions, relation lines;
+                     the names' vocabulary (INK, LETTER_MIN) and the far view
 web/js/lettering.js  the names on the blocks: a distance-field atlas
 web/js/flavors.js    the flavors: what each drag does, DOM-free
-web/js/theme.js      colours shared with the stylesheet
+web/js/theme.js      colours shared with the stylesheet: the plaster ramp,
+                     the kinds' tone steps (TONE_STEPS)
 web/js/thumbs.js     the only way the page shows an image
 web/js/ui.js         menu, dialog, sheets, notices, tip, indicators, virtual
                      list, downloads
