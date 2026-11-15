@@ -158,8 +158,6 @@
 }
 .cmp-facts thead, .cmp-facts tbody, .cmp-facts tr,
 .cmp-key thead, .cmp-key tbody, .cmp-key tr { display: contents; }
-.cmp-key thead.sr { display: contents; }
-.cmp-key thead.sr th { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 .cmp-facts th, .cmp-facts td, .cmp-key th, .cmp-key td {
   display: flex;
   align-items: center;
@@ -186,7 +184,7 @@
   text-transform: uppercase;
   text-align: left;
 }
-.cmp-key th {
+.cmp-key tbody th {
   display: grid;
   grid-template-columns: var(--mark-w) minmax(0, 1fr);
   column-gap: var(--mark-gap);
@@ -195,7 +193,7 @@
   font-weight: 400;
   text-align: left;
 }
-.cmp-key th > .swatch { justify-self: center; }
+.cmp-key tbody th > .swatch { justify-self: center; }
 .cmp-key-t { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-2); }
 .cmp-key td { color: var(--text-2); }
 .cmp-key tr.is-none th, .cmp-key tr.is-none td { color: var(--text-3); }

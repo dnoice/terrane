@@ -767,7 +767,7 @@ export function install(api) {
     const top = order.slice(0, 6);
     const rest = order.slice(6);
     const key = el('table', { class: 'cmp-key' },
-      el('thead', { class: 'sr' }, el('tr', {}, el('th', { scope: 'col', text: 'Kind' }), [0, 1].map((i) => el('th', { scope: 'col', text: lab[i] })))),
+      el('thead', {}, el('tr', {}, el('th', { class: 'sr', scope: 'col', text: 'Kind' }), [0, 1].map((i) => el('th', { class: 'sr', scope: 'col', text: lab[i] })))),
       el('tbody', {}, top.map((k) => el('tr', {},
         el('th', { scope: 'row' }, el('span', { class: 'swatch', style: { background: cssHex(KINDS[k].color) } }), el('span', { class: 'cmp-key-t', text: KINDS[k].label })),
         ds.map((d) => el('td', { text: d.ks ? fmtBytes(d.ks[k]) : '—' })))),
@@ -792,7 +792,7 @@ export function install(api) {
     const segs = sts.map((st, i) => (!st || !tot[i] ? [] : oldest.filter((j) => vals(st, j) > 0).map((j) => ({ w: (vals(st, j) / tot[i]) * 100, color: cssHex(STRATA[j].color), title: `${STRATA[j].label} ${byBytes ? fmtBytes(vals(st, j)) : plural(vals(st, j), 'file')}` }))));
     const aria = sts.map((st, i) => `${lab[i]}: ${st ? oldest.filter((j) => st.share[j] > 0).map((j) => `${STRATA[j].label} ${shareFigure(st.share[j])}`).join(', ') : 'not measured'}`);
     const key = el('table', { class: 'cmp-key cmp-age-key' },
-      el('thead', { class: 'sr' }, el('tr', {}, el('th', { scope: 'col', text: 'Last change' }), [0, 1].map((i) => el('th', { scope: 'col', text: lab[i] })))),
+      el('thead', {}, el('tr', {}, el('th', { class: 'sr', scope: 'col', text: 'Last change' }), [0, 1].map((i) => el('th', { class: 'sr', scope: 'col', text: lab[i] })))),
       el('tbody', {}, oldest.map((j) => {
         const none = sts.every((st) => !st || !(st.share[j] > 0));
         return el('tr', { class: none ? 'is-none' : null },
@@ -1223,8 +1223,10 @@ export function install(api) {
   function hide() {
     if (frame) cancelAnimationFrame(frame);
     frame = 0;
+    // A comparison under way is dropped; one already drawn is kept as it
+    // is, and only a change while hidden (queue) makes it out of date.
     seq++;
-    if (pair) dirty = true;
+    if (pair && !(result?.res && result.key === pairKey(pair))) dirty = true;
   }
 
   /* ---------- following ---------- */
