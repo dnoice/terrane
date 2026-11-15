@@ -2,11 +2,11 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Service Smoke Test (Terrane Edition - v1.8)
+ *     - Title: Service Smoke Test (Terrane Edition - v1.9)
  *     - File Name: smoke-test.mjs
  *     - Relative Path: tools/smoke-test.mjs
  *     - Artifact Type: test
- *     - Version: 1.8.0
+ *     - Version: 1.9.0
  *     - Date: 11/15/2026
  *     - Update: Sunday, November 15, 2026
  *     - Author: Dennis 'dendogg' Smaltz
@@ -14,6 +14,13 @@
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
  *
  * ✒ Changelog:
+ *     - 1.9.0 (11/15/2026) [dendogg + Anthropic - Claude Opus 5.5] — Two
+ *       source checks over what a branch adds since it left main, the
+ *       working tree included (git diff, when git is there): no added
+ *       line under web/, tools/ or server/ names a panel by letter, and
+ *       no added line in a header's prose (every section but Usage
+ *       Instructions and Examples) runs past 100 columns. The Shelf's
+ *       review found both by eye.
  *     - 1.8.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
  *       precise terrain, part two. The time view's slab is now measured
  *       against the folder's height unit, min(min(L.unit[i], TILE_H ×
@@ -261,8 +268,10 @@
  *       the fade and the vocabulary's shares
  *     - The source, read as text: one date formatter, no dead export in
  *       the shared modules, no idle icon, colours only from tokens.css,
- *       no shell anywhere the service launches a program, and every
- *       entry a web/ header rolled out kept word for word in CHANGELOG.md
+ *       no shell anywhere the service launches a program, every
+ *       entry a web/ header rolled out kept word for word in CHANGELOG.md,
+ *       and what a branch adds since main naming no panel by letter and
+ *       keeping its headers' prose within 100 columns
  *
  * ✒ Usage Instructions:
  *     node tools/smoke-test.mjs
@@ -2507,6 +2516,45 @@ console.log('\nSource (no service)');
     }
     check(`every entry a web/ header rolled out since the last commit or main (${rolled}) opens its CHANGELOG.md entry word for word`, lost.length === 0, [...new Set(lost)].join(', '));
   } else console.log('  skip  rolled-out header entries against CHANGELOG.md (no git history here)');
+
+  // What a branch writes, against where it left main (working tree
+  // included): no line it adds under web/, tools/ or server/ names a panel
+  // by letter (the page has none: it is the right panel), and no line it
+  // adds to a header's prose (every section but Usage Instructions and
+  // Examples, which hold code) runs past 100 columns: headers are wrapped
+  // by hand.
+  const base = git('merge-base', 'HEAD', 'main')?.trim();
+  if (base) {
+    const added = new Map();
+    let at = null;
+    let line = 0;
+    for (const l of (git('diff', '-U0', '--no-color', base, '--', 'web', 'tools', 'server') || '').replace(/\r/g, '').split('\n')) {
+      if (l.startsWith('+++ ')) {
+        at = l.startsWith('+++ b/') ? l.slice(6) : null;
+        if (at && !added.has(at)) added.set(at, new Map());
+        continue;
+      }
+      const h = l.match(/^@@ -\S+ \+(\d+)/);
+      if (h) line = Number(h[1]);
+      else if (at && l.startsWith('+')) added.get(at).set(line++, l.slice(1));
+    }
+    const letters = [];
+    const wide = [];
+    for (const [rel, lines] of added) {
+      if (/(^|\/)vendor\//.test(rel) || !/\.(m?js|css|html)$/.test(rel)) continue;
+      for (const [n, text] of lines) if (/\bpanel [AB]\b/.test(text)) letters.push(`${rel}:${n}`);
+      const src = fs.readFileSync(path.join(REPO, rel), 'utf8').replace(/\r/g, '').split('\n');
+      const end = src.findIndex((x) => /^\s*-{20,}\s*$|^\s*\*\s*-{20,}|^\s*\*\/\s*$|^-->/.test(x));
+      let prose = true;
+      for (let k = 0; k < end; k++) {
+        const s = src[k].match(/✒ ([A-Za-z .]+?):?\s*$/);
+        if (s) prose = !/^(Usage Instructions|Examples)$/.test(s[1].trim());
+        if (prose && lines.has(k + 1) && [...src[k]].length > 100) wide.push(`${rel}:${k + 1} (${[...src[k]].length})`);
+      }
+    }
+    check(`no line added since main names a panel by letter (${added.size} files)`, letters.length === 0, letters.join(', '));
+    check('no line added since main to a header\'s prose runs past 100 columns', wide.length === 0, wide.join(', '));
+  } else console.log('  skip  lines added since main (no git history here)');
 }
 
 fs.rmSync(work, { recursive: true, force: true });

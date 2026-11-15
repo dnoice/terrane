@@ -14,7 +14,9 @@
  *
  * ✒ Changelog:
  *     - 1.0.0 (11/15/2026) [dendogg + Anthropic - Claude Opus 5.5] —
- *       Initial release.
+ *       Initial release. After the review: the line about items no
+ *       longer there names them, so a long name with no space breaks
+ *       anywhere; the empty state's Add <folder> ends in an ellipsis.
  *
  * ✒ Description:
  *     The right panel's Shelf tab: the inspector's head and actions grid
@@ -94,7 +96,8 @@
 }
 .sh-ways li + li { margin-top: 4px; }
 .sh-adds { display: flex; flex-wrap: wrap; gap: 6px; }
-.sh-adds .btn { white-space: nowrap; }
+/* A long folder name ends in an ellipsis; the button's title holds it whole. */
+.sh-adds .btn { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 /* ---------- the actions and the lines under them ---------- */
 
@@ -109,7 +112,8 @@
   border-bottom: var(--border-2);
   background: var(--mark-wash);
 }
-.sh-state-text { min-width: 0; font-size: var(--fs-row); line-height: var(--lh-snug); }
+/* It names what is gone: a long name with no space breaks anywhere. */
+.sh-state-text { min-width: 0; font-size: var(--fs-row); line-height: var(--lh-snug); overflow-wrap: anywhere; }
 .sh-state .btn { white-space: nowrap; }
 
 /* ---------- rows ---------- */

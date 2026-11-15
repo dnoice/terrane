@@ -102,8 +102,9 @@
  *     - Pages open with single-key shortcuts turned on (the guide's
  *       setting), so a scenario's letter keys act wherever focus is
  *     - A tab's first page starts with no kept view, no search history,
- *       an empty Shelf, the Inspector as panel B's tab and Preview's lines wrapped; a
- *       reload in the same tab keeps them, as for a person
+ *       an empty Shelf, the Inspector as the right panel's tab and
+ *       Preview's lines wrapped; a reload in the same tab keeps them, as
+ *       for a person
  *     - Per-feature scenario files in tools/ui-scenarios/, each a module
  *       whose default export is one scenario or a list of them
  *     - Keyboard-only steps: real key events (Tab, Enter, Escape, arrows,
@@ -544,8 +545,9 @@ class Page {
     // wherever focus happens to be, so turn them on as the guide's setting
     // does. The hardening scenario clears it to check the default.
     // A tab's first page also forgets the kept view, the searches, the
-    // Shelf, panel B's chosen tab and Preview's wrap, so every scenario starts fresh
-    // (on the Inspector), while a reload in it brings them back.
+    // Shelf, the right panel's chosen tab and Preview's wrap, so every
+    // scenario starts fresh (on the Inspector), while a reload in it brings
+    // them back.
     await page.send('Page.addScriptToEvaluateOnNewDocument', {
       source: [
         "try { localStorage.setItem('terrane.single-keys', 'everywhere'); } catch {}",

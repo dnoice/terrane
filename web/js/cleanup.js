@@ -51,7 +51,8 @@
  *       fixed list, empty folders with the hidden-file rule stated
  *     - Rows select and frame their item in the world and the ledger;
  *       ↑ ↓ Home End move, Space leaves out or puts back, Enter frames,
- *       K puts the item on the Shelf; every total updates in place and nothing reorders until a refresh
+ *       K puts the item on the Shelf; every total updates in place and
+ *       nothing reorders until a refresh
  *     - One confirmation, the copies read again first, then one removal to
  *       the holding area (runOp, type trash) with its Undo; the totals
  *       refresh and what was left out stays left out

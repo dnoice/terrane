@@ -14,7 +14,13 @@
  *
  * ✒ Changelog:
  *     - 1.0.0 (11/15/2026) [dendogg + Anthropic - Claude Opus 5.5] —
- *       Initial release.
+ *       Initial release. After the review: the palette's gathering
+ *       commands use the menu's words (Add to shelf, Take off the shelf,
+ *       Add this folder to shelf, Add all results to shelf) and the acting
+ *       ones say "everything on the shelf", so Ctrl+K "shelf" lists the K
+ *       entry among its eight; K and the menus say what was on the shelf
+ *       already; the line about items no longer there names them (past
+ *       the rows drawn too) and its button says it or them.
  *
  * ✒ Description:
  *     The right panel's Shelf tab: a tray that collects files and folders
@@ -103,6 +109,22 @@ const WAYS = [
 ];
 
 const capital = (s) => (s ? `${s[0].toUpperCase()}${s.slice(1)}` : s);
+/**
+ * The items no longer there, by name, so a person knows which even when
+ * their rows are past the ones drawn: "Recipes is no longer there.", "a
+ * and b are…", "5 items are no longer there: a, b and 3 more." A name
+ * two of them share is given by its path.
+ */
+function goneWords(rels) {
+  const g = rels.length;
+  if (!g) return '';
+  const head = rels.slice(0, g <= 3 ? 3 : 2);
+  const names = head.map(nameOf);
+  const shown = head.map((r, i) => (names.indexOf(names[i]) !== names.lastIndexOf(names[i]) ? r : names[i]));
+  if (g === 1) return `${shown[0]} is no longer there.`;
+  if (g <= 3) return `${shown.slice(0, -1).join(', ')} and ${shown.at(-1)} are no longer there.`;
+  return `${fmtCount(g)} items are no longer there: ${shown.join(', ')} and ${fmtCount(g - 2)} more.`;
+}
 /** "; 2 no longer there stay on the shelf", or nothing. */
 const goneTail = (g) => (g ? `; ${fmtCount(g)} no longer there ${g === 1 ? 'stays' : 'stay'} on the shelf` : '');
 
@@ -166,9 +188,10 @@ export function install(api) {
   /**
    * Puts nodes or refs on the shelf and says what happened, in one
    * sentence: what was added, what was there already, what the cap cut.
-   * total: how many there were in all (a search's true count).
+   * total: how many there were in all (a search's true count); k: put
+   * by K or a menu that K mirrors, so "K again takes it off" holds.
    */
-  function put(targets, { total = null } = {}) {
+  function put(targets, { total = null, k = false } = {}) {
     const list = (targets || []).filter(Boolean);
     let why = null;
     const entries = [];
@@ -189,7 +212,7 @@ export function install(api) {
     if (res.cut) {
       words = `The shelf holds at most ${fmtCount(SHELF_MAX)} items: put ${fmtCount(a)} of ${fmtCount(Math.max(total ?? 0, entries.length))} on it. Take some off to add more.`;
     } else if (entries.length === 1 && a === 1) {
-      words = `${nameOf(res.added[0].rel)} is on the shelf (${plural(N, 'item')}). K again takes it off.`;
+      words = `${nameOf(res.added[0].rel)} is on the shelf (${plural(N, 'item')}).${k ? ' K again takes it off.' : ''}`;
     } else if (!a) {
       words = entries.length === 1 ? `${nameOf(entries[0].rel)} is already on the shelf (${plural(N, 'item')}).` : `All ${fmtCount(entries.length)} are already on the shelf (${plural(N, 'item')}).`;
     } else {
@@ -232,8 +255,10 @@ export function install(api) {
       api.say(refusal(list[0]));
       return;
     }
+    // The whole list goes to put(), so what was on the shelf already is
+    // counted and said, as Add all in Findings says it.
     if (ok.every((n) => store.has(relOf(n)))) takeOff(ok.map(relOf));
-    else put(list.filter((n) => refusal(n) || !store.has(relOf(n))));
+    else put(list, { k: true });
   }
 
   /** Every match Findings lists, refs kept by path. */
@@ -387,7 +412,8 @@ export function install(api) {
   /** Nothing on the shelf is there now: said, and false. */
   function anyThere(p) {
     if (p.nodes.length) return true;
-    api.say(`Nothing on the shelf is there now: ${plural(p.gone.length, 'item')} no longer there. Take them off the shelf above the list.`);
+    const g = p.gone.length;
+    api.say(`Nothing on the shelf is there now: ${goneWords(p.gone)} ${g === 1 ? 'Take it' : 'Take them'} off the shelf with the button above the list.`);
     return false;
   }
 
@@ -703,6 +729,7 @@ export function install(api) {
     const ok = !!here && !refusal(here);
     ui.addHere.hidden = !ok;
     ui.addHere.textContent = ok ? `Add ${here.n}` : '';
+    ui.addHere.title = ok ? `Add ${here.n} to the shelf` : '';
     ui.adds.hidden = ui.addSel.hidden && ui.addHere.hidden;
   }
 
@@ -734,9 +761,12 @@ export function install(api) {
       ui.list.replaceChildren();
     } else {
       drawGrid();
-      const gone = store.items.filter((it) => stOf(it.rel) === 'gone').length;
+      const goneRels = store.items.filter((it) => stOf(it.rel) === 'gone').map((it) => it.rel);
+      const gone = goneRels.length;
       ui.state.hidden = !gone;
-      ui.stateText.textContent = gone ? `${plural(gone, 'item')} ${gone === 1 ? 'is' : 'are'} no longer there.` : '';
+      ui.stateText.textContent = goneWords(goneRels);
+      ui.stateText.title = gone ? goneRels.slice(0, 20).join('\n') + (gone > 20 ? `\n…and ${fmtCount(gone - 20)} more` : '') : '';
+      ui.stateBtn.textContent = gone === 1 ? 'Take it off the shelf' : 'Take them off the shelf';
       const shown = store.items.slice(0, Math.max(ROWS, shownRows));
       ui.list.replaceChildren(...shown.map(rowEl));
       const more = n - shown.length;
@@ -787,8 +817,8 @@ export function install(api) {
     const grid = el('div', { class: 'actions-grid sh-actions', hidden: true });
     const why = el('p', { class: 'actions-why', hidden: true });
     const stateText = el('span', { class: 'sh-state-text' });
-    const state = el('div', { class: 'sh-state', hidden: true }, stateText,
-      el('button', { class: 'btn btn-small', type: 'button', 'data-k': 'gone-off', onclick: takeGone }, 'Take them off the shelf'));
+    const stateBtn = el('button', { class: 'btn btn-small', type: 'button', 'data-k': 'gone-off', onclick: takeGone }, 'Take them off the shelf');
+    const state = el('div', { class: 'sh-state', hidden: true }, stateText, stateBtn);
     const list = el('ul', { class: 'sh-list', role: 'list', 'aria-label': 'On the shelf', 'aria-busy': 'false', hidden: true });
     const moreBtn = el('button', {
       class: 'btn btn-small', type: 'button', 'data-k': 'more',
@@ -827,7 +857,7 @@ export function install(api) {
         ? 'Del takes the item you are on off the shelf: reach a row of the list first. Nothing on disk is removed from the Shelf.'
         : 'The shelf is empty. Nothing on disk is removed from the Shelf.');
     });
-    ui = { panel: host, body, kindWords, name: nameEl, facts, kept, empty, adds, addSel, addHere, grid, why, state, stateText, list, more, moreBtn, foot };
+    ui = { panel: host, body, kindWords, name: nameEl, facts, kept, empty, adds, addSel, addHere, grid, why, state, stateText, stateBtn, list, more, moreBtn, foot };
   }
 
   function show() {
@@ -905,7 +935,8 @@ export function install(api) {
       const target = node || S.focus;
       const off = !target?.p ? 'the authorized root' : api.hostOf(target) ? 'inside an archive' : null;
       const on = !off && store.has(relOf(target));
-      const label = node ? (on ? 'Take off the shelf' : 'Add to shelf') : (on ? 'Take this folder off the shelf' : 'Add this folder to the shelf');
+      // The palette's words: Add to shelf, Add this folder to shelf.
+      const label = node ? (on ? 'Take off the shelf' : 'Add to shelf') : (on ? 'Take this folder off the shelf' : 'Add this folder to shelf');
       return [{ label, icon: ICON, hint: 'K', run: () => toggle([target]), disabled: !!off, reason: off || undefined }];
     },
     // Gathering is not a change to the disk: ctx.ro does not stop it.
@@ -927,23 +958,30 @@ export function install(api) {
       const here = S.focus;
       const hereOff = !here ? 'the tree is still being read' : !here.p ? 'you are at the root, the whole directory' : api.hostOf(here) ? 'inside an archive'
         : store.has(relOf(here)) ? 'it is on the shelf already' : null;
+      // The palette shows eight actions, ranked by how early the query
+      // falls in each label. The gathering commands use the menu's own
+      // words, with "shelf" early, and the acting ones say "everything on
+      // the shelf", with it late, so Ctrl+K "shelf" lists Show Shelf, the
+      // K entry (Add to shelf, or Take off the shelf), Add this folder and
+      // Add all results first; a verb ("move", "export") finds the rest.
       return [
         {
-          label: selOn ? 'Take the selection off the shelf' : 'Add the selection to the shelf', hint: 'K', detail: `${plural(sel.length, 'item')} · Shelf`,
+          label: selOn ? 'Take off the shelf' : 'Add to shelf', hint: 'K',
+          detail: sel.length ? `${plural(sel.length, 'item')} selected · Shelf` : 'The selection · Shelf',
           off: !sel.length ? 'nothing is selected' : !ok.length ? (refusal(sel[0]) === ROOT_WHY ? 'the authorized root' : 'inside an archive') : null,
           run: () => toggle(sel),
         },
-        { label: 'Add this folder to the shelf', detail: here?.n || 'This folder', off: hereOff, run: () => put([here]) },
+        { label: 'Add this folder to shelf', detail: here?.n || 'This folder', off: hereOff, run: () => put([here]) },
         {
-          label: 'Add all results to the shelf', detail: S.query.trim() || 'Findings',
+          label: 'Add all results to shelf', detail: S.query.trim() || 'Findings',
           off: !S.search ? 'there is no search in Find' : !S.search.list.length ? 'nothing matches' : null, run: addAll,
         },
-        { label: 'Show the shelf\'s items in the world', detail: 'Shelf', off: whyOff('nodes'), run: showAll },
-        { label: 'Move the shelf\'s items to…', detail: 'Shelf', off: whyOff('write'), run: () => placeAll('move') },
-        { label: 'Copy the shelf\'s items to…', detail: 'Shelf', off: whyOff('write'), run: () => placeAll('copy') },
-        { label: 'Rename the shelf\'s items together…', detail: 'Shelf', off: whyOff('rename'), run: renameAll },
-        { label: 'Export the shelf as CSV', detail: 'Shelf', off: whyOff('paths'), run: exportCsv },
-        { label: 'Copy the shelf\'s paths', detail: 'Shelf', off: whyOff('paths'), run: copyPaths },
+        { label: 'Show everything on the shelf in the world', detail: 'Shelf', off: whyOff('nodes'), run: showAll },
+        { label: 'Move everything on the shelf to…', detail: 'Shelf', off: whyOff('write'), run: () => placeAll('move') },
+        { label: 'Copy everything on the shelf to…', detail: 'Shelf', off: whyOff('write'), run: () => placeAll('copy') },
+        { label: 'Rename everything on the shelf together…', detail: 'Shelf', off: whyOff('rename'), run: renameAll },
+        { label: 'Export everything on the shelf as CSV', detail: 'Shelf', off: whyOff('paths'), run: exportCsv },
+        { label: 'Copy the paths of everything on the shelf', detail: 'Shelf', off: whyOff('paths'), run: copyPaths },
         { label: 'Clear the shelf', detail: 'Shelf', off: store.size ? null : 'the shelf is empty', run: clearAll },
       ];
     },

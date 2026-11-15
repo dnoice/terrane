@@ -14,7 +14,12 @@
  *
  * ✒ Changelog:
  *     - 1.0.0 (11/15/2026) [dendogg + Anthropic - Claude Opus 5.5] —
- *       Initial release.
+ *       Initial release. After the review: Ctrl+K "shelf" holds the K
+ *       entry among its eight actions, as Add to shelf and as Take off
+ *       the shelf, with Add this folder and Add all results; K on two
+ *       with one on already says so; the line about items no longer there
+ *       names them, its button says it or them, and an item past the 100
+ *       rows drawn, with a long name, is named there at 800 x 500 too.
  *
  * ✒ Description:
  *     Walks the right panel's Shelf tab end to end in the real page, by
@@ -28,7 +33,8 @@
  *
  * ✒ Key Features:
  *     - shelf (writes): the strip reads Inspector, Preview, Cleanup, Shelf
- *       with no count; Ctrl+K "shelf" with the reasons; the empty state's
+ *       with no count; Ctrl+K "shelf" with the reasons, the K entry among
+ *       its eight actions either way; the empty state's
  *       words and buttons, focus on the head; K in the list and K again,
  *       the world's Add to shelf (hint K), a drag onto the tab, Add all
  *       from Findings, K in Preview; the count on the label; no live
@@ -87,6 +93,7 @@ const sh = () => {
     grid: [...(P?.querySelectorAll('.sh-actions .btn') || [])].filter(vis).map(btn),
     why: vis(q('.actions-why')) ? q('.actions-why').textContent : null,
     state: vis(q('.sh-state')) ? q('.sh-state-text').textContent : null,
+    stateBtn: vis(q('.sh-state')) ? q('.sh-state .btn').textContent : null,
     more: vis(q('.sh-more')) ? q('.sh-more .btn').textContent : null,
     rows: [...(P?.querySelectorAll('.sh-row') || [])].map((r) => ({
       rel: r.dataset.rel, name: r.querySelector('.nm').textContent, path: r.querySelector('.path').textContent, fig: r.querySelector('.fig').textContent,
@@ -115,14 +122,16 @@ const now = (t) => t.eval(`(${sh})()`);
 /** The live region, once it says something matching re. */
 const said = (t, re, what = String(re)) => t.waitFor(`() => { const l = document.getElementById('live').textContent; return ${re}.test(l) && l; }`, { timeout: 10000, what });
 
-/** Opens the palette and types query; resolves to its options as "label|detail|why". */
+/** Opens the palette and types query; resolves to its options as "label|detail|why|key", actions first. */
 async function palette(t, query, fn = (o) => o.length > 0) {
   await t.key('Ctrl+K');
   await t.waitFor(() => document.getElementById('dialog').open && !!document.querySelector('.palette-input'), { what: 'the palette' });
   await t.type(query);
-  return t.waitFor(`() => { const o = [...document.querySelectorAll('.palette-option')].map((x) => [x.querySelector('.pal-label')?.textContent, x.querySelector('.pal-detail')?.textContent, x.querySelector('.pal-why')?.textContent ?? ''].join('|')); return (${fn})(o) && o; }`,
+  return t.waitFor(`() => { const o = [...document.querySelectorAll('.palette-option')].map((x) => [x.querySelector('.pal-label')?.textContent, x.querySelector('.pal-detail')?.textContent, x.querySelector('.pal-why')?.textContent ?? '', x.querySelector('kbd')?.textContent ?? ''].join('|')); return (${fn})(o) && o; }`,
     { what: `the palette's options for "${query}"` });
 }
+/** The labels of the palette's actions (not its places), as shown now. */
+const actionsOf = (t) => t.eval(() => [...document.querySelectorAll('.palette-option:not(.is-place) .pal-label')].map((x) => x.textContent));
 
 /** Selects rel in the world, focus on the world, and opens its menu with Shift+F10; chooses an item or closes it. */
 async function worldMenu(t, rel, choose = null) {
@@ -276,14 +285,19 @@ const shelf = {
     await t.eval(() => { document.getElementById('ledger-list').focus(); return true; });
     const opts = await palette(t, 'shelf', (o) => o.some((x) => x.startsWith('Show Shelf|')) && o.some((x) => x.startsWith('Clear the shelf|')) && !o.some((x) => x.startsWith('Drop to eye level|')));
     const opt = (label) => opts.find((x) => x.startsWith(`${label}|`)) || '';
-    t.check(`Ctrl+K "shelf" lists Show Shelf first and the Shelf's commands, each unavailable with its reason while the shelf is empty (${opt('Move the shelf\'s items to…')})`,
-      opts[0] === 'Show Shelf|Right panel|' && /Unavailable: the shelf is empty$/.test(opt('Move the shelf\'s items to…')) && /Unavailable: the shelf is empty$/.test(opt('Clear the shelf')), JSON.stringify(opts));
+    const acts0 = await actionsOf(t);
+    t.check(`Ctrl+K "shelf" lists Show Shelf first and the Shelf's commands, each unavailable with its reason while the shelf is empty (${opt('Move everything on the shelf to…')})`,
+      opts[0].startsWith('Show Shelf|Right panel|') && /Unavailable: the shelf is empty\|$/.test(opt('Move everything on the shelf to…')) && /Unavailable: the shelf is empty\|$/.test(opt('Clear the shelf')), JSON.stringify(opts));
+    // The palette shows at most eight actions: the ways of adding, K's
+    // above all, must be among them.
+    t.check(`among its ${acts0.length} actions (at most eight) are the ways of adding: Add to shelf with K as its hint, Add this folder to shelf and Add all results to shelf (${acts0.join('; ')})`,
+      acts0.length <= 8 && /^Add to shelf\|The selection · Shelf\|Unavailable: nothing is selected\|K$/.test(opt('Add to shelf')) && acts0.includes('Add this folder to shelf') && acts0.includes('Add all results to shelf'), JSON.stringify(opts));
     await t.key('Escape');
     await t.waitFor(() => !document.getElementById('dialog').open);
-    const adds = await palette(t, 'to the shelf', (o) => o.some((x) => x.startsWith('Add all results to the shelf|')) && o.some((x) => x.startsWith('Add the selection to the shelf|')) && !o.some((x) => x.startsWith('Drop to eye level|')));
+    const adds = await palette(t, 'add to shelf', (o) => o.some((x) => x.startsWith('Add all results to shelf|')) && o.some((x) => x.startsWith('Add to shelf|')) && !o.some((x) => x.startsWith('Drop to eye level|')));
     const addOpt = (label) => adds.find((x) => x.startsWith(`${label}|`)) || '';
-    t.check(`and its ways of adding say why not yet (${addOpt('Add all results to the shelf')}; ${addOpt('Add the selection to the shelf')})`,
-      /Unavailable: there is no search in Find$/.test(addOpt('Add all results to the shelf')) && /Unavailable: nothing is selected$/.test(addOpt('Add the selection to the shelf')), JSON.stringify(adds));
+    t.check(`and its ways of adding say why not yet (${addOpt('Add all results to shelf')}; ${addOpt('Add to shelf')})`,
+      /Unavailable: there is no search in Find\|$/.test(addOpt('Add all results to shelf')) && /Unavailable: nothing is selected\|K$/.test(addOpt('Add to shelf')), JSON.stringify(adds));
     await t.key('Escape');
     await t.waitFor(() => !document.getElementById('dialog').open);
     await palette(t, 'show shelf', (o) => o[0]?.startsWith('Show Shelf|'));
@@ -316,6 +330,14 @@ const shelf = {
     t.check(`K again takes it off (${k2}), the count goes from the label, and the file is still on disk`, c2.label === null && exists('a/alpha.txt'), JSON.stringify(c2.label));
     await t.key('k');
     await said(t, /^alpha\.txt is on the shelf \(1 item\)/);
+    // With the selection on the shelf, the K entry is Take off the shelf,
+    // still among the eight for "shelf".
+    const offOpts = await palette(t, 'shelf', (o) => o.some((x) => x.startsWith('Show Shelf|')));
+    const offActs = await actionsOf(t);
+    t.check(`with the selection on the shelf, Ctrl+K "shelf" offers Take off the shelf with K among its ${offActs.length} actions (${offOpts.find((x) => x.endsWith('|K'))})`,
+      offActs.length <= 8 && offOpts.includes('Take off the shelf|1 item selected · Shelf||K') && !offActs.includes('Add to shelf'), JSON.stringify(offOpts));
+    await t.key('Escape');
+    await t.waitFor(() => !document.getElementById('dialog').open);
     const inspOn = await t.app(() => {
       document.getElementById('b-tab-inspector').click();
       return [...document.querySelectorAll('#inspector-body .shelf-action .btn')].map((b) => `${b.textContent}|${b.title}`);
@@ -332,8 +354,8 @@ const shelf = {
     await t.app((T) => { T.api.setFocus(T.S.model.root); return true; });
     await t.settle();
     const rootMenu = await worldMenu(t, null);
-    const rootItem = rootMenu.find((m) => /folder to the shelf|folder off the shelf/.test(m.label));
-    t.check(`at the root the ground's menu offers Add this folder to the shelf, unavailable: ${rootItem?.why}`, rootItem?.off && rootItem.why === 'the authorized root', JSON.stringify(rootItem));
+    const rootItem = rootMenu.find((m) => /folder to shelf|folder off the shelf/.test(m.label));
+    t.check(`at the root the ground's menu offers Add this folder to shelf, the palette's words, unavailable: ${rootItem?.why}`, rootItem?.label === 'Add this folder to shelf' && rootItem.off && rootItem.why === 'the authorized root', JSON.stringify(rootItem));
 
     /* ---- a drag from the ledger onto the tab ---- */
     await selectRels(t, ['shelf-lab/a/beta.md', 'shelf-lab/a/gamma.json']);
@@ -354,6 +376,12 @@ const shelf = {
     t.check(`two ledger rows dragged onto the Shelf tab: it is a drop target while they are over it, and the panel stays where it was (${d1})`,
       drag.row && drag.draggable && drag.prevented && drag.marked && !drag.after && drag.bTab === 'inspector' && (await now(t)).label === '4', JSON.stringify(drag));
 
+    /* ---- K on a selection partly on the shelf says what was there ---- */
+    await selectRels(t, ['shelf-lab/a/alpha.txt', 'shelf-lab/b/other.txt']);
+    await t.key('k');
+    const kPart = await said(t, /^Put 1 item on the shelf \(5 items\); 1 was already on it\.$/, 'K on two, one on already, said');
+    t.check(`K on two selected, one on the shelf already, adds the other and says so, as Add all does (${kPart})`, (await now(t)).label === '5');
+
     /* ---- Add all from Findings ---- */
     await t.app((T) => {
       T.api.setQuery('in:shelf-lab ext:txt');
@@ -367,7 +395,7 @@ const shelf = {
       return { label: b.getAttribute('aria-label'), title: b.title, icon: b.querySelector('use')?.getAttribute('href').split('#')[1] };
     });
     await press(t, '#ledger-sub [data-k=shelf-all]');
-    const f1 = await said(t, /^Put 2 items on the shelf \(6 items\); 1 was already on it\.$/, 'Add all said');
+    const f1 = await said(t, /^Put 1 item on the shelf \(6 items\); 2 were already on it\.$/, 'Add all said');
     t.check(`Add all to the shelf on the Findings count row adds every match and says which were there already (${f1})`,
       tool.label === 'Add all to the shelf' && /up to 1,000/.test(tool.title) && tool.icon === 'inbox', JSON.stringify(tool));
     await t.app((T) => {
@@ -525,8 +553,8 @@ const shelf = {
     await showShelf(t);
     const g1 = await drawn(t, (s) => s.rows.filter((r) => r.gone).length === 2, 'two rows no longer there');
     const goneRows = g1.rows.filter((r) => r.gone);
-    t.check(`the rows of b/deep stay, dimmed and tagged (${goneRows[0].path}), and a line says "${g1.state}"`,
-      goneRows.every((r) => /^no longer there/.test(r.path)) && g1.state === '2 items are no longer there.' && g1.rows.length === 7, JSON.stringify(g1.rows));
+    t.check(`the rows of b/deep stay, dimmed and tagged (${goneRows[0].path}), and a line names them: "${g1.state}" [${g1.stateBtn}]`,
+      goneRows.every((r) => /^no longer there/.test(r.path)) && /^(delta\.txt and epsilon\.log|epsilon\.log and delta\.txt) are no longer there\.$/.test(g1.state || '') && g1.stateBtn === 'Take them off the shelf' && g1.rows.length === 7, JSON.stringify(g1.rows));
     await press(t, '#b-panel-shelf [data-k=move]');
     const gm = await said(t, /^Moving 5 items; 2 no longer there stay on the shelf/, 'Move with two gone said');
     t.check(`Move says what is skipped (${gm})`, !!gm);
@@ -687,6 +715,20 @@ const shelfModes = {
     t.check(`Add all over ${total} files keeps 1,000 and says so (${cap}); 100 rows drawn, then "${big.more}"`, big.more === 'Show 100 more (1,000 in all)', JSON.stringify(big.more));
     await t.app((T) => { T.api.setQuery(''); return true; });
 
+    /* ---- an item no longer there, past the rows drawn ---- */
+    await t.eval((k) => {
+      const v = JSON.parse(localStorage.getItem(k));
+      // A long name with no space: the line must wrap it inside the panel.
+      v.items[v.items.length - 1] = { rel: `nowhere/far-gone-${'long'.repeat(20)}.txt`, d: 0, s: 3, m: 1, at: 1 };
+      localStorage.setItem(k, JSON.stringify(v));
+      return true;
+    }, KEY);
+    await t.reload();
+    await showShelf(t);
+    const far = await drawn(t, (s) => s.rows.length === 100 && !!s.state, 'the line for the item past the rows drawn');
+    t.check(`an item no longer there past the 100 rows drawn is named on the line above the list ("${far.state.slice(0, 24)}…" [${far.stateBtn}]), though no row drawn is tagged`,
+      far.state === `far-gone-${'long'.repeat(20)}.txt is no longer there.` && far.stateBtn === 'Take it off the shelf' && far.rows.every((r) => !r.gone), JSON.stringify({ state: far.state, btn: far.stateBtn }));
+
     /* ---- 800 × 500, in the drawer ---- */
     await t.page.send('Emulation.setDeviceMetricsOverride', { width: 800, height: 500, deviceScaleFactor: 1, mobile: false });
     try {
@@ -708,7 +750,7 @@ const shelfModes = {
           over: over.map((e) => e.className).slice(0, 5), crowded: 'crowded' in document.getElementById('b-tabs').dataset, count: vis(c) && c.textContent, icon: vis(ic),
           inStrip: tab.getBoundingClientRect().right <= document.getElementById('b-tabs').getBoundingClientRect().right + 0.5 };
       })()`);
-      t.check(`at 800 × 500, in the drawer: no overflow, every button on one line, the Shelf's icon and count on its tab${narrow.crowded ? ' in the crowded strip' : ''}`,
+      t.check(`at 800 × 500, in the drawer: no overflow (the long gone name wrapped), every button on one line, the Shelf's icon and count on its tab${narrow.crowded ? ' in the crowded strip' : ''}`,
         narrow.page && narrow.body && narrow.wrapped.length === 0 && narrow.over.length === 0 && narrow.count === '1,000' && narrow.icon && narrow.inStrip, JSON.stringify(narrow));
     } finally {
       await t.page.send('Emulation.clearDeviceMetricsOverride', {});
@@ -778,7 +820,8 @@ const shelfRegions = {
     t.check(`Show finds the items across the tree and selects them: the selection's paths are the shelf's (${sel.length})`, same([...sel].sort(), [...kept].sort()), JSON.stringify(sel.slice(0, 5)));
     await showShelf(t);
     const g = await drawn(t, (s) => s.rows[0]?.rel === 'nope/missing.txt' && s.rows[0].gone, 'nope/missing.txt marked');
-    t.check(`the path that is nowhere is marked no longer there (${g.rows[0].path}), on the live client's answer`, /^no longer there/.test(g.rows[0].path) && g.state === '1 item is no longer there.', JSON.stringify(g.rows[0]));
+    t.check(`the path that is nowhere is marked no longer there (${g.rows[0].path}), on the live client's answer, and the line names it: "${g.state}" [${g.stateBtn}]`,
+      /^no longer there/.test(g.rows[0].path) && g.state === 'missing.txt is no longer there.' && g.stateBtn === 'Take it off the shelf', JSON.stringify(g.rows[0]));
     await press(t, '#b-panel-shelf [data-k=clear]');
     await t.app((T) => {
       document.getElementById('b-tab-inspector').click();
