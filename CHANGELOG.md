@@ -1,10 +1,10 @@
 <!--
 ✒ Metadata
-    - Title: Shipped File Changelogs (Terrane Edition - v1.17)
+    - Title: Shipped File Changelogs (Terrane Edition - v1.18)
     - File Name: CHANGELOG.md
     - Relative Path: CHANGELOG.md
     - Artifact Type: docs
-    - Version: 1.17.0
+    - Version: 1.18.0
     - Date: 11/15/2026
     - Update: Sunday, November 15, 2026
     - Author: Dennis 'dendogg' Smaltz
@@ -12,12 +12,17 @@
     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
 
 ✒ Changelog:
-    - 1.17.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — Records the second part of the
+    - 1.18.0 (11/15/2026) [dendogg + Anthropic - Claude Opus 5.5] — Records the second part of the
       precise terrain: layout.js 1.6.0, whose 1.3.0 entry leaves its header; this file already
-      holds it. Then its look: viewport.js 1.12.0, app.js 1.19.0 and tokens.css 1.6.0, whose
-      1.9.0, 1.16.0 and 1.3.0 entries leave their headers; this file already holds them. The
+      holds it. Then its look: viewport.js 1.12.0, app.js 1.20.0 and tokens.css 1.6.0, whose
+      1.9.0, 1.17.0 and 1.3.0 entries leave their headers; this file already holds them. The
       review's fixes extend the entries of layout.js 1.6.0, viewport.js 1.12.0 and app.js
-      1.19.0, whose header words they open with.
+      1.20.0, whose header words they open with. app.js's entry, written as 1.19.0 on its
+      branch, is 1.20.0 here: main's 1.19.0 removed the panel letters first.
+    - 1.17.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — Records the panel letters'
+      removal: app.js 1.19.0, index.html 1.9.0, layout.css 1.5.0 and palette.js 1.3.0, whose
+      1.16.0, 1.6.0, 1.2.0 and 1.0.0 entries leave their headers; this file holds the first
+      three, and adds the section for web/js/palette.js with every entry it has carried.
     - 1.16.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — Records the first part of the
       precise terrain: viewport.js 1.11.0, app.js 1.18.0, model.js 1.7.0 and tokens.css 1.5.0,
       whose 1.8.0, 1.15.0, 1.4.0 and 1.2.0 entries leave their headers; this file holds them.
@@ -154,7 +159,7 @@ short form is kept too.
 
 ## web/js/app.js
 
-- 1.19.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — The far view: under the Kind
+- 1.20.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — The far view: under the Kind
   lens a file's band A is its own kind's mass colour, washed when hidden; TONE_STEPS comes from
   theme.js. A child folder is where you are once it spans half the view. In full: paint()
   gives a FILE box band A = mixHex(clay, its folder's dominant kind, 0.56), the closed mass's
@@ -180,6 +185,15 @@ short form is kept too.
   kinds. Band A had been its folder's dominant kind's mass colour, unwashed, which the far view
   leaned a lesser kind and a hidden file toward: at the Downloads pose its PDFs went grey-mauve
   and its images salmon, toward the archives' bronze.
+
+- 1.19.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — The right panel is called the right
+  panel: ] is labelled "Hide or show the right panel" and says so; the Guide's row reads "Hide
+  ledger / right panel". In full: on Dennis's ruling the panel letters go, A over the ledger
+  and B over the inspector's side, since they clashed with the tab strips and named nothing a
+  person needed. The words follow: togglePanel says "Right panel hidden. ] shows it again." or
+  "Right panel shown, on Preview. ] hides it.", where it said "Panel B". The code's own names
+  (B_TABS, drawBTabs, showBTab, bTabShown, followB, #b-tabs, terrane.panel-b-tab) stay as
+  they are, so the api a feature registers through does not change.
 
 - 1.18.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — Extensions step half as far within
   their kind, and a closed mass's strata are its own body colour leaning toward each kind.
@@ -642,6 +656,13 @@ short form is kept too.
 - 1.0.0 (11/09/2026) [dendogg + Anthropic - Claude Fable 5.2] — Initial release.
 
 ## web/index.html
+
+- 1.9.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — The A and B squares leave the panel
+  heads, so each tab strip runs the panel's full width; the view tools' ] toggle is named for the
+  right panel. In full: span.ref "A" in the ledger's head and span.ref "B" in the inspector's are
+  removed, on Dennis's ruling that the letters clashed with the tabs and their style. The
+  toggle's title reads "Show or hide the right panel (])" and its aria-label "Show or hide the
+  right panel".
 
 - 1.8.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — Panel B's head is a tab strip
   (#b-tabs, "Inspector views") where its heading stood, the Inspector its first tab;
@@ -1332,6 +1353,11 @@ short form is kept too.
 
 ## web/css/layout.css
 
+- 1.5.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — The .ref square goes with the panel
+  letters: a panel head is its tab strip, the full width of the panel. In full: the rule that
+  drew the ink square, a panel head's height wide, is removed; nothing else used it. The strip
+  was already flex: 1 and takes the room.
+
 - 1.4.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — A feature tab's panel in panel B
   (.b-panel) fills the panel as #inspector-body does, beside it. In full: it is position
   relative, flex 1 and min-height 0, so the tab's own pane scrolls inside it.
@@ -1578,5 +1604,21 @@ short form is kept too.
   of the view tools; the guide's keycaps keep one line's height beside a description of two;
   sizes come from the type scale.
 - 1.0.0 (11/12/2026) [dendogg + Anthropic - Claude Opus 5.5] — Initial release.
+
+## web/js/palette.js
+
+- 1.3.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — The tabs' commands are listed under
+  Right panel, the one shown now marked "Right panel · shown now". In full: the section and the
+  details read "Right panel" where they read "Panel B", as the panel letters left the page.
+
+- 1.2.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — Panel B: "Show Inspector", "Show
+  Preview" and one item for every tab a feature adds (B_TABS), each opening panel B when it is
+  hidden and putting focus in the tab; the one shown now is marked so.
+
+- 1.1.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — In region mode the service ranks the
+  places over every name in the tree (GET /api/places), as here, and answers refs; a place chosen is
+  found by its path first. The actions are as before.
+
+- 1.0.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — Initial release.
 
 <!-- ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once! -->

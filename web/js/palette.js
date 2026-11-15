@@ -1,11 +1,11 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Command Palette (Terrane Edition - v1.2)
+ *     - Title: Command Palette (Terrane Edition - v1.3)
  *     - File Name: palette.js
  *     - Relative Path: web/js/palette.js
  *     - Artifact Type: javascript
- *     - Version: 1.2.0
+ *     - Version: 1.3.0
  *     - Date: 11/14/2026
  *     - Update: Saturday, November 14, 2026
  *     - Author: Dennis 'dendogg' Smaltz
@@ -13,6 +13,9 @@
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
  *
  * ✒ Changelog:
+ *     - 1.3.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
+ *       tabs' commands are listed under Right panel, the one shown now
+ *       marked "Right panel · shown now".
  *     - 1.2.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — Panel
  *       B: "Show Inspector", "Show Preview" and one item for every tab a
  *       feature adds (B_TABS), each opening panel B when it is hidden and
@@ -21,8 +24,7 @@
  *       In region mode the service ranks the places over every name in the
  *       tree (GET /api/places), as here, and answers refs; a place chosen
  *       is found by its path first. The actions are as before.
- *     - 1.0.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] —
- *       Initial release.
+ *     Earlier entries: see CHANGELOG.md
  *
  * ✒ Description:
  *     Ctrl+K opens one field that reaches every action Terrane has and
@@ -389,12 +391,12 @@ export function install(api) {
     items: () => [{ label: 'Show the keys and the guide', hint: '?', run: () => api.KEYS.get('guide')?.run({ k: '?' }) }],
   });
 
-  // Panel B's tabs, from B_TABS, so every tab a feature adds is listed:
-  // each opens panel B if it was hidden and puts focus in the tab.
+  // The right panel's tabs, from B_TABS, so every tab a feature adds is
+  // listed: each opens the right panel if it was hidden and puts focus in it.
   api.COMMANDS.add({
-    id: 'palette-panel-b', owner: OWNER, order: 80, section: 'Panel B',
+    id: 'palette-panel-b', owner: OWNER, order: 80, section: 'Right panel',
     items: () => [...api.B_TABS].map((tab) => ({
-      label: `Show ${tab.label}`, detail: api.bTabShown(tab.id) ? 'Panel B · shown now' : 'Panel B',
+      label: `Show ${tab.label}`, detail: api.bTabShown(tab.id) ? 'Right panel · shown now' : 'Right panel',
       run: () => { api.showBTab(tab.id, { focus: true }); },
     })),
   });

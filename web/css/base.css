@@ -1,11 +1,11 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Base Styles (Terrane Edition - v1.1)
+ *     - Title: Base Styles (Terrane Edition - v1.2)
  *     - File Name: base.css
  *     - Relative Path: web/css/base.css
  *     - Artifact Type: stylesheet
- *     - Version: 1.1.0
+ *     - Version: 1.2.0
  *     - Date: 11/14/2026
  *     - Update: Saturday, November 14, 2026
  *     - Author: Dennis 'dendogg' Smaltz
@@ -13,6 +13,8 @@
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
  *
  * ✒ Changelog:
+ *     - 1.2.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
+ *       LABEL voice no longer lists .ref: the panel letters are gone.
  *     - 1.1.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — Three
  *       uppercase voices, defined here once: LABEL names a thing, KEY is
  *       pressed (with one variant for four keys in a narrow ledger) and TIGHT
@@ -117,7 +119,7 @@ kbd {
  * LABEL names a thing: panel heads, section titles, fact and cell labels,
  * field labels, menu titles, guide heads, fieldset legends, palette groups.
  */
-.caps, .cell-label, .panel-head h2, .facts dt, .section-title, .menu-title, .ref, .guide h3, .field span,
+.caps, .cell-label, .panel-head h2, .facts dt, .section-title, .menu-title, .guide h3, .field span,
 .rich summary, .palette-group, .rename-set legend, .job-title {
   font: 700 var(--fs-2xs) / 1 var(--sans);
   font-stretch: var(--caps-label-wdth);

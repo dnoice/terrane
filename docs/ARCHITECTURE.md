@@ -1,10 +1,10 @@
 <!--
 ✒ Metadata
-    - Title: Terrane Architecture (Terrane Edition - v1.14)
+    - Title: Terrane Architecture (Terrane Edition - v1.15)
     - File Name: ARCHITECTURE.md
     - Relative Path: docs/ARCHITECTURE.md
     - Artifact Type: docs
-    - Version: 1.14.0
+    - Version: 1.15.0
     - Date: 11/15/2026
     - Update: Sunday, November 15, 2026
     - Author: Dennis 'dendogg' Smaltz
@@ -12,7 +12,7 @@
     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
 
 ✒ Changelog:
-    - 1.14.0 (11/15/2026) [dendogg + Anthropic - Claude Opus 5.5] —
+    - 1.15.0 (11/15/2026) [dendogg + Anthropic - Claude Opus 5.5] —
       The precise terrain's second part. The spatial model: a folder's
       unit replaces the step of 4.5 % of each plateau's width, and the
       location is a child once it spans half the view. Scale adds the
@@ -23,6 +23,9 @@
       known limitations add names at 1280 by 800 and a flight begun
       close by. Section 7's code tables add layout.unit and
       layout.tile.
+    - 1.14.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] —
+      The panel letters are gone: the right panel is named so wherever a
+      person reads it; the code's names (B_TABS and its calls) stay.
     - 1.13.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] —
       Preview. Scale adds how Preview reads (the
       body after the arrows rest, superseded reads aborted, the last
@@ -158,7 +161,7 @@
     - Datasets for development against real data, and the warm cache
     - The visual identity and every drawing convention, and the grid,
       voices and wrapping rules the sheet's text keeps
-    - Feature modules and their seams: registries (panel B's tabs
+    - Feature modules and their seams: registries (the right panel's tabs
       among them), the api, sheets, browser storage, key allocation,
       relation sets, code tables, the shared age table
     - Measurements, the Stage 4 exit test at five sizes among them, and
@@ -1394,7 +1397,7 @@ direction is a survey sheet around a plaster world.
   rows that cannot be renamed on a garnet wash. They are modal, so the
   page's keys rest while one is open, and Escape closes each with focus
   back where it was.
-- **Panel B's tabs**: panel B's head is a tab strip drawn as the
+- **The right panel's tabs**: the panel's head is a tab strip drawn as the
   ledger's, each tab an icon and a label in the tight voice over the
   sliding rule, the Inspector first. Should a label no longer fit
   (`data-crowded`, which two tabs never reach), only the chosen tab
@@ -1408,7 +1411,7 @@ direction is a survey sheet around a plaster world.
   numbers out; a counter would have reset at every chunk, since
   `content-visibility` scopes counters. Its foot's key hints are groups
   that never break, each dot held to the hint before it, so no line
-  begins with one. On paper panel B prints the Inspector whichever tab
+  begins with one. On paper the right panel prints the Inspector whichever tab
   is chosen, its tab inked as the panel's heading.
 - **Stylesheet structure**: `web/css/terrane.css` declares the layers
   `tokens, fonts, base, layout, components, utilities, motion, print`
@@ -1448,7 +1451,7 @@ follow: `palette.js` (the command palette, with the DOM-free
 `searches.js` (search history, saved searches and `in:`), both keeping
 their data through the DOM-free `memory.js`; `quicklook.js`;
 `presets.js` (the selection's total and the quick searches);
-`preview.js` (Preview, panel B's second tab, which reads through the
+`preview.js` (Preview, the right panel's second tab, which reads through the
 DOM-free `readers.js` it shares with `quicklook.js`, so the two never
 disagree on what a file is shown as or why it is not);
 `batch.js` (the batch rename, with the DOM-free `rename.js`);
@@ -1479,7 +1482,7 @@ and the rest still run.
 | `INSPECTOR.many` | `{ build(nodes, ctx) }` with ctx `{ ro, off }`: sections after the Actions grid of a selection of several | Batch rename |
 | `READING` | `{ glyph, title, text }`: a Reading the world row | the controller and every Stage 5 feature |
 | `TABS` | `{ label, draw, list, count, enter, key }`: a ledger tab | the controller, Landmarks (Places) |
-| `B_TABS` | `{ label, icon, title, mount(host), show(host, { focus }), hide(), focusTarget(host) }`: a tab of panel B, the Inspector 0 and Preview 20. The controller draws the strip and gives each feature tab a panel, `div.b-panel#b-panel-<id>` after `#inspector-body`; `mount` runs once, when the tab is first chosen; `show` whenever it is chosen while panel B is on screen, and again when panel B comes back (`]`, the drawer, the 860 px breakpoint); `hide` when it is left or panel B goes; `focusTarget` is where focus goes in it | the controller (the Inspector), Preview |
+| `B_TABS` | `{ label, icon, title, mount(host), show(host, { focus }), hide(), focusTarget(host) }`: a tab of the right panel, the Inspector 0 and Preview 20. The controller draws the strip and gives each feature tab a panel, `div.b-panel#b-panel-<id>` after `#inspector-body`; `mount` runs once, when the tab is first chosen; `show` whenever it is chosen while panel B is on screen, and again when panel B comes back (`]`, the drawer, the 860 px breakpoint); `hide` when it is left or panel B goes; `focusTarget` is where focus goes in it | the controller (the Inspector), Preview |
 | `TAB_SECTIONS` | `{ tab, build() }`: a section a feature adds to a tab another one draws; the tab's draw appends `api.tabSections(tab)` after its own | Search history (Saved searches in Places, 30) |
 | `SURVEY` | `{ build(survey) }`: a Survey tab section: Working sessions 5, Quick searches 7, the controller's lists 10 to 50, Export as CSV 95 | the controller, Session traverse, Totals and quick searches, Export |
 | `LEDGER_SUB` | `{ tab, build(ctx) }`, ctx `{ items, search, focus }`: controls on the Contents or Findings count row, in a `span.sub-tools` after the count, each with a `data-k` so a redraw keeps focus on it; a tool is a 24 px icon button (`btn btn-icon sub-tool`) at the row's end: the selection's total 10, Save search… 50, Export CSV 60 | Totals, Search history, Export |
@@ -1535,10 +1538,10 @@ to its answer; `resolveRow(ref)` makes a listed ref a node in its
 list's place; `notAtSize(what)` is the sentence for what the service
 does not answer at that size.
 
-Panel B's tabs added `B_TABS`; `drawBTabs()`, the strip drawn again
-from it; `showBTab(id, { focus })`, a tab shown, panel B opened first
+The right panel's tabs added `B_TABS`; `drawBTabs()`, the strip drawn
+again from it; `showBTab(id, { focus })`, a tab shown, the panel opened first
 when `]` or a narrow window hid it, and false for a tab not registered;
-`bTabShown(id)`, whether a tab is on screen, chosen with panel B shown;
+`bTabShown(id)`, whether a tab is on screen, chosen with its panel shown;
 `composition(dir, title)`, a folder's bytes by kind under a head of that
 title; `contentsOrder(dir)`, a folder's held children in the order
 Contents lists them; and `get(route, params, { signal })`, whose signal
@@ -1560,7 +1563,7 @@ under one key per directory, with `|snapshot` appended for a snapshot:
 `terrane.searches.v1|<root>` (history and saved searches), beside the
 settings kept for every directory: `terrane.single-keys`,
 `terrane.flavor`, `terrane.guide-tab` (the Guide's tab),
-`terrane.panel-b-tab` (panel B's tab) and `terrane.preview-wrap`
+`terrane.panel-b-tab` (the right panel's tab) and `terrane.preview-wrap`
 (Preview's Wrap lines). Every read is checked field by field
 before it is used, and saved searches are merged per id before each
 write, so two tabs keep each other's. When the browser refuses storage,
@@ -1585,7 +1588,7 @@ none either: its arrows, Home, End, Enter, P and Esc act inside its
 pane, the content's scroll first, and are kept from the window's
 handler, so Home in a scrolled text goes to its top rather than rising
 to the overview; P there is Quick look's own entry, run on Preview's
-item. Both tab strips, the ledger's and panel B's, take ← →
+item. Both tab strips, the ledger's and the right panel's, take ← →
 (wrapping), Home and End themselves (`stripKeys`), the tab reached
 chosen, under one core guide row, "← → on tabs". Their guide rows sit
 in the guide's sections Finding your way, Looking closer and Acting on
@@ -1689,13 +1692,13 @@ the first survey.
   selects, reveals or measures it. B reads the folder's region before
   measuring, and J and the first survey resolve their paths first.
 - **A tab not shown does no work.** A `B_TABS` entry's `show` runs only
-  while panel B is on screen with its tab chosen, and `hide` as soon as
+  while the right panel is on screen with its tab chosen, and `hide` as soon as
   either ends; a tab that reads, plays or measures asks
   `api.bTabShown(id)` before it does, and pauses while a sheet is open,
   as Preview does. The Inspector is held to the same rule: its sections
   are built only while its tab is chosen, and printing draws it first.
 - **Two strips share `.tabs`.** The ledger's strip is `#ledger-tabs`,
-  whose buttons carry `data-tab`, and panel B's is `#b-tabs`, whose
+  whose buttons carry `data-tab`, and the right panel's is `#b-tabs`, whose
   buttons carry `data-btab`; code that means one strip names it by its
   id, never by the class.
 - **Focus by its hook.** The address and the kept view follow

@@ -1,11 +1,11 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Terrane Application (Terrane Edition - v1.19)
+ *     - Title: Terrane Application (Terrane Edition - v1.20)
  *     - File Name: app.js
  *     - Relative Path: web/js/app.js
  *     - Artifact Type: javascript
- *     - Version: 1.19.0
+ *     - Version: 1.20.0
  *     - Date: 11/15/2026
  *     - Update: Sunday, November 15, 2026
  *     - Author: Dennis 'dendogg' Smaltz
@@ -13,21 +13,18 @@
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
  *
  * ✒ Changelog:
- *     - 1.19.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] —
+ *     - 1.20.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] —
  *       The far view: under the Kind lens a file's band A is its own
  *       kind's mass colour, washed when hidden; TONE_STEPS comes from
  *       theme.js. A child folder is where you are once it spans half the
  *       view.
+ *     - 1.19.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] —
+ *       The right panel is called the right panel: ] is labelled "Hide or
+ *       show the right panel" and says so; the Guide's row reads "Hide
+ *       ledger / right panel".
  *     - 1.18.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] —
  *       Extensions step half as far within their kind, and a closed mass's
  *       strata are its own body colour leaning toward each kind.
- *     - 1.17.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] —
- *       Panel B's head is a tab strip from B_TABS, the Inspector first and
- *       the default, the choice kept in this browser; both strips take the
- *       arrows, Home and End. The Inspector draws only while chosen. The
- *       api gains B_TABS, drawBTabs, showBTab, bTabShown, composition's
- *       title, contentsOrder and get's signal. ] is panel B's toggle in its
- *       labels and in what it says, which names the tab it shows.
  *     Earlier entries: see CHANGELOG.md
  *
  * ✒ Description:
@@ -150,7 +147,7 @@
  *         api.DUP_GROUP.add({ id: 'dupes', build: (group, ctx) => el(...) });
  *         api.B_TABS.add({ id: 'preview', order: 20, label: 'Preview', icon: 'eye',
  *           mount: (host) => {}, show: (host, { focus }) => {}, hide: () => {} });
- *         api.showBTab('preview', { focus: true });   // panel B opened if hidden
+ *         api.showBTab('preview', { focus: true });   // the right panel opened if hidden
  *     Every entry has a unique id; order (default 50) places it.
  *
  * ✒ Other Important Information:
@@ -4653,11 +4650,11 @@ function togglePanel(which) {
   else if (NARROW.matches) b.toggle('show-inspector', !shown);
   else b.toggle('no-inspector', shown);
   syncPanelToggles();
-  // Panel B's chosen tab hears it go (its reads stop) or come back.
+  // The right panel's chosen tab hears it go (its reads stop) or come back.
   if (which === 'inspector') followB();
-  // Panel B is named as ] is labelled, and on showing, the tab it shows.
+  // The right panel is named as ] is labelled, and on showing, the tab it shows.
   if (which === 'ledger') say(shown ? 'Ledger hidden. [ shows it again.' : 'Ledger shown. [ hides it.');
-  else say(shown ? 'Panel B hidden. ] shows it again.' : `Panel B shown, on ${B_TABS.get(S.bTab)?.label || 'Inspector'}. ] hides it.`);
+  else say(shown ? 'Right panel hidden. ] shows it again.' : `Right panel shown, on ${B_TABS.get(S.bTab)?.label || 'Inspector'}. ] hides it.`);
 }
 
 /* ---------- panel B's tabs ---------- */
@@ -5051,8 +5048,8 @@ function wireKeys() {
   core({ id: 'find', keys: ['/'], run: () => { $('q').focus(); }, guide: [SEL, '/', 'Find'] });
   core({ id: 'guide-escape', guide: [SEL, 'Esc', 'Cancel, clear'] });
   core({
-    id: 'panels', keys: ['[', ']'], labels: { '[': 'Hide or show the ledger', ']': 'Hide or show panel B' },
-    run: (c) => { togglePanel(c.k === '[' ? 'ledger' : 'inspector'); }, guide: [SEL, '[  ]', 'Hide ledger / panel B'],
+    id: 'panels', keys: ['[', ']'], labels: { '[': 'Hide or show the ledger', ']': 'Hide or show the right panel' },
+    run: (c) => { togglePanel(c.k === '[' ? 'ledger' : 'inspector'); }, guide: [SEL, '[  ]', 'Hide ledger / right panel'],
   });
   // The ledger's tabs and panel B's take these keys themselves (stripKeys).
   core({ id: 'guide-tab-strips', guide: [SEL, '← → on tabs', 'Previous / next tab (Home, End: first, last)'] });

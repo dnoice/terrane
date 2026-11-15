@@ -1,11 +1,11 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Preview (Terrane Edition - v1.0)
+ *     - Title: Preview (Terrane Edition - v1.1)
  *     - File Name: preview.js
  *     - Relative Path: web/js/preview.js
  *     - Artifact Type: javascript
- *     - Version: 1.0.0
+ *     - Version: 1.1.0
  *     - Date: 11/14/2026
  *     - Update: Saturday, November 14, 2026
  *     - Author: Dennis 'dendogg' Smaltz
@@ -13,6 +13,8 @@
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
  *
  * ✒ Changelog:
+ *     - 1.1.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] —
+ *       Its palette command's detail names the right panel.
  *     - 1.0.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] —
  *       Initial release.
  *
@@ -1101,7 +1103,7 @@ export function install(api) {
     id: 'preview', owner: OWNER, section: 'Preview',
     // Worded so that "preview" finds Show Preview first; it runs whether
     // or not Preview is on screen (toggleWrap keeps the choice and says it).
-    items: () => [{ label: wrap ? 'Stop wrapping long lines (Preview)' : 'Wrap long lines (Preview)', detail: 'Panel B', run: toggleWrap }],
+    items: () => [{ label: wrap ? 'Stop wrapping long lines (Preview)' : 'Wrap long lines (Preview)', detail: 'Right panel', run: toggleWrap }],
   });
 
   // Each hook only schedules: the work happens once the arrows rest.
