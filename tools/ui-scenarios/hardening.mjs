@@ -1,11 +1,11 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Hardening Scenarios (Terrane Edition - v1.7)
+ *     - Title: Hardening Scenarios (Terrane Edition - v1.8)
  *     - File Name: hardening.mjs
  *     - Relative Path: tools/ui-scenarios/hardening.mjs
  *     - Artifact Type: test
- *     - Version: 1.7.0
+ *     - Version: 1.8.0
  *     - Date: 11/14/2026
  *     - Update: Saturday, November 14, 2026
  *     - Author: Dennis 'dendogg' Smaltz
@@ -13,6 +13,13 @@
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
  *
  * ✒ Changelog:
+ *     - 1.8.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
+ *       names' vocabulary, with WebGL: at the overview and in the largest
+ *       folder every printed name's capitals, facing the eye, stand at or
+ *       above its face's floor (7 px a file's, 6 px a folder's), its size
+ *       is a step of the square root of two of its folder's unit as chosen
+ *       and as the GPU holds it, and a file's or a scree's carries the
+ *       quiet bit.
  *     - 1.7.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
  *       narrow window's tabs are the ledger's, read by their strip's id
  *       (#ledger-tabs); with the drawer open at 800 px every tab of panel
@@ -65,6 +72,9 @@
  *       from another server it runs the demo world; neither asks a
  *       service for anything
  *     - Frames redrawn only for a hover place no labels (WebGL pass)
+ *     - The names' vocabulary at two poses: every printed name at or over
+ *       its face's floor, on its folder's ladder, a file's in the quiet
+ *       face (WebGL pass)
  *     - On disk: the refresh chain survives a folder deleted from outside,
  *       and the address and the kept view leave it, after a reload too;
  *       the time view's Since section follows the table a change rebuilt,
@@ -76,7 +86,8 @@
  *
  * ✒ Other Important Information:
  *     - Dependencies: tools/ui-check.mjs (the context t); node:http for the
- *       stand-in other server, on the ui-check port plus five
+ *       stand-in other server, on the ui-check port plus five; the page's
+ *       js/viewport.js and js/lettering.js for the names' floors and slots
  *     - Compatible platforms: Node.js 22.5+
  * ----------------------------------------------------------------------------
  */
@@ -377,6 +388,58 @@ const hardening = {
       });
       t.check(`names are printed on the boxes at the overview (${nm.count}: ${nm.lid} on lids or rims, ${nm.riser} on risers), each on a box that is drawn, and no file or folder tag stands over the world`,
         nm.count > 0 && nm.off === 0 && !nm.waiting && nm.tags === 0, JSON.stringify(nm));
+
+      /* ---- the names' vocabulary: floors, the ladder and the quiet face ---- */
+      // At the overview and one folder down, every printed name: its
+      // capitals, facing the eye, at or above its face's floor, its size a step of
+      // the square root of two of its folder's unit (as chosen and as the
+      // GPU holds it), and a file's or a scree's name in the quiet face.
+      const vocab = { names: 0, files: 0, bad: [] };
+      for (const pose of ['overview', 'folder']) {
+        if (pose === 'folder') {
+          await t.app((T) => { T.api.setFocus(T.S.model.root.c.filter((c) => c.d).sort((a, b) => b.s - a.s)[0]); return true; });
+          await t.settle();
+        }
+        const got = await t.app(async (T) => {
+          const v = T.S.view;
+          const L = v.layout;
+          const frame = () => new Promise((r) => requestAnimationFrame(() => r()));
+          for (let k = 0; k < 120 && (v.letterWait || !v.letterCount); k++) await frame();
+          const VP = await import(new URL('js/viewport.js', document.baseURI).href);
+          const LT = await import(new URL('js/lettering.js', document.baseURI).href);
+          const A = v.aLetter.array;
+          const g = L.geo;
+          const by = new Map((v.letterChosen || []).map((e) => [e.i, e]));
+          const bad = [];
+          let names = 0;
+          let files = 0;
+          for (const i of v.lettered.keys()) {
+            const e = by.get(i);
+            const code = Math.floor(A[i * 4]);
+            const quiet = L.type[i] === 1 || L.type[i] === 3;
+            const face = quiet ? LT.FACE.FILE : LT.FACE.DIR;
+            names++;
+            if (quiet) files++;
+            if (!e) { bad.push(`${L.node[i].n}: not among the chosen`); continue; }
+            if (!(e.px >= VP.LETTER_MIN[face])) bad.push(`${L.node[i].n}: ${e.px.toFixed(2)} px under the floor ${VP.LETTER_MIN[face]}`);
+            const k = 2 * Math.log2(e.cap / L.unit[i]);
+            if (Math.abs(k - Math.round(k)) > 1e-6) bad.push(`${L.node[i].n}: ${e.cap} is off the ladder of ${L.unit[i]}`);
+            const o = i * 6;
+            const on = code % 4 === 2 ? g[o + 4] : Math.min(g[o + 3], g[o + 5]);
+            const gpu = (A[i * 4 + 1] * on * v.letters.cap[face]) / LT.SLOT.h;
+            if (Math.abs(gpu - e.cap) > 1e-4 * e.cap) bad.push(`${L.node[i].n}: the GPU holds ${gpu}, chosen ${e.cap}`);
+            if ((code % 2 === 1) !== quiet) bad.push(`${L.node[i].n}: quiet bit ${code % 2} on a ${quiet ? 'file' : 'folder'}`);
+          }
+          return { names, files, bad: bad.slice(0, 6) };
+        });
+        vocab.names += got.names;
+        vocab.files += got.files;
+        vocab.bad.push(...got.bad.map((b) => `${pose}: ${b}`));
+      }
+      t.check(`every printed name stands at or above its face's floor, on its folder's ladder, the GPU's size the chosen one, and a file's in the quiet face (${vocab.names} names, ${vocab.files} of files or screes, at two poses)`,
+        vocab.names > 0 && vocab.bad.length === 0, JSON.stringify(vocab.bad));
+      await t.key('0');
+      await t.settle();
     }
 
     /* ---- a narrow window: 800 by 500, as 200% zoom ---- */

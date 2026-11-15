@@ -32,7 +32,14 @@
  *       times for blocks 0.04 S wide; no file is taller than its short
  *       side; and in one of 25 equal folders, 144 equal files aged over ten
  *       years never fall in height as freshness rises, the soft cap
- *       binding on most.
+ *       binding on most. A names section: nameContrast reads 3:1 or more
+ *       on every surface a name is printed on (each kind in each of
+ *       TONE_STEPS and its hidden wash, every kind's mass colour, clay,
+ *       each plaster, mark, garnet, a plain file, and 21 steps each of
+ *       the age and size ramps for files and masses) and 6:1 on plaster;
+ *       INK, LETTER_MIN, LETTER_FULL and TONE_STEPS are frozen, the
+ *       shader inks names from INK, and app.js keeps no TONE_STEPS of
+ *       its own.
  *     - 1.7.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
  *       one-date-formatter check sets demo-world.js aside: it writes ISO
  *       dates only into the demo world's made-up file names, which the
@@ -234,6 +241,8 @@
  *       changed after the date
  *     - The precise terrain, without the service: the demo world's unit,
  *       plates, channels, margins, area per byte and tiles from three eyes
+ *     - Names on the blocks, without a browser: one ink rule that reads
+ *       3:1 or more on every surface a name is printed on
  *     - The source, read as text: one date formatter, no dead export in
  *       the shared modules, no idle icon, colours only from tokens.css,
  *       no shell anywhere the service launches a program, and every
@@ -248,8 +257,9 @@
  *     - Dependencies: Node.js built-ins only; server/terrane.mjs,
  *       server/snapshot.mjs, server/archive.mjs, tools/make-fixture.mjs,
  *       web/js/layout.js, web/js/model.js, web/js/timeline.js,
- *       web/js/time.js, and web/js/viewport.js with the vendored three.js;
- *       git, when present, for the rolled-out header entries
+ *       web/js/time.js, web/js/theme.js, web/js/demo-service.js (the demo
+ *       world), and web/js/viewport.js with the vendored three.js; git,
+ *       when present, for the rolled-out header entries
  *     - Compatible platforms: Node.js 22.5+; the symbolic-link checks are
  *       skipped where links cannot be created, the held-folder Undo
  *       everywhere but Windows, and the rolled-out entries without git
@@ -1891,6 +1901,43 @@ console.log('\nThe precise terrain: unit, plates, channels, area and tiles (no s
   const widest = Math.max(...[...bySide.values()].map((l) => l.length));
   check(`in a folder of 144 equal files aged over ten years, height never falls as freshness rises (${tileBoxes.length} tiles in ${bySide.size} widths, up to ${widest} alike; ${softened} under the soft cap) and none is taller than wide`,
     tileBoxes.length === 144 && widest >= 10 && falls === 0 && softened > 20 && tileBoxes.every((b) => b.h <= b.side), `${falls} falls, ${softened} softened, ${widest} alike`);
+}
+
+console.log('\nNames on the blocks: one ink rule and its contrast (no service)');
+{
+  // Every colour a name is printed on, through the shader's ink rule as
+  // nameContrast mirrors it: at least 3:1 on each.
+  const { nameContrast, INK, LETTER_MIN, LETTER_FULL } = await import(new URL('../web/js/viewport.js', import.meta.url));
+  const { THEME, TONE_STEPS, mixHex, ramp } = await import(new URL('../web/js/theme.js', import.meta.url));
+  const { KINDS } = await import(new URL('../web/js/model.js', import.meta.url));
+  const surfaces = [];
+  for (const k of KINDS) {
+    TONE_STEPS.forEach((t, j) => {
+      const c = mixHex(k.color, t > 0 ? 0xffffff : 0x000000, Math.abs(t));
+      surfaces.push([`${k.label} tone ${j}`, c], [`${k.label} tone ${j}, hidden`, mixHex(c, THEME.paper, 0.4)]);
+    });
+    surfaces.push([`${k.label} mass`, mixHex(THEME.clay, k.color, 0.56)]);
+  }
+  THEME.plaster.forEach((c, j) => surfaces.push([`plaster ${j}`, c]));
+  surfaces.push(['clay', THEME.clay], ['mark', THEME.mark], ['garnet', THEME.garnet], ['a plain file', 0xd3d9d4]);
+  for (let k = 0; k <= 20; k++) {
+    const f = k / 20;
+    surfaces.push([`age ${f}`, ramp(THEME.ageRamp, f)], [`age mass ${f}`, mixHex(THEME.clay, ramp(THEME.ageRamp, f), 0.7)]);
+    surfaces.push([`size ${f}`, ramp(THEME.sizeRamp, f)], [`size mass ${f}`, mixHex(THEME.clay, ramp(THEME.sizeRamp, f), 0.7)]);
+  }
+  const ratios = surfaces.map(([n, c]) => [n, nameContrast(c)]).sort((a, b) => a[1] - b[1]);
+  check(`a name reads at 3:1 or more on every surface it is printed on (${surfaces.length} colours; least ${ratios[0][1].toFixed(2)}:1 on ${ratios[0][0]})`,
+    ratios[0][1] >= 3, ratios.slice(0, 4).map(([n, r]) => `${n} ${r.toFixed(2)}`).join(', '));
+  const plaster = THEME.plaster.map((c) => nameContrast(c));
+  check(`names on plaster read at 6:1 or more (${plaster.map((r) => r.toFixed(2)).join(', ')})`, plaster.every((r) => r >= 6));
+  const src = fs.readFileSync(new URL('../web/js/viewport.js', import.meta.url), 'utf8');
+  const inkLine = /lum > \$\{glf\(INK\.split\)\} \? mix\(base \* \$\{glf\(INK\.keep\)\}, uInkL, \$\{glf\(INK\.dark\)\}\) : mix\(base, uLightL, \$\{glf\(INK\.pale\)\}\)/.test(src)
+    && /letterCov \* \$\{glf\(INK\.cover\)\}/.test(src);
+  check('INK is frozen, and the shader inks names from it', Object.isFrozen(INK) && inkLine && JSON.stringify(INK) === '{"split":0.2,"keep":0.1,"dark":0.75,"pale":0.9,"cover":0.95}');
+  check('the floors are frozen and a file\'s stands above a folder\'s: 7 and 6 px, full at 9 and 8',
+    Object.isFrozen(LETTER_MIN) && Object.isFrozen(LETTER_FULL) && JSON.stringify(LETTER_MIN) === '[7,6]' && JSON.stringify(LETTER_FULL) === '[9,8]');
+  check('TONE_STEPS is frozen in theme.js and app.js keeps no copy of its own', Object.isFrozen(TONE_STEPS) && TONE_STEPS.length === 5
+    && !/const TONE_STEPS/.test(fs.readFileSync(new URL('../web/js/app.js', import.meta.url), 'utf8')));
 }
 
 console.log('\nRelation lines (no service)');

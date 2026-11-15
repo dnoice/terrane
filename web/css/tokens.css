@@ -1,11 +1,11 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Design Tokens (Terrane Edition - v1.5)
+ *     - Title: Design Tokens (Terrane Edition - v1.6)
  *     - File Name: tokens.css
  *     - Relative Path: web/css/tokens.css
  *     - Artifact Type: stylesheet
- *     - Version: 1.5.0
+ *     - Version: 1.6.0
  *     - Date: 11/14/2026
  *     - Update: Saturday, November 14, 2026
  *     - Author: Dennis 'dendogg' Smaltz
@@ -13,6 +13,8 @@
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
  *
  * ✒ Changelog:
+ *     - 1.6.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] —
+ *       --plaster-2 and --plaster-5 follow THEME.plaster's quieter ramp.
  *     - 1.5.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] —
  *       The file-kind pigments follow KINDS into mineral tones.
  *     - 1.4.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
@@ -22,15 +24,6 @@
  *       --guide-key-w, --readout-w, --cell-label-h, and the parts of the
  *       three uppercase voices. --guide-key-w is 104 px, so the Guide's
  *       longest key, Numpad 2 4 6 8, keeps one line.
- *     - 1.3.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] —
- *       --ink-3 darkened to #5a6661, so --text-3 reads at 4.5:1 or more
- *       on every surface; --signal-deep and --search-text for search
- *       figures as text; plaster, clay and mass tokens for the
- *       inspector's key (the twins of THEME.plaster and THEME.clay);
- *       --z-drawer for the narrow inspector. --tool-h, --north,
- *       --hud-inset and --hud-lift set the instruments over the world on
- *       two rows, so the scale, the view tools, operations in progress
- *       and notices never stand on one another.
  *     Earlier entries: see CHANGELOG.md
  *
  * ✒ Description:
@@ -115,8 +108,8 @@
      in web/js/theme.js, for the inspector's key; --mass is a closed mass as the
      Kind lens tints it (clay toward a kind) */
   --plaster-0: #cdd4cf;
-  --plaster-2: #e2e7e2;
-  --plaster-5: #f8faf7;
+  --plaster-2: #d8ded9;
+  --plaster-5: #e6ebe6;
   --clay: #b4bcb7;
   --mass: #8fa09a;
 

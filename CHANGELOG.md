@@ -14,7 +14,8 @@
 ✒ Changelog:
     - 1.17.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — Records the second part of the
       precise terrain: layout.js 1.6.0, whose 1.3.0 entry leaves its header; this file already
-      holds it.
+      holds it. Then its look: viewport.js 1.12.0, app.js 1.19.0 and tokens.css 1.6.0, whose
+      1.9.0, 1.16.0 and 1.3.0 entries leave their headers; this file already holds them.
     - 1.16.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — Records the first part of the
       precise terrain: viewport.js 1.11.0, app.js 1.18.0, model.js 1.7.0 and tokens.css 1.5.0,
       whose 1.8.0, 1.15.0, 1.4.0 and 1.2.0 entries leave their headers; this file holds them.
@@ -150,6 +151,26 @@ entry's long form, the header's words are copied in to open it, so the
 short form is kept too.
 
 ## web/js/app.js
+
+- 1.19.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — The far view: under the Kind
+  lens a file's band A is the colour its folder takes when it closes; TONE_STEPS comes from
+  theme.js. A child folder is where you are once it spans half the view. In full: paint()
+  gives a FILE box band A = mixHex(clay, its folder's dominant kind, 0.56), the closed mass's
+  own colour, when the Kind lens is on with no kind filter, no search
+  and nothing being placed, and the box is neither selected nor crossed; bands B and C are its
+  own colour and both shares 1, so a file has no strata. The colour is made once per folder per
+  paint (a Map keyed by folder) and only where the folder has kinds (node.p?.ks). Everywhere
+  else band A is the box's colour as before, and a selected box keeps the mark's yellow. The
+  shader (viewport.js 1.12.0) leans a file a few pixels wide on screen toward band A. TONE_STEPS
+  is imported from theme.js, frozen there, instead of a copy of its own, and extTones' comment
+  gives its present steps (12 % darker to 14 % lighter). updateWhere takes a child folder under
+  the centre of the view as where you are once its long side spans half the view's width (0.42
+  before). layout.js 1.6.0's channels give a block nearly all of its slot, where a gap of 6 % of
+  its own side had trimmed a big child by about 12 %, so arriving at a folder put the location
+  in its largest child more often: Enter on the fixture's largest folder landed in its child
+  (the core scenario), and going to Projects in the demo world landed in data-pipeline. At half
+  the view, going to a folder leaves you in it unless one of its folders spans nearly all of
+  it, and in free flight the location goes down into a child a little nearer.
 
 - 1.18.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — Extensions step half as far within
   their kind, and a closed mass's strata are its own body colour leaning toward each kind.
@@ -739,9 +760,9 @@ short form is kept too.
   an archive's walls and floor the folder that holds the file. Every folder's arrangement moves
   once, since the compensated weights make squarify choose other rows (in the demo world
   Projects and Music trade places at the overview), and folders open at somewhat different
-  distances; layout costs 8 to 13 % more per box. tools/smoke-test.mjs checks the unit, the
-  plates, the channels, the margins, area per byte and the tiles on the demo world from three
-  eyes.
+  distances. A layout costs 12 to 15 % more per box (Node, a 150,000-file synthetic tree from
+  six eyes, about 1,100 boxes a layout). tools/smoke-test.mjs checks the unit, the plates, the
+  channels, the margins, area per byte and the tiles on the demo world from three eyes.
 
 - 1.5.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — Region mode: a folder's count is
   kids(dir), so one held in part puts its tail's entries and bytes in its scree; a folder whose
@@ -772,6 +793,59 @@ short form is kept too.
 - 1.0.0 (11/09/2026) [dendogg + Anthropic - Claude Fable 5.2] — Initial release.
 
 ## web/js/viewport.js
+
+- 1.12.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — Quiet foundations, names in a
+  strict vocabulary (INK, LETTER_MIN, the ladder, nameContrast) and the far view: a tiny file
+  leans toward its band A and loses its contact halo. A flight frame() starts follows its box
+  while the layout refines on the way. In full: the second part of the precise
+  terrain, points 6 to 9 of docs/ART-DIRECTION.md. Foundations: a plateau's plate (aRole DIR)
+  leans its bevel's normal by 0.3 (every other box 0.55), its side shade reaches 0.84 at the
+  foot (others 0.66), and its riser loses the two fine courses, which aliased into a beaded
+  band from the overview; its contact shadow's soft edge is min(half its footprint, 1.5 × its
+  thickness + 0.01 × its footprint) at 0.55 of the strength, where it had reached 8 % of the
+  footprint and left a wide grey halo around every nested plateau. Names: one ink rule,
+  INK = { split 0.2, keep 0.1, dark 0.75, pale 0.9, cover 0.95 }: a surface over 0.2 linear
+  luminance takes a deep tone of itself toward ink, a darker one a pale tone toward paper
+  (uLightL, linear THEME.paper; uPaperL stays chalk for the drawing conventions). The rule it
+  replaces split at 0.11 with ink at half strength, which gave 2.2 to 3.4:1 on mid tones (Code,
+  Documents, Video's lighter tones, Archives, Images) and switched ink between the extensions
+  of three kinds; the least contrast is now 3.42:1 over every kind tone and its hidden wash,
+  the masses, clay, plaster, mark, garnet and the age and size ramps, and 6.5 to 7.3:1 on
+  plaster. nameContrast(hex) is the same rule in JavaScript. The floors are a face's own,
+  LETTER_MIN [7, 6] and LETTER_FULL [9, 8] CSS pixels for a file and a folder (4.5 and 6.5 for
+  both before), sent to the shader in device pixels as uLetterPx from resize(), and measured
+  as the art direction's figures were: the capitals' height as they would stand facing the eye
+  at their distance (cap × pixels per unit / distance; the shader works it from vViewDist and
+  uPxScale). Measured as seen on a slanted lid instead, the same floors left four names at the
+  overview and one at the music pose, where the brief expects about a dozen; and a name that
+  would stand under 4.5 px on screen (LETTER_FLAT, the old floor) is left off too, so a slant
+  never prints a smudge. A name's code carries a quiet bit, (slot + 1) × 4 + mode + 1 for a
+  file's or a scree's, which picks its floor, and the riser's mod 4 test is unchanged. Sizes:
+  a file's or a scree's capitals are at most 0.12 of its lid's short side with 10 % margins
+  (0.17 before, the same share as a
+  folder's, so .DS_Store printed at 16.5 px and the symlink current at 26.6), a closed mass's
+  or a bare plateau's 0.15 with 12 % margins and at most 0.45 of its depth, an open plateau's
+  rim name 0.6 of the band the layout's MARGIN leaves, and a riser's 0.5 of the plate as before.
+  Then each size is set on its folder's ladder, U × 2^(floor(2 log2(cap / U)) / 2) with U the
+  layout's unit for the box, and the score with it; a name the step takes under its floor is
+  left off. The names of one folder come in steps of the square root of two of its unit, where
+  a mass's name had taken 0.079 to 0.17 of its side by the length of its name. letterChosen
+  keeps what was chosen, with its size facing the eye (px), for checks. Selection keeps the
+  mark's yellow with its ink frames: no treatment was found more deliberate and as findable
+  from the overview. The far view: the
+  vertex shader works out the footprint's width on screen (footPx, device pixels, from the
+  distance it already measures for the conventions' period) and vFar = 0.7 × (1 − smoothstep(8,
+  32 px)); a FILE box mixes its colour toward aBandA by vFar, which under the Kind lens paint
+  sets to the colour its folder takes when it closes, so from far off a folder of tiny files
+  reads as one mass in its kind's colour. The contact shadow takes uPxScale and fades out
+  between 3 and 12 device pixels of footprint (uHaloPx), so tiny far blocks keep no dark halo.
+  No mesh, attribute or draw call is added, and no work per frame on the CPU. A flight frame()
+  starts keeps its box's key and foot (this.aim); when setLayout brings a layout in which that
+  box has moved, as it does when what was gathered into scree comes out of it while the eye
+  nears, the flight's destination moves by as much, so the eye comes to rest looking at the
+  box. frame() had aimed at the layout before the flight only: with the new layout's
+  arrangement a reveal of archives/site/README.md in the fixture came to rest over a sibling
+  folder, and the location went into it (the looking scenario). No other flight changes.
 
 - 1.11.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — A machined finish: a narrow bevel
   with a gentle lean, flat lids, a satin roughness (0.6); pins are slimmer and lit as the boxes are.
@@ -1125,6 +1199,12 @@ short form is kept too.
 - 1.0.0 (11/12/2026) [dendogg + Anthropic - Claude Opus 5.5] — Initial release.
 
 ## web/css/tokens.css
+
+- 1.6.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — --plaster-2 and --plaster-5 follow
+  THEME.plaster's quieter ramp. In full: --plaster-2 #d8ded9 (was #e2e7e2) and --plaster-5
+  #e6ebe6 (was #f8faf7), the twins of theme.js 1.2.0's plaster[2] and [5]; --plaster-0 is
+  unchanged. The ramp's luminance runs 0.646 to 0.820, a tone lighter each level at half the old
+  step, so the inspector's elevation glyph matches the quieter plateaus.
 
 - 1.5.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — The file-kind pigments follow KINDS
   into mineral tones. In full: --k-code #2e8377, --k-document #4a6593, --k-image #bb6466,

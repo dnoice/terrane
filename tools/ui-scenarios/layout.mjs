@@ -44,7 +44,8 @@
  *     node tools/ui-check.mjs layout
  *
  * ✒ Other Important Information:
- *     - Dependencies: tools/ui-check.mjs (the context t)
+ *     - Dependencies: tools/ui-check.mjs (the context t); the page's
+ *       js/layout.js and js/model.js, imported in the page
  *     - Compatible platforms: Node.js 22.5+
  * ----------------------------------------------------------------------------
  */

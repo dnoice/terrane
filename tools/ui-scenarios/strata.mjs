@@ -1,16 +1,25 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Strata Scenario (Terrane Edition - v1.0)
+ *     - Title: Strata Scenario (Terrane Edition - v1.1)
  *     - File Name: strata.mjs
  *     - Relative Path: tools/ui-scenarios/strata.mjs
  *     - Artifact Type: test
- *     - Version: 1.0.0
- *     - Date: 11/13/2026
- *     - Update: Friday, November 13, 2026
+ *     - Version: 1.1.0
+ *     - Date: 11/14/2026
+ *     - Update: Saturday, November 14, 2026
  *     - Author: Dennis 'dendogg' Smaltz
  *     - A.I. Acknowledgement: Anthropic - Claude Opus 5.5
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
+ *
+ * ✒ Changelog:
+ *     - 1.1.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
+ *       far view of the precise terrain, with WebGL: in the fixture's
+ *       folder with the most files, under the Kind lens every file's band
+ *       A is the colour its folder takes when it closes and its other
+ *       bands its own; under the Age lens band A is its own colour too.
+ *     - 1.0.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] —
+ *       Initial release.
  *
  * ✒ Description:
  *     Checks bytes by last change in the real page. The inspector's
@@ -38,6 +47,9 @@
  *       old end and the fresh end of the ramp, in the paint and in the
  *       instance colours; strata-old's hover tip begins "Half its bytes
  *       unchanged since", and only under the Age lens
+ *     - With WebGL, the far view: under the Kind lens a file's band A is
+ *       the colour its folder takes when it closes, under the Age lens its
+ *       own colour
  *     - Without WebGL: the real paint() at about 10,000 boxes under the
  *       Age lens, with the table and without it (the old colouring), at
  *       most 0.2 ms apart
@@ -183,6 +195,63 @@ const strata = {
     }
     await t.key('1');
     t.check('lens 1 puts the kind legend back', (await t.waitFor((T) => T.S.lens === 'kind' && document.getElementById('legend-label').textContent)) === 'Kind · click to isolate');
+
+    if (t.gl) {
+      // The far view: in the folder with the most files, under the Kind
+      // lens a file's band A is the colour its folder takes when it closes
+      // (the shader leans a file a few pixels wide toward it); under the
+      // Age lens it is the file's own colour.
+      await t.app((T) => {
+        const dirs = [];
+        (function walk(d) { dirs.push(d); for (const c of d.c) if (c.d) walk(c); }(T.S.model.root));
+        const most = dirs.filter((d) => d.p).sort((a, b) => b.c.filter((c) => !c.d).length - a.c.filter((c) => !c.d).length)[0];
+        T.api.select(null);
+        T.api.setFocus(most);
+        return true;
+      });
+      await t.settle();
+      const bandsNow = async (T) => {
+        const TH = await import(new URL('js/theme.js', document.baseURI).href);
+        const M = await import(new URL('js/model.js', document.baseURI).href);
+        const v = T.S.view;
+        const L = T.S.layout;
+        let p = null;
+        v.setPaint = function (q) { p = q; return Object.getPrototypeOf(this).setPaint.call(this, q); };
+        T.api.repaint();
+        delete v.setPaint;
+        const mass = (d) => {
+          let best = 8;
+          let max = 0;
+          for (let k = 0; k < 9; k++) if (d.ks[k] > max) { max = d.ks[k]; best = k; }
+          return TH.mixHex(TH.THEME.clay, M.KINDS[best].color, 0.56);
+        };
+        let files = 0;
+        let toMass = 0;
+        let own = 0;
+        let rest = 0;
+        for (let i = 0; i < L.n; i++) {
+          if (L.type[i] !== 1 || T.S.sel.has(L.node[i]) || L.aux[i] === 2) continue;
+          files++;
+          if (p.bands[i * 3] === mass(L.node[i].p)) toMass++;
+          if (p.bands[i * 3] === p.color[i]) own++;
+          if (p.bands[i * 3 + 1] === p.color[i] && p.bands[i * 3 + 2] === p.color[i] && p.shares[i * 2] === 1) rest++;
+        }
+        return { lens: T.S.lens, files, toMass, own, rest, folder: T.S.focus.n };
+      };
+      const kindBands = await t.app(bandsNow);
+      t.check(`under the Kind lens every file's band A is its folder's mass colour, its other bands its own (${kindBands.files} files in ${kindBands.folder})`,
+        kindBands.files > 10 && kindBands.toMass === kindBands.files && kindBands.rest === kindBands.files, JSON.stringify(kindBands));
+      await t.tabTo('#view');
+      await t.key('2');
+      await t.waitFor((T) => T.S.lens === 'age');
+      const ageBands = await t.app(bandsNow);
+      t.check(`under the Age lens every file's band A is its own colour (${ageBands.files} files)`,
+        ageBands.files > 10 && ageBands.own === ageBands.files && ageBands.rest === ageBands.files, JSON.stringify(ageBands));
+      await t.key('1');
+      await t.waitFor((T) => T.S.lens === 'kind');
+      await t.app((T) => { T.api.setFocus(T.S.model.root); return true; });
+      await t.settle();
+    }
 
     if (!m) {
       t.skip('the strata pair', 'needs the fixture');

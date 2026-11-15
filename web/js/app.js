@@ -1,11 +1,11 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Terrane Application (Terrane Edition - v1.18)
+ *     - Title: Terrane Application (Terrane Edition - v1.19)
  *     - File Name: app.js
  *     - Relative Path: web/js/app.js
  *     - Artifact Type: javascript
- *     - Version: 1.18.0
+ *     - Version: 1.19.0
  *     - Date: 11/14/2026
  *     - Update: Saturday, November 14, 2026
  *     - Author: Dennis 'dendogg' Smaltz
@@ -13,6 +13,10 @@
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
  *
  * ✒ Changelog:
+ *     - 1.19.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] —
+ *       The far view: under the Kind lens a file's band A is the colour
+ *       its folder takes when it closes; TONE_STEPS comes from theme.js.
+ *       A child folder is where you are once it spans half the view.
  *     - 1.18.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] —
  *       Extensions step half as far within their kind, and a closed mass's
  *       strata are its own body colour leaning toward each kind.
@@ -23,9 +27,6 @@
  *       api gains B_TABS, drawBTabs, showBTab, bTabShown, composition's
  *       title, contentsOrder and get's signal. ] is panel B's toggle in its
  *       labels and in what it says, which names the tab it shows.
- *     - 1.16.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] —
- *       A flavor the service was started with (--flavor, in /api/info) is
- *       taken once by this browser; a choice made in the guide since holds.
  *     Earlier entries: see CHANGELOG.md
  *
  * ✒ Description:
@@ -178,7 +179,7 @@ import { anchorOf, poseRelative, vantage } from './places.js';
 import { buildLayout, BOX, STYLE, AUX } from './layout.js';
 import { Viewport } from './viewport.js';
 import { FLAVORS, flavorById, rowsFor, labelOf, DEFAULT_FLAVOR, startingFlavor } from './flavors.js';
-import { THEME, mixHex, ramp, cssHex } from './theme.js';
+import { THEME, TONE_STEPS, mixHex, ramp, cssHex } from './theme.js';
 import { el, openMenu, closeFloating, floatingOpen, ask, notice, tip, hideTip, slideIndicator, VirtualList } from './ui.js';
 import { thumbs } from './thumbs.js';
 import { buildAgeTable } from './timeline.js';
@@ -2212,7 +2213,10 @@ function updateWhere() {
         if (i === undefined) continue;
         const o = i * 6;
         if (Math.abs(p.point.x - L.geo[o]) <= L.geo[o + 3] / 2 && Math.abs(p.point.z - L.geo[o + 2]) <= L.geo[o + 5] / 2) {
-          if (Math.max(L.geo[o + 3], L.geo[o + 5]) >= width * 0.42) next = ch;
+          // A child is where you are once it spans half the view's width,
+          // so arriving at a folder leaves you in it unless one of its
+          // folders spans nearly all of it.
+          if (Math.max(L.geo[o + 3], L.geo[o + 5]) >= width * 0.5) next = ch;
           break;
         }
       }
@@ -2336,12 +2340,11 @@ function screeHasMatch(i) {
 
 /**
  * A kind's colour in a tone of its own for each extension: one of five
- * steps from 22 % darker to 24 % lighter, the same for every file of that
- * extension, so a folder of .tsx and .css reads as two families of one
- * kind.
+ * steps from 12 % darker to 14 % lighter (TONE_STEPS, theme.js), the same
+ * for every file of that extension, so a folder of .tsx and .css reads as
+ * two families of one kind.
  */
 const extTones = new Map();
-const TONE_STEPS = [-0.12, -0.06, 0, 0.07, 0.14];
 // Common neighbours get steps apart (.ts and .tsx, .tsx and .css, .jpg
 // and .png, .mov and .mp4); any other extension takes a step by its hash.
 const TONE_OF = {
@@ -2417,6 +2420,12 @@ function paint() {
   // the file); locked entries are hatched and twins half-banded.
   const I = S.interior;
   const room = I ? L.chamber : null;
+  // The far view: under the Kind lens, with nothing filtered, searched or
+  // being placed, a file's band A is the colour its folder takes when it
+  // closes; the shader leans a file a few pixels wide toward it, so far
+  // off a folder of tiny files reads as one mass. One colour per folder.
+  const far = S.lens === 'kind' && filter < 0 && !search && !placing;
+  const massOf = far ? new Map() : null;
 
   for (let i = 0; i < n; i++) {
     const node = L.node[i];
@@ -2494,7 +2503,16 @@ function paint() {
       bands[i * 3] = st.a; bands[i * 3 + 1] = st.b; bands[i * 3 + 2] = st.c;
       shares[i * 2] = st.s1; shares[i * 2 + 1] = st.s2;
     } else {
-      bands[i * 3] = bands[i * 3 + 1] = bands[i * 3 + 2] = c;
+      let a = c;
+      if (far && type === BOX.FILE && !picked && L.aux[i] !== AUX.CROSSED && node.p?.ks) {
+        a = massOf.get(node.p);
+        if (a === undefined) {
+          a = mixHex(THEME.clay, KINDS[dominantKind(node.p)].color, 0.56);
+          massOf.set(node.p, a);
+        }
+      }
+      bands[i * 3] = a;
+      bands[i * 3 + 1] = bands[i * 3 + 2] = c;
       shares[i * 2] = shares[i * 2 + 1] = 1;
     }
   }
