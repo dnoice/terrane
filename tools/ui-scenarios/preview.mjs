@@ -1,11 +1,11 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Preview Scenarios (Terrane Edition - v1.2)
+ *     - Title: Preview Scenarios (Terrane Edition - v1.3)
  *     - File Name: preview.mjs
  *     - Relative Path: tools/ui-scenarios/preview.mjs
  *     - Artifact Type: test
- *     - Version: 1.2.0
+ *     - Version: 1.3.0
  *     - Date: 11/15/2026
  *     - Update: Sunday, November 15, 2026
  *     - Author: Dennis 'dendogg' Smaltz
@@ -13,6 +13,13 @@
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
  *
  * ✒ Changelog:
+ *     - 1.3.0 (11/15/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
+ *       strip reads Inspector, Preview, Cleanup, Shelf: End reaches the
+ *       Shelf, ArrowLeft from the Inspector wraps to it, and on through
+ *       Cleanup back to Preview, so a reload still opens on Preview. K in
+ *       the pane puts its item on the Shelf, K again takes it off. The
+ *       Description and Key Features name the right panel without a
+ *       letter.
  *     - 1.2.0 (11/15/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
  *       strip reads Inspector, Preview, Cleanup: End reaches Cleanup, and
  *       ArrowLeft from it comes back to Preview.
@@ -23,10 +30,11 @@
  *       Initial release.
  *
  * ✒ Description:
- *     Drives panel B's tab strip and its Preview tab in the real page, by
- *     keyboard where a person would, in both passes: what it reads and
- *     asks the service for, what it says when there is nothing to show,
- *     how it steps, and that it does no work while it cannot be seen.
+ *     Drives the right panel's tab strip and its Preview tab in the real
+ *     page, by keyboard where a person would, in both passes: what it
+ *     reads and asks the service for, what it says when there is nothing
+ *     to show, how it steps, and that it does no work while it cannot be
+ *     seen.
  *
  * ✒ Key Features:
  *     - preview (read-only fixture): the strip, Inspector first and drawn,
@@ -46,9 +54,9 @@
  *       summary, ↓ from the pane to its rows, the way back up; four
  *       selected, ↓ and Enter from the pane, each step described, back; a
  *       folder and a link read as one of several keeping the selection;
- *       snapshot mode for a moment; ] hiding panel B, named so; the
- *       palette's "preview", Enter with panel B hidden; the Guide's rows,
- *       one P; no POST
+ *       snapshot mode for a moment; ] hiding the right panel, named so;
+ *       the palette's "preview", Enter with the right panel hidden; the
+ *       Guide's rows, one P; no POST
  *     - preview-regions (threshold 0): a folder not held shows its figures
  *       and then its largest rows; a file reads; Findings' refs step
  *     - preview-disk (writes): a text of 6,500 lines cut at 256 KB,
@@ -220,9 +228,9 @@ const preview = {
       icons: [...document.querySelectorAll('#b-tabs [role=tab] use')].map((u) => u.getAttribute('href').split('#')[1]),
     }));
     const rawsAtStart = raws(t, 0);
-    t.check('the right panel\'s strip reads Inspector, Preview, Cleanup, the Inspector chosen and drawn, each with its icon',
-      JSON.stringify(s0.tabs) === JSON.stringify(['inspector:Inspector:true', 'preview:Preview:false', 'cleanup:Cleanup:false']) && s0.bTab === 'inspector' && s0.insp && s0.panel === true
-      && s0.label === 'Inspector views' && JSON.stringify(s0.icons) === JSON.stringify(['info', 'eye', 'list-checks']), JSON.stringify(s0));
+    t.check('the right panel\'s strip reads Inspector, Preview, Cleanup, Shelf, the Inspector chosen and drawn, each with its icon',
+      JSON.stringify(s0.tabs) === JSON.stringify(['inspector:Inspector:true', 'preview:Preview:false', 'cleanup:Cleanup:false', 'shelf:Shelf:false']) && s0.bTab === 'inspector' && s0.insp && s0.panel === true
+      && s0.label === 'Inspector views' && JSON.stringify(s0.icons) === JSON.stringify(['info', 'eye', 'list-checks', 'inbox']), JSON.stringify(s0));
     t.check('nothing is read from a file before Preview is chosen', rawsAtStart.length === 0, JSON.stringify(rawsAtStart));
 
     // The palette's wrap command on a page where Preview was never chosen
@@ -259,14 +267,16 @@ const preview = {
     t.check('Home on the strip chooses the first tab and leaves the eye where it was (no flight to the overview)',
       r2.focus === 'inspector' && !r2.flight && !eye1.flight && eye1.focus === eye0.focus && eye1.cam === eye0.cam, JSON.stringify({ r2, eye0, eye1 }));
     await t.key('End');
-    const r3 = await t.waitFor((T) => T.S.bTab === 'cleanup' && document.activeElement?.dataset?.btab === 'cleanup', { what: 'End to Cleanup' }).catch(() => false);
+    const r3 = await t.waitFor((T) => T.S.bTab === 'shelf' && document.activeElement?.dataset?.btab === 'shelf', { what: 'End to the Shelf' }).catch(() => false);
     await t.key('ArrowRight');
     const r4 = await t.waitFor((T) => T.S.bTab === 'inspector' && document.activeElement?.dataset?.btab === 'inspector', { what: 'ArrowRight wrapping' }).catch(() => false);
     await t.key('ArrowLeft');
-    const r5 = await t.waitFor((T) => T.S.bTab === 'cleanup', { what: 'ArrowLeft wrapping' }).catch(() => false);
+    const r5 = await t.waitFor((T) => T.S.bTab === 'shelf', { what: 'ArrowLeft wrapping' }).catch(() => false);
     await t.key('ArrowLeft');
-    const r6 = await t.waitFor((T) => T.S.bTab === 'preview', { what: 'ArrowLeft to Preview' }).catch(() => false);
-    t.check('End chooses the last tab, Cleanup, and ArrowRight and ArrowLeft wrap', !!r3 && !!r4 && !!r5 && !!r6);
+    const r6 = await t.waitFor((T) => T.S.bTab === 'cleanup', { what: 'ArrowLeft to Cleanup' }).catch(() => false);
+    await t.key('ArrowLeft');
+    const r7 = await t.waitFor((T) => T.S.bTab === 'preview', { what: 'ArrowLeft to Preview' }).catch(() => false);
+    t.check('End chooses the last tab, the Shelf, ArrowRight and ArrowLeft wrap, and ArrowLeft steps back through Cleanup to Preview', !!r3 && !!r4 && !!r5 && !!r6 && !!r7);
 
     // A reload keeps Preview.
     await t.reload();
@@ -411,6 +421,15 @@ const preview = {
     await t.waitFor(() => !document.getElementById('dialog').open);
     const back = await until(t, prevFile.split('/').pop(), (s) => s.lines > 0, 'Preview after Quick look');
     t.check('Escape closes it, focus back in the pane, and Preview reads the item Quick look ended on', back.focus === 'pane', JSON.stringify(back));
+
+    /* ---- K in the pane: the Shelf's ---- */
+    const liveIs = (re) => t.waitFor(`() => { const l = document.getElementById('live').textContent; return ${re}.test(l) && l; }`, { timeout: 5000, what: String(re) }).catch(() => null);
+    await t.key('k');
+    const kOn = await liveIs(/ is on the shelf \(1 item\)\. K again takes it off\.$/);
+    await t.key('k');
+    const kOff = await liveIs(/ off the shelf \(0 items\)\. It stays where it is on disk\.$/);
+    const kFocus = await t.eval(() => document.activeElement?.classList.contains('pv-pane'));
+    t.check(`K in the pane puts its item on the Shelf (${kOn}), K again takes it off, and focus stays in the pane`, !!kOn && !!kOff && kFocus, JSON.stringify({ kOn, kOff, kFocus }));
 
     /* ---- a picture, sound and film ---- */
     const pic = await findFile(t, ['png', 'jpg', 'jpeg', 'gif', 'webp'], 1024, 2 * 1024 * 1024);

@@ -1,0 +1,161 @@
+/*
+ * ============================================================================
+ * ✒ Metadata
+ *     - Title: Shelf (Terrane Edition - v1.0)
+ *     - File Name: shelf.css
+ *     - Relative Path: web/css/components/shelf.css
+ *     - Artifact Type: stylesheet
+ *     - Version: 1.0.0
+ *     - Date: 11/15/2026
+ *     - Update: Sunday, November 15, 2026
+ *     - Author: Dennis 'dendogg' Smaltz
+ *     - A.I. Acknowledgement: Anthropic - Claude Opus 5.5
+ *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
+ *
+ * ✒ Changelog:
+ *     - 1.0.0 (11/15/2026) [dendogg + Anthropic - Claude Opus 5.5] —
+ *       Initial release. After the review: the line about items no
+ *       longer there names them, so a long name with no space breaks
+ *       anywhere; the empty state's Add <folder> ends in an ellipsis.
+ *
+ * ✒ Description:
+ *     The right panel's Shelf tab: the inspector's head and actions grid
+ *     over a body that scrolls inside the panel, the empty state's ways
+ *     in, the line about items no longer there, and the list, whose rows
+ *     carry their kind's swatch in the mark slot, the name and its folder
+ *     at B, the size in the figure column and a small x at the end.
+ *
+ * ✒ Key Features:
+ *     - The head reuses .insp-title, .insp-kind and .insp-name; the
+ *       actions reuse the inspector's two-column .actions-grid and its
+ *       .actions-why line, one column at 300 px or narrower
+ *     - Rows reuse the ledger's .item: the swatch in the mark slot at A,
+ *       the text at B, the figure in the mono column; names and folders
+ *       wrap anywhere rather than being cut, figures and buttons keep one
+ *       line
+ *     - An item no longer there turns to the third text colour, its
+ *       swatch hollow, with a "no longer there" tag in the tight capitals;
+ *       nothing is struck through
+ *     - A selected item has the ledger's selected ground
+ *     - Notes and lines at A; Clear the shelf at the foot, apart from Move
+ *
+ * ✒ Other Important Information:
+ *     - Dependencies: tokens.css, base.css (the voices), controls.css
+ *       (.btn), ledger.css (.item, .swatch), inspector.css (.insp-title,
+ *       .actions-grid); web/js/shelf.js builds it
+ *     - Compatible platforms: current evergreen browsers
+ * ----------------------------------------------------------------------------
+ */
+
+/* ---------- the panel ---------- */
+
+#b-panel-shelf { display: flex; flex-direction: column; min-height: 0; }
+.sh-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+  padding-bottom: var(--s-3);
+}
+.sh-body.is-waiting .sh-list { opacity: 0.55; transition: opacity var(--dur-fast) var(--ease-out); }
+
+/* ---------- the head ---------- */
+
+.sh-head .insp-name:focus-visible { outline-offset: var(--focus-offset); }
+.sh-facts {
+  margin: 6px 0 0;
+  color: var(--text-2);
+  font: 400 var(--fs-fig) / 1.45 var(--mono);
+  font-variant-numeric: tabular-nums;
+}
+.sh-facts .part { white-space: nowrap; }
+.sh-kept {
+  margin: 6px 0 0;
+  color: var(--text-2);
+  font-size: var(--fs-row);
+  line-height: var(--lh-snug);
+  text-wrap: pretty;
+}
+
+/* ---------- the empty state ---------- */
+
+.sh-empty { padding: var(--s-3) var(--gutter); border-bottom: var(--border-2); }
+.sh-note {
+  margin: 0 0 var(--s-2);
+  font-size: var(--fs-row);
+  line-height: var(--lh-base);
+  text-wrap: pretty;
+}
+.sh-ways {
+  margin: 0 0 var(--s-3);
+  padding: 0 0 0 1.1em;
+  color: var(--text-2);
+  font-size: var(--fs-row);
+  line-height: var(--lh-snug);
+}
+.sh-ways li + li { margin-top: 4px; }
+.sh-adds { display: flex; flex-wrap: wrap; gap: 6px; }
+/* A long folder name ends in an ellipsis; the button's title holds it whole. */
+.sh-adds .btn { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* ---------- the actions and the lines under them ---------- */
+
+.sh-actions { padding-top: var(--s-3); }
+.sh-state {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-1) var(--s-2);
+  padding: var(--s-2) var(--gutter);
+  border-bottom: var(--border-2);
+  background: var(--mark-wash);
+}
+/* It names what is gone: a long name with no space breaks anywhere. */
+.sh-state-text { min-width: 0; font-size: var(--fs-row); line-height: var(--lh-snug); overflow-wrap: anywhere; }
+.sh-state .btn { white-space: nowrap; }
+
+/* ---------- rows ---------- */
+
+.sh-list { margin: 0; padding: 0; list-style: none; }
+.sh-row { display: flex; align-items: flex-start; border-top: var(--border-3); }
+.sh-row:first-child { border-top: 0; }
+/* A row: the mark slot at A, its text at B, the figure, then the x. */
+#b-panel-shelf .sh-item { flex: 1 1 auto; min-width: 0; padding-left: var(--gutter); padding-right: var(--s-2); border-top: 0; }
+.sh-item .sh-text { min-width: 0; }
+/* Names and their folders wrap anywhere rather than being cut. */
+.sh-item .nm { white-space: normal; overflow-wrap: anywhere; text-overflow: clip; }
+.sh-item .path { white-space: normal; overflow-wrap: anywhere; text-overflow: clip; }
+.sh-item .fig { white-space: nowrap; }
+.sh-off.btn {
+  flex: none;
+  width: var(--hit-min);
+  min-width: var(--hit-min);
+  height: var(--hit-min);
+  margin: calc(var(--row-pad-y) + (1.25em - var(--hit-min)) / 2) calc(var(--gutter) - 6px) 0 0;
+  padding: 0;
+  border-color: transparent;
+  background-color: transparent;
+  color: var(--text-3);
+  font-size: var(--fs-row);
+}
+.sh-off.btn .icon { width: var(--icon-sm); height: var(--icon-sm); }
+@media (hover: hover) { .sh-off.btn:hover { color: var(--text); } }
+.sh-row.is-selected { background-color: var(--select); }
+/* No longer there: dimmed, the swatch hollow, the tag first on the path line. */
+.sh-row.is-gone .nm, .sh-row.is-gone .fig { color: var(--text-3); }
+.swatch.is-gone { border-style: dashed; background: var(--paper); box-shadow: none; }
+.sh-tag { margin-right: 6px; color: var(--danger); }
+
+.sh-more { display: flex; padding: var(--s-2) var(--gutter) 0; }
+.sh-more .btn { white-space: nowrap; }
+
+/* ---------- the foot ---------- */
+
+.sh-foot { display: flex; justify-content: flex-end; margin-top: var(--s-3); padding: var(--s-3) var(--gutter) 0; border-top: var(--border-2); }
+.sh-foot .btn { white-space: nowrap; }
+
+@media (prefers-reduced-motion: reduce) {
+  .sh-body.is-waiting .sh-list { transition: none; }
+}

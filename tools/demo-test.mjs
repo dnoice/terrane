@@ -2,11 +2,11 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Demo Test (Terrane Edition - v1.3)
+ *     - Title: Demo Test (Terrane Edition - v1.4)
  *     - File Name: demo-test.mjs
  *     - Relative Path: tools/demo-test.mjs
  *     - Artifact Type: test
- *     - Version: 1.3.0
+ *     - Version: 1.4.0
  *     - Date: 11/15/2026
  *     - Update: Sunday, November 15, 2026
  *     - Author: Dennis 'dendogg' Smaltz
@@ -14,6 +14,10 @@
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
  *
  * ✒ Changelog:
+ *     - 1.4.0 (11/15/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
+ *       shapes the Shelf follows: a move of two items from different
+ *       folders into one names where each went (results), and its Undo
+ *       names each pair back (moved).
  *     - 1.3.0 (11/15/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
  *       Cleanup question: GET cleanup under the root and Projects answers
  *       as reclaim.walk over the demo's model, every group seeded, the
@@ -353,6 +357,14 @@ r = await op({ type: 'renames', items: [{ path: 'Documents', name: 'Docs' }, { p
 check('an item inside another renamed item is ENEST', r.json.code === 'ENEST');
 r = await op({ type: 'renames', items: [{ path: 'Downloads/fonts-pack.zip', name: 'fonts-pack.zip' }] });
 check('a batch with nothing to change says so', r.json.label === 'Names unchanged' && r.json.undoable === false);
+// The Shelf's Move to…: items from different folders into one, and Undo's pairs back.
+r = await op({ type: 'move', paths: ['Downloads/fonts-pack.zip', 'Documents/Recipes'], dest: 'Archive' });
+check('a move of two items from different folders into one names where each went (results, which the Shelf follows)',
+  r.json.ok && JSON.stringify(r.json.results) === JSON.stringify(['Archive/fonts-pack.zip', 'Archive/Recipes']) && W.find(svc.world.root, 'Archive/Recipes') && !W.find(svc.world.root, 'Documents/Recipes'), JSON.stringify(r.json));
+r = await h('POST', 'undo');
+const back = Object.fromEntries((r.json.moved || []).map(([from, to]) => [from, to]));
+check('and its undo names each pair back (moved), both in their folders again',
+  r.json.ok && back['Archive/fonts-pack.zip'] === 'Downloads/fonts-pack.zip' && back['Archive/Recipes'] === 'Documents/Recipes' && W.find(svc.world.root, 'Documents/Recipes') && W.find(svc.world.root, 'Downloads/fonts-pack.zip'), JSON.stringify(r.json));
 r = await h('POST', 'terminal', {}, { path: 'Projects' });
 check('a terminal refuses with an explanation', r.status === 501 && /terminal/.test(r.json.message));
 r = await h('GET', 'warm');

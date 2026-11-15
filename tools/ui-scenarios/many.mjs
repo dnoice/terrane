@@ -1,18 +1,22 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Acting on Many Scenarios (Terrane Edition - v1.1)
+ *     - Title: Acting on Many Scenarios (Terrane Edition - v1.2)
  *     - File Name: many.mjs
  *     - Relative Path: tools/ui-scenarios/many.mjs
  *     - Artifact Type: test
- *     - Version: 1.1.0
- *     - Date: 11/14/2026
- *     - Update: Saturday, November 14, 2026
+ *     - Version: 1.2.0
+ *     - Date: 11/15/2026
+ *     - Update: Sunday, November 15, 2026
  *     - Author: Dennis 'dendogg' Smaltz
  *     - A.I. Acknowledgement: Anthropic - Claude Opus 5.5
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
  *
  * ✒ Changelog:
+ *     - 1.2.0 (11/15/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
+ *       menu of three is checked for Copy names and Copy relative paths
+ *       after Copy paths and Rename after them, since the Shelf's Add to
+ *       the shelf now stands between.
  *     - 1.1.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] —
  *       Verify by content finds Duplicate candidates by its title, since
  *       the section builds its rows the first time it is open.
@@ -578,8 +582,10 @@ const copyAs = {
     const sel = await t.waitFor((T) => T.S.sel.size === 3 && [...T.S.sel].map((n) => n.n), { what: 'three selected' });
     const many = await menu(t, 'Copy names');
     const ml = many.map((i) => i.label);
-    t.check('the menu of three offers Copy names and Copy relative paths after Copy paths, then Rename 3 items…',
-      same(ml.slice(ml.indexOf('Copy paths'), ml.indexOf('Copy paths') + 4), ['Copy paths', 'Copy names', 'Copy relative paths', 'Rename 3 items…']), JSON.stringify(ml));
+    // Other features' entries (the Shelf's, at 24) may stand between Copy relative paths and Rename.
+    t.check('the menu of three offers Copy names and Copy relative paths after Copy paths, and Rename 3 items… after them',
+      same(ml.slice(ml.indexOf('Copy paths'), ml.indexOf('Copy paths') + 3), ['Copy paths', 'Copy names', 'Copy relative paths'])
+      && ml.indexOf('Rename 3 items…') > ml.indexOf('Copy relative paths'), JSON.stringify(ml));
     t.check('Copy names copies them one per line', (await copied()) === sel.join('\n'), JSON.stringify(await copied()));
     await menu(t, 'Copy relative paths');
     t.check('Copy relative paths copies theirs, and says "3 relative paths copied to the clipboard."',

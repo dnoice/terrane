@@ -1,10 +1,10 @@
 <!--
 ✒ Metadata
-    - Title: Terrane Roadmap (Terrane Edition - v1.20)
+    - Title: Terrane Roadmap (Terrane Edition - v1.22)
     - File Name: ROADMAP.md
     - Relative Path: docs/ROADMAP.md
     - Artifact Type: docs
-    - Version: 1.20.0
+    - Version: 1.22.0
     - Date: 11/15/2026
     - Update: Sunday, November 15, 2026
     - Author: Dennis 'dendogg' Smaltz
@@ -12,6 +12,18 @@
     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
 
 ✒ Changelog:
+    - 1.22.0 (11/15/2026) [dendogg + Anthropic - Claude Opus 5.5] —
+      The Shelf is on `main`; `main` had not moved since its branch
+      was made. Next is the five other tabs, then the precise
+      terrain's third part.
+    - 1.21.0 (11/15/2026) [dendogg + Anthropic - Claude Opus 5.5] —
+      The Shelf, the third of the right panel's tabs beside the
+      Inspector, is recorded as complete on branch `tab-shelf`, waiting
+      to be merged, with its commits, the review, the fixes, the
+      brief's points as met, what is left open and the final check
+      lines; where things stand says so, and Next is its merge, then
+      the five other tabs. The exploration loop names the Shelf, Stage 6
+      records it, and the build waves name its branch.
     - 1.20.0 (11/15/2026) [dendogg + Anthropic - Claude Opus 5.5] —
       Cleanup is on `main`; `main` had not moved since its branch was
       made. Next is the six other tabs, then the precise terrain's
@@ -245,7 +257,16 @@ As of 11/15/2026:
   out, moved to the holding area as one change that one Undo reverses.
   Nothing is deleted from it. Merged in the commit titled
   "Merge tab-cleanup: the Cleanup tab".
-- **Next:** the six other tabs, built and merged one at a time: Shelf,
+- **Complete, on `main`:** the Shelf, the third of the tabs beside
+  the Inspector, after Preview and Cleanup: a tray that gathers files
+  and folders from anywhere (K, the world's menu, ledger rows dragged
+  onto its tab, every match in Findings, Preview and Cleanup), keeps
+  them by path in this browser across travel and reloads, and moves,
+  copies, renames, exports or shows them together, each change that
+  writes one Undo. An item no longer there is marked and offered for
+  removal, never dropped. Merged in the commit titled "Merge
+  tab-shelf: the Shelf".
+- **Next:** the five other tabs, built and merged one at a time:
   Compare, Activity, Notes and tags, Watch and Connections. Then the
   precise terrain, part three, for what the second part left partly
   met or unmeasured: names at the overview in smaller windows (at
@@ -259,7 +280,7 @@ As of 11/15/2026:
   section 4.
 
 Section 5 has the detail for every wave, for Preview, for the precise
-terrain's second part and for Cleanup.
+terrain's second part, for Cleanup and for the Shelf.
 
 ## 1. The exploration loop
 
@@ -272,9 +293,9 @@ One pass through the loop, and what serves each step today.
 | 3. Approach | Flies toward it. It opens as it gets close | Wheel flies to the cursor; distance-driven unfolding; contents rise out of the plateau |
 | 4. Orient | Knows where they are without thinking about it | Breadcrumbs, ledger and the address follow the camera; tags on nearby plateaus; benchmarks as survey marks; horizon and haze |
 | 5. Inspect | Selects a thing and reads it | Inspector: path, size and shares, dates, composition, bytes by last change, what changed since a benchmark or a date, what changed with a file, preview, duplicates; Preview beside the world, following the selection as it moves; Quick look, stepped through a list; what a selection weighs; an archive's contents with I |
-| 6. Act | Opens, renames, moves, removes | Context menu, keys, placing mode, drag and drop, the command palette; many items renamed with a preview; verified copies cleaned up; a folder's suggested clutter moved aside as one change; names and paths copied; lists saved as CSV; a terminal in the folder; every result stated in words |
+| 6. Act | Opens, renames, moves, removes | Context menu, keys, placing mode, drag and drop, the command palette; many items renamed with a preview; verified copies cleaned up; a folder's suggested clutter moved aside as one change; files gathered on the Shelf from several places and moved, copied or renamed together; names and paths copied; lists saved as CSV; a terminal in the folder; every result stated in words |
 | 7. Confirm | Sees the world change to match the disk | Affected folders re-read; boxes move or rise; Undo offered in the notice |
-| 8. Leave | Goes up, back, or jumps somewhere else | Backspace, Alt+Left, 0, J to a marked return point, Fly there in the Places tab, breadcrumbs, search results and saved searches, survey entries, the command palette (Ctrl+K) |
+| 8. Leave | Goes up, back, or jumps somewhere else | Backspace, Alt+Left, 0, J to a marked return point, Fly there in the Places tab, breadcrumbs, search results and saved searches, survey entries, the command palette (Ctrl+K), a row of the Shelf |
 
 The loop has two speeds. On foot (W A S D at eye level) it is browsing. By
 jump (search, the palette, survey, breadcrumbs) it is retrieval. Both end
@@ -541,6 +562,13 @@ Done on 11/15/2026 (Cleanup):
   journal entry that one Undo reverses; in a very large directory the
   service counts the folder across every level.
 
+Done on 11/15/2026 (the Shelf):
+
+- Acting on many from several places: up to 1,000 files and folders
+  gathered by path and kept in the browser, then moved, copied or
+  renamed together as one journal entry each, which one Undo reverses,
+  the list following the change and its Undo.
+
 Next:
 
 - Send to the operating system's recycle bin as an alternative holding
@@ -561,9 +589,9 @@ Stage 5 is built in waves, Wave 3 took the same method across
 Stages 4 to 6, and Wave 4 to Stage 4 and the polish of the sheet. Each
 wave runs on its own branch (`wave-1`, `wave-2`, `qol`, then `wave-4`),
 and each tab of the right panel on one of its own (`tab-preview`, then
-`tab-cleanup`), in a separate worktree: its build steps one after
-another, then an adversarial review, a fix step, and a docs and header
-pass. A wave is merged into `main` and pushed only when `npm test`,
+`tab-cleanup`, then `tab-shelf`), in a separate worktree: its build
+steps one after another, then an adversarial review, a fix step, and a
+docs and header pass. A wave is merged into `main` and pushed only when `npm test`,
 `node tools/vendor.mjs --check` and the full `node tools/ui-check.mjs`
 pass, with and without WebGL, on the default fixture. Through Wave 2
 and the Sanity sweeps the one accepted failure was the load screen's
@@ -1526,6 +1554,204 @@ into the branch first. On the merged branch, `npm test`: 1,302 passed,
 0 failed, over fifteen suites, `cleanup-test` now 60. The branch is
 merged into `main` in the commit titled "Merge tab-cleanup: the
 Cleanup tab".
+
+### Complete: the Shelf
+
+The Shelf is the third of the tabs planned beside the Inspector, after
+Preview and Cleanup, built on its own branch, `tab-shelf`, made from
+`main` at `8c8b64b`, in a separate worktree: a build step, an
+adversarial review, a fix step, and a docs and sweep step. It joins the
+right panel's strip through `B_TABS`, and changes the disk only through
+the placing, the batch rename and the journal that M and F2 already
+use; it has no route of its own.
+
+1. **The tab** (`c182387`): `web/js/shelf-store.js`, the store with no
+   DOM, which `tools/shelf-test.mjs` checks in Node: one key per
+   directory and a snapshot's apart, the paths it accepts, at most
+   1,000 items newest first, an exact duplicate left where it is,
+   take off, clear and put back, renames and moves followed, what was
+   kept read back field by field, every write merged with what another
+   tab wrote, and storage that refuses said once. `web/js/shelf.js`,
+   the tab at order 40: the empty state and its ways in, the head, the
+   actions grid with its line of reasons, the line of items no longer
+   there, the list and its keys, Clear and Put back; K, a menu group at
+   24, the palette's Shelf section, a Findings tool at 55, a hover line
+   at 65, the Inspector's buttons for one item (52) and several (20),
+   and `AFTER_OP` to follow changes. In `app.js` (1.22.0), the seams a
+   module cannot make: K reserved for the Shelf, a `B_TABS` entry's
+   count and drop with `drawBTabCounts`, `api.place`, ledger rows
+   draggable where nothing can move with `dragMoves()` guarding every
+   folder target and the world's canvas, and the region pins of what
+   is being placed. K also works in Preview's pane and on a Cleanup
+   row; the inbox icon is vendored with `vendor.mjs --icons`. The
+   scenarios `shelf`, `shelf-modes` and `shelf-regions` are new, with
+   the Shelf's checks in `seams`, `polish` (two new poses), `preview`,
+   `cleanup`, `hardening` and `demo`; `demo-test` checks the move and
+   Undo answers the Shelf follows; and the interface check forgets the
+   Shelf on a browser tab's first page. Free memory stayed under the
+   2,500 MB this machine asks before a browser starts for most of the
+   step, so only the three shelf scenarios ran, with WebGL (67 passed,
+   0 failed), and it committed saying so.
+2. **The review.** An adversarial review made six findings: Ctrl+K
+   "shelf" did not list the K entry among the eight actions the
+   palette shows; the pass without WebGL and every scenario but the
+   shelf file had not run; an item no longer there past the 100 rows
+   drawn was named nowhere on screen; K on several items said nothing
+   of those already on the shelf; one item gone was offered as "Take
+   them off the shelf"; and three lines the branch added named a panel
+   by letter or ran a header's prose past 100 columns. It has no
+   commit of its own.
+3. **The fixes** (`ba66407`, `fa492c3`): the gathering commands use the
+   menu's words with "shelf" early (Add to shelf or Take off the shelf,
+   with K; Add this folder to shelf; Add all results to shelf) and the
+   acting ones say "everything on the shelf"; K and the menus say how
+   many were on the shelf already; the line above the list names the
+   items no longer there, by path when two share a name, its tooltip
+   up to 20 paths, and its button says it or them; the smoke test gains
+   two checks over what a branch adds since `main`, no panel named by
+   letter and no header prose past 100 columns. Hardening: a long name
+   on that line wraps inside the panel, the empty state's Add with a
+   folder's name ends in an ellipsis, and one item added by a drag or a
+   button no longer promises that K takes it off. The shelf scenarios
+   ran in both passes, 136 passed and 2 failed, both a new check that
+   counted the palette's actions before the query had ranked them,
+   fixed in `fa492c3`; the other scenarios still could not run.
+4. **Docs and sweep**, in the commit titled "Shelf docs and sweep":
+   README, ARCHITECTURE, this roadmap and every header the branch
+   touched, checked against the code. The sweep set right header prose
+   older than the branch that named the right panel by letter, in
+   `app.js`, `preview.js`, `inspector.css`, `seams.mjs` and
+   `preview.mjs`, and ran the full interface check for the first time
+   on the branch. It found four checks the branch had left behind, each
+   fixed in the check, the code unchanged: `seams` still used K as a
+   free key for its dispatch tests (now L, with K among the keys an
+   owner holds); `preview` stepped the strip back only to Cleanup, so
+   its reload no longer opened on Preview; `copy-as` wanted Rename
+   straight after Copy relative paths, where the Shelf's Add to the
+   shelf now stands; and `demo` read the world in the moment after the
+   shelf had followed the move's answer, before the folders were read
+   again, and its Undo's check, once the move's passed, did the same.
+   `regions-warm`, with WebGL, and `cleanup-regions`, without, each
+   timed out once, waiting on a machine short of memory, and passed
+   when run again.
+
+The brief's points, as met:
+
+- **A tray in the right panel.** The strip's fourth tab, SHELF with the
+  inbox icon, carries its count on its label; the strip still fits the
+  drawer at 800 × 500.
+- **Gathered from anywhere.** The world (K, Add to shelf on the menu),
+  the ledger (K, its rows dragged onto the tab), search results (Add
+  all to the shelf on the Findings count row, Add all results to shelf
+  in the palette), Preview (K in its pane), Cleanup (K on a row) and
+  other folders (Add this folder to shelf, and the empty state's Add
+  with the folder's name). K was free; `KEY_OWNERS` now reserves it,
+  and the Guide names it with six more rows under Acting on many.
+- **Kept across navigation and reloads,** in this browser per root
+  (`terrane.shelf.v1|<root>`, a snapshot's apart), merged across two
+  tabs, and said once when the browser refuses.
+- **Acting together with the batch operations that exist.** Move to…
+  and Copy to… start placing, Terrane's way of choosing a folder (a
+  click in the world or the ledger, or Place where I am); Rename… opens
+  the batch rename (`rename.js`); Export CSV writes through `csv.js` as
+  the exports do; Show in the world selects and frames the items; Copy
+  paths; Clear the shelf, with Put back.
+- **Each item** shows its name, its folder, its size and its kind, and
+  comes off singly by Del, K or its x. One no longer there is marked,
+  named on the line above the list and offered for removal, never
+  dropped without a word.
+- **Writes.** Move, Copy and Rename are each one change with one Undo,
+  and the list follows the change and its Undo; in read-only and
+  snapshot mode, and through a warm start's check, they are
+  unavailable with the reason.
+- **Region mode and items outside the loaded part** work by path:
+  every item is found across the tree before an action, and a row not
+  held shows the figures it was added with.
+- **Reach.** The right panel's strip; Ctrl+K, Show Shelf and the
+  Shelf's section; the world's menu, Add to shelf or Take off the
+  shelf with K; the Guide. The demo world answers every route it
+  uses, so GitHub Pages shows it working.
+- **Checks.** `shelf-test` for the store (duplicates, paths, the cap,
+  following, two tabs, storage that refuses), and the `shelf`
+  scenarios walking gather, act, Undo and leave in both passes.
+
+Left open for Dennis: the brief named the existing folder picker for
+Move, and Terrane's is placing, which Move to… and Copy to… start, not
+a dialog. A row's kind is the kind's name as the CSV writes it,
+"Images", where the brief's walk-through wrote "Image". A disabled
+action follows the actions grid's convention: it stays in place and
+does nothing when pressed, its reason in its name, its title and the
+line under the grid, where the palette and the keys say it in a
+sentence. Rows can be dragged onto the tab in read-only and snapshot
+mode, since gathering writes nothing, while no folder takes them. Del
+is kept from the window's Remove anywhere in the tab, not only in the
+list the brief named.
+
+Final check lines, on Windows 11 with Edge 157 on an RTX 5050 laptop
+GPU and the default fixture of 3,126 files:
+
+- `node --check` on all 116 script files outside `web/vendor/`: no
+  error;
+- `npm test`: "276 passed, 0 failed", "97 passed, 0 failed",
+  "57 passed, 0 failed", "33 passed, 0 failed", "60 passed, 0 failed",
+  "52 passed, 0 failed", "54 passed, 0 failed", "31 passed, 0 failed",
+  "80 passed, 0 failed", "159 passed, 0 failed", "68 passed, 0 failed",
+  "130 passed, 0 failed", "91 passed, 0 failed", "58 passed, 0 failed",
+  "60 passed, 0 failed" and "52 passed, 0 failed", 1,358 in all over
+  sixteen suites, `shelf-test` last, after the last change;
+- `node tools/vendor.mjs --check`:
+  "Every vendored file matches the manifest.";
+- the headers of the 29 files the branch touched that carry one
+  (`package.json`'s is `package.metadata.md`; the vendored sprite and
+  manifest carry none): the digiSpace header in full, the version
+  raised once with the date and the tag, a changelog entry on every new
+  file, shipped headers within three entries and 40 lines, and the long
+  form in `CHANGELOG.md` of every new entry of a file it tracks,
+  opening with its header's words: in rule;
+- Markdown: no line over 100 columns outside tables and fences in the
+  README, ARCHITECTURE, this roadmap, `CHANGELOG.md` and
+  `package.metadata.md`;
+- `node tools/ui-check.mjs --no-shots --port 5300`, both passes, run
+  once after the docs were written, every port it opens between 5300
+  and 5309: "3127 passed, 14 failed, 8 skipped" (1,641 passed, 7 failed
+  and 3 skipped with WebGL; 1,486, 7 and 5 without), over 56 scenarios
+  with WebGL and 52 without. It was the first run without WebGL of the
+  shelf scenarios since the review's fixes, and the first run at all of
+  the other scenarios the branch touched: `shelf` 46, `shelf-modes` 14
+  and `shelf-regions` 7 passed in each pass; `polish` 647 with WebGL
+  and 645 without, with the Shelf's poses; `hardening` 38 and 31;
+  `cleanup` 33 in each. The skips are, in each pass, what needs
+  `--snapshot`, what needs a synthetic snapshot and a `splash` check the
+  survey's timing left nothing to test, and without WebGL two checks of
+  what is drawn in the world. Draw calls at the baseline (overview 7,
+  selected 9, search 8, duplicate ties 10). The fourteen failures were
+  the four checks named under Docs and sweep, in both passes (the
+  scenario stopping in `seams` and `preview`), and the two timeouts;
+- the failed scenarios again, with those that share their files
+  (`seams`, `preview`, `preview-regions`, `preview-disk`, `demo`,
+  `demo-regions`, `copy-as`, `regions-warm` and `cleanup-regions`), both
+  passes, after the checks were fixed: "468 passed, 2 failed", both
+  `demo`'s Undo check, which had the same fault as its move check; with
+  it waiting for the world too, `demo` and `demo-regions`, both passes:
+  "103 passed, 0 failed". `seams` 78 with WebGL and 71 without,
+  `preview` 64 in each, `copy-as` 14, `regions-warm` 8 and
+  `cleanup-regions` 9 in each passed in full.
+
+Before the merge, the review's walk-through of the demo world, its
+screenshots at 1600 × 1000, 1280 × 800 and 800 × 500 and its log of
+what each step said, was read again against the fixes: the empty
+state, gathering by K, the menu, Findings and Preview, the list and its
+keys, Show in the world, Move to… with its placing bar, Rename…,
+Export CSV, an item no longer there, Clear and Put back, and a reload.
+It found nothing more to change. Free memory stayed under the 2,500 MB
+a browser asks on this machine, so no new browser walk was made; the
+fixes it would have looked at are each held by a check in the `shelf`
+scenarios, which passed in both passes.
+
+`main` had not moved since the branch was made, so nothing was merged
+into the branch first. On the merged branch, `npm test`: 1,358
+passed, 0 failed, over sixteen suites. The branch is merged into
+`main` in the commit titled "Merge tab-shelf: the Shelf".
 
 ## 6. Development datasets
 

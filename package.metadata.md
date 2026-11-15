@@ -1,10 +1,10 @@
 <!--
 ✒ Metadata
-    - Title: Package Manifest (Terrane Edition - v1.16)
+    - Title: Package Manifest (Terrane Edition - v1.17)
     - File Name: package.json
     - Relative Path: package.json
     - Artifact Type: config
-    - Version: 1.16.0
+    - Version: 1.17.0
     - Date: 11/15/2026
     - Update: Sunday, November 15, 2026
     - Author: Dennis 'dendogg' Smaltz
@@ -12,6 +12,9 @@
     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
 
 ✒ Changelog:
+    - 1.17.0 (11/15/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
+      test script ends with tools/shelf-test.mjs, the Node check of the
+      Shelf's store (web/js/shelf-store.js).
     - 1.16.0 (11/15/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
       test script ends with tools/cleanup-test.mjs, the Node check of the
       Cleanup tab's rules (web/js/reclaim.js) and its question.

@@ -1,11 +1,11 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Terrane Design System (Terrane Edition - v2.6)
+ *     - Title: Terrane Design System (Terrane Edition - v2.7)
  *     - File Name: terrane.css
  *     - Relative Path: web/css/terrane.css
  *     - Artifact Type: stylesheet
- *     - Version: 2.6.0
+ *     - Version: 2.7.0
  *     - Date: 11/15/2026
  *     - Update: Sunday, November 15, 2026
  *     - Author: Dennis 'dendogg' Smaltz
@@ -13,22 +13,15 @@
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
  *
  * ✒ Changelog:
+ *     - 2.7.0 (11/15/2026) [dendogg + Anthropic - Claude Opus 5.5] —
+ *       Imports components/shelf.css after cleanup.css: the right
+ *       panel's Shelf tab, its head, empty state, actions and rows.
  *     - 2.6.0 (11/15/2026) [dendogg + Anthropic - Claude Opus 5.5] —
  *       Imports components/cleanup.css after preview.css: the right
  *       panel's Cleanup tab, its head, summary, groups and rows.
  *     - 2.5.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] —
  *       Imports components/preview.css after quicklook.css: panel B's
  *       Preview tab, its head, tools, pane and foot.
- *     - 2.4.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] —
- *       Imports components/palette.css: the command palette's field,
- *       options and foot in the shared dialog; and
- *       components/searches.css: the Places tab's saved searches.
- *       Then components/quicklook.css: the Quick look sheet, its head,
- *       its numbered text, its fitted picture or player, and its foot;
- *       and components/presets.css: the selection's total on the count
- *       row and the Survey's Quick searches. Then components/batch.css:
- *       the batch rename sheet and its preview, and the duplicate
- *       cleanup under a group of copies.
  *     Earlier entries: see CHANGELOG.md
  *
  * ✒ Description:
@@ -83,6 +76,7 @@
 @import url('components/quicklook.css') layer(components);
 @import url('components/preview.css') layer(components);
 @import url('components/cleanup.css') layer(components);
+@import url('components/shelf.css') layer(components);
 @import url('components/presets.css') layer(components);
 @import url('components/batch.css') layer(components);
 @import url('utilities.css') layer(utilities);

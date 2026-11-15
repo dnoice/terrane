@@ -1,18 +1,21 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Motion (Terrane Edition - v1.1)
+ *     - Title: Motion (Terrane Edition - v1.2)
  *     - File Name: motion.css
  *     - Relative Path: web/css/motion.css
  *     - Artifact Type: stylesheet
- *     - Version: 1.1.0
- *     - Date: 11/13/2026
- *     - Update: Friday, November 13, 2026
+ *     - Version: 1.2.0
+ *     - Date: 11/15/2026
+ *     - Update: Sunday, November 15, 2026
  *     - Author: Dennis 'dendogg' Smaltz
  *     - A.I. Acknowledgement: Anthropic - Claude Opus 5.5
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
  *
  * ✒ Changelog:
+ *     - 1.2.0 (11/15/2026) [dendogg + Anthropic - Claude Opus 5.5] — A
+ *       tab's count that changes flashes ink once (.tabs .count.is-bumped,
+ *       240 ms), and not at all under reduced motion.
  *     - 1.1.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] —
  *       The reduced-motion rule covers ::backdrop too, so a dialog's
  *       backdrop no longer fades.
@@ -30,7 +33,8 @@
  *       pop-in, stratum-in
  *     - Drawing keyframes: grow-x and rule-draw scale from the left edge
  *     - Live-work loops: hatch-run, stipple-run, blink, sonar
- *     - Feedback: nudge (a refused value), run-down (time left)
+ *     - Feedback: nudge (a refused value), run-down (time left), count-bump
+ *       (a tab's count that changed)
  *     - prefers-reduced-motion removes every animation and transition,
  *       keeping end states, so nothing is lost by turning motion off
  *
@@ -66,7 +70,15 @@
   75% { translate: -1px 0; }
 }
 
+/* A tab's count that changed (the Shelf's): one short flash of ink. */
+@keyframes count-bump {
+  0% { background-color: var(--ink); color: var(--on-ink); }
+  100% { background-color: transparent; }
+}
+.tabs .count.is-bumped { animation: count-bump 240ms var(--ease-out); border-radius: 2px; }
+
 @media (prefers-reduced-motion: reduce) {
+  .tabs .count.is-bumped { animation: none; }
   *, *::before, *::after, *::backdrop {
     animation-duration: 1ms !important;
     animation-iteration-count: 1 !important;

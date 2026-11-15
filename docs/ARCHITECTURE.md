@@ -1,10 +1,10 @@
 <!--
 ✒ Metadata
-    - Title: Terrane Architecture (Terrane Edition - v1.16)
+    - Title: Terrane Architecture (Terrane Edition - v1.17)
     - File Name: ARCHITECTURE.md
     - Relative Path: docs/ARCHITECTURE.md
     - Artifact Type: docs
-    - Version: 1.16.0
+    - Version: 1.17.0
     - Date: 11/15/2026
     - Update: Sunday, November 15, 2026
     - Author: Dennis 'dendogg' Smaltz
@@ -12,6 +12,20 @@
     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
 
 ✒ Changelog:
+    - 1.17.0 (11/15/2026) [dendogg + Anthropic - Claude Opus 5.5] —
+      The Shelf, on branch `tab-shelf`. It adds no route: the service
+      section says which it uses. Scale adds how the Shelf keeps and
+      checks its items, and the figures measured. The demo world says
+      what its check covers for the Shelf. The known limitations add
+      the Shelf's. Visual identity adds its head, actions, line of
+      items no longer there and rows, a tab's count and a tab as a drop
+      target, and the stylesheet's shelf module. Section 7 adds shelf.js
+      and shelf-store.js, the Shelf in the registries it fills, a
+      B_TABS entry's count and drop, the api's drawBTabCounts and
+      place with why each is a seam in app.js, dragMoves and the
+      region pins of what is placed, the Shelf's key in browser
+      storage, K in the key allocation, and a hazard: a drag that
+      cannot move.
     - 1.16.0 (11/15/2026) [dendogg + Anthropic - Claude Opus 5.5] —
       Cleanup, on branch `tab-cleanup`. The service section adds the
       sixth whole-tree question, `cleanup`, to the routes and to
@@ -331,7 +345,11 @@ snapshot mode (--snapshot):  info, scan, stat, events, an empty journal  ->  sna
   `moved`, the paths it carried back as `[where it was, where it is now]`
   pairs. A move, copy or removal that stops part way answers with
   `results`, the paths it finished, which are journaled like a whole
-  change. The page follows both by path (section 7, `AFTER_OP`).
+  change. The page follows both by path (section 7, `AFTER_OP`). The
+  Shelf has no route of its own: it keeps its list in the browser, and
+  acts through `POST /api/op` (`move`, `copy`, `renames`), Undo, and in
+  region mode `GET /api/region` to find its items by path, the routes
+  placing, the batch rename and the region client already use.
 - **A batch rename is checked whole.** The `renames` operation takes 1
   to 5,000 items, `{ path, name }`, and checks every one before the
   first rename: the guard, the name (`checkName`), no path twice, no
@@ -739,6 +757,9 @@ Node checks answer through the same code.
 | Cleanup's suggestions from one stack walk under the folder through an accessor, the same code over the page's model and the service's columns: one visit per entry, never into a matched cache, `.git` or `site-packages`, the four lists sorted once; worked out at most once a frame, and only while its tab is shown, a hidden tab only marking itself out of date | `reclaim.js`, `cleanup.js` |
 | Cleanup's rows drawn 100 to a group, a duplicate set of thousands of copies cut part way (`dupPage`, a `Map` lookup per row); a box ticked or cleared changes the totals and buttons in place, with no redraw and no reordering until the next count | `reclaim.js`, `cleanup.js` |
 | In region mode Cleanup asks the service once per count, with a sequence number so a late answer is dropped; the hooks that run often (`AFTER_SELECT`, `AFTER_FOCUS`) only show or hide its offer bar | `cleanup.js` |
+| The Shelf's items, at most 1,000, looked up by path in a `Map`; each write re-reads storage, merges by path and serialises the list once; a rename or move followed in one pass over the list | `shelf-store.js` |
+| Whether each Shelf item is still there worked out by path look-ups (the model's `find`, or `api.nearest` in region mode, never a request), at most once a frame and only while its tab is shown; 100 rows drawn at a time; a selection change only marks the rows drawn, and K or a drop changes the tab's count in place (`drawBTabCounts`) | `shelf.js`, `app.js` |
+| In region mode the Shelf finds its items by path (`resolveAll`) only when an action needs them, once per action, a later action dropping an earlier answer | `shelf.js` |
 | Above 100,000 entries the tree kept in the service in typed columns, every figure kept exact along a change's chain, a large folder's held set cached until it changes | `columns.js`, `regions.mjs` |
 | The page holds only the regions near the eye: the layout names the folders it would open, a prefetch from 0.6 of that distance, highest priority first | `layout.js`, `regions.js` |
 | Regions batched under 64 folders, 40,000 entries and about 4 MB an answer, at most two requests in flight, one region's nodes built per task | `columns.js`, `regions.js` |
@@ -964,6 +985,14 @@ walked down by the folder with most folders beneath, each region timed,
 | The page's walk over a `model.js` Model against the service's `cleanup` over a `ColumnTree` of the same 20,000 synthetic entries | the same lists, totals, rules and caches' paths, for the root (7 caches, 1,542 big and stale files, 52 empty folders) and for a folder |
 | A duplicate set of 6,000 copies (`dupPage`) | 100 rows drawn, 5,900 left for Show more |
 
+### Measured (Windows 11, 16 cores, 11/15/2026, the Shelf in Node)
+
+| Measure | Result |
+| ------- | ------ |
+| `follow` of 1,000 items, written to storage (`shelf-test`) | 1.3 ms (the test's ceiling is 50 ms) |
+| `Shelf.parse` of 1,000 kept items | 0.3 ms (ceiling 50 ms) |
+| Two stores on one storage, each writing in turn | each keeps the other's additions, and a removal in either holds |
+
 ### Measured (Windows 11, RTX 5050 laptop GPU, Edge 157, 11/15/2026, the precise terrain)
 
 The second part of the precise terrain, on the demo world pinned to one
@@ -1072,7 +1101,15 @@ Choices and their reasons:
   records, feeds the demo's records to the browser's own model, and runs
   every operation and refusal; the `demo` interface check drives the
   page through a stand-in Pages server with WebGL on and off and counts
-  the requests to `/api/` that leave it: none.
+  the requests to `/api/` that leave it: none. The Shelf asks nothing
+  new of the demo service; `demo-test` checks the two shapes it follows,
+  a move of two items from different folders into one, which names
+  where each went (`results`), and its Undo, which names each pair back
+  (`moved`), and the `demo` scenario gathers three items, moves them to
+  Archive, undoes it and reloads. A reload starts the world again while
+  the shelf, kept in the browser, stays: an item it followed to where a
+  move took it then reads as no longer there, since the world is back
+  as it was built.
 - **Limits.** A reload starts the world again; Open and Reveal refuse
   with a sentence, since there is no file to hand to another program;
   zip interiors exist only in the page, not in a world written to disk.
@@ -1191,6 +1228,29 @@ Choices and their reasons:
   the brief said the world's root. It was kept, so that opening the tab
   from where you stand shows that place, and Whole world is one press
   away; the choice is Dennis's to confirm or reverse.
+- The Shelf knows an item by its path. It follows Terrane's own
+  renames and moves and their Undo (and another tab on the directory
+  in this browser takes what it followed from storage), but one made
+  outside Terrane leaves the old path, which then reads as no longer
+  there; a file replaced at the same path by another is the same item.
+  After a change Terrane makes, a path not found counts as gone only
+  once its folders are read again, or after 8 seconds at most. In
+  region mode a row whose folder is not held shows the figures it had
+  when it was put on, and a path counts as gone when the deepest folder
+  held on it is held whole, or when a live region client answers null
+  for it, until the tree next changes.
+- The Shelf is kept in `localStorage`, so another browser, profile or
+  port has its own, nothing carries it across as a places file carries
+  places, and it holds at most 1,000 items. A batch rename of a folder
+  together with an item inside it is refused, as anywhere: rename them
+  in two steps. Rows are dragged onto its tab from the ledger only, not
+  from the world's blocks.
+- A disabled action follows the actions grid's convention: Move to…,
+  Copy to… and Rename… stay in place in read-only and snapshot mode and
+  do nothing when pressed; the reason is in each one's name and title
+  and on the line under the grid, and the palette and the keys say it in
+  a sentence. A row's kind is the CSV's kind word, capitalised, so a
+  picture reads "Images", the kind's name, rather than "Image".
 - A batch rename refuses a chain or a swap outright rather than ordering
   it through temporary names, because Undo could not reverse it.
 - `say()` sets the live region's text, so a sentence said twice in a
@@ -1480,16 +1540,32 @@ direction is a survey sheet around a plaster world.
   path and rule at B, and the size in the figure column; the copy a set
   keeps carries a check mark in that slot instead. A row left out turns
   to the third text colour and opens its path line with "left out" in
-  the tight capitals; nothing is struck through. On paper the right
-  panel prints the Inspector whichever tab is chosen, its tab inked as
-  the panel's heading.
+  the tight capitals; nothing is struck through. The Shelf's head is
+  the inspector's as well: "On the shelf" in the kind's place, the
+  count as the name, the facts in mono and the note that it is kept in
+  this browser at A. Its actions are the inspector's two-column grid
+  with its line of reasons under it. The line that names what is no
+  longer there stands on the highlighter's wash, a long name breaking
+  anywhere, its button at the right. A row is the ledger's item: the
+  kind's swatch in the mark slot at A, the name over its folder and
+  kind at B, the size in the figure column, and a small x at the end;
+  a selected row takes the ledger's selected ground. A row no longer
+  there turns to the third text colour, its swatch hollow and dashed,
+  and opens its path line with "no longer there" in the tight capitals
+  in garnet; nothing is struck through. A tab may carry a count after
+  its words, which stays beside the icon in a crowded strip and flashes
+  ink once, for 240 ms, when it changes (not at all under reduced
+  motion); a tab that takes dragged rows wears the highlighter's wash
+  and a 2 px ink ring inside its edge while they are over it. On paper
+  the right panel prints the Inspector whichever tab is chosen, its tab
+  inked as the panel's heading.
 - **Stylesheet structure**: `web/css/terrane.css` declares the layers
   `tokens, fonts, base, layout, components, utilities, motion, print`
   and imports its modules into them: one each for the other layers,
   and for components one per component group (controls, bar, ledger,
   stage, inspector, block, floating, splash) and one per feature (time,
   places, traverse, strata, interior, palette, searches, quicklook,
-  presets, batch, preview, cleanup). Components read their colours
+  presets, batch, preview, cleanup, shelf). Components read their colours
   from `tokens.css`, never a raw colour (the loading sheet's artwork
   palette is scoped to the sheet); most sizes are tokens too, while
   component-local paddings and gaps are written in place. The grid is
@@ -1530,7 +1606,11 @@ again before a move, `recheck`, Cleanup shares); `cleanup.js`
 (Cleanup, the right panel's third tab, whose rules are the DOM-free
 `reclaim.js`: the page, the service's `cleanup` question, the demo
 and `cleanup-test` all walk through it, and the Big and stale quick
-search reads its thresholds from it); `copyas.js`; `exports.js` (lists as
+search reads its thresholds from it); `shelf.js` (the Shelf, the right
+panel's fourth tab, which acts on what it gathers through placing, the
+batch rename and `csv.js`, and keeps it through the DOM-free
+`shelf-store.js`, which `shelf-test` checks in Node); `copyas.js`;
+`exports.js` (lists as
 CSV, with the DOM-free `csv.js`); `terminal.js`; and `flavors.js`
 (the flavors, DOM-free: what each drag does in Terrane's own and ten
 others, which the view reads through `setFlavor`, the guide's Mouse
@@ -1549,43 +1629,46 @@ and the rest still run.
 
 | Registry | An entry | Filled by |
 | -------- | -------- | --------- |
-| `KEYS` | `{ keys, mod, run(c), when, inList, guide, labels, palette, gl }`: the keyboard map, the `?` guide and the palette's actions as one table. `labels` gives one palette item per key (the lenses 1 to 4, the panels `[ ]`), `palette: false` keeps a key out of it (the arrows, Enter, the menu key), and `gl: true` marks it unavailable without WebGL (V, 0) | the controller, Time, Landmarks, Interiors, Palette (Ctrl+K), Quick look (P); guide rows only from Search history, Totals, Batch rename, Preview and Cleanup |
+| `KEYS` | `{ keys, mod, run(c), when, inList, guide, labels, palette, gl }`: the keyboard map, the `?` guide and the palette's actions as one table. `labels` gives one palette item per key (the lenses 1 to 4, the panels `[ ]`), `palette: false` keeps a key out of it (the arrows, Enter, the menu key), and `gl: true` marks it unavailable without WebGL (V, 0) | the controller, Time, Landmarks, Interiors, Palette (Ctrl+K), Quick look (P), Shelf (K, and six guide rows for its drag and its list's keys); guide rows only from Search history, Totals, Batch rename, Preview and Cleanup |
 | `ESCAPE` | `{ active(), clear(), typing }`, first active wins: floating surface 10, placing 20, kind filter 30, Time 40, Preview 45 (reading one of several, with focus in Preview), search 50, selection 70, an open archive 80 | the controller, Time, Preview, Interiors |
 | `PIN_SOURCES` | `{ pins(L, room) }`, added up in order to the 3,000-pin capacity: benchmarks 10, search 20, heavyweights 30 | the controller, Landmarks |
-| `TIP_LINES` | `{ lines(node, { i, type, L }) }`: hover lines after the name and summary: levels 10, Strata 15, matches 20, placing 30, copies 40, pixels 50, Landmarks 50, Time 60, Interiors 70 | the controller, Time, Landmarks, Strata, Interiors |
-| `INSPECTOR.focus`, `INSPECTOR.node` | `{ build(node, ctx) }`: sections of the "You are in" summary (Landmarks 28, Terminal 30) and of a selected item (Changed with it 32, Landmarks 35, Terminal 55, Quick look 62); built only while the Inspector's tab is chosen | the controller, Time, Landmarks, Strata, Interiors, Session traverse, Quick look, Terminal |
-| `INSPECTOR.many` | `{ build(nodes, ctx) }` with ctx `{ ro, off }`: sections after the Actions grid of a selection of several | Batch rename |
+| `TIP_LINES` | `{ lines(node, { i, type, L }) }`: hover lines after the name and summary: levels 10, Strata 15, matches 20, placing 30, copies 40, pixels 50, Landmarks 50, Time 60, Shelf 65 ("On the shelf"), Interiors 70 | the controller, Time, Landmarks, Strata, Shelf, Interiors |
+| `INSPECTOR.focus`, `INSPECTOR.node` | `{ build(node, ctx) }`: sections of the "You are in" summary (Landmarks 28, Terminal 30) and of a selected item (Changed with it 32, Landmarks 35, Shelf 52, Terminal 55, Quick look 62); built only while the Inspector's tab is chosen | the controller, Time, Landmarks, Strata, Interiors, Session traverse, Shelf, Quick look, Terminal |
+| `INSPECTOR.many` | `{ build(nodes, ctx) }` with ctx `{ ro, off }`: sections after the Actions grid of a selection of several: Batch rename 10, Shelf 20 | Batch rename, Shelf |
 | `READING` | `{ glyph, title, text }`: a Reading the world row | the controller and every Stage 5 feature |
 | `TABS` | `{ label, draw, list, count, enter, key }`: a ledger tab | the controller, Landmarks (Places) |
-| `B_TABS` | `{ label, icon, title, mount(host), show(host, { focus }), hide(), focusTarget(host) }`: a tab of the right panel, the Inspector 0, Preview 20 and Cleanup 30. The controller draws the strip and gives each feature tab a panel, `div.b-panel#b-panel-<id>` after `#inspector-body`; `mount` runs once, when the tab is first chosen; `show` whenever it is chosen while the right panel is on screen, and again when the panel comes back (`]`, the drawer, the 860 px breakpoint); `hide` when it is left or the panel goes; `focusTarget` is where focus goes in it | the controller (the Inspector), Preview, Cleanup |
+| `B_TABS` | `{ label, icon, title, mount(host), show(host, { focus }), hide(), focusTarget(host), count(), drop }`: a tab of the right panel, the Inspector 0, Preview 20, Cleanup 30 and Shelf 40. The controller draws the strip and gives each feature tab a panel, `div.b-panel#b-panel-<id>` after `#inspector-body`; `mount` runs once, when the tab is first chosen; `show` whenever it is chosen while the right panel is on screen, and again when the panel comes back (`]`, the drawer, the 860 px breakpoint); `hide` when it is left or the panel goes; `focusTarget` is where focus goes in it. `count()`, a number above 0 or null, is drawn after the tab's words and drawn again in place by `api.drawBTabCounts()`; `drop`, `{ refuse(nodes), take(nodes) }`, makes the tab button take ledger rows dragged onto it whenever `refuse` answers null | the controller (the Inspector), Preview, Cleanup, Shelf |
 | `TAB_SECTIONS` | `{ tab, build() }`: a section a feature adds to a tab another one draws; the tab's draw appends `api.tabSections(tab)` after its own | Search history (Saved searches in Places, 30) |
 | `SURVEY` | `{ build(survey) }`: a Survey tab section: Working sessions 5, Quick searches 7, the controller's lists 10 to 50, Export as CSV 95 | the controller, Session traverse, Totals and quick searches, Export |
-| `LEDGER_SUB` | `{ tab, build(ctx) }`, ctx `{ items, search, focus }`: controls on the Contents or Findings count row, in a `span.sub-tools` after the count, each with a `data-k` so a redraw keeps focus on it; a tool is a 24 px icon button (`btn btn-icon sub-tool`) at the row's end: the selection's total 10, Save search… 50, Export CSV 60 | Totals, Search history, Export |
+| `LEDGER_SUB` | `{ tab, build(ctx) }`, ctx `{ items, search, focus }`: controls on the Contents or Findings count row, in a `span.sub-tools` after the count, each with a `data-k` so a redraw keeps focus on it; a tool is a 24 px icon button (`btn btn-icon sub-tool`) at the row's end: the selection's total 10, Save search… 50, Add all to the shelf 55, Export CSV 60 | Totals, Search history, Shelf, Export |
 | `LAYOUT_OPTS` | `{ options(opts) }`, merged into the layout's one options object | Time (`asOf`), Interiors (`inside`, `aliases`) |
-| `MENU` | `{ items(node, ctx), many(nodes, ctx) }`, at least one: `items` is a group after Open, Reveal and Copy path, or at the end for the folder you are in; `many` follows Copy paths in the menu of several, ctx `{ ro, off }` | Landmarks, Interiors, Session traverse, Remembered view (Copy link), Batch rename, Cleanup (25: Suggest cleanup here, in its folder, or for this folder), Copy as, Terminal |
-| `COMMANDS` | `{ section, items() }`, each item `{ label, detail, hint, run(), off }`: the palette's actions that have no key, asked each time it opens; `off` is the reason an item cannot run | Landmarks, Session traverse, Palette (and a "Show <tab>" item for every `B_TABS` entry), Remembered view, Search history, Totals and quick searches, Preview (Wrap lines), Batch rename, Duplicate cleanup, Cleanup (Suggest cleanup for this folder, its detail naming the folder), Copy as, Export, Terminal |
+| `MENU` | `{ items(node, ctx), many(nodes, ctx) }`, at least one: `items` is a group after Open, Reveal and Copy path, or at the end for the folder you are in; `many` follows Copy paths in the menu of several, ctx `{ ro, off }` | Landmarks, Interiors, Session traverse, Remembered view (Copy link), Batch rename, Shelf (24: Add to shelf or Take off the shelf, with K; Add this folder to shelf; Add N items to the shelf), Cleanup (25: Suggest cleanup here, in its folder, or for this folder), Copy as, Terminal |
+| `COMMANDS` | `{ section, items() }`, each item `{ label, detail, hint, run(), off }`: the palette's actions that have no key, asked each time it opens; `off` is the reason an item cannot run | Landmarks, Session traverse, Palette (and a "Show <tab>" item for every `B_TABS` entry), Remembered view, Search history, Totals and quick searches, Preview (Wrap lines), Batch rename, Duplicate cleanup, Cleanup (Suggest cleanup for this folder, its detail naming the folder), Shelf (Add to shelf or Take off the shelf with K, Add this folder to shelf, Add all results to shelf, and the actions on everything on the shelf), Copy as, Export, Terminal |
 | `RENAME_MANY` | `{ run(nodes) }`, the first entry wins: what F2 does with more than one item selected; with one, F2 is the single rename | Batch rename |
 | `DUP_GROUP` | `{ build(group, ctx) }`, ctx `{ node, where, ro }`: under a group of duplicate candidates, in the inspector's copies (`where: 'inspector'`) and after each group in the Survey (`'survey'`) | Duplicate cleanup |
 | `QUERY.is`, `QUERY.prefix` | `is:<word>` and `<name>:<value>` search tokens; built-in tokens cannot be replaced | Landmarks (`is:benchmark`), Session traverse (`session:N`), Search history (`in:`) |
 | `AFTER_LAYOUT` | `run(L)` at the end of every relayout | Landmarks, Session traverse, Remembered view, Preview |
-| `AFTER_REFRESH` | `run(dirs)` once a refresh has pruned selection, focus and trail; `null` after a warm start's check (or its Survey again) | Landmarks, Interiors, Palette, Preview, Cleanup |
-| `AFTER_SURVEY` | `run(survey, { full, warm, settled })` after every survey: `full` for a whole survey, `warm` for one of the last session's tree, `settled` for the check's; the age table is rebuilt first, at 10, and the kept view is put back at 80 | the controller and every Stage 5 feature, Palette, Remembered view, Preview, Cleanup |
-| `AFTER_OP` | `run(body, res)` once the service has carried out a change, before the affected folders are re-read: Undo included (`res.moved`), a batch rename (`res.renamed`, the pairs), and a change or an Undo that stopped part way (`res.partial`, with `res.results` or `res.moved`) | Landmarks, Cleanup |
+| `AFTER_REFRESH` | `run(dirs)` once a refresh has pruned selection, focus and trail; `null` after a warm start's check (or its Survey again) | Landmarks, Interiors, Palette, Preview, Cleanup, Shelf |
+| `AFTER_SURVEY` | `run(survey, { full, warm, settled })` after every survey: `full` for a whole survey, `warm` for one of the last session's tree, `settled` for the check's; the age table is rebuilt first, at 10, and the kept view is put back at 80 | the controller and every Stage 5 feature, Palette, Remembered view, Preview, Cleanup, Shelf |
+| `AFTER_OP` | `run(body, res)` once the service has carried out a change, before the affected folders are re-read: Undo included (`res.moved`), a batch rename (`res.renamed`, the pairs), and a change or an Undo that stopped part way (`res.partial`, with `res.results` or `res.moved`) | Landmarks, Cleanup, Shelf |
 | `AFTER_QUERY` | `run(search, query)` whenever the search runs; it may set `search.sort` and `search.note` for Findings | Session traverse, Search history |
-| `AFTER_FOCUS` | `run(dir)` once the folder you are in has changed: `moveFocus`, and a refresh, a warm start's check or Rescan all that moved it (`focusMoved`) | Remembered view, Preview, Cleanup |
-| `AFTER_SELECT` | `run(sel, primary)` at the end of every selection change, quiet ones and `selectAll` included | Remembered view, Totals, Preview, Cleanup |
+| `AFTER_FOCUS` | `run(dir)` once the folder you are in has changed: `moveFocus`, and a refresh, a warm start's check or Rescan all that moved it (`focusMoved`) | Remembered view, Preview, Cleanup, Shelf |
+| `AFTER_SELECT` | `run(sel, primary)` at the end of every selection change, quiet ones and `selectAll` included | Remembered view, Totals, Preview, Cleanup, Shelf |
 
 `AFTER_OP` is what lets Landmarks follow Terrane's own renames and moves,
 and their undo, by path before the tree changes, after a reload too;
 Cleanup follows them the same way for its folder and for what is left
 out, and learns there that a removal or an Undo has happened, so its
-next count says what is left to suggest.
+next count says what is left to suggest; the Shelf carries its items
+through the same pairs (`follow`), and until the folders are read
+again it does not call a path it cannot find gone.
 `MENU` lets a feature offer its actions where the controller's are, and
 shows them unavailable, with the reason, where they do not apply.
 `AFTER_FOCUS` and `AFTER_SELECT` run often: a hook must be cheap and
 defer anything that is not, as the remembered view saves a second
-later, Preview reads once the arrows have rested, and Cleanup only
-shows or hides its offer bar.
+later, Preview reads once the arrows have rested, Cleanup only
+shows or hides its offer bar, and the Shelf only marks the rows it has
+drawn and the empty state's buttons.
 
 ### The api, sheets and browser storage
 
@@ -1641,6 +1724,26 @@ stale generation or `close()` stopped it: every path it is asked for
 then resolves to null, which says nothing of the disk, so Cleanup keeps
 its folder while the tree is read again instead of giving it up.
 
+The Shelf added these seams to `app.js`, each because the controller
+owns what it touches. A `B_TABS` entry may carry `count()` and `drop`
+(the registry's row above), and `drawBTabCounts()` reads every count
+again and makes, changes or removes the figure in place, without
+building a button again, so focus on the strip stays: the strip is the
+controller's DOM, built again by `drawBTabs`, so a module could keep
+neither a figure nor a listener on its buttons. `place(type, nodes)`
+starts placing (`startPlacing`), as M does, for Move to… and Copy to…:
+placing is the controller's state, `S.placing` with its bar, the
+world's and the ledger's clicks and Escape at 20. And a ledger row is
+now draggable wherever it is not the root or inside an open archive,
+read-only and snapshot mode and region-mode refs included, so rows can
+be dropped on the Shelf's tab; `dragMoves()` says whether a drag can
+move or copy (the service takes changes and every row is a node held),
+and every folder target and the world's canvas ask it before they
+offer a drop. `regionPins()` keeps the folder of each node being
+placed, so the Shelf's items keep their regions while a ledger click
+changes the selection mid-placing. The Shelf reads `listCursor()`,
+`kindTone`, `resolveAll` and `nearest` as they were.
+
 `ui.js` gains `openSheet(build, { className, label, onKey })`, a sheet
 in the shared dialog for what is richer than `ask()`: the palette,
 Quick look and the batch rename. It takes the floating slot, is modal,
@@ -1653,27 +1756,34 @@ a function that withdraws its notice.
 What features keep lives in the browser's `localStorage`, per origin,
 under one key per directory, with `|snapshot` appended for a snapshot:
 `terrane.places.v1|<root>` (benchmarks and the return point),
-`terrane.view.v1|<root>` (the kept view) and
-`terrane.searches.v1|<root>` (history and saved searches), beside the
+`terrane.view.v1|<root>` (the kept view),
+`terrane.searches.v1|<root>` (history and saved searches) and
+`terrane.shelf.v1|<root>` (the Shelf's items), beside the
 settings kept for every directory: `terrane.single-keys`,
 `terrane.flavor`, `terrane.guide-tab` (the Guide's tab),
 `terrane.panel-b-tab` (the right panel's tab) and `terrane.preview-wrap`
 (Preview's Wrap lines). Every read is checked field by field
 before it is used, and saved searches are merged per id before each
-write, so two tabs keep each other's. When the browser refuses storage,
-the view and the searches say so once and keep working in memory until
-the tab closes. The address,
-`#/<folder>` with every segment percent-encoded, follows the folder you
-are in through `replaceState`; it never reaches the service, because
-the browser does not send a fragment. Cleanup keeps nothing in the
-browser: its folder, its keep rule and what is left out last as long
-as the page.
+write, so two tabs keep each other's. The Shelf goes further:
+`shelf-store.js` reads storage again before every write and merges by
+path, keeping what this tab added and what it took off apart from what
+another wrote, so two tabs keep each other's additions and a removal in
+either holds, and a `storage` event merges another tab's write without
+writing. When the browser refuses storage, the view, the searches and
+the Shelf say so once and keep working in memory until the tab closes.
+The address, `#/<folder>` with every segment percent-encoded, follows
+the folder you are in through `replaceState`; it never reaches the
+service, because the browser does not send a fragment. Cleanup keeps
+nothing in the browser: its folder, its keep rule and what is left out
+last as long as the page.
 
 ### Key allocation
 
 `KEY_OWNERS` in `app.js` fixes the plain keys a feature may bind: W A S
 D Q E R F stay the viewport's, I is Interiors', T , . < > are Time's,
-B H J are Landmarks', and P is Quick look's. A reserved key is refused
+B H J are Landmarks', P is Quick look's, and K is the Shelf's, which
+puts the selection on the shelf or takes it off (with nothing selected,
+the ledger list's cursor row). A reserved key is refused
 to any other owner, and a key bound twice is refused. The palette binds
 the chord Ctrl+K, which acts everywhere but in a text field, where the
 browser keeps it. Session traverse, Strata and the rest of Wave 3 bind
@@ -1687,11 +1797,18 @@ to the overview; P there is Quick look's own entry, run on Preview's
 item. Cleanup binds none: in each of its lists ↑ ↓, Home, End, Space
 and Enter act on the rows and are kept from the window's handler, so
 Home goes to the group's first row and Space leaves a row out; each
-list is one Tab stop, the row last reached. Both tab strips, the
-ledger's and the right panel's, take ← → (wrapping), Home and End
-themselves (`stripKeys`), the tab reached chosen, under one core guide
-row, "← → on tabs". Their guide rows sit in the guide's sections
-Finding your way, Looking closer and Acting on many.
+list is one Tab stop, the row last reached. K in Preview's pane and on
+a Cleanup row runs the Shelf's own `KEYS` entry on that item
+(`run({ node })`), so the shelf has one way in by key. In the Shelf's
+list ↑ ↓, Home, End, Enter, Space, Del and K act on the rows and are
+kept from the window's handler, so Del takes an item off the shelf
+rather than removing it to the holding area; Del anywhere else in the
+tab is kept from the window too, and says what Del does there. The
+list is one Tab stop, the row last reached, else the first. Both tab
+strips, the ledger's and the right panel's, take ← → (wrapping), Home
+and End themselves (`stripKeys`), the tab reached chosen, under one
+core guide row, "← → on tabs". Their guide rows sit in the guide's
+sections Finding your way, Looking closer and Acting on many.
 `inList` (default true) decides whether a key acts while the ledger list
 has focus; the guide is made from the same table. The guide also holds
 the single-key setting. It is off unless turned on there: a key that
@@ -1801,9 +1918,17 @@ the first survey.
   renames, moves and their Undo through `AFTER_OP` before the tree
   changes, and gives way to the nearest folder still there when a
   refresh, or the service's `ENOFOLDER`, says it is gone, as Cleanup
-  does. In region mode a null from `api.resolve` while the region
-  client is `stale` or replaced is not a folder gone: wait for the next
-  survey.
+  does; an item it cannot give way for is kept and marked, never
+  dropped without a word, as the Shelf does. In region mode a null from
+  `api.resolve` while the region client is `stale` or replaced is not a
+  folder gone: wait for the next survey. Just after a change, a path
+  not found may only not have been read again yet.
+- **A drag that cannot move.** Ledger rows drag wherever they are not
+  the root or inside an archive, in read-only and snapshot mode and as
+  region-mode refs too, so they can be dropped on the Shelf's tab. A
+  new target that moves or copies what is dropped asks `dragMoves()`
+  first, as every folder target and the world's canvas do, so such a
+  drag never reaches `runOp`.
 - **Two strips share `.tabs`.** The ledger's strip is `#ledger-tabs`,
   whose buttons carry `data-tab`, and the right panel's is `#b-tabs`, whose
   buttons carry `data-btab`; code that means one strip names it by its

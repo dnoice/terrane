@@ -1,18 +1,20 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Icons (Terrane Edition - v1.3)
+ *     - Title: Icons (Terrane Edition - v1.4)
  *     - File Name: icons.js
  *     - Relative Path: web/js/icons.js
  *     - Artifact Type: javascript
- *     - Version: 1.3.0
- *     - Date: 11/14/2026
- *     - Update: Saturday, November 14, 2026
+ *     - Version: 1.4.0
+ *     - Date: 11/15/2026
+ *     - Update: Sunday, November 15, 2026
  *     - Author: Dennis 'dendogg' Smaltz
  *     - A.I. Acknowledgement: Anthropic - Claude Opus 5.5
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
  *
  * ✒ Changelog:
+ *     - 1.4.0 (11/15/2026) [dendogg + Anthropic - Claude Opus 5.5] — shelf
+ *       (inbox), the right panel's Shelf tab and its actions.
  *     - 1.3.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] —
  *       exportCsv (download), legend (swatch-book) and status (activity);
  *       Select all draws list-checks.
@@ -22,11 +24,6 @@
  *       draws (the north arrow is drawn inline). ICON also names
  *       the icons web/index.html draws by their Lucide names, so the same
  *       action has one icon wherever it appears.
- *     - 1.1.0 (11/12/2026) [dendogg + Anthropic - Claude Opus 5.5] — Names
- *       for the As of stepper: time (calendar-clock), earlier and later
- *       (the left and right chevrons). Names for landmarks: places (the
- *       tab, map-pinned), bench (set a benchmark, flag), remeasure
- *       (ruler), markReturn (bookmark) and returnTo (arrow-left-right).
  *     Earlier entries: see CHANGELOG.md
  *
  * ✒ Description:
@@ -121,6 +118,7 @@ export const ICON = Object.freeze({
   remeasure: 'ruler',
   markReturn: 'bookmark',
   returnTo: 'arrow-left-right',
+  shelf: 'inbox',
 });
 
 /**
