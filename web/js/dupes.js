@@ -1,18 +1,23 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Duplicate Cleanup (Terrane Edition - v1.1)
+ *     - Title: Duplicate Cleanup (Terrane Edition - v1.2)
  *     - File Name: dupes.js
  *     - Relative Path: web/js/dupes.js
  *     - Artifact Type: javascript
- *     - Version: 1.1.0
- *     - Date: 11/14/2026
- *     - Update: Saturday, November 14, 2026
+ *     - Version: 1.2.0
+ *     - Date: 11/15/2026
+ *     - Update: Sunday, November 15, 2026
  *     - Author: Dennis 'dendogg' Smaltz
  *     - A.I. Acknowledgement: Anthropic - Claude Opus 5.5
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
  *
  * ✒ Changelog:
+ *     - 1.2.0 (11/15/2026) [dendogg + Anthropic - Claude Opus 5.5] —
+ *       keepOf moves to reclaim.js and is re-exported, so Cleanup keeps by
+ *       the same rule; recheck(api, groups), the read again before a move,
+ *       is exported for Cleanup, 4,000 paths a request. No change of
+ *       behaviour here.
  *     - 1.1.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — In
  *       region mode a group's files are refs: the copy kept is told from
  *       the others by its path, a ref is never asked whether it is held,
@@ -63,7 +68,8 @@
  *                                       verified, so nothing was moved.
  *
  * ✒ Other Important Information:
- *     - Dependencies: ui.js (ask), model.js (formatting); app.js's api: S,
+ *     - Dependencies: ui.js (ask), model.js (formatting), reclaim.js
+ *       (keepOf, re-exported); app.js's api: S,
  *       DUP_GROUP, COMMANDS, post, runOp, writable, hostOf, isAttached,
  *       relPath, relLabel, select, notice, el; the hash kept with a
  *       verified group (app.js's verifyDuplicates)
@@ -76,12 +82,39 @@
 
 import { ask } from './ui.js';
 import { fmtBytes, fmtCount, fmtDate } from './model.js';
+import { keepOf as keepBy } from './reclaim.js';
+
+/** The copy a keep leaves in place (newest or oldest, the first listed on a tie): reclaim.js's rule, shared with Cleanup. */
+export { keepOf } from './reclaim.js';
 
 export const name = 'Duplicate cleanup';
 
 const OWNER = 'dupes';
 /** Paths the confirmation names before "and N more". */
 const NAMES_MAX = 12;
+/** The most paths one POST /api/hash reads. */
+const HASH_CHUNK = 4000;
+
+/**
+ * Reads verified groups' files again (POST /api/hash, 4,000 paths at a
+ * time) and compares each with what was verified. Resolves to null when
+ * every file is as it was, or the first that changed or could not be read;
+ * a refused read rejects. Duplicate cleanup and Cleanup guard a move with it.
+ */
+export async function recheck(api, groups) {
+  const files = groups.flatMap((g) => g.files);
+  const owner = groups.flatMap((g) => g.files.map(() => g));
+  const hashes = [];
+  for (let at = 0; at < files.length; at += HASH_CHUNK) {
+    const { results } = await api.post('hash', { paths: files.slice(at, at + HASH_CHUNK).map(api.relPath) });
+    hashes.push(...files.slice(at, at + HASH_CHUNK).map((_, i) => results[i]));
+  }
+  // A group verified before its hash was kept compares with its first file's.
+  const first = new Map();
+  files.forEach((f, i) => { if (!first.has(owner[i])) first.set(owner[i], hashes[i]?.hash); });
+  const i = files.findIndex((f, k) => !hashes[k] || hashes[k].error || hashes[k].hash !== (owner[k].hash ?? first.get(owner[k])));
+  return i < 0 ? null : files[i];
+}
 
 const copies = (n) => `${fmtCount(n)} cop${n === 1 ? 'y' : 'ies'}`;
 const capital = (s) => `${s[0].toUpperCase()}${s.slice(1)}`;
@@ -89,16 +122,8 @@ const capital = (s) => `${s[0].toUpperCase()}${s.slice(1)}`;
 export function install(api) {
   const { S, el } = api;
 
-  /**
-   * The file a keep leaves in place: the latest or earliest last change
-   * (on a tie, the first listed), or the inspected node for 'this'.
-   */
-  function keepOf(group, how, node) {
-    if (how === 'this') return node;
-    let best = group.files[0];
-    for (const f of group.files) if (how === 'newest' ? f.m > best.m : f.m < best.m) best = f;
-    return best;
-  }
+  /** The file a keep leaves in place: reclaim.js's rule, or the inspected node for 'this'. */
+  const keepOf = (group, how, node) => (how === 'this' ? node : keepBy(group, how));
 
   /** Why the group cannot be cleaned here (short, for a button), or null. */
   function offFor(group, ctx) {
@@ -148,15 +173,13 @@ export function install(api) {
     if (!ok) return;
     // Read again just before: a copy rewritten since it was verified
     // stops the whole move.
-    let results;
+    let changed;
     try {
-      ({ results } = await api.post('hash', { paths: group.files.map(api.relPath) }));
+      changed = await recheck(api, [group]);
     } catch (err) {
       api.notice(err.message, { kind: 'error' });
       return;
     }
-    const want = group.hash ?? results[0]?.hash;
-    const changed = group.files.find((f, i) => !results[i] || results[i].error || results[i].hash !== want);
     if (changed) {
       api.notice(`${changed.n} changed since it was verified, so nothing was moved. Verify by content again.`, { kind: 'error' });
       return;

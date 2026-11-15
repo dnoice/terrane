@@ -1,18 +1,23 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Whole-Tree Questions (Terrane Edition - v1.0)
+ *     - Title: Whole-Tree Questions (Terrane Edition - v1.1)
  *     - File Name: questions.js
  *     - Relative Path: web/js/questions.js
  *     - Artifact Type: javascript
- *     - Version: 1.0.0
- *     - Date: 11/14/2026
- *     - Update: Saturday, November 14, 2026
+ *     - Version: 1.1.0
+ *     - Date: 11/15/2026
+ *     - Update: Sunday, November 15, 2026
  *     - Author: Dennis 'dendogg' Smaltz
  *     - A.I. Acknowledgement: Anthropic - Claude Opus 5.5
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
  *
  * ✒ Changelog:
+ *     - 1.1.0 (11/15/2026) [dendogg + Anthropic - Claude Opus 5.5] — A
+ *       sixth question, cleanup: the Cleanup tab's walk under a folder
+ *       (reclaim.js over the columns), its caches, big and stale files and
+ *       empty folders with their totals; a missing folder or a file is
+ *       ENOFOLDER.
  *     - 1.0.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] —
  *       Initial release. After the review: markRegion never works a query
  *       or survey out again, so a region is never held up by a whole-tree
@@ -23,8 +28,8 @@
  * ✒ Description:
  *     The questions that walk the whole tree, answered over the column tree
  *     (columns.js) for a page that holds only regions of it: a search, the
- *     survey and its duplicate candidates, working sessions and the
- *     palette's places. Each answer equals what the page's own model.js,
+ *     survey and its duplicate candidates, working sessions, the palette's
+ *     places and the Cleanup tab's suggestions. Each answer equals what the page's own model.js,
  *     relations.js and fuzzy.js give over the whole tree, order and ties
  *     included, so a person sees the same lists in either mode.
  *
@@ -50,13 +55,16 @@
  *       facts, a session's files, and a file's session and neighbours
  *     - places: fuzzy.js rank over every name, folders first, or over
  *       paths when the query holds a slash
+ *     - cleanup: reclaim.js's walk under a folder (under), each list's
+ *       largest limit (up to 1,000) as refs with the rule that found them,
+ *       its whole count and bytes, and the caches' paths
  *     - The walk order every list's ties follow is the page's own (a
  *       stack, children in scan order), worked out once per change
  *     - No DOM: the service, the demo and the Node checks share it
  *
  * ✒ Usage Instructions:
- *     columns.js answer() hands the routes find, marks, survey, sessions
- *     and places to ask(tree, route, params, ctx), and decorates regions
+ *     columns.js answer() hands the routes find, marks, survey, sessions,
+ *     places and cleanup to ask(tree, route, params, ctx), and decorates regions
  *     through markRegion(). A list entry travels as a ref tuple:
  *     [rel, d, s, m (mm for a folder), k, f, fc, cn, e, x or -1, pid].
  *
@@ -66,10 +74,11 @@
  *     ask(tree, 'survey', {}, ctx)            // and { dupfiles: '4000' }
  *     ask(tree, 'sessions', { k: '2', files: '1000' }, ctx)
  *     ask(tree, 'places', { q: 'inv', limit: '50' }, ctx)
+ *     ask(tree, 'cleanup', { under: 'Projects', limit: '1000' }, ctx)
  *
  * ✒ Other Important Information:
  *     - Dependencies: model.js (parseQuery, flags), relations.js (the
- *       session rules), fuzzy.js (rank)
+ *       session rules), fuzzy.js (rank), reclaim.js (the Cleanup walk)
  *     - Compatible platforms: any browser with ES2022 modules; Node.js
  *       22.5+
  *     - Performance: what a change invalidates is worked out again when
@@ -82,6 +91,7 @@
 import { parseQuery, FLAG_LINK, FLAG_HIDDEN } from './model.js';
 import { GAP_MS, MIN_FILES, BULK_FILES, BULK_RATE } from './relations.js';
 import { rank } from './fuzzy.js';
+import { walk as reclaimWalk } from './reclaim.js';
 
 /** The most matches a find lists, and the caps of the other answers. */
 export const FIND_LIMIT = 5000;
@@ -1090,8 +1100,69 @@ function places(tree, q, ctx) {
   return { v: ctx.v, places: got.map((r) => (r.item < F ? ref.folder(r.item) : ref.file(r.item - F))), ms: Math.round(clock() - t0) };
 }
 
+/* ---------- Cleanup ---------- */
+
 /**
- * The routes find, marks, survey, sessions and places over a tree. params
+ * reclaim.js's accessor over the columns: a folder is its id, a file j is
+ * -(j + 1); a folder's children are its files, then its folders, in scan
+ * order, as the page's model holds them.
+ */
+function columnAccess(tree) {
+  const ref = refMaker(tree);
+  return {
+    kids: (x) => {
+      const out = [];
+      const f0 = tree.file0[x];
+      for (let j = f0; j < f0 + tree.fileN[x]; j++) out.push(-(j + 1));
+      const k0 = tree.kid0[x];
+      for (let i = 0; i < tree.kidN[x]; i++) out.push(tree.kids[k0 + i]);
+      return out;
+    },
+    name: (h) => (h >= 0 ? tree.name[h] : tree.fname[-h - 1]),
+    isDir: (h) => h >= 0,
+    size: (h) => (h >= 0 ? tree.s[h] : tree.fsize[-h - 1]),
+    mtime: (h) => (h >= 0 ? tree.mm[h] : tree.fmtime[-h - 1]),
+    flags: (h) => (h >= 0 ? folderFlags(tree, h) : tree.fflags[-h - 1]),
+    sealed: (h) => h >= 0 && !!errOf(tree, h),
+    stub: (h) => h >= 0 && isStub(tree, h),
+    rel: (h) => (h >= 0 ? ref.relOf(h) : ref.file(-h - 1)[R_REL]),
+    ref,
+  };
+}
+
+/**
+ * The Cleanup tab's question for a folder (under, '' for the root): its
+ * caches and build output, big and stale files and empty folders, each
+ * { total, bytes, items } with the largest limit items as ref tuples plus
+ * the rule's id and label and its words; how many folders hold only hidden
+ * files; cache names that could not be read; and the caches' paths
+ * (claimed, the first 1,000), which nothing else lists. A folder that is
+ * not there, or a file, is ENOFOLDER: the tree is read, never the disk.
+ */
+function cleanup(tree, q, ctx) {
+  const t0 = clock();
+  const text = q.get('under') ?? '';
+  if (text.length > 4096 || text.includes(String.fromCharCode(0))) throw failure('ENOFOLDER', 404, 'No such folder.');
+  const raw = q.get('limit');
+  if (raw !== null && raw !== '' && !/^-?\d{1,10}$/.test(raw)) throw failure('EBADREQ', 400, 'limit is a whole number.');
+  const limit = raw === null || raw === '' ? LIST_MAX : Math.max(0, Math.min(LIST_MAX, Number(raw)));
+  const id = folderAt(tree, 0, text);
+  if (id < 0) throw failure('ENOFOLDER', 404, 'No such folder.');
+  const acc = columnAccess(tree);
+  const w = reclaimWalk(id, acc, { keepCap: limit });
+  const tuple = (it) => [...(it.d ? acc.ref.folder(it.x) : acc.ref.file(-it.x - 1)), it.rule ?? null, it.why, it.words ?? null];
+  const list = (l) => ({ total: l.total, bytes: l.bytes, items: l.items.map(tuple) });
+  return {
+    v: ctx.v, under: tree.relOf(id), sealed: !!errOf(tree, id),
+    caches: list(w.caches), stale: list(w.stale), empty: list(w.empty),
+    hiddenOnly: w.hiddenOnly, sealedCaches: w.sealedCaches, vcs: w.vcs,
+    claimed: w.claimed.slice(0, LIST_MAX), claimedTotal: w.claimed.length,
+    ms: Math.round(clock() - t0),
+  };
+}
+
+/**
+ * The routes find, marks, survey, sessions, places and cleanup over a tree. params
  * are URLSearchParams or a plain object; ctx carries { v, parts }. Returns
  * the answer's JSON; an error carries code, status and a sentence.
  */
@@ -1102,6 +1173,7 @@ export function ask(tree, route, params, ctx) {
   if (route === 'survey') return survey(tree, q, ctx);
   if (route === 'sessions') return sessions(tree, q, ctx);
   if (route === 'places') return places(tree, q, ctx);
+  if (route === 'cleanup') return cleanup(tree, q, ctx);
   throw failure('EROUTE', 404, 'No such endpoint.');
 }
 
@@ -1119,4 +1191,4 @@ export function prepare(tree) {
   surveyOf(tree);
 }
 
-export const QUESTION_ROUTES = Object.freeze(['find', 'marks', 'survey', 'sessions', 'places']);
+export const QUESTION_ROUTES = Object.freeze(['find', 'marks', 'survey', 'sessions', 'places', 'cleanup']);

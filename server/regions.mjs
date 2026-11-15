@@ -1,18 +1,21 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Region Service (Terrane Edition - v1.0)
+ *     - Title: Region Service (Terrane Edition - v1.1)
  *     - File Name: regions.mjs
  *     - Relative Path: server/regions.mjs
  *     - Artifact Type: javascript
- *     - Version: 1.0.0
- *     - Date: 11/14/2026
- *     - Update: Saturday, November 14, 2026
+ *     - Version: 1.1.0
+ *     - Date: 11/15/2026
+ *     - Update: Sunday, November 15, 2026
  *     - Author: Dennis 'dendogg' Smaltz
  *     - A.I. Acknowledgement: Anthropic - Claude Opus 5.5
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
  *
  * ✒ Changelog:
+ *     - 1.1.0 (11/15/2026) [dendogg + Anthropic - Claude Opus 5.5] —
+ *       handleAsk answers the Cleanup tab's question, cleanup, too: it
+ *       comes with questions.js's routes, behind the same checks.
  *     - 1.0.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] —
  *       Initial release. After the review: the watcher's changes are read
  *       into the tree whether or not a page listens (applyChanges), one
@@ -59,7 +62,7 @@
  *       is written again, and the sweep's changes follow, then { type:
  *       'swept' }. A walk (build=1) ends any check under way
  *     - handleAsk answers the whole-tree questions (find, marks, survey,
- *       sessions, places: questions.js) after any change under way and the
+ *       sessions, places, cleanup: questions.js) after any change under way and the
  *       region answers already asked; the survey is worked out before a
  *       new tree is served (prepMs), so every region carries its
  *       candidates and heavyweights from the first; once the tree changes
@@ -600,7 +603,7 @@ export function makeRegions({ guard = null, snap = null, meta = null, threshold 
     },
 
     /**
-     * The whole-tree questions (find, marks, survey, sessions, places),
+     * The whole-tree questions (find, marks, survey, sessions, places, cleanup),
      * after any change under way and after the region answers already
      * asked for. The survey of a tree that changed since it was worked out
      * is worked out again at most once in SURVEY_DUTY times its length:

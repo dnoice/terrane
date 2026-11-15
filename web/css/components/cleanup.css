@@ -1,0 +1,184 @@
+/*
+ * ============================================================================
+ * ✒ Metadata
+ *     - Title: Cleanup (Terrane Edition - v1.0)
+ *     - File Name: cleanup.css
+ *     - Relative Path: web/css/components/cleanup.css
+ *     - Artifact Type: stylesheet
+ *     - Version: 1.0.0
+ *     - Date: 11/15/2026
+ *     - Update: Sunday, November 15, 2026
+ *     - Author: Dennis 'dendogg' Smaltz
+ *     - A.I. Acknowledgement: Anthropic - Claude Opus 5.5
+ *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
+ *
+ * ✒ Changelog:
+ *     - 1.0.0 (11/15/2026) [dendogg + Anthropic - Claude Opus 5.5] —
+ *       Initial release.
+ *
+ * ✒ Description:
+ *     The right panel's Cleanup tab: the inspector's head and grid over a
+ *     body that scrolls inside the panel, the summary with its one wide
+ *     button, and four disclosures whose rows carry a box in the mark slot,
+ *     the name and its rule at B, and the size in the figure column.
+ *
+ * ✒ Key Features:
+ *     - The head reuses .insp-title, .insp-kind and .insp-name, and
+ *       Preview's "in <folder>" button for the way up
+ *     - The body scrolls inside the panel and draws its focus ring inside
+ *       its edge
+ *     - A row's box is the Guide setting's check box, 14 px, in the mark
+ *       slot at A; the text at B; the figure in the mono column
+ *     - A row left out turns to the third text colour with a "left out"
+ *       tag in the tight capitals; nothing is struck through
+ *     - Notes at A; group heads as the ledger's disclosures
+ *     - Buttons keep one line; nothing moves under reduced motion
+ *
+ * ✒ Other Important Information:
+ *     - Dependencies: tokens.css, base.css (the voices), controls.css
+ *       (.btn), ledger.css (.item, .rich), inspector.css (.insp-title),
+ *       preview.css (.pv-where); web/js/cleanup.js builds it
+ *     - Compatible platforms: current evergreen browsers
+ * ----------------------------------------------------------------------------
+ */
+
+/* ---------- the panel ---------- */
+
+#b-panel-cleanup { display: flex; flex-direction: column; min-height: 0; }
+.cl-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+}
+.cl-body:focus-visible { outline-offset: calc(var(--focus-offset) * -1); }
+.cl-body.is-waiting .cl-groups { opacity: 0.55; transition: opacity var(--dur-fast) var(--ease-out); }
+
+/* ---------- the head ---------- */
+
+.cl-widen { display: flex; flex-wrap: wrap; align-items: center; gap: 2px var(--s-2); }
+.cl-widen .pv-where { margin: 6px 0 0; }
+.cl-widen .cl-whole { margin-top: 6px; }
+.cl-facts {
+  margin: 6px 0 0;
+  color: var(--text-2);
+  font: 400 var(--fs-fig) / 1.45 var(--mono);
+  font-variant-numeric: tabular-nums;
+}
+.cl-facts .part { white-space: nowrap; }
+.cl-head .insp-name:focus-visible { outline-offset: var(--focus-offset); }
+
+/* Another folder selected: a slim bar under the head. */
+.cl-offer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-1) var(--s-2);
+  padding: var(--s-1) var(--gutter);
+  border-bottom: var(--border-2);
+  background: var(--mark-wash);
+  font: 500 var(--fs-fig) / 1.3 var(--mono);
+}
+.cl-offer-text { min-width: 0; overflow-wrap: anywhere; }
+
+.cl-state {
+  margin: 0;
+  padding: var(--s-2) var(--gutter);
+  border-bottom: var(--border-3);
+  color: var(--text-2);
+  font-size: var(--fs-row);
+  line-height: var(--lh-base);
+  text-wrap: pretty;
+}
+.cl-state.is-error { color: var(--danger); }
+
+/* ---------- the summary ---------- */
+
+.cl-summary { padding: var(--s-3) var(--gutter); border-bottom: var(--border-2); }
+.cl-sum {
+  margin: 0;
+  font: 700 var(--fs-lg) / 1.25 var(--sans);
+  font-stretch: 96%;
+  font-variant-numeric: tabular-nums;
+}
+.cl-sum:focus-visible { outline-offset: var(--focus-offset); }
+.cl-purge {
+  margin: 6px 0 var(--s-2);
+  color: var(--text-2);
+  font-size: var(--fs-row);
+  line-height: var(--lh-snug);
+  text-wrap: pretty;
+}
+.cl-move .btn.wide { justify-content: flex-start; width: 100%; white-space: nowrap; }
+.cl-under {
+  margin: 4px 0 0;
+  color: var(--text-3);
+  font: 400 var(--fs-xs) / 1.3 var(--mono);
+}
+
+/* ---------- the groups ---------- */
+
+.cl-groups { padding-bottom: var(--s-3); }
+/* Notes and actions inside a group stand at A, as the inspector's do. */
+.cl-groups .cl-note {
+  margin: 0;
+  padding: 6px var(--gutter) 8px;
+  color: var(--text-2);
+  font-size: var(--fs-row);
+  line-height: var(--lh-snug);
+  text-wrap: pretty;
+}
+.cl-groups .cl-actions { display: flex; flex-wrap: wrap; gap: 6px; padding: 2px var(--gutter) 10px; }
+.cl-groups .cl-actions .btn { white-space: nowrap; }
+.cl-switch { display: flex; flex-wrap: wrap; gap: 6px; padding: 0 var(--gutter) 8px; }
+.cl-switch .btn[aria-pressed='true'] { background-color: var(--mark-soft); }
+.cl-clean { padding-top: var(--s-2); }
+
+/* The list of names: a disclosure inside the group, its rows at A. */
+.cl-groups details.cl-names { margin: 0 0 6px; border-bottom: 0; }
+.cl-names > summary { height: var(--hit-min); }
+.cl-rules {
+  margin: 0;
+  padding: 2px var(--gutter) 8px;
+  list-style: none;
+  color: var(--text-2);
+  font-size: var(--fs-xs);
+  line-height: 1.45;
+}
+.cl-rules code { color: var(--text); font: 500 var(--fs-xs) / 1.45 var(--mono); }
+
+/* ---------- rows ---------- */
+
+.cl-list { margin: 0; padding: 0; list-style: none; }
+.cl-row { position: relative; }
+/* A row: the mark slot at A (the box, or the kept copy's check), its text at B. */
+#b-panel-cleanup .cl-item { padding-left: var(--gutter); }
+.cl-item .cl-mark { display: block; width: var(--mark-w); height: 1px; }
+.cl-row.is-kept .cl-mark { display: flex; align-self: start; justify-content: center; height: auto; margin-top: calc((1.25em - var(--icon-sm)) / 2); color: var(--text-2); }
+.cl-row.is-kept .cl-mark .icon { width: var(--icon-sm); height: var(--icon-sm); }
+.cl-item .cl-text { min-width: 0; }
+/* The path and rule wrap under the name rather than cut it. */
+.cl-item .path { white-space: normal; overflow-wrap: anywhere; text-overflow: clip; }
+/* Left out: the tag opens the path line, in the tight capitals. */
+.cl-tag { margin-right: 6px; color: var(--text-2); }
+.cl-box {
+  position: absolute;
+  top: calc(var(--row-pad-y) + (1.25em - 14px) / 2);
+  left: var(--gutter);
+  width: 14px;
+  height: 14px;
+  margin: 0;
+  accent-color: var(--ink);
+  font-size: var(--fs-row);
+  cursor: pointer;
+}
+.cl-row.is-out .nm, .cl-row.is-out .fig { color: var(--text-3); }
+
+/* The confirmation's list, by group. */
+.cl-confirm-list { margin: 0 0 var(--s-2); padding-left: 1.2em; font-size: var(--fs-row); line-height: 1.5; }
+
+@media (prefers-reduced-motion: reduce) {
+  .cl-body.is-waiting .cl-groups { transition: none; }
+}

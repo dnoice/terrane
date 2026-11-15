@@ -1,34 +1,26 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Feature Modules (Terrane Edition - v1.5)
+ *     - Title: Feature Modules (Terrane Edition - v1.6)
  *     - File Name: features.js
  *     - Relative Path: web/js/features.js
  *     - Artifact Type: javascript
- *     - Version: 1.5.0
- *     - Date: 11/14/2026
- *     - Update: Saturday, November 14, 2026
+ *     - Version: 1.6.0
+ *     - Date: 11/15/2026
+ *     - Update: Sunday, November 15, 2026
  *     - Author: Dennis 'dendogg' Smaltz
  *     - A.I. Acknowledgement: Anthropic - Claude Opus 5.5
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
  *
  * ✒ Changelog:
+ *     - 1.6.0 (11/15/2026) [dendogg + Anthropic - Claude Opus 5.5] —
+ *       Cleanup, the right panel's third tab (cleanup.js), after duplicate
+ *       cleanup.
  *     - 1.5.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] —
  *       Preview, panel B's second tab (preview.js), after the totals and
  *       quick searches.
  *     - 1.4.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
  *       flavors' palette commands, Flavor (flavors.js).
- *     - 1.3.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
- *       sixth to eighth, finding your way: the command palette, Ctrl+K
- *       (palette.js); the remembered view and links, a reload and an
- *       address coming back to a folder (resume.js); and the search
- *       history, saved searches and in: (searches.js). Then, looking
- *       before you act: Quick look, P (quicklook.js); the selection's
- *       total and the Survey's Quick searches (presets.js). Then, acting
- *       on many: the batch rename, F2 with several selected (batch.js);
- *       duplicate cleanup (dupes.js); and copy as (copyas.js). Then,
- *       getting things in and out: lists saved as CSV (exports.js);
- *       and a terminal opened in a folder (terminal.js).
  *     Earlier entries: see CHANGELOG.md
  *
  * ✒ Description:
@@ -66,13 +58,15 @@
  *     - Dependencies: the feature modules it lists: time.js, landmarks.js,
  *       traverse.js, strata.js, interior.js, palette.js, resume.js,
  *       searches.js, quicklook.js, presets.js, preview.js, batch.js,
- *       dupes.js, copyas.js, exports.js, terminal.js, flavors.js
+ *       dupes.js, cleanup.js, copyas.js, exports.js, terminal.js,
+ *       flavors.js
  *     - Registry entries a feature adds carry owner: '<feature>', so a
  *       check can tell them from the controller's own
  *     - Compatible platforms: any browser with ES2022 modules
  *     - Key allocation: I is Interiors; T , . < > are Time; B H J are
  *       Landmarks; P is Quick look's; Ctrl+K is the command palette's;
- *       Preview binds none (its keys act inside its pane);
+ *       Preview binds none (its keys act inside its pane); Cleanup binds
+ *       none (its keys act inside its tab);
  *       F2 with several selected is the batch rename's, through the
  *       controller's own F2; Session, Strata, the remembered view,
  *       searches, duplicate cleanup, copy as, the exports and the
@@ -94,10 +88,11 @@ import * as presets from './presets.js';
 import * as preview from './preview.js';
 import * as batch from './batch.js';
 import * as dupes from './dupes.js';
+import * as cleanup from './cleanup.js';
 import * as copyas from './copyas.js';
 import * as exportLists from './exports.js';
 import * as terminal from './terminal.js';
 import * as flavors from './flavors.js';
 
 /** Feature modules in install order. */
-export const FEATURES = [time, landmarks, traverse, strata, interior, palette, resume, searches, quicklook, presets, preview, batch, dupes, copyas, exportLists, terminal, flavors];
+export const FEATURES = [time, landmarks, traverse, strata, interior, palette, resume, searches, quicklook, presets, preview, batch, dupes, cleanup, copyas, exportLists, terminal, flavors];

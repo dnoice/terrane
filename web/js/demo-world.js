@@ -1,18 +1,23 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Demo World (Terrane Edition - v1.1)
+ *     - Title: Demo World (Terrane Edition - v1.2)
  *     - File Name: demo-world.js
  *     - Relative Path: web/js/demo-world.js
  *     - Artifact Type: javascript
- *     - Version: 1.1.0
- *     - Date: 11/14/2026
- *     - Update: Saturday, November 14, 2026
+ *     - Version: 1.2.0
+ *     - Date: 11/15/2026
+ *     - Update: Sunday, November 15, 2026
  *     - Author: Dennis 'dendogg' Smaltz
  *     - A.I. Acknowledgement: Anthropic - Claude Opus 5.5
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
  *
  * ✒ Changelog:
+ *     - 1.2.0 (11/15/2026) [dendogg + Anthropic - Claude Opus 5.5] — For
+ *       Cleanup, drawn last with fixed sizes and times so no seeded figure
+ *       moves: Downloads/old-export holding only .DS_Store, a build folder
+ *       of shed plans with no project file beside it, and npm's empty
+ *       .staging inside harbor-api's node_modules.
  *     - 1.1.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — A
  *       zip's listing is fitted to its file: the bulky entries are scaled
  *       so the packed bytes and the zip's own records add up to its size,
@@ -899,6 +904,21 @@ export function buildWorld({ now = Date.now(), seed = DEMO_SEED } = {}) {
     priv.err = 'EACCES';
     priv.mtime = ago(30 * DAY);
     F(root, 'Shared', 0, ago(200 * DAY), { link: 'Projects' });
+  }
+
+  /* ---- for Cleanup: fixed sizes and times, no random draw ---- */
+  // Drawn after every random choice above, with birth and content seed
+  // given, so every seeded figure before them is as it was.
+  {
+    // A folder holding only a hidden file: left alone, and counted.
+    const oldExport = D(dl, 'old-export', ago(400 * DAY));
+    F(oldExport, '.DS_Store', 6148, ago(400 * DAY), { birth: ago(400 * DAY), s: 0x0c1ea4 });
+    // A build of a shed, not of software: no project file beside it, so not a cache.
+    const plans = D(docs, 'Notes/build', ago(500 * DAY));
+    F(plans, 'shed-plans.pdf', 2.4 * MB, ago(500 * DAY), { birth: ago(500 * DAY), s: 0x0c1ea5 });
+    F(plans, 'materials-list.md', 3 * KB, ago(498 * DAY), { birth: ago(498 * DAY), s: 0x0c1ea6 });
+    // npm's empty staging folder inside node_modules: listed with it, never twice.
+    D(projects, 'harbor-api/node_modules/.staging', ago(40 * DAY));
   }
 
   /* ---- folder dates, from what they hold ---- */

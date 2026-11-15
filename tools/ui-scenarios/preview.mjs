@@ -1,18 +1,21 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Preview Scenarios (Terrane Edition - v1.1)
+ *     - Title: Preview Scenarios (Terrane Edition - v1.2)
  *     - File Name: preview.mjs
  *     - Relative Path: tools/ui-scenarios/preview.mjs
  *     - Artifact Type: test
- *     - Version: 1.1.0
- *     - Date: 11/14/2026
- *     - Update: Saturday, November 14, 2026
+ *     - Version: 1.2.0
+ *     - Date: 11/15/2026
+ *     - Update: Sunday, November 15, 2026
  *     - Author: Dennis 'dendogg' Smaltz
  *     - A.I. Acknowledgement: Anthropic - Claude Opus 5.5
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
  *
  * ✒ Changelog:
+ *     - 1.2.0 (11/15/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
+ *       strip reads Inspector, Preview, Cleanup: End reaches Cleanup, and
+ *       ArrowLeft from it comes back to Preview.
  *     - 1.1.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] —
  *       The right panel is named so: the palette details, what ] says
  *       and the Guide row read "right panel" where they read "Panel B".
@@ -217,9 +220,9 @@ const preview = {
       icons: [...document.querySelectorAll('#b-tabs [role=tab] use')].map((u) => u.getAttribute('href').split('#')[1]),
     }));
     const rawsAtStart = raws(t, 0);
-    t.check('panel B\'s strip reads Inspector, Preview, the Inspector chosen and drawn, each with its icon',
-      JSON.stringify(s0.tabs) === JSON.stringify(['inspector:Inspector:true', 'preview:Preview:false']) && s0.bTab === 'inspector' && s0.insp && s0.panel === true
-      && s0.label === 'Inspector views' && JSON.stringify(s0.icons) === JSON.stringify(['info', 'eye']), JSON.stringify(s0));
+    t.check('the right panel\'s strip reads Inspector, Preview, Cleanup, the Inspector chosen and drawn, each with its icon',
+      JSON.stringify(s0.tabs) === JSON.stringify(['inspector:Inspector:true', 'preview:Preview:false', 'cleanup:Cleanup:false']) && s0.bTab === 'inspector' && s0.insp && s0.panel === true
+      && s0.label === 'Inspector views' && JSON.stringify(s0.icons) === JSON.stringify(['info', 'eye', 'list-checks']), JSON.stringify(s0));
     t.check('nothing is read from a file before Preview is chosen', rawsAtStart.length === 0, JSON.stringify(rawsAtStart));
 
     // The palette's wrap command on a page where Preview was never chosen
@@ -256,12 +259,14 @@ const preview = {
     t.check('Home on the strip chooses the first tab and leaves the eye where it was (no flight to the overview)',
       r2.focus === 'inspector' && !r2.flight && !eye1.flight && eye1.focus === eye0.focus && eye1.cam === eye0.cam, JSON.stringify({ r2, eye0, eye1 }));
     await t.key('End');
-    const r3 = await t.waitFor((T) => T.S.bTab === 'preview' && document.activeElement?.dataset?.btab === 'preview', { what: 'End to Preview' }).catch(() => false);
+    const r3 = await t.waitFor((T) => T.S.bTab === 'cleanup' && document.activeElement?.dataset?.btab === 'cleanup', { what: 'End to Cleanup' }).catch(() => false);
     await t.key('ArrowRight');
     const r4 = await t.waitFor((T) => T.S.bTab === 'inspector' && document.activeElement?.dataset?.btab === 'inspector', { what: 'ArrowRight wrapping' }).catch(() => false);
     await t.key('ArrowLeft');
-    const r5 = await t.waitFor((T) => T.S.bTab === 'preview', { what: 'ArrowLeft wrapping' }).catch(() => false);
-    t.check('End chooses the last tab, and ArrowRight and ArrowLeft wrap', !!r3 && !!r4 && !!r5);
+    const r5 = await t.waitFor((T) => T.S.bTab === 'cleanup', { what: 'ArrowLeft wrapping' }).catch(() => false);
+    await t.key('ArrowLeft');
+    const r6 = await t.waitFor((T) => T.S.bTab === 'preview', { what: 'ArrowLeft to Preview' }).catch(() => false);
+    t.check('End chooses the last tab, Cleanup, and ArrowRight and ArrowLeft wrap', !!r3 && !!r4 && !!r5 && !!r6);
 
     // A reload keeps Preview.
     await t.reload();
