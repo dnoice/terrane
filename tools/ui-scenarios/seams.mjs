@@ -1,18 +1,23 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Controller Seams Scenario (Terrane Edition - v1.12)
+ *     - Title: Controller Seams Scenario (Terrane Edition - v1.13)
  *     - File Name: seams.mjs
  *     - Relative Path: tools/ui-scenarios/seams.mjs
  *     - Artifact Type: test
- *     - Version: 1.12.0
- *     - Date: 11/14/2026
- *     - Update: Saturday, November 14, 2026
+ *     - Version: 1.13.0
+ *     - Date: 11/15/2026
+ *     - Update: Sunday, November 15, 2026
  *     - Author: Dennis 'dendogg' Smaltz
  *     - A.I. Acknowledgement: Anthropic - Claude Opus 5.5
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
  *
  * ✒ Changelog:
+ *     - 1.13.0 (11/15/2026) [dendogg + Anthropic - Claude Opus 5.5] — K
+ *       is the Shelf's in the key allocation. A registered B tab with a
+ *       count draws it on its label, and drawBTabCounts changes it in
+ *       place with focus kept on the tab's button; one with a drop is a
+ *       drop target that refuses what refuse() names; api.place exists.
  *     - 1.12.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] —
  *       The Guide row for [ and ] reads "Hide ledger / right panel".
  *     - 1.11.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] —
@@ -149,7 +154,7 @@ const READING = [
 const OWNERS = {
   w: 'viewport', a: 'viewport', s: 'viewport', d: 'viewport', q: 'viewport', e: 'viewport', r: 'viewport', f: 'viewport',
   i: 'interiors', t: 'time', ',': 'time', '.': 'time', '<': 'time', '>': 'time', b: 'landmarks', h: 'landmarks', j: 'landmarks',
-  p: 'quicklook',
+  p: 'quicklook', k: 'shelf',
 };
 
 const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
@@ -240,7 +245,7 @@ export default {
       g1regs.every((n) => ids[n].length === 0), JSON.stringify(g1regs.map((n) => ids[n])));
     t.check('the batch rename, the inspector\'s sections for several and the duplicate groups\' additions hold no controller entry',
       !ids.RENAME_MANY.length && !ids.DUP_GROUP.length && !ids.many.length, JSON.stringify([ids.RENAME_MANY, ids.DUP_GROUP, ids.many]));
-    t.check('the key allocation is fixed: I Interiors, T , . < > Time, B H J Landmarks, P Quick look, the canvas keeps W A S D Q E R F',
+    t.check('the key allocation is fixed: I Interiors, T , . < > Time, B H J Landmarks, P Quick look, K the Shelf, the canvas keeps W A S D Q E R F',
       same(start.owners, OWNERS) && start.ownersFrozen, JSON.stringify(start.owners));
     t.check('the tab buttons are made from TABS, Contents selected', same(start.tabs, ['contents:Contents:true', 'findings:Findings:false', 'survey:Survey:false', 'journal:Journal:false']), JSON.stringify(start.tabs));
     t.check('panel B\'s strip is made from B_TABS, the Inspector first and chosen', same(start.bTabs, ['inspector:Inspector:true']) && start.bTab === 'inspector', JSON.stringify([start.bTabs, start.bTab]));
@@ -482,8 +487,12 @@ export default {
     await t.app((T) => {
       const a = T.api;
       window.__seamB = { shown: 0, hidden: 0, mounted: 0, focus: [] };
+      window.__seamB.count = 3;
+      window.__seamB.took = [];
       a.B_TABS.add({
         id: 'seam-b', owner: 'seams', order: 10, label: 'Seam B', icon: 'eye',
+        count: () => window.__seamB.count,
+        drop: { refuse: (nodes) => (nodes.some((n) => n.d) ? 'no folders here' : null), take: (nodes) => { window.__seamB.took.push(nodes.map((n) => n.n)); } },
         mount: (host) => { window.__seamB.mounted++; host.append(a.el('p', { class: 'note seam-b-note', text: 'Drawn by a registered panel B tab.' })); },
         show: (host, { focus }) => { window.__seamB.shown++; window.__seamB.focus.push(!!focus); },
         hide: () => { window.__seamB.hidden++; },
@@ -499,6 +508,43 @@ export default {
     }));
     t.check('a registered B tab gets its button right after the Inspector\'s, and a hidden panel of its own',
       bReg.ids[0] === 'inspector' && bReg.ids[1] === 'seam-b' && bReg.panel && bReg.hidden && bReg.labelled === 'b-tab-seam-b' && bReg.controls === 'b-panel-seam-b' && bReg.shown === 0, JSON.stringify(bReg));
+    // A count on its label, changed in place with focus kept; a drop that refuses folders.
+    const bCount = await t.app((T) => {
+      const a = T.api;
+      const b = document.getElementById('b-tab-seam-b');
+      const first = b.querySelector('.count')?.textContent ?? null;
+      b.focus();
+      window.__seamB.count = 1234;
+      a.drawBTabCounts();
+      const same = document.getElementById('b-tab-seam-b') === b;
+      const changed = b.querySelector('.count')?.textContent ?? null;
+      window.__seamB.count = 0;
+      a.drawBTabCounts();
+      const gone = !b.querySelector('.count');
+      window.__seamB.count = 3;
+      a.drawBTabCounts();
+      const drag = (nodes) => {
+        T.S.drag = nodes;
+        const dt = new DataTransfer();
+        const over = new DragEvent('dragover', { bubbles: true, cancelable: true, dataTransfer: dt });
+        b.dispatchEvent(over);
+        const marked = b.classList.contains('is-drop');
+        b.dispatchEvent(new DragEvent('drop', { bubbles: true, cancelable: true, dataTransfer: dt }));
+        T.S.drag = null;
+        return { taken: over.defaultPrevented, marked };
+      };
+      const file = T.S.model.root.c.find((c) => !c.d);
+      const dir = T.S.model.root.c.find((c) => c.d);
+      return {
+        first, changed, same, gone, focus: document.activeElement === b, place: typeof a.place, counts: typeof a.drawBTabCounts,
+        file: drag([file]), dir: drag([dir]), took: window.__seamB.took,
+      };
+    });
+    t.check(`a B tab's count() is drawn on its label (${bCount.first}); drawBTabCounts changes it in place (${bCount.changed}) and removes it at 0, focus kept on the tab`,
+      bCount.first === '3' && bCount.changed === '1,234' && bCount.same && bCount.gone && bCount.focus, JSON.stringify(bCount));
+    t.check('a B tab with a drop takes the rows its refuse() allows, marked while they are over it, and refuses the rest',
+      bCount.file.taken && bCount.file.marked && !bCount.dir.taken && !bCount.dir.marked && bCount.took.length === 1, JSON.stringify(bCount));
+    t.check('the api offers place() and drawBTabCounts()', bCount.place === 'function' && bCount.counts === 'function');
     await t.tabTo('#b-tabs [data-btab=seam-b]', { max: 120 });
     await t.key('Enter');
     const bShown = await t.waitFor((T) => T.S.bTab === 'seam-b' && {

@@ -1,11 +1,11 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Terrane Application (Terrane Edition - v1.21)
+ *     - Title: Terrane Application (Terrane Edition - v1.22)
  *     - File Name: app.js
  *     - Relative Path: web/js/app.js
  *     - Artifact Type: javascript
- *     - Version: 1.21.0
+ *     - Version: 1.22.0
  *     - Date: 11/15/2026
  *     - Update: Sunday, November 15, 2026
  *     - Author: Dennis 'dendogg' Smaltz
@@ -13,6 +13,10 @@
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
  *
  * ✒ Changelog:
+ *     - 1.22.0 (11/15/2026) [dendogg + Anthropic - Claude Opus 5.5] — For
+ *       the Shelf: K is the Shelf's; a right-panel tab may carry a count
+ *       and take dragged rows (drawBTabCounts); api.place starts placing;
+ *       rows drag where nothing moves, but only to the Shelf's tab.
  *     - 1.21.0 (11/15/2026) [dendogg + Anthropic - Claude Opus 5.5] —
  *       The api offers verifyDuplicates for the Cleanup tab. Verify by
  *       content keeps what it proved by path in whole-tree mode too, so a
@@ -22,10 +26,6 @@
  *       kind's mass colour, washed when hidden; TONE_STEPS comes from
  *       theme.js. A child folder is where you are once it spans half the
  *       view.
- *     - 1.19.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] —
- *       The right panel is called the right panel: ] is labelled "Hide or
- *       show the right panel" and says so; the Guide's row reads "Hide
- *       ledger / right panel".
  *     Earlier entries: see CHANGELOG.md
  *
  * ✒ Description:
@@ -118,7 +118,8 @@
  *     - Instruments over the world: a north arrow that turns with the
  *       camera and back to north on a click, and a storage scale
  *     - Panel B's tab strip (B_TABS): the Inspector first and the
- *       default, a feature's tabs beside it, each with a panel of its own;
+ *       default, a feature's tabs beside it, each with a panel of its own
+ *       and, when it asks, a count on its label and rows dragged onto it;
  *       the chosen tab kept in this browser; a tab not shown (another
  *       chosen, ] or a closed drawer) does no work, the Inspector included
  *     - Both tab strips take the arrows, Home and End themselves, the tab
@@ -299,8 +300,8 @@ function runHooks(reg, ...args) {
 /**
  * The fixed key allocation for plain keys (no Ctrl, Cmd or Alt). A
  * reserved key is refused to any entry whose owner is not its owner. The
- * canvas keeps its travel keys; P is Quick look's; Session and Strata have
- * no keys.
+ * canvas keeps its travel keys; P is Quick look's; K is the Shelf's;
+ * Session and Strata have no keys.
  */
 const KEY_OWNERS = Object.freeze({
   w: 'viewport', a: 'viewport', s: 'viewport', d: 'viewport', q: 'viewport', e: 'viewport', r: 'viewport', f: 'viewport',
@@ -308,6 +309,7 @@ const KEY_OWNERS = Object.freeze({
   t: 'time', ',': 'time', '.': 'time', '<': 'time', '>': 'time',
   b: 'landmarks', h: 'landmarks', j: 'landmarks',
   p: 'quicklook',
+  k: 'shelf',
 });
 const keyName = (k) => (k.length === 1 ? k.toLowerCase() : k);
 
@@ -1616,6 +1618,9 @@ function regionPins() {
   for (const b of S.places?.benchmarks || []) if (b.node) add(b.node);
   if (S.places?.ret && S.regions) add(S.regions.nearest(S.places.ret.rel));
   if (S.interior) add(S.interior.host.p);
+  // What is being placed keeps its regions while a ledger click changes
+  // the selection mid-placing (the Shelf's Move to… selects its items first).
+  if (S.placing) for (const n of S.placing.nodes) add(n.d ? n : n.p);
   return pins;
 }
 
@@ -3379,9 +3384,18 @@ function drawAll() {
   }
 }
 
+/**
+ * Whether the rows being dragged can be moved or copied: the service
+ * takes changes and every row is a node held. A row may be dragged where
+ * nothing can be moved (read-only and snapshot modes, a warm start, a
+ * region-mode ref), for the Shelf's tab only; a folder is never offered
+ * as a drop target then, so such a drop never reaches runOp.
+ */
+const dragMoves = () => !writable() && !!S.drag?.length && !S.drag.some((n) => n.ref);
+
 function dropTarget(node, target) {
   target.addEventListener('dragover', (e) => {
-    if (!S.drag || destinationProblem('move', S.drag, node)) return;
+    if (!dragMoves() || destinationProblem('move', S.drag, node)) return;
     e.preventDefault();
     e.dataTransfer.dropEffect = e.ctrlKey ? 'copy' : 'move';
     target.classList.add('is-drop');
@@ -3390,7 +3404,7 @@ function dropTarget(node, target) {
   target.addEventListener('drop', (e) => {
     e.preventDefault();
     target.classList.remove('is-drop');
-    if (S.drag) transfer(e.ctrlKey ? 'copy' : 'move', S.drag, node);
+    if (dragMoves()) transfer(e.ctrlKey ? 'copy' : 'move', S.drag, node);
   });
 }
 
@@ -3422,7 +3436,7 @@ function rowFor(node, { showPath = false, total } = {}) {
   const mark = S.interior?.rowMark(node);
   const cls = (node.d ? (node.e ? 'swatch is-sealed' : kids(node) ? 'swatch is-dir' : 'swatch is-empty') : 'swatch') + (crossed ? ' is-crossed' : '') + (mark ? ` ${mark.cls}` : '');
   const share = total ? Math.max(0, Math.min(1, node.s / total)) : 0;
-  const row = el('div', { class: `row${S.sel.has(node) ? ' is-selected' : ''}`, draggable: node.p && !node.ref && !writable() && !hostOf(node) ? 'true' : null, 'aria-selected': S.sel.has(node) ? 'true' : 'false', title: showPath ? relPath(node) : node.n },
+  const row = el('div', { class: `row${S.sel.has(node) ? ' is-selected' : ''}`, draggable: node.p && !hostOf(node) ? 'true' : null, 'aria-selected': S.sel.has(node) ? 'true' : 'false', title: showPath ? relPath(node) : node.n },
     el('span', { class: cls, style: node.d ? null : { background: cssHex(KINDS[node.k].color) } }),
     el('span', { class: 'row-name' }, node.n, node.d ? el('small', { text: node.e ? node.e : fmtCount(node.fc) }) : showPath ? el('small', { text: relPath(node.p) || '/' }) : null,
       crossed ? el('span', { class: 'sr', text: `, changed since ${S.time.date}` }) : null, mark ? el('span', { class: 'sr', text: mark.sr }) : null),
@@ -4624,7 +4638,7 @@ function wireViewport() {
     menuFor(node, e.clientX, e.clientY);
   };
   canvas.addEventListener('dragover', (e) => {
-    if (!S.drag) return;
+    if (!dragMoves()) return;
     const i = v.pick(e.clientX, e.clientY);
     const node = i >= 0 ? S.layout.node[i] : null;
     const dest = node && (node.d ? node : node.p);
@@ -4638,7 +4652,7 @@ function wireViewport() {
     e.preventDefault();
     const i = v.pick(e.clientX, e.clientY);
     const node = i >= 0 ? S.layout.node[i] : null;
-    if (node && S.drag) transfer(e.ctrlKey ? 'copy' : 'move', S.drag, node.d ? node : node.p);
+    if (node && dragMoves()) transfer(e.ctrlKey ? 'copy' : 'move', S.drag, node.d ? node : node.p);
   });
 }
 
@@ -4735,11 +4749,16 @@ function fitBTabs() {
  */
 function drawBTabs() {
   const tabs = [...B_TABS];
-  $('b-tabs').replaceChildren(...tabs.map((tab) => el('button', {
-    role: 'tab', type: 'button', id: `b-tab-${tab.id}`, 'data-btab': tab.id, 'aria-controls': panelOf(tab.id)?.id || `b-panel-${tab.id}`,
-    'aria-selected': String(tab.id === S.bTab), title: tab.title || tab.label,
-    onclick: () => chooseBTab(tab.id),
-  }, tabIcon(tab), tabLabel(tab))));
+  $('b-tabs').replaceChildren(...tabs.map((tab) => {
+    const n = bCount(tab);
+    const b = el('button', {
+      role: 'tab', type: 'button', id: `b-tab-${tab.id}`, 'data-btab': tab.id, 'aria-controls': panelOf(tab.id)?.id || `b-panel-${tab.id}`,
+      'aria-selected': String(tab.id === S.bTab), title: tab.title || tab.label,
+      onclick: () => chooseBTab(tab.id),
+    }, tabIcon(tab), tabLabel(tab), n ? el('span', { class: 'count', text: fmtCount(n) }) : null);
+    if (tab.drop) bDrop(tab, b);
+    return b;
+  }));
   let after = $('inspector-body');
   const keep = new Set();
   for (const tab of tabs) {
@@ -4756,6 +4775,68 @@ function drawBTabs() {
   if (!B_TABS.get(S.bTab)) chooseBTab('inspector', { remember: false });
   fitBTabs();
   requestAnimationFrame(slideIndicators);
+}
+
+/** A B_TABS entry's count(): a number above 0, else null; one that throws counts nothing. */
+function bCount(tab) {
+  const n = typeof tab.count === 'function' ? bCall(tab, 'count') : null;
+  return typeof n === 'number' && Number.isFinite(n) && n > 0 ? n : null;
+}
+
+/**
+ * Makes a tab button a drop target for rows dragged from the ledger, for a
+ * B_TABS entry with drop { refuse(nodes), take(nodes) }: refuse returns
+ * null when the rows can be taken, else why not. Why here: the strip is the
+ * controller's DOM, built again by drawBTabs, so a module cannot keep
+ * listeners on its buttons.
+ */
+function bDrop(tab, b) {
+  const ok = () => {
+    if (!S.drag?.length) return false;
+    try {
+      return tab.drop.refuse?.(S.drag) == null;
+    } catch (err) {
+      console.error(`B_TABS "${tab.id}" drop.refuse failed:`, err);
+      return false;
+    }
+  };
+  b.addEventListener('dragover', (e) => {
+    if (!ok()) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'copy';
+    b.classList.add('is-drop');
+  });
+  b.addEventListener('dragleave', () => b.classList.remove('is-drop'));
+  b.addEventListener('drop', (e) => {
+    b.classList.remove('is-drop');
+    if (!ok()) return;
+    e.preventDefault();
+    try {
+      tab.drop.take?.(S.drag);
+    } catch (err) {
+      console.error(`B_TABS "${tab.id}" drop.take failed:`, err);
+    }
+  });
+}
+
+/**
+ * Each tab's count() read again and its figure made, changed or removed
+ * in place: no button is built again, so focus on the strip stays. The
+ * strip is fitted again, since a figure takes room.
+ */
+function drawBTabCounts() {
+  for (const b of $('b-tabs').querySelectorAll('[role=tab]')) {
+    const tab = B_TABS.get(b.dataset.btab);
+    if (!tab) continue;
+    const n = bCount(tab);
+    let span = b.querySelector(':scope > .count');
+    if (!n) span?.remove();
+    else if (!span) {
+      span = el('span', { class: 'count', text: fmtCount(n) });
+      b.append(span);
+    } else if (span.textContent !== fmtCount(n)) span.textContent = fmtCount(n);
+  }
+  fitBTabs();
 }
 
 /**
@@ -5295,6 +5376,13 @@ const API = Object.freeze({
   // opened first when hidden; focus: true puts focus in it), and whether
   // a tab is on screen now.
   drawBTabs, showBTab, bTabShown,
+  // The figures on the strip's tabs (count()) drawn again in place, focus kept.
+  drawBTabCounts,
+  // Placing (Move to… and Copy to…) started on nodes: the bar, the world's
+  // and the ledger's clicks, and Escape at 20. Why here: placing is the
+  // controller's state (S.placing, #placing), which a module cannot drive
+  // through the api; the Shelf's Move to… and Copy to… start it.
+  place: (type, nodes) => startPlacing(type, nodes),
   // A folder's bytes by kind under a head of the caller's words, and its
   // held children in Contents' order.
   composition, contentsOrder,

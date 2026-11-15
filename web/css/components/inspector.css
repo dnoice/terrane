@@ -1,18 +1,22 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Inspector (Terrane Edition - v1.3)
+ *     - Title: Inspector (Terrane Edition - v1.4)
  *     - File Name: inspector.css
  *     - Relative Path: web/css/components/inspector.css
  *     - Artifact Type: stylesheet
- *     - Version: 1.3.0
- *     - Date: 11/14/2026
- *     - Update: Saturday, November 14, 2026
+ *     - Version: 1.4.0
+ *     - Date: 11/15/2026
+ *     - Update: Sunday, November 15, 2026
  *     - Author: Dennis 'dendogg' Smaltz
  *     - A.I. Acknowledgement: Anthropic - Claude Opus 5.5
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
  *
  * ✒ Changelog:
+ *     - 1.4.0 (11/15/2026) [dendogg + Anthropic - Claude Opus 5.5] — A
+ *       right-panel tab that takes dragged rows (the Shelf) is marked
+ *       while they are over it (.is-drop); a crowded strip keeps each
+ *       tab's count beside its icon.
  *     - 1.3.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — Panel
  *       B's tab strip (#b-tabs, drawn as the ledger's): once a label no
  *       longer fits (data-crowded), only the chosen tab keeps its words.
@@ -23,13 +27,6 @@
  *       the path breaks after a slash, Copy on its first line; the key and
  *       item lists on the columns; actions in one column at 300 px or
  *       narrower.
- *     - 1.1.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] —
- *       The Reading the world glyphs take plaster, clay and mass from
- *       tokens.css instead of raw colours; .actions-why, the line that
- *       says why actions are unavailable. A fact's two-line label keeps
- *       its lines together; a path fills each line of its block instead
- *       of breaking ragged at its hyphens; sizes come from the type
- *       scale.
  *     Earlier entries: see CHANGELOG.md
  *
  * ✒ Description:
@@ -73,6 +70,10 @@
   clip-path: inset(50%);
   white-space: nowrap;
 }
+/* Only the label goes: a tab's count (the Shelf's items) stays beside its icon. */
+#b-tabs[data-crowded] button .count { flex: none; }
+/* A tab that takes rows dragged from the ledger, while they are over it. */
+#b-tabs button.is-drop { background-color: var(--mark-wash); box-shadow: inset 0 0 0 2px var(--ink); color: var(--text); }
 
 #inspector-body.is-entering > * {
   animation: fade-up var(--dur-base) var(--ease-out-expo) both;

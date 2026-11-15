@@ -1,11 +1,11 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Cleanup (Terrane Edition - v1.0)
+ *     - Title: Cleanup (Terrane Edition - v1.1)
  *     - File Name: cleanup.js
  *     - Relative Path: web/js/cleanup.js
  *     - Artifact Type: javascript
- *     - Version: 1.0.0
+ *     - Version: 1.1.0
  *     - Date: 11/15/2026
  *     - Update: Sunday, November 15, 2026
  *     - Author: Dennis 'dendogg' Smaltz
@@ -13,6 +13,9 @@
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
  *
  * ✒ Changelog:
+ *     - 1.1.0 (11/15/2026) [dendogg + Anthropic - Claude Opus 5.5] — K on
+ *       a row puts its item on the Shelf, or takes it off, through the
+ *       Shelf's own key entry.
  *     - 1.0.0 (11/15/2026) [dendogg + Anthropic - Claude Opus 5.5] —
  *       Initial release. After the review: a sampled set says probable on
  *       its rows, its note and the confirmation; in region mode the folder
@@ -47,8 +50,8 @@
  *       oldest), big and stale files, caches and build output from the
  *       fixed list, empty folders with the hidden-file rule stated
  *     - Rows select and frame their item in the world and the ledger;
- *       ↑ ↓ Home End move, Space leaves out or puts back, Enter frames;
- *       every total updates in place and nothing reorders until a refresh
+ *       ↑ ↓ Home End move, Space leaves out or puts back, Enter frames,
+ *       K puts the item on the Shelf; every total updates in place and nothing reorders until a refresh
  *     - One confirmation, the copies read again first, then one removal to
  *       the holding area (runOp, type trash) with its Undo; the totals
  *       refresh and what was left out stays left out
@@ -834,6 +837,13 @@ export function install(api) {
     } else if (e.key === 'Enter') {
       const li = btn.closest('li');
       if (li.cl) frameItem(li.cl.it);
+    } else if (e.key === 'k' || e.key === 'K') {
+      // The Shelf's K, run on the row's item: its node, or a ref by its path.
+      const it = btn.closest('li').cl?.it;
+      const shelf = api.KEYS.get('shelf');
+      if (!it || !shelf) return;
+      const held = it.node || (typeof it.x === 'object' ? it.x : null);
+      shelf.run({ node: held || { ref: true, rel: it.rel, n: it.name, d: !!it.d, s: it.s, m: it.m, p: { ref: true, d: true, rel: '', p: null } } });
     } else return;
     e.preventDefault();
     e.stopPropagation();

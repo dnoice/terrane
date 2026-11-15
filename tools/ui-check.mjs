@@ -2,18 +2,22 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Interface Check (Terrane Edition - v1.7)
+ *     - Title: Interface Check (Terrane Edition - v1.8)
  *     - File Name: ui-check.mjs
  *     - Relative Path: tools/ui-check.mjs
  *     - Artifact Type: test
- *     - Version: 1.7.0
- *     - Date: 11/14/2026
- *     - Update: Saturday, November 14, 2026
+ *     - Version: 1.8.0
+ *     - Date: 11/15/2026
+ *     - Update: Sunday, November 15, 2026
  *     - Author: Dennis 'dendogg' Smaltz
  *     - A.I. Acknowledgement: Anthropic - Claude Opus 5.5
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
  *
  * ✒ Changelog:
+ *     - 1.8.0 (11/15/2026) [dendogg + Anthropic - Claude Opus 5.5] — A
+ *       tab's first page also forgets the Shelf (the keys starting
+ *       terrane.shelf.), so no scenario starts with another's items on
+ *       the right panel's strip.
  *     - 1.7.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — A
  *       tab's first page also forgets panel B's chosen tab
  *       (terrane.panel-b-tab) and Preview's wrap (terrane.preview-wrap),
@@ -98,7 +102,7 @@
  *     - Pages open with single-key shortcuts turned on (the guide's
  *       setting), so a scenario's letter keys act wherever focus is
  *     - A tab's first page starts with no kept view, no search history,
- *       the Inspector as panel B's tab and Preview's lines wrapped; a
+ *       an empty Shelf, the Inspector as panel B's tab and Preview's lines wrapped; a
  *       reload in the same tab keeps them, as for a person
  *     - Per-feature scenario files in tools/ui-scenarios/, each a module
  *       whose default export is one scenario or a list of them
@@ -539,14 +543,14 @@ class Page {
     // The page starts with single-key shortcuts off; scenarios press letters
     // wherever focus happens to be, so turn them on as the guide's setting
     // does. The hardening scenario clears it to check the default.
-    // A tab's first page also forgets the kept view, the searches, panel
-    // B's chosen tab and Preview's wrap, so every scenario starts fresh
+    // A tab's first page also forgets the kept view, the searches, the
+    // Shelf, panel B's chosen tab and Preview's wrap, so every scenario starts fresh
     // (on the Inspector), while a reload in it brings them back.
     await page.send('Page.addScriptToEvaluateOnNewDocument', {
       source: [
         "try { localStorage.setItem('terrane.single-keys', 'everywhere'); } catch {}",
         "try { if (!sessionStorage.getItem('terrane.check.opened')) { sessionStorage.setItem('terrane.check.opened', '1');",
-        "for (const k of Object.keys(localStorage)) if (k.startsWith('terrane.view.') || k.startsWith('terrane.searches.')",
+        "for (const k of Object.keys(localStorage)) if (k.startsWith('terrane.view.') || k.startsWith('terrane.searches.') || k.startsWith('terrane.shelf.')",
         "|| k === 'terrane.panel-b-tab' || k === 'terrane.preview-wrap') localStorage.removeItem(k); } } catch {}",
       ].join(' '),
     });

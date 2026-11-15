@@ -1,11 +1,11 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Polish Scenario (Terrane Edition - v1.3)
+ *     - Title: Polish Scenario (Terrane Edition - v1.4)
  *     - File Name: polish.mjs
  *     - Relative Path: tools/ui-scenarios/polish.mjs
  *     - Artifact Type: test
- *     - Version: 1.3.0
+ *     - Version: 1.4.0
  *     - Date: 11/15/2026
  *     - Update: Sunday, November 15, 2026
  *     - Author: Dennis 'dendogg' Smaltz
@@ -13,6 +13,11 @@
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
  *
  * ✒ Changelog:
+ *     - 1.4.0 (11/15/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
+ *       Shelf's poses: five items, one no longer there, at 1600 and 1280,
+ *       and the drawer at 800; C8 measures its kind words, name, facts,
+ *       notes and lines at A, each row's swatch in the A slot and its
+ *       text at B.
  *     - 1.3.0 (11/15/2026) [dendogg + Anthropic - Claude Opus 5.5] —
  *       Cleanup's poses: the demo root with Big and stale open at 1600 and
  *       1280, and the drawer at 800; C8 measures its kind words, name,
@@ -490,6 +495,20 @@ function INSTALL() {
           at('Cleanup row text (B)', textLeft(r.querySelector('.nm')), 32, I, r);
         }
       }
+      // The Shelf (the right panel's fourth tab): the inspector's grid, its
+      // rows as the inspector's items, the swatch in the mark slot at A.
+      const SH = one('#b-panel-shelf');
+      if (I && shown(SH) && one('#inspector').getBoundingClientRect().left < innerWidth - 10) {
+        for (const k of $('#b-panel-shelf .insp-kind')) at('Shelf kind words (A)', textLeft(k), 12, I, k);
+        for (const e of $('#b-panel-shelf .insp-name, #b-panel-shelf .sh-facts, #b-panel-shelf .sh-kept, #b-panel-shelf .sh-state-text, #b-panel-shelf .actions-why, #b-panel-shelf .sh-note').filter(shown).slice(0, 30)) {
+          at('Shelf text and notes (A)', textLeft(e), 12, I, e);
+        }
+        for (const r of $('#b-panel-shelf .sh-row').filter(shown).slice(0, 12)) {
+          const sw = r.querySelector('.swatch');
+          if (sw && shown(sw)) mark('Shelf row swatch (A slot)', sw, 12, I);
+          at('Shelf row text (B)', textLeft(r.querySelector('.nm')), 32, I, r);
+        }
+      }
       const first = one('#block .cell');
       if (L && innerWidth >= 1101 && shown(first)) test('C8', Math.abs(R(first).right - R(one('#ledger')).right) <= 0.5, { at: 'first cell = ledger', cell: r2(R(first).right), ledger: r2(R(one('#ledger')).right) });
       const status = one('#status-label');
@@ -669,6 +688,37 @@ async function inCleanup(t) {
   });
 }
 
+/** The demo's paths the Shelf's poses hold, one of them nowhere. */
+const SHELF_RELS = [['Projects/harbor-api/README.md', 0], [COMPONENTS, 1], ['Downloads/invoice-2026-02.pdf', 0], ['Documents/Recipes', 1], ['Projects/harbor-api/gone-since.txt', 0]];
+
+/**
+ * The right panel on the Shelf with five items, one no longer there,
+ * written to its storage and merged in as another tab's would be
+ * (showing it opens the drawer at 800 px).
+ */
+async function inShelf(t) {
+  await t.app((T, rels) => {
+    const key = `terrane.shelf.v1|${T.S.info.root}`;
+    const now = Date.now();
+    localStorage.setItem(key, JSON.stringify({ format: 1, items: rels.map(([rel, d], i) => ({ rel, d, s: 1000 * (i + 1) ** 3, m: now - i * 86400000, at: now - i })) }));
+    window.dispatchEvent(new StorageEvent('storage', { key }));
+    T.api.showBTab('shelf');
+    return true;
+  }, SHELF_RELS);
+  await t.waitFor(() => document.querySelectorAll('#b-panel-shelf .sh-row').length === 5 && !!document.querySelector('#b-panel-shelf .sh-row.is-gone'), { what: 'the Shelf with five items' });
+}
+
+/** The Shelf emptied again, as another tab's clear would, so no other pose carries its count. */
+async function leaveShelf(t) {
+  await t.app((T) => {
+    const key = `terrane.shelf.v1|${T.S.info.root}`;
+    localStorage.removeItem(key);
+    window.dispatchEvent(new StorageEvent('storage', { key }));
+    return true;
+  });
+  await t.waitFor(() => !document.querySelector('#b-tab-shelf .count'), { what: 'the Shelf emptied' });
+}
+
 /** Panel B on Preview, drawn whole for name (showing it opens the drawer at 800 px). */
 async function inPreview(t, name) {
   await t.app((T) => { T.api.showBTab('preview'); return true; });
@@ -721,6 +771,17 @@ const POSES = [
     },
   },
   { id: 'P24', name: 'Cleanup on the root, Big and stale open', at: '', small: 'skip', buttons: true, setup: inCleanup },
+  { id: 'P25', name: 'the Shelf, five items, one no longer there', at: '', small: 'skip', buttons: true, setup: inShelf, after: leaveShelf },
+  {
+    id: 'P18e', name: 'drawer on the Shelf', at: '', small: 'only', buttons: true, drawer: true, setup: async (t) => {
+      await inShelf(t);
+      await drawerOpen(t);
+    },
+    after: async (t) => {
+      await leaveShelf(t);
+      await listKey(t, ']');
+    },
+  },
   {
     id: 'P18d', name: 'drawer on Cleanup', at: '', small: 'only', buttons: true, drawer: true, setup: async (t) => {
       await inCleanup(t);

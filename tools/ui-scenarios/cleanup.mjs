@@ -1,11 +1,11 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Cleanup Scenarios (Terrane Edition - v1.0)
+ *     - Title: Cleanup Scenarios (Terrane Edition - v1.1)
  *     - File Name: cleanup.mjs
  *     - Relative Path: tools/ui-scenarios/cleanup.mjs
  *     - Artifact Type: test
- *     - Version: 1.0.0
+ *     - Version: 1.1.0
  *     - Date: 11/15/2026
  *     - Update: Sunday, November 15, 2026
  *     - Author: Dennis 'dendogg' Smaltz
@@ -13,6 +13,9 @@
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
  *
  * ✒ Changelog:
+ *     - 1.1.0 (11/15/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
+ *       strip reads Inspector, Preview, Cleanup, Shelf; K on a row puts
+ *       its item on the Shelf, K again takes it off.
  *     - 1.0.0 (11/15/2026) [dendogg + Anthropic - Claude Opus 5.5] —
  *       Initial release. After the review: Whole world only two levels
  *       down; no live region but say(); Verify's focus on what it found,
@@ -195,8 +198,8 @@ const cleanup = {
       mounted: 'mounted' in (document.getElementById('b-panel-cleanup')?.dataset || {}),
       title: document.getElementById('b-tab-cleanup')?.title,
     }));
-    t.check('the right panel\'s strip reads Inspector, Preview, Cleanup, with its list-checks icon and its title',
-      JSON.stringify(s0.tabs) === JSON.stringify(['inspector:Inspector', 'preview:Preview', 'cleanup:Cleanup']) && s0.icons[2] === 'list-checks'
+    t.check('the right panel\'s strip reads Inspector, Preview, Cleanup, Shelf, with Cleanup\'s list-checks icon and its title',
+      JSON.stringify(s0.tabs) === JSON.stringify(['inspector:Inspector', 'preview:Preview', 'cleanup:Cleanup', 'shelf:Shelf']) && s0.icons[2] === 'list-checks'
       && s0.title === 'Cleanup: ranked suggestions for reclaiming space', JSON.stringify(s0));
     t.check('nothing is counted before Cleanup is chosen: no cleanup question, the tab not mounted', !s0.mounted && asked(t, 0).length === 0);
 
@@ -323,6 +326,13 @@ const cleanup = {
     const after = await t.eval(cl);
     t.check(`Enter selects and frames it (${sel.primary}), the ledger's cursor following where it is listed, its name said; the tab keeps its folder, with no offer`,
       sel.primary === 'edge cases/copy-b.dat' && (!sel.listed || sel.cursor === 'copy-b.dat') && /copy-b\.dat/.test(sel.live) && after.at === 'edge cases' && after.offer === null, JSON.stringify({ sel, at: after.at, offer: after.offer }));
+    // K on the row: the Shelf's, on the row's item; K again takes it off.
+    await press(t, '#b-panel-cleanup button.cl-item[data-rel="edge cases/copy-b.dat"]', 'k');
+    const kOn = await t.waitFor(() => /^copy-b\.dat is on the shelf \(1 item\)\. K again takes it off\.$/.test(document.getElementById('live').textContent) && document.getElementById('live').textContent, { what: 'K on a Cleanup row' }).catch(() => null);
+    const kLabel = await t.eval(() => document.querySelector('#b-tab-shelf .count')?.textContent ?? null);
+    await t.key('k');
+    const kOff = await t.waitFor(() => /^Took copy-b\.dat off the shelf \(0 items\)/.test(document.getElementById('live').textContent), { what: 'K again on the row' }).catch(() => false);
+    t.check(`K on a Cleanup row puts its item on the Shelf (${kOn}; SHELF ${kLabel}), and K again takes it off`, !!kOn && kLabel === '1' && kOff, JSON.stringify({ kOn, kLabel, kOff }));
     // Enter has framed copy-b.dat (with WebGL the eye flew there): Home from where that left you.
     const here1 = await t.app((T) => T.api.relPath(T.S.focus));
     await press(t, '#b-panel-cleanup [data-group=dups] button.cl-item[data-rel="edge cases/copy-b.dat"]', 'Home');

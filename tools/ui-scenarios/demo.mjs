@@ -1,11 +1,11 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Demo Scenario (Terrane Edition - v1.4)
+ *     - Title: Demo Scenario (Terrane Edition - v1.5)
  *     - File Name: demo.mjs
  *     - Relative Path: tools/ui-scenarios/demo.mjs
  *     - Artifact Type: test
- *     - Version: 1.4.0
+ *     - Version: 1.5.0
  *     - Date: 11/15/2026
  *     - Update: Sunday, November 15, 2026
  *     - Author: Dennis 'dendogg' Smaltz
@@ -13,6 +13,11 @@
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
  *
  * ✒ Changelog:
+ *     - 1.5.0 (11/15/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
+ *       Shelf in the demo world: K on two items and Add to shelf on a
+ *       folder, Move to… Archive as one change answered in the page, the
+ *       shelf following, Undo following it back, and a reload keeping the
+ *       shelf while the world starts afresh.
  *     - 1.4.0 (11/15/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
  *       right panel's Cleanup tab on the demo's root, answered in the page:
  *       all four groups, the hidden-only folder counted, the decoy build
@@ -191,6 +196,73 @@ const demo = {
         return !!T.S.model.find(rel) && !T.S.model.find('Photos/renamed-in-the-demo.jpg');
       }, photo);
       t.check('undo puts the old name back', undone);
+
+      // The Shelf: K on two items, Add to shelf on a folder, Move to… Archive, Undo, a reload.
+      const SHELF = await t.app((T) => `terrane.shelf.v1|${T.S.info.root}`);
+      const kept = () => t.eval((k) => (JSON.parse(localStorage.getItem(k) || '{"items":[]}').items || []).map((x) => x.rel).sort(), SHELF);
+      await t.app(() => {
+        const T = window.__terrane;
+        T.api.selectAll(['Projects/harbor-api/README.md', 'Downloads/invoice-2026-02.pdf'].map((r) => T.S.model.find(r)));
+        document.getElementById('ledger-list').focus();
+        return true;
+      });
+      await t.key('k');
+      await t.waitFor(() => /^Put 2 items on the shelf \(2 items\)\.$/.test(document.getElementById('live').textContent), { what: 'K on two items' });
+      await t.app(() => {
+        const T = window.__terrane;
+        T.api.select(T.S.model.find('Documents/Recipes'));
+        document.getElementById('view').focus();
+        return true;
+      });
+      await t.key('Shift+F10');
+      await t.waitFor(() => !document.getElementById('menu').hidden, { what: 'the menu' });
+      for (let k = 0; k < 30; k++) {
+        if (await t.eval(() => document.activeElement?.querySelector?.('.menu-label')?.textContent === 'Add to shelf')) break;
+        await t.key('ArrowDown');
+      }
+      await t.key('Enter');
+      await t.waitFor(() => /^Recipes is on the shelf \(3 items\)/.test(document.getElementById('live').textContent), { what: 'Add to shelf on Recipes' });
+      const want = ['Documents/Recipes', 'Downloads/invoice-2026-02.pdf', 'Projects/harbor-api/README.md'];
+      t.check('the Shelf gathers two items by K and a folder by Add to shelf', JSON.stringify(await kept()) === JSON.stringify(want), JSON.stringify(await kept()));
+      await t.app(() => { window.__terrane.api.showBTab('shelf'); return true; });
+      await t.waitFor(() => document.querySelectorAll('#b-panel-shelf .sh-row').length === 3, { what: 'the Shelf\'s rows' });
+      await t.eval(() => { document.querySelector('#b-panel-shelf [data-k=move]').click(); return true; });
+      await t.waitFor(() => window.__terrane.S.placing?.nodes.length === 3, { timeout: 8000, what: 'placing the three' });
+      await t.app(() => {
+        const T = window.__terrane;
+        T.api.setQuery('Archive');
+        T.S.tab = 'findings';
+        T.api.drawLedger();
+        return true;
+      });
+      await t.waitFor(() => window.__terrane.S.search?.list.some((n) => window.__terrane.api.relPath(n) === 'Archive'), { what: 'Archive in Findings' });
+      await t.app(() => {
+        const T = window.__terrane;
+        T.api.drawLedger();
+        T.api.cursorTo(T.S.search.list.find((n) => T.api.relPath(n) === 'Archive'));
+        document.getElementById('ledger-list').focus();
+        return true;
+      });
+      await t.key('Enter');
+      const movedTo = await t.poll(async () => {
+        const k = await kept();
+        return k.every((r) => r.startsWith('Archive/')) && k;
+      }, { timeout: 10000 });
+      const inWorld = await t.app(() => !!window.__terrane.S.model.find('Archive/Recipes') && !window.__terrane.S.model.find('Documents/Recipes'));
+      t.check(`Move to… Archive moves the three in the page, and the shelf follows them (${movedTo})`, !!movedTo && movedTo.length === 3 && inWorld, JSON.stringify(movedTo));
+      await t.app((T) => { T.api.setQuery(''); return true; });
+      await t.eval(() => { document.getElementById('ledger-list').focus(); return true; });
+      await t.key('Ctrl+Z');
+      const movedBack = await t.poll(async () => JSON.stringify(await kept()) === JSON.stringify(want), { timeout: 10000 });
+      t.check('Undo puts them back, and the shelf follows them back', movedBack && await t.app(() => !!window.__terrane.S.model.find('Documents/Recipes')), JSON.stringify(await kept()));
+      await t.reload();
+      await t.app(() => { window.__terrane.api.showBTab('shelf'); return true; });
+      const reloaded = await t.waitFor(() => {
+        const rows = [...document.querySelectorAll('#b-panel-shelf .sh-row')];
+        return rows.length === 3 && { rows: rows.map((r) => r.dataset.rel).sort(), gone: rows.filter((r) => r.classList.contains('is-gone')).length, count: document.querySelector('#b-tab-shelf .count')?.textContent };
+      }, { timeout: 15000, what: 'the Shelf after a reload' });
+      t.check(`a reload keeps the shelf, every item there in the world started afresh (${reloaded.count})`, JSON.stringify(reloaded.rows) === JSON.stringify(want) && reloaded.gone === 0 && reloaded.count === '3', JSON.stringify(reloaded));
+      await t.app(() => { document.getElementById('b-tab-inspector').click(); return true; });
 
       // A large copy, with its progress panel.
       await t.app(() => {

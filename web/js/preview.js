@@ -1,18 +1,21 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Preview (Terrane Edition - v1.1)
+ *     - Title: Preview (Terrane Edition - v1.2)
  *     - File Name: preview.js
  *     - Relative Path: web/js/preview.js
  *     - Artifact Type: javascript
- *     - Version: 1.1.0
- *     - Date: 11/14/2026
- *     - Update: Saturday, November 14, 2026
+ *     - Version: 1.2.0
+ *     - Date: 11/15/2026
+ *     - Update: Sunday, November 15, 2026
  *     - Author: Dennis 'dendogg' Smaltz
  *     - A.I. Acknowledgement: Anthropic - Claude Opus 5.5
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
  *
  * ✒ Changelog:
+ *     - 1.2.0 (11/15/2026) [dendogg + Anthropic - Claude Opus 5.5] — K in
+ *       its pane puts its item (a row's, when several are shown) on the
+ *       Shelf, or takes it off, through the Shelf's own key entry.
  *     - 1.1.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] —
  *       Its palette command's detail names the right panel.
  *     - 1.0.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] —
@@ -53,7 +56,8 @@
  *       list the ledger shows (or the item's folder), Home and End to the
  *       ends, content first and kept from the window's keys; ↑ ↓ reach
  *       the rows; P opens Quick look where it shows more (text, a
- *       picture, a player), else says why; Enter opens
+ *       picture, a player), else says why; Enter opens; K puts the
+ *       item on the Shelf, or takes it off
  *     - A tab not shown, or a sheet open, does no work: no read, no
  *       player; it is drawn again when it can be seen
  *
@@ -1022,6 +1026,13 @@ export function install(api) {
         const { rows } = selectionRows(sub.nodes, SELECTION_ROWS);
         if (rows.length) startPeek(rows[0], rows);
       }
+    } else if (e.key === 'k' || e.key === 'K') {
+      // The Shelf's K, run on Preview's item (a row's, when several are shown).
+      const shelf = api.KEYS.get('shelf');
+      if (!shelf) return;
+      const row = t instanceof Element ? t.closest('.pv-rows button.item') : null;
+      const node = row && subject().kind === 'several' ? [...S.sel].find((x) => relPath(x) === row.dataset.k) : shown();
+      shelf.run({ node });
     } else if (e.key === 'p' || e.key === 'P') {
       if (t instanceof Element && t.closest('.pv-rows button.item') && subject().kind === 'several') {
         const node = [...S.sel].find((x) => relPath(x) === t.closest('.item').dataset.k);
@@ -1050,7 +1061,7 @@ export function install(api) {
     const lookBtn = el('button', { class: 'btn btn-small', type: 'button', 'data-k': 'look', title: 'P', onclick: () => openLook() }, icon('eye'), 'Quick look');
     const insideBtn = el('button', { class: 'btn btn-small', type: 'button', 'data-k': 'inside', title: 'I', onclick: lookInside }, icon('folder-open'), 'Look inside');
     const tools = el('div', { class: 'pv-tools', role: 'toolbar', 'aria-label': 'Preview tools', hidden: true }, wrapBtn, lookBtn, insideBtn);
-    const help = el('p', { class: 'sr', id: 'pv-help', text: 'Left and Right arrows step to the previous and next item, Home and End to the first and last, once a long text is at its edge; Up and Down reach the rows; P opens Quick look; Enter opens it.' });
+    const help = el('p', { class: 'sr', id: 'pv-help', text: 'Left and Right arrows step to the previous and next item, Home and End to the first and last, once a long text is at its edge; Up and Down reach the rows; P opens Quick look; Enter opens it; K puts it on the shelf.' });
     const pane = el('div', { class: 'pv-pane', tabindex: '0', role: 'region', 'aria-label': 'Preview', 'aria-describedby': 'pv-help' });
     const foot = el('p', { class: 'pv-foot', 'aria-hidden': 'true' });
     ui = { swatch, kindWords, name: nameEl, where, whereWords, facts, cut, peekBar, peekText, tools, wrapBtn, lookBtn, insideBtn, pane, foot };

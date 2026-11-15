@@ -1,10 +1,10 @@
 <!--
 ✒ Metadata
-    - Title: Shipped File Changelogs (Terrane Edition - v1.19)
+    - Title: Shipped File Changelogs (Terrane Edition - v1.20)
     - File Name: CHANGELOG.md
     - Relative Path: CHANGELOG.md
     - Artifact Type: docs
-    - Version: 1.19.0
+    - Version: 1.20.0
     - Date: 11/15/2026
     - Update: Sunday, November 15, 2026
     - Author: Dennis 'dendogg' Smaltz
@@ -12,6 +12,10 @@
     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
 
 ✒ Changelog:
+    - 1.20.0 (11/15/2026) [dendogg + Anthropic - Claude Opus 5.5] — Records the Shelf tab:
+      app.js 1.22.0, features.js 1.7.0, terrane.css 2.7.0, icons.js 1.4.0 and inspector.css
+      1.4.0, whose 1.19.0, 1.4.0, 2.4.0, 1.1.0 and 1.1.0 entries leave their headers; this file
+      already holds them, and terrane.css 2.4.0's long form now opens with its header's words.
     - 1.19.0 (11/15/2026) [dendogg + Anthropic - Claude Opus 5.5] — Records the Cleanup tab:
       app.js 1.21.0, features.js 1.6.0 and terrane.css 2.6.0, whose 1.18.0, 1.3.0 and 2.3.0
       entries leave their headers; this file already holds them, and features.js 1.3.0's long
@@ -162,6 +166,28 @@ entry's long form, the header's words are copied in to open it, so the
 short form is kept too.
 
 ## web/js/app.js
+
+- 1.22.0 (11/15/2026) [dendogg + Anthropic - Claude Opus 5.5] — For the Shelf: K is the
+  Shelf's; a right-panel tab may carry a count and take dragged rows (drawBTabCounts);
+  api.place starts placing; rows drag where nothing moves, but only to the Shelf's tab. In
+  full: KEY_OWNERS reserves the plain K for the Shelf, as every feature's plain keys are
+  reserved. A B_TABS entry may carry count(), a number drawn as a span.count on its tab's
+  label after the icon and the words, and drop { refuse(nodes), take(nodes) }: the tab button
+  takes ledger rows dragged onto it, marked .is-drop while they are over it, when refuse
+  answers null. drawBTabCounts(), on the api, reads every count() again and makes, changes or
+  removes the figure in place without building a button again, so focus on the strip stays,
+  then fits the strip again. Both live in the controller because the strip is its DOM, built
+  again by drawBTabs, so a module cannot keep figures or listeners on its buttons. api.place
+  (type, nodes) is startPlacing, because placing is the controller's state (S.placing, the
+  bar, the world's and the ledger's clicks, Escape at 20); the Shelf's Move to… and Copy to…
+  start it. A ledger row is now draggable wherever it is not the root or inside an open
+  archive, read-only and snapshot modes and region-mode refs included, so rows can be gathered
+  onto the Shelf's tab; dragMoves() says whether a drag can move or copy (the service takes
+  changes and every row is a node held), and every folder drop target (a row, a breadcrumb)
+  and the world's canvas ask it before they offer a drop, so a drag that cannot move is never
+  offered a folder and never reaches runOp. regionPins keeps the folder of each node being
+  placed, so the items the Shelf places keep their regions when a ledger click changes the
+  selection mid-placing.
 
 - 1.21.0 (11/15/2026) [dendogg + Anthropic - Claude Opus 5.5] — The api offers
   verifyDuplicates for the Cleanup tab. Verify by content keeps what it proved by path in
@@ -730,6 +756,14 @@ short form is kept too.
 
 ## web/css/terrane.css
 
+- 2.7.0 (11/15/2026) [dendogg + Anthropic - Claude Opus 5.5] — Imports components/shelf.css
+  after cleanup.css: the right panel's Shelf tab, its head, empty state, actions and rows. The
+  head reuses the inspector's title, kind and name; the actions the inspector's two-column grid
+  and its line of reasons; the body scrolls inside the panel; a row's swatch stands in the mark
+  slot at A, its name and folder at B, its size in the figure column and a small x at its end;
+  an item no longer there turns to the third text colour, its swatch hollow, with a "no longer
+  there" tag in the tight capitals.
+
 - 2.6.0 (11/15/2026) [dendogg + Anthropic - Claude Opus 5.5] — Imports components/cleanup.css
   after preview.css: the right panel's Cleanup tab, its head, summary, groups and rows. The
   head reuses the inspector's title and Preview's "in <folder>" button; the body scrolls inside
@@ -746,7 +780,13 @@ short form is kept too.
   player, the listing and the summary's rows; the foot's key hints are groups that never break,
   each dot held to the hint before it by a no-break space, so no line begins with one.
 
-- 2.4.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — Imports
+- 2.4.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — Imports components/palette.css:
+  the command palette's field, options and foot in the shared dialog; and
+  components/searches.css: the Places tab's saved searches. Then components/quicklook.css: the
+  Quick look sheet, its head, its numbered text, its fitted picture or player, and its foot;
+  and components/presets.css: the selection's total on the count row and the Survey's Quick
+  searches. Then components/batch.css: the batch rename sheet and its preview, and the
+  duplicate cleanup under a group of copies. In full: imports
   components/palette.css: the command palette's field, its options with the highlighter
   and an ink bar on the active one, its group labels and its foot line, in the shared
   dialog set high in the window; and components/searches.css: the Places tab's saved
@@ -1149,6 +1189,13 @@ short form is kept too.
 
 ## web/js/features.js
 
+- 1.7.0 (11/15/2026) [dendogg + Anthropic - Claude Opus 5.5] — The Shelf, the right panel's
+  fourth tab (shelf.js), after Cleanup; K is the Shelf's. It is installed after cleanup.js and
+  adds a B_TABS entry at order 40 with a count and a drop, the K key and six guide rows under
+  Acting on many, a menu group at 24, palette commands under Shelf, a Findings tool at 55, a
+  hover line at 65, inspector sections for one item (52) and several (20), and hooks that only
+  schedule its work; its store is the DOM-free shelf-store.js.
+
 - 1.6.0 (11/15/2026) [dendogg + Anthropic - Claude Opus 5.5] — Cleanup, the right panel's
   third tab (cleanup.js), after duplicate cleanup. It is installed after dupes.js, whose
   recheck it uses before a move, and adds a B_TABS entry at order 30, guide rows under Acting
@@ -1423,6 +1470,12 @@ short form is kept too.
 
 ## web/css/components/inspector.css
 
+- 1.4.0 (11/15/2026) [dendogg + Anthropic - Claude Opus 5.5] — A right-panel tab that takes
+  dragged rows (the Shelf) is marked while they are over it (.is-drop); a crowded strip keeps
+  each tab's count beside its icon. In full: #b-tabs button.is-drop takes the highlighter's
+  wash and a 2 px ink ring inside its edge; in a crowded strip only the label of a tab not
+  chosen is hidden, so the Shelf's count stays visible beside its icon.
+
 - 1.3.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — Panel B's tab strip (#b-tabs,
   drawn as the ledger's): once a label no longer fits (data-crowded), only the chosen tab keeps
   its words. The others keep their label as their name and title, visually hidden as the
@@ -1572,6 +1625,10 @@ short form is kept too.
 - 1.0.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — Initial release.
 
 ## web/js/icons.js
+
+- 1.4.0 (11/15/2026) [dendogg + Anthropic - Claude Opus 5.5] — shelf (inbox), the right
+  panel's Shelf tab and its actions. The Lucide inbox symbol joins the sprite through
+  tools/vendor.mjs's icon list, under the right panel's tabs.
 
 - 1.3.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — exportCsv (download), legend
   (swatch-book) and status (activity); Select all draws list-checks.
