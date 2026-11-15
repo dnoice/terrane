@@ -1,10 +1,10 @@
 <!--
 ✒ Metadata
-    - Title: Terrane Roadmap (Terrane Edition - v1.18)
+    - Title: Terrane Roadmap (Terrane Edition - v1.20)
     - File Name: ROADMAP.md
     - Relative Path: docs/ROADMAP.md
     - Artifact Type: docs
-    - Version: 1.18.0
+    - Version: 1.20.0
     - Date: 11/15/2026
     - Update: Sunday, November 15, 2026
     - Author: Dennis 'dendogg' Smaltz
@@ -12,6 +12,18 @@
     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
 
 ✒ Changelog:
+    - 1.20.0 (11/15/2026) [dendogg + Anthropic - Claude Opus 5.5] —
+      Cleanup is on `main`; `main` had not moved since its branch was
+      made. Next is the six other tabs, then the precise terrain's
+      third part: what the second left partly met or unmeasured.
+    - 1.19.0 (11/15/2026) [dendogg + Anthropic - Claude Opus 5.5] —
+      Cleanup, the second of the right panel's tabs beside the
+      Inspector, is recorded as complete on branch `tab-cleanup`,
+      waiting to be merged, with its commits, the review, the fixes,
+      the brief's points as met, the question left open and the final
+      check lines; where things stand says so, and Next is its merge,
+      then the six other tabs. The exploration loop names Cleanup,
+      Stage 6 records it, and the build waves name its branch.
     - 1.18.0 (11/15/2026) [dendogg + Anthropic - Claude Opus 5.5] —
       The precise terrain's second part is on `main`, after `main`'s
       removal of the panel letters was merged into its branch and
@@ -224,14 +236,30 @@ As of 11/15/2026:
   vocabulary that never prints one too small to read, and a far view
   in which a folder of tiny files reads as one mass in its kinds'
   colours. Merged in the commit titled "Merge precision-terrain-2: the precise terrain, part two".
-- **Next:** the seven other tabs, built and merged
-  one at a time: Cleanup, Shelf, Compare, Activity, Notes and tags,
-  Watch and Connections. The open ground
-  beyond them is what Stage 4 still lacks (section 4), the rest of
-  Stage 6, and the Stage 5 deferrals in section 4.
+- **Complete, on `main`:**
+  Cleanup, the second of the tabs beside the Inspector, after
+  Preview: ranked, sized suggestions for reclaiming
+  space in one folder (verified duplicates, big files untouched for a
+  year, caches and build output from a fixed list of names, and empty
+  folders), each with the rule that found it and a box to leave it
+  out, moved to the holding area as one change that one Undo reverses.
+  Nothing is deleted from it. Merged in the commit titled
+  "Merge tab-cleanup: the Cleanup tab".
+- **Next:** the six other tabs, built and merged one at a time: Shelf,
+  Compare, Activity, Notes and tags, Watch and Connections. Then the
+  precise terrain, part three, for what the second part left partly
+  met or unmeasured: names at the overview in smaller windows (at
+  1280 × 800 the top-level folders print none); a flight begun close
+  by that comes to rest higher than it aimed, so where you are lands
+  on a neighbour, which no scenario covers yet; the 5,000,000-entry
+  scale tour on the new layout, which needs 6 GB free; and the
+  Duplicates lens's colour for a plain file, the same as the plaster
+  it stands on. The open ground beyond them is what Stage 4 still
+  lacks (section 4), the rest of Stage 6, and the Stage 5 deferrals in
+  section 4.
 
-Section 5 has the detail for every wave, for Preview and for the
-precise terrain's second part.
+Section 5 has the detail for every wave, for Preview, for the precise
+terrain's second part and for Cleanup.
 
 ## 1. The exploration loop
 
@@ -240,11 +268,11 @@ One pass through the loop, and what serves each step today.
 | Step | The visitor | Served by |
 | ---- | ----------- | --------- |
 | 1. Arrive | Sees the whole directory from above as a hundred or so masses: where the bytes are, what kind they are | Overview vantage; area is bytes; masses tinted by dominant kind; heavyweight pins; a warm start that draws the last session's tree at once; a directory of millions drawn from the regions in view; a reload or a link that lands where it names |
-| 2. Notice | Something stands out: a large mass, a tall fresh block, a pin, a colour | Lenses (kind, age, size, duplicates), with closed masses at their typical age under the Age lens; survey tab, working sessions and quick searches included; search pins; benchmark tags that say what changed; the time view, where what changed since a date lies flat |
+| 2. Notice | Something stands out: a large mass, a tall fresh block, a pin, a colour | Lenses (kind, age, size, duplicates), with closed masses at their typical age under the Age lens; survey tab, working sessions and quick searches included; search pins; benchmark tags that say what changed; the time view, where what changed since a date lies flat; Cleanup's suggestions for a folder, ranked by the space they free |
 | 3. Approach | Flies toward it. It opens as it gets close | Wheel flies to the cursor; distance-driven unfolding; contents rise out of the plateau |
 | 4. Orient | Knows where they are without thinking about it | Breadcrumbs, ledger and the address follow the camera; tags on nearby plateaus; benchmarks as survey marks; horizon and haze |
 | 5. Inspect | Selects a thing and reads it | Inspector: path, size and shares, dates, composition, bytes by last change, what changed since a benchmark or a date, what changed with a file, preview, duplicates; Preview beside the world, following the selection as it moves; Quick look, stepped through a list; what a selection weighs; an archive's contents with I |
-| 6. Act | Opens, renames, moves, removes | Context menu, keys, placing mode, drag and drop, the command palette; many items renamed with a preview; verified copies cleaned up; names and paths copied; lists saved as CSV; a terminal in the folder; every result stated in words |
+| 6. Act | Opens, renames, moves, removes | Context menu, keys, placing mode, drag and drop, the command palette; many items renamed with a preview; verified copies cleaned up; a folder's suggested clutter moved aside as one change; names and paths copied; lists saved as CSV; a terminal in the folder; every result stated in words |
 | 7. Confirm | Sees the world change to match the disk | Affected folders re-read; boxes move or rise; Undo offered in the notice |
 | 8. Leave | Goes up, back, or jumps somewhere else | Backspace, Alt+Left, 0, J to a marked return point, Fly there in the Places tab, breadcrumbs, search results and saved searches, survey entries, the command palette (Ctrl+K) |
 
@@ -505,6 +533,14 @@ Done on 11/13/2026 (Wave 3):
 - An Undo that stops part way keeps what is still to go back, so the
   next Undo resumes, after a restart too.
 
+Done on 11/15/2026 (Cleanup):
+
+- Reclaiming space in one folder: verified duplicates, big and stale
+  files, caches and build output and empty folders, ranked and sized,
+  with up to 5,000 checked items moved to the holding area as one
+  journal entry that one Undo reverses; in a very large directory the
+  service counts the folder across every level.
+
 Next:
 
 - Send to the operating system's recycle bin as an alternative holding
@@ -524,8 +560,8 @@ to take a second.
 Stage 5 is built in waves, Wave 3 took the same method across
 Stages 4 to 6, and Wave 4 to Stage 4 and the polish of the sheet. Each
 wave runs on its own branch (`wave-1`, `wave-2`, `qol`, then `wave-4`),
-and each tab of the right panel on one of its own (`tab-preview` first),
-in a separate worktree: its build steps one after
+and each tab of the right panel on one of its own (`tab-preview`, then
+`tab-cleanup`), in a separate worktree: its build steps one after
 another, then an adversarial review, a fix step, and a docs and header
 pass. A wave is merged into `main` and pushed only when `npm test`,
 `node tools/vendor.mjs --check` and the full `node tools/ui-check.mjs`
@@ -1316,6 +1352,180 @@ code both sides changed, both passes: seams 147, preview 158, polish
 1,200 and core 73 passed, 0 failed. The branch is merged into `main`
 in the commit titled "Merge precision-terrain-2: the precise terrain,
 part two".
+
+### Complete: Cleanup
+
+Cleanup is the second of the tabs planned beside the Inspector, after
+Preview, built on its own branch, `tab-cleanup`, made from `main` at
+`baae817`, in a separate worktree: a build step, an adversarial
+review, a fix step, and a docs and sweep step. It joins the right
+panel's strip through the `B_TABS` registry Preview built, and moves
+files only through the holding area and the journal that Del and
+duplicate cleanup already use.
+
+1. **The tab** (`173681e`): `web/js/reclaim.js`, the rules with no
+   DOM, which the page, the service's question, the demo and the Node
+   check share: the 18 cache names with the words each row shows, the
+   one walk under a folder, the copy a set keeps (`keepOf`, moved from
+   `dupes.js`), the duplicate sets suggested, the ranking, the totals
+   and the 5,000-item cap. `web/js/cleanup.js`, the tab: the folder,
+   its head and widen buttons, the offer bar, the summary and its one
+   wide button, four groups with their rules, rows with boxes and their
+   keys, one confirmation, the copies hashed again, one removal; and
+   its entries in the menu, the palette and the Guide. A sixth
+   whole-tree question, `cleanup`, in `questions.js`, answered by the
+   service, the demo and the worker alike. In `app.js`, the api's
+   `verifyDuplicates` and Verify's record kept by path in whole-tree
+   mode, so a copy Undo brings back stays verified; the Big and stale
+   quick search reads its query from `reclaim.js`. The demo world gains
+   a folder holding only `.DS_Store`, a decoy `build` of shed plans and
+   an empty folder inside a `node_modules`, drawn last so no seeded
+   figure moved. `tools/cleanup-test.mjs` joined `npm test`, and the
+   scenarios `cleanup`, `cleanup-disk` and `cleanup-regions` are new,
+   with Cleanup's checks in `demo`, `polish` and `preview`. No browser
+   could run while it was built, for want of free memory, so it
+   committed with only the Node checks run, and said so.
+2. **The review.** An adversarial review made eleven findings: a set
+   compared by samples was not marked probable; a Python environment's
+   files were offered one by one, and a copy inside one could be the
+   copy kept; in region mode the tab fell back to the root while the
+   tree was read again; focus was lost on a redraw; the scenarios had
+   never run; the sentence for a folder removed from outside; the
+   moves still offered while the service counted; a failed count left
+   the last suggestions movable; Whole world shown beside a parent that
+   is the root; the offer bar and the state line as live regions beside
+   `say()`; and, left to Dennis, the folder the tab shows with nothing
+   selected. It has no commit of its own.
+3. **The fixes** (`e2c7043`): every finding but the last, each with a
+   check in `cleanup`, `cleanup-disk`, `cleanup-regions`, `demo`,
+   `cleanup-test` or `demo-test`. A folder holding `pyvenv.cfg` is one
+   cache, whatever its name, and `site-packages` and `dist-packages`
+   are never walked; the region client says when it is `stale`, so the
+   tab keeps its folder; focus finds its row, its control or its
+   group's head again; a folder gone reads "<name> is no longer there;
+   showing <parent>.", and one Terrane renames or moves is followed.
+4. **Hardening** (`62ffaf1`): a duplicate set of thousands of copies
+   draws a page of 100 rows (`dupPage`) and finds each by a `Map`.
+5. **The scenarios run** (`dcfbe23`, `afdcfb1`): `cleanup`,
+   `cleanup-disk` and `cleanup-regions` ran for the first time, green
+   in both passes after their own faults were fixed (a palette read
+   before it filtered, Verify inside a closed group, a second set of
+   copies in the fixture, worker-sent questions missing from the
+   network log); the Duplicates head names the sets waiting to be
+   verified rather than "none"; and `demo` finds the demo world's
+   Tidelines renders, a set compared by samples, by their suggested
+   copy and the copy kept before it.
+6. **Docs and sweep**, in the commit titled "Cleanup docs and sweep":
+   README, ARCHITECTURE, this roadmap and every header the branch
+   touched, checked against the code. The sweep gave `dupes.js` a Key
+   Feature for what Cleanup shares, put `B_TABS` among the registries
+   `features.js` names, and set right what was older than the branch:
+   the README's Travelling called the right panel by a letter, and
+   ARCHITECTURE's `B_TABS` row did too.
+
+The brief's points, as met:
+
+- **The folder.** The selection if it is a folder, else its folder;
+  with nothing selected, the folder you are in rather than the world's
+  root (left open, below). The head names it with its size, files and
+  folders, and widens to its parent or to the whole world.
+- **Four groups ranked by the space they free**, each with its count
+  and total, opening to its rows. Duplicates: verified by content as
+  `dupes.js` verifies, never by name or size alone; one copy kept per
+  set by duplicate cleanup's own rule (`keepOf`, newest unless Keep
+  oldest, and on a tie the path that sorts first) and shown first; a
+  set compared by samples marked probable.
+  Big and stale: the quick search's thresholds, over 100 MB and not
+  changed in a year, both stated. Caches and build output: 18 names
+  and any folder holding `pyvenv.cfg`, each row naming its rule,
+  nothing inside a listed folder listed again. Empty folders: nothing
+  at all inside, with the hidden-file rule stated and folders holding
+  only hidden files counted, not listed.
+- **Rows.** A click or Enter selects the item and frames it in the
+  world and the ledger; a box, or Space, leaves it out.
+- **The move.** One button per group and one for everything checked,
+  each saying what it moves before it is pressed; one confirmation; one
+  removal to the holding area, so the notice's Undo or Ctrl+Z puts
+  every item back; nothing deleted; the suggestions counted again after.
+- **Modes.** Read-only and snapshot show every suggestion with the
+  moves unavailable and why; a warm start waits; region mode asks the
+  service, and a service without the question says the tab covers only
+  what is loaded; a folder removed under the tab gives way to the
+  nearest one; an empty result says the folder looks clean and why.
+- **Reach.** The right panel's strip; the palette's Show Cleanup and
+  Suggest cleanup for this folder; the world's menu, Suggest cleanup
+  here; the Guide's four rows under Acting on many. The demo world
+  answers the question, so GitHub Pages shows it working.
+- **Checks.** `cleanup-test` for the rules and the ranking, and the
+  `cleanup` scenarios walking the task end to end in both passes:
+  find, inspect, leave one out, move, Undo.
+
+Left open for Dennis: with nothing selected the tab shows the folder
+you are in, where the brief said the world's root. The stale
+threshold is the quick search's one year, where the brief's example
+said two years; the brief also asked for the quick search's thresholds,
+which is what was kept.
+
+Final check lines, on Windows 11 with Edge 157 on an RTX 5050 laptop
+GPU and the default fixture of 3,126 files:
+
+- `node --check` on all 112 script files outside `web/vendor/`: no
+  error;
+- `npm test`: "274 passed, 0 failed", "97 passed, 0 failed",
+  "57 passed, 0 failed", "33 passed, 0 failed", "60 passed, 0 failed",
+  "52 passed, 0 failed", "54 passed, 0 failed", "31 passed, 0 failed",
+  "80 passed, 0 failed", "159 passed, 0 failed", "68 passed, 0 failed",
+  "128 passed, 0 failed", "91 passed, 0 failed",
+  "58 passed, 0 failed" and "58 passed, 0 failed", 1,300 in all,
+  `cleanup-test` last;
+- `node tools/vendor.mjs --check`:
+  "Every vendored file matches the manifest.";
+- the headers of the 24 files the branch touched that carry one
+  (`package.json`'s is `package.metadata.md`): the digiSpace header in
+  full, the version raised once with the date and the tag, a changelog
+  entry on every new file, shipped headers within three entries and 40
+  lines, and the long form in `CHANGELOG.md` of every new entry of a
+  file it tracks, opening with its header's words: in rule;
+- Markdown: no line over 100 columns outside tables and fences in the
+  README, ARCHITECTURE, this roadmap, `CHANGELOG.md` and
+  `package.metadata.md`;
+- `node tools/ui-check.mjs --no-shots --port 5300`, both passes, run
+  once after the docs were written: "3152 passed, 0 failed, 8 skipped"
+  (1,657 and 3 skipped with WebGL, 1,495 and 5 without), over 53
+  scenarios with WebGL and 49 without. It was the first full run with
+  the Cleanup scenarios, and the first run of `polish`, `preview` and
+  `seams` since the tab was built: `cleanup` 32, `cleanup-disk` 14 and
+  `cleanup-regions` 9 passed in each pass; `demo` 34, `preview` 63 and
+  `polish` 623 with WebGL and 621 without. The skips are, in each pass,
+  what needs `--snapshot`, what needs a synthetic snapshot and a
+  `splash` check the survey's timing left nothing to test, and without
+  WebGL two checks of what is drawn in the world. Draw calls at the
+  baseline (overview 7, selected 9, search 8, duplicate ties 10). The
+  first port is 5300 rather than the 5309 the step named, because the
+  check opens the next port, the one after, the sixth and the ninth
+  too (5301, 5302, 5306 and 5309 here), and from 5309 those would have
+  fallen outside the ports 5300 to 5309 this machine allows.
+
+Before the merge, a look at the tab in the demo world, screenshots of
+the menu, the head, the groups, the probable set and the narrow
+drawer, found the copy kept for the Tidelines renders changing after
+an unrelated Undo: two copies shared a last change to the
+millisecond, as copies made by Explorer do, and `keepOf` kept the
+first listed, whose order a refresh can change. On a tie it now keeps
+the path that sorts first, for duplicate cleanup too, in the commit
+titled "The copy a duplicate set keeps holds through a refresh: on a
+tie, the path that sorts first": `cleanup-test` 60 passed, 0 failed,
+and the scenarios `dupes`, `cleanup`, `demo` and `regions` (with
+`cleanup-disk`, `cleanup-regions`, `demo-regions` and the three other
+`regions` scenarios), both passes, "361 passed, 0 failed". The full
+interface check above ran before that commit, which changed only
+`reclaim.js`, `dupes.js` and `cleanup-test`.
+
+`main` had not moved since the branch was made, so nothing was merged
+into the branch first. On the merged branch, `npm test`: 1,302 passed,
+0 failed, over fifteen suites, `cleanup-test` now 60. The branch is
+merged into `main` in the commit titled "Merge tab-cleanup: the
+Cleanup tab".
 
 ## 6. Development datasets
 

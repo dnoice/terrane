@@ -1,17 +1,20 @@
 <!--
 ✒ Metadata
-    - Title: Package Manifest (Terrane Edition - v1.15)
+    - Title: Package Manifest (Terrane Edition - v1.16)
     - File Name: package.json
     - Relative Path: package.json
     - Artifact Type: config
-    - Version: 1.15.0
-    - Date: 11/14/2026
-    - Update: Saturday, November 14, 2026
+    - Version: 1.16.0
+    - Date: 11/15/2026
+    - Update: Sunday, November 15, 2026
     - Author: Dennis 'dendogg' Smaltz
     - A.I. Acknowledgement: Anthropic - Claude Opus 5.5
     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
 
 ✒ Changelog:
+    - 1.16.0 (11/15/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
+      test script ends with tools/cleanup-test.mjs, the Node check of the
+      Cleanup tab's rules (web/js/reclaim.js) and its question.
     - 1.15.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
       test script ends with tools/preview-test.mjs, the Node check of the
       readers Quick look and Preview share (web/js/readers.js).

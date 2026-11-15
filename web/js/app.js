@@ -1,11 +1,11 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Terrane Application (Terrane Edition - v1.20)
+ *     - Title: Terrane Application (Terrane Edition - v1.21)
  *     - File Name: app.js
  *     - Relative Path: web/js/app.js
  *     - Artifact Type: javascript
- *     - Version: 1.20.0
+ *     - Version: 1.21.0
  *     - Date: 11/15/2026
  *     - Update: Sunday, November 15, 2026
  *     - Author: Dennis 'dendogg' Smaltz
@@ -13,6 +13,10 @@
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
  *
  * ✒ Changelog:
+ *     - 1.21.0 (11/15/2026) [dendogg + Anthropic - Claude Opus 5.5] —
+ *       The api offers verifyDuplicates for the Cleanup tab. Verify by
+ *       content keeps what it proved by path in whole-tree mode too, so a
+ *       file Undo brings back is still verified.
  *     - 1.20.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] —
  *       The far view: under the Kind lens a file's band A is its own
  *       kind's mass colour, washed when hidden; TONE_STEPS comes from
@@ -22,9 +26,6 @@
  *       The right panel is called the right panel: ] is labelled "Hide or
  *       show the right panel" and says so; the Guide's row reads "Hide
  *       ledger / right panel".
- *     - 1.18.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] —
- *       Extensions step half as far within their kind, and a closed mass's
- *       strata are its own body colour leaning toward each kind.
  *     Earlier entries: see CHANGELOG.md
  *
  * ✒ Description:
@@ -938,6 +939,8 @@ async function fullScan() {
   const name = S.info.name;
   const was = S.focus;
   S.model = new Model(name);
+  // A Rescan all starts afresh: what Verify proved by path goes too.
+  provedRel.clear();
   S.focus = S.model.root;
   S.sel.clear();
   S.primary = null;
@@ -1932,9 +1935,11 @@ async function surveyRegions() {
 }
 
 /**
- * What Verify proved in region mode, by path: { hash, mode, s, m }. It
- * stands while a file keeps its size and last change, as proved does for
- * the whole tree; a Rescan all starts afresh.
+ * What Verify proved, by path: { hash, mode, s, m }. It stands while a
+ * file keeps its size and last change, as proved does by node; a Rescan
+ * all starts afresh. In region mode it is the only record; in whole-tree
+ * mode it backs proved for a file whose node is new, such as one Undo
+ * brought back from the holding area.
  */
 const provedRel = new Map();
 
@@ -3168,12 +3173,26 @@ async function copyPaths(nodes = [...S.sel]) {
  */
 const proved = new WeakMap();
 
+/**
+ * What Verify proved of a file node: by the node, else by its path while
+ * its size and last change match. Why the path: a file Undo restores is a
+ * new node, and a WeakMap keyed by the old one has lost it; Cleanup's
+ * "Ctrl+Z puts every item back" includes its verified status, and
+ * duplicate cleanup's own Undo gains the same.
+ */
+function provedOf(f) {
+  const p = proved.get(f);
+  if (p) return p;
+  const r = provedRel.get(relPath(f));
+  return r && r.s === f.s && r.m === f.m ? r : undefined;
+}
+
 /** The candidates with what was proved put back: verified groups by content where nothing changed. */
 function keepVerified(groups) {
   let changed = false;
   const out = [];
   for (const g of groups) {
-    const rec = g.files.map((f) => proved.get(f));
+    const rec = g.files.map(provedOf);
     if (!rec.every((r, i) => r && r.s === g.files[i].s && r.m === g.files[i].m)) {
       out.push(g);
       continue;
@@ -3183,7 +3202,7 @@ function keepVerified(groups) {
     g.files.forEach((f, i) => buckets.set(rec[i].hash, [...(buckets.get(rec[i].hash) || []), f]));
     for (const f of g.files) f.dup = 0;
     for (const [hash, list] of buckets) {
-      if (list.length > 1) out.push({ size: g.size, files: list, waste: g.size * (list.length - 1), verified: true, mode: proved.get(list[0]).mode, hash });
+      if (list.length > 1) out.push({ size: g.size, files: list, waste: g.size * (list.length - 1), verified: true, mode: provedOf(list[0]).mode, hash });
     }
   }
   if (!changed) return groups;
@@ -3214,7 +3233,13 @@ async function verifyDuplicates() {
     return;
   }
   const hashOf = new Map(files.map((f, i) => [f, results[i]]));
-  for (const [f, h] of hashOf) if (h && !h.error) proved.set(f, { hash: h.hash, mode: h.mode, s: f.s, m: f.m });
+  for (const [f, h] of hashOf) {
+    if (!h || h.error) continue;
+    const rec = { hash: h.hash, mode: h.mode, s: f.s, m: f.m };
+    proved.set(f, rec);
+    // By path as well, for a file that comes back as a new node (Undo).
+    provedRel.set(relPath(f), rec);
+  }
   const out = [];
   for (const g of groups) {
     if (!hashOf.has(g.files[0])) {
@@ -5255,9 +5280,14 @@ const API = Object.freeze({
   // gives in region mode (the twins of an open archive).
   kids, notAtSize,
   // Region mode: a whole-tree question asked of the service (find, marks,
-  // survey, sessions, places), resolving to its JSON; and a ref made a
-  // node in the list that showed it.
+  // survey, sessions, places, cleanup), resolving to its JSON; and a ref
+  // made a node in the list that showed it.
   ask: askTree, resolveRow,
+  // Verify by content, resolving once the survey's groups are split by
+  // hash. Why here: it replaces S.survey.dupGroups and redraws the ledger,
+  // legend and inspector inside the controller, which a module cannot do
+  // through the api; Cleanup's Verify button runs it.
+  verifyDuplicates,
   select, selectAll, setFocus, reveal, activate, describe, say, forceOpen, overview, setLens, copyText,
   rescan: fullScan,
   drawAll, drawTabs, drawLedger, drawInspector, drawLegend, drawStatus, runQuery, setQuery, tabSections,

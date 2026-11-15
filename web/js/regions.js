@@ -1,18 +1,22 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Region Client (Terrane Edition - v1.0)
+ *     - Title: Region Client (Terrane Edition - v1.1)
  *     - File Name: regions.js
  *     - Relative Path: web/js/regions.js
  *     - Artifact Type: javascript
- *     - Version: 1.0.0
- *     - Date: 11/14/2026
- *     - Update: Saturday, November 14, 2026
+ *     - Version: 1.1.0
+ *     - Date: 11/15/2026
+ *     - Update: Sunday, November 15, 2026
  *     - Author: Dennis 'dendogg' Smaltz
  *     - A.I. Acknowledgement: Anthropic - Claude Opus 5.5
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
  *
  * ✒ Changelog:
+ *     - 1.1.0 (11/15/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
+ *       client says when it is stale (stale: a stale generation or close()),
+ *       so a feature can tell its nulls from a path that is gone; Cleanup
+ *       keeps its folder while the tree is read again.
  *     - 1.0.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] —
  *       Initial release. After the review: a refill keeps the children a
  *       region does not list while they may lie in its tail (a path's
@@ -60,7 +64,8 @@
  *       are neither pinned nor open in the layout are let go, deepest
  *       first, until the entries held are at the floor
  *     - A stale generation (409 ESTALE) stops every request and calls
- *       onStale once, so no answer of an old tree lands in a new model
+ *       onStale once, so no answer of an old tree lands in a new model;
+ *       stale is true from then on, and after close()
  *     - ages: a RegionAges over the rows every folder carries
  *     - extra() adds to every region request (a search's qid, so its
  *       marks ride along) and onFilled(node, R) hears each region filled,
@@ -545,6 +550,10 @@ export function createRegions({
     },
     get held() {
       return held;
+    },
+    /** True once a stale generation (409 ESTALE) or close() stopped it: every path then resolves to null, which says nothing of the disk. */
+    get stale() {
+      return stale || closed;
     },
     get stats() {
       return {

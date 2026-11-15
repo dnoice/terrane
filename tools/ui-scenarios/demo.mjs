@@ -1,18 +1,24 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Demo Scenario (Terrane Edition - v1.3)
+ *     - Title: Demo Scenario (Terrane Edition - v1.4)
  *     - File Name: demo.mjs
  *     - Relative Path: tools/ui-scenarios/demo.mjs
  *     - Artifact Type: test
- *     - Version: 1.3.0
- *     - Date: 11/14/2026
- *     - Update: Saturday, November 14, 2026
+ *     - Version: 1.4.0
+ *     - Date: 11/15/2026
+ *     - Update: Sunday, November 15, 2026
  *     - Author: Dennis 'dendogg' Smaltz
  *     - A.I. Acknowledgement: Anthropic - Claude Opus 5.5
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
  *
  * ✒ Changelog:
+ *     - 1.4.0 (11/15/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
+ *       right panel's Cleanup tab on the demo's root, answered in the page:
+ *       all four groups, the hidden-only folder counted, the decoy build
+ *       not listed. After the review: Verify by content in the page, the
+ *       Tidelines renders marked probable on their rows, in the note and in
+ *       the confirmation.
  *     - 1.3.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — Panel
  *       B's Preview tab in the demo world: a README's numbered lines, an
  *       arrow held over 12 rows of its fullest folder read at most twice, a
@@ -267,6 +273,8 @@ const demo = {
 
       // Panel B's Preview tab, answered in the page.
       await previewIn(t, photo);
+      // The right panel's Cleanup tab on the demo's root: all four groups.
+      await cleanupIn(t);
 
       const asked = t.requests(mark).filter((r) => /\/api\//.test(r.url));
       t.check(`not one request to /api/ left the page (${asked.length})`, asked.length === 0, JSON.stringify(asked.slice(0, 3)));
@@ -310,6 +318,54 @@ async function previewOf(t, rel, fn = () => true) {
   }, rel);
   const name = rel.slice(rel.lastIndexOf('/') + 1);
   return t.until(`(_T, n) => { const st = (${pvState})(); return st.done === n && (${fn})(st) && st; }`, { args: [name], timeout: 8000 });
+}
+
+/** The demo's Cleanup on its root: every group seeded, the decoy build left out. */
+async function cleanupIn(t) {
+  await t.app((T) => {
+    T.api.select(null);
+    T.api.setFocus(T.S.model.root);
+    return true;
+  });
+  await t.settle();
+  await t.app((T) => { T.api.showBTab('cleanup'); return true; });
+  const st = await t.waitFor(() => {
+    const P = document.getElementById('b-panel-cleanup');
+    if (P?.dataset.shown !== '') return false;
+    return {
+      groups: [...P.querySelectorAll('.cl-group')].map((g) => [g.dataset.group, Number(g.dataset.count)]),
+      rows: [...P.querySelectorAll('.cl-row')].map((r) => r.dataset.rel), sum: P.querySelector('.cl-sum').textContent,
+      empty: P.querySelector('[data-group=empty] .cl-note')?.textContent ?? '',
+    };
+  }, { timeout: 10000, what: 'Cleanup on the demo root' });
+  t.check(`on the demo world Cleanup shows all four groups (${st.groups.map((g) => g.join(' ')).join(', ')}; ${st.sum})`,
+    st.groups.length === 4 && st.groups.filter(([id]) => id !== 'dups').every(([, n]) => n > 0) && /^Could free /.test(st.sum)
+    && !st.rows.includes('Documents/Notes/build') && /holds only hidden files/.test(st.empty), JSON.stringify(st));
+  // Verify by content, answered in the page: the Tidelines renders are too
+  // large to read whole, so they are probable, and said so.
+  await t.app(() => { document.querySelector('#b-panel-cleanup [data-group=dups] .cl-pending .btn')?.click(); return true; });
+  const dup = await t.waitFor(() => {
+    const P = document.getElementById('b-panel-cleanup');
+    const rows = [...P.querySelectorAll('[data-group=dups] .cl-row')].map((r) => ({ rel: r.dataset.rel, kept: r.classList.contains('is-kept'), path: r.querySelector('.path').textContent }));
+    // A render suggested, and its set's kept copy: the kept row before it.
+    const i = rows.findIndex((r) => !r.kept && /Tidelines_v6_final/.test(r.rel));
+    let k = i;
+    while (k > 0 && !rows[k].kept) k--;
+    return i > 0 && rows[k].kept && { kept: rows[k], copy: rows[i], note: P.querySelector('[data-group=dups] > .cl-note')?.textContent ?? '' };
+  }, { timeout: 15000, what: 'the Tidelines set verified' });
+  await t.app(() => { document.querySelector('#b-panel-cleanup [data-move=dups] .btn').click(); return true; });
+  const body = await t.waitFor(() => document.getElementById('dialog').open && document.querySelector('#dialog .cl-confirm')?.textContent, { timeout: 5000, what: 'the confirmation' });
+  await t.key('Escape');
+  await t.waitFor(() => !document.getElementById('dialog').open, { what: 'the confirmation left' });
+  const keptRow = dup.kept;
+  const copyRow = dup.copy;
+  t.check(`the Tidelines renders, compared by samples, are probable: the kept row (${keptRow?.path}), the copy (${copyRow?.path}), the note and the confirmation say so`,
+    / · probable$/.test(keptRow?.path || '') && / · a probable copy, changed /.test(copyRow?.path || '') && /probable/i.test(dup.note) && /probably, not certainly, the same/.test(body || ''),
+    JSON.stringify({ dup, body }));
+  await t.app((T) => {
+    document.getElementById('b-tab-inspector').click();
+    return true;
+  });
 }
 
 /** The demo's Preview: a README, a photo from its 480 px rung, a link, a zip and a sound. */

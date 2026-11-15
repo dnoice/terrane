@@ -1,10 +1,10 @@
 <!--
 ✒ Metadata
-    - Title: Shipped File Changelogs (Terrane Edition - v1.18)
+    - Title: Shipped File Changelogs (Terrane Edition - v1.19)
     - File Name: CHANGELOG.md
     - Relative Path: CHANGELOG.md
     - Artifact Type: docs
-    - Version: 1.18.0
+    - Version: 1.19.0
     - Date: 11/15/2026
     - Update: Sunday, November 15, 2026
     - Author: Dennis 'dendogg' Smaltz
@@ -12,6 +12,10 @@
     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
 
 ✒ Changelog:
+    - 1.19.0 (11/15/2026) [dendogg + Anthropic - Claude Opus 5.5] — Records the Cleanup tab:
+      app.js 1.21.0, features.js 1.6.0 and terrane.css 2.6.0, whose 1.18.0, 1.3.0 and 2.3.0
+      entries leave their headers; this file already holds them, and features.js 1.3.0's long
+      form now opens with its header's words.
     - 1.18.0 (11/15/2026) [dendogg + Anthropic - Claude Opus 5.5] — Records the second part of the
       precise terrain: layout.js 1.6.0, whose 1.3.0 entry leaves its header; this file already
       holds it. Then its look: viewport.js 1.12.0, app.js 1.20.0 and tokens.css 1.6.0, whose
@@ -158,6 +162,21 @@ entry's long form, the header's words are copied in to open it, so the
 short form is kept too.
 
 ## web/js/app.js
+
+- 1.21.0 (11/15/2026) [dendogg + Anthropic - Claude Opus 5.5] — The api offers
+  verifyDuplicates for the Cleanup tab. Verify by content keeps what it proved by path in
+  whole-tree mode too, so a file Undo brings back is still verified. In full: the api gains
+  verifyDuplicates, the controller's Verify by content, whose promise resolves once the
+  survey's groups are split by hash; it lives in the controller because it replaces
+  S.survey.dupGroups and redraws the ledger, the legend and the inspector, which a module
+  cannot do through the api. Verify by content in whole-tree mode now also records each file
+  it read in provedRel, by path, with its hash, mode, size and last change, as region mode
+  always has; keepVerified reads provedOf(f), the node's record or, when the node is new and
+  its size and last change still match, the path's. A file that Undo brings back from the
+  holding area is a new node, so until now it came back unverified, and its group with it;
+  now Cleanup's "Ctrl+Z puts every item back" holds for the verified status too, and
+  duplicate cleanup's own Undo gains the same. A Rescan all clears provedRel, so it starts
+  afresh as before.
 
 - 1.20.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — The far view: under the Kind
   lens a file's band A is its own kind's mass colour, washed when hidden; TONE_STEPS comes from
@@ -711,6 +730,13 @@ short form is kept too.
 
 ## web/css/terrane.css
 
+- 2.6.0 (11/15/2026) [dendogg + Anthropic - Claude Opus 5.5] — Imports components/cleanup.css
+  after preview.css: the right panel's Cleanup tab, its head, summary, groups and rows. The
+  head reuses the inspector's title and Preview's "in <folder>" button; the body scrolls inside
+  the panel; a row's box stands in the mark slot at A, its name and rule at B and its size in
+  the figure column; a row left out turns to the third text colour with a "left out" tag in
+  the tight capitals.
+
 - 2.5.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — Imports components/preview.css
   after quicklook.css: panel B's Preview tab, its head, tools, pane and foot. The head reuses the
   inspector's title, kind and name on the panel's grid (the mark at A, the words at B) with "in
@@ -1123,6 +1149,13 @@ short form is kept too.
 
 ## web/js/features.js
 
+- 1.6.0 (11/15/2026) [dendogg + Anthropic - Claude Opus 5.5] — Cleanup, the right panel's
+  third tab (cleanup.js), after duplicate cleanup. It is installed after dupes.js, whose
+  recheck it uses before a move, and adds a B_TABS entry at order 30, guide rows under Acting
+  on many, a palette command (Suggest cleanup for this folder), a menu group at 25 on a
+  folder, a file and the folder you are in, and hooks that only schedule its work. It binds
+  no global key: its keys act inside its tab.
+
 - 1.5.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — Preview, panel B's second tab
   (preview.js), after the totals and quick searches. It is installed after presets.js, whose
   selectionBytes it reads, and before the batch rename; it adds a B_TABS entry, guide rows under
@@ -1133,8 +1166,15 @@ short form is kept too.
 - 1.4.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — The flavors' palette
   commands, Flavor (flavors.js).
 
-- 1.3.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — The sixth to eighth
-  features, finding your way: the command palette, Ctrl+K, every action and every folder
+- 1.3.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — The sixth to eighth,
+  finding your way: the command palette, Ctrl+K (palette.js); the remembered view and links, a
+  reload and an address coming back to a folder (resume.js); and the search history, saved
+  searches and in: (searches.js). Then, looking before you act: Quick look, P (quicklook.js);
+  the selection's total and the Survey's Quick searches (presets.js). Then, acting on many: the
+  batch rename, F2 with several selected (batch.js); duplicate cleanup (dupes.js); and copy as
+  (copyas.js). Then, getting things in and out: lists saved as CSV (exports.js); and a
+  terminal opened in a folder (terminal.js). In full: the sixth to eighth features, finding
+  your way: the command palette, Ctrl+K, every action and every folder
   and file by fuzzy match (palette.js, with the DOM-free fuzzy.js); the remembered view
   and links, a reload coming back to the folder, the lens, the tab, the selection and the
   eye, and an address (#/folder) that opens a folder and follows the one you are in

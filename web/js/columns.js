@@ -1,18 +1,21 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Column Tree (Terrane Edition - v1.0)
+ *     - Title: Column Tree (Terrane Edition - v1.1)
  *     - File Name: columns.js
  *     - Relative Path: web/js/columns.js
  *     - Artifact Type: javascript
- *     - Version: 1.0.0
- *     - Date: 11/14/2026
- *     - Update: Saturday, November 14, 2026
+ *     - Version: 1.1.0
+ *     - Date: 11/15/2026
+ *     - Update: Sunday, November 15, 2026
  *     - Author: Dennis 'dendogg' Smaltz
  *     - A.I. Acknowledgement: Anthropic - Claude Opus 5.5
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
  *
  * ✒ Changelog:
+ *     - 1.1.0 (11/15/2026) [dendogg + Anthropic - Claude Opus 5.5] —
+ *       answer() takes the Cleanup tab's question, cleanup, with the others
+ *       questions.js answers.
  *     - 1.0.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] —
  *       Initial release: the tree in typed columns, regions, the region
  *       protocol's answers and the shared refresh. The record D's indices
@@ -59,7 +62,7 @@
  *       fresh read with kept=1 answers from the tree as it stands; ids of
  *       folders removed since are listed in gone, not refused
  *     - answer() hands the questions that walk the whole tree (find,
- *       marks, survey, sessions, places) to questions.js; a region asked
+ *       marks, survey, sessions, places, cleanup) to questions.js; a region asked
  *       with a search's qid (q), or once the survey is worked out, carries
  *       its marks by place (region's mark hook)
  *     - edits counts every build and change, so what questions.js works
@@ -1298,7 +1301,7 @@ export const ROUTES = Object.freeze(['tree', 'region', ...QUESTION_ROUTES]);
 
 /**
  * The route logic of GET /api/tree, GET /api/region and the whole-tree
- * questions (find, marks, survey, sessions, places: questions.js), for
+ * questions (find, marks, survey, sessions, places, cleanup: questions.js), for
  * the service, the demo and the checks. ctx: { threshold, state, v,
  * progress, loadMs, mem, warm, entries, error, relParts (a path's
  * segments, refused as the guard refuses them), readers: { depth1(rel),

@@ -1,18 +1,23 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Polish Scenario (Terrane Edition - v1.2)
+ *     - Title: Polish Scenario (Terrane Edition - v1.3)
  *     - File Name: polish.mjs
  *     - Relative Path: tools/ui-scenarios/polish.mjs
  *     - Artifact Type: test
- *     - Version: 1.2.0
- *     - Date: 11/14/2026
- *     - Update: Saturday, November 14, 2026
+ *     - Version: 1.3.0
+ *     - Date: 11/15/2026
+ *     - Update: Sunday, November 15, 2026
  *     - Author: Dennis 'dendogg' Smaltz
  *     - A.I. Acknowledgement: Anthropic - Claude Opus 5.5
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
  *
  * ✒ Changelog:
+ *     - 1.3.0 (11/15/2026) [dendogg + Anthropic - Claude Opus 5.5] —
+ *       Cleanup's poses: the demo root with Big and stale open at 1600 and
+ *       1280, and the drawer at 800; C8 measures its kind words, name,
+ *       facts, summary and notes at A, its group heads and row text at B,
+ *       and each row's box or kept mark in the A slot.
  *     - 1.2.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] —
  *       The uppercase-voice check no longer skips .ref: the panel letters
  *       are gone.
@@ -468,6 +473,23 @@ function INSTALL() {
           at('Preview item text (B)', textLeft(it.querySelector('.nm') || it), 32, I, it);
         }
       }
+      // Cleanup (the right panel's third tab): the inspector's grid. Its
+      // group heads are disclosures as the ledger's are: the triangle in the
+      // mark slot at A, the title at B.
+      const CL = one('#b-panel-cleanup');
+      if (I && shown(CL) && one('#inspector').getBoundingClientRect().left < innerWidth - 10) {
+        for (const k of $('#b-panel-cleanup .insp-kind')) at('Cleanup kind words (A)', textLeft(k), 12, I, k);
+        for (const e of $('#b-panel-cleanup .insp-name, #b-panel-cleanup .cl-facts, #b-panel-cleanup .cl-state, #b-panel-cleanup .cl-sum, #b-panel-cleanup .cl-purge, #b-panel-cleanup .cl-under, #b-panel-cleanup .cl-note').filter(shown).slice(0, 30)) {
+          at('Cleanup text and notes (A)', textLeft(e), 12, I, e);
+        }
+        for (const w of $('#b-panel-cleanup .pv-where').filter(shown)) at('Cleanup "in <folder>" words (B)', textLeft(w.querySelector('.pv-where-words')), 32, I, w);
+        for (const s of $('#b-panel-cleanup .cl-group > summary').filter(shown).slice(0, 8)) at('Cleanup group head (B)', textLeft(s.querySelector('.t')), 32, I, s);
+        for (const r of $('#b-panel-cleanup .cl-row').filter(shown).slice(0, 12)) {
+          const box = r.querySelector('.cl-box') || r.querySelector('.cl-mark .icon');
+          if (box && shown(box)) mark('Cleanup box or kept mark (A slot)', box, 12, I);
+          at('Cleanup row text (B)', textLeft(r.querySelector('.nm')), 32, I, r);
+        }
+      }
       const first = one('#block .cell');
       if (L && innerWidth >= 1101 && shown(first)) test('C8', Math.abs(R(first).right - R(one('#ledger')).right) <= 0.5, { at: 'first cell = ledger', cell: r2(R(first).right), ledger: r2(R(one('#ledger')).right) });
       const status = one('#status-label');
@@ -634,6 +656,19 @@ async function listKey(t, key) {
 
 const drawerOpen = (t) => t.waitFor(() => getComputedStyle(document.getElementById('inspector')).visibility === 'visible', { what: 'the drawer' });
 
+/**
+ * The right panel on Cleanup for the folder you are in (the root), drawn
+ * whole, with Big and stale open (showing it opens the drawer at 800 px).
+ */
+async function inCleanup(t) {
+  await t.app((T) => { T.api.showBTab('cleanup'); return true; });
+  await t.waitFor(() => document.getElementById('b-panel-cleanup')?.dataset.shown === '', { timeout: 10000, what: 'Cleanup on the root' });
+  await t.app(() => {
+    for (const d of document.querySelectorAll('#b-panel-cleanup .cl-group')) d.open = d.dataset.group === 'stale';
+    return true;
+  });
+}
+
 /** Panel B on Preview, drawn whole for name (showing it opens the drawer at 800 px). */
 async function inPreview(t, name) {
   await t.app((T) => { T.api.showBTab('preview'); return true; });
@@ -684,6 +719,14 @@ const POSES = [
       await t.app((T) => { T.api.select(T.S.model.find('Downloads/fonts-pack.zip')); return true; });
       await inPreview(t, 'fonts-pack.zip');
     },
+  },
+  { id: 'P24', name: 'Cleanup on the root, Big and stale open', at: '', small: 'skip', buttons: true, setup: inCleanup },
+  {
+    id: 'P18d', name: 'drawer on Cleanup', at: '', small: 'only', buttons: true, drawer: true, setup: async (t) => {
+      await inCleanup(t);
+      await drawerOpen(t);
+    },
+    after: (t) => listKey(t, ']'),
   },
   { id: 'P5a', name: 'Findings "tide"', at: '', heads: true, setup: (t) => t.app((T) => { T.api.setQuery('tide'); return true; }) },
   { id: 'P5b', name: 'Findings "in:Projects >1mb"', at: '', heads: true, setup: (t) => t.app((T) => { T.api.setQuery('in:Projects >1mb'); return true; }) },

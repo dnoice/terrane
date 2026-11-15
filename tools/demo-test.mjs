@@ -2,18 +2,24 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Demo Test (Terrane Edition - v1.2)
+ *     - Title: Demo Test (Terrane Edition - v1.3)
  *     - File Name: demo-test.mjs
  *     - Relative Path: tools/demo-test.mjs
  *     - Artifact Type: test
- *     - Version: 1.2.0
- *     - Date: 11/14/2026
- *     - Update: Saturday, November 14, 2026
+ *     - Version: 1.3.0
+ *     - Date: 11/15/2026
+ *     - Update: Sunday, November 15, 2026
  *     - Author: Dennis 'dendogg' Smaltz
  *     - A.I. Acknowledgement: Anthropic - Claude Opus 5.5
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
  *
  * ✒ Changelog:
+ *     - 1.3.0 (11/15/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
+ *       Cleanup question: GET cleanup under the root and Projects answers
+ *       as reclaim.walk over the demo's model, every group seeded, the
+ *       decoy build and node_modules' empty folder left out, and a file, a
+ *       climbing path and a missing folder 404 ENOFOLDER. After the
+ *       review: lumen-cli's .venv is one cache by its pyvenv.cfg.
  *     - 1.2.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — Every
  *       zip of the world holds its entries packed into its own size, with
  *       a few hundred bytes of records each, as Preview shows the two side
@@ -73,7 +79,7 @@
  *     npm test runs it after the interiors test.
  *
  * ✒ Other Important Information:
- *     - Dependencies: Node.js 22+; web/js/demo-world.js,
+ *     - Dependencies: Node.js 22+; web/js/demo-world.js, web/js/reclaim.js,
  *       web/js/demo-service.js, web/js/model.js, web/js/columns.js,
  *       web/js/timeline.js, server/scan.mjs
  *     - Compatible platforms: Windows, macOS, Linux
@@ -93,6 +99,7 @@ const { Model, relPath, parseQuery, runSearch, isAncestor } = await import(new U
 const R = await import(new URL('../web/js/relations.js', import.meta.url).href);
 const C = await import(new URL('../web/js/columns.js', import.meta.url).href);
 const { buildAgeTable, STEPS } = await import(new URL('../web/js/timeline.js', import.meta.url).href);
+const RC = await import(new URL('../web/js/reclaim.js', import.meta.url).href);
 const { scan } = await import(new URL('../server/scan.mjs', import.meta.url).href);
 
 let passed = 0;
@@ -515,6 +522,29 @@ section('The whole-tree questions');
     const f = (await ask('find', { q: 'invoice' })).json;
     const mk = (await ask('marks', { q: f.qid, ids: '0' })).json;
     check('marks answer for a search the demo keeps', mk.marks.length === 1 && mk.marks[0].w === f.total);
+    // Cleanup's question: the demo's caches, big and stale files and empty
+    // folders, as reclaim.js walks the page's own model.
+    for (const under of ['', 'Projects']) {
+      const c = await ask('cleanup', { under });
+      const w = RC.walk(under ? model.find(under) : model.root, RC.modelAccess, { keepCap: 1000 });
+      const okLists = ['caches', 'stale', 'empty'].every((k) => c.status === 200 && c.json[k].total === w[k].total && c.json[k].bytes === w[k].bytes
+        && JSON.stringify(c.json[k].items.map((t) => t[0])) === JSON.stringify(w[k].items.map((i) => i.rel)));
+      check(`cleanup under ${under || 'the root'} answers as reclaim.walk over the demo model: caches ${w.caches.total}, big and stale ${w.stale.total}, empty ${w.empty.total}, hidden-only ${w.hiddenOnly}`,
+        okLists && c.json.hiddenOnly === w.hiddenOnly && c.json.under === under, JSON.stringify(c.json).slice(0, 300));
+    }
+    const rootClean = (await ask('cleanup', { under: '' })).json;
+    check('the demo seeds every group: node_modules, build beside package.json, the backups and discs, an empty folder, a folder of only .DS_Store',
+      rootClean.caches.items.some((t) => t[0] === 'Projects/harbor-api/node_modules') && rootClean.caches.items.some((t) => t[12] === 'build beside package.json')
+      && rootClean.stale.items.some((t) => t[0] === 'Archive/Backups/full-backup-2021-03.zip') && rootClean.empty.total > 0 && rootClean.hiddenOnly >= 1);
+    check('the demo Python environment, Projects/lumen-cli/.venv, is one cache by its pyvenv.cfg, nothing in it listed on its own',
+      rootClean.caches.items.some((t) => t[0] === 'Projects/lumen-cli/.venv' && t[12] === '.venv holds pyvenv.cfg')
+      && ![...rootClean.stale.items, ...rootClean.empty.items].some((t) => String(t[0]).includes('/.venv/')), JSON.stringify(rootClean.caches.items.map((t) => t[0])));
+    check('the decoy Documents/Notes/build and node_modules/.staging are not listed',
+      !rootClean.caches.items.some((t) => t[0] === 'Documents/Notes/build') && !rootClean.empty.items.some((t) => String(t[0]).includes('node_modules')));
+    for (const under of ['Downloads/invoice-2026-02.pdf', '../x', 'Nowhere']) {
+      const r = await ask('cleanup', { under });
+      check(`cleanup under ${under} is 404 ENOFOLDER`, r.status === 404 && r.json.code === 'ENOFOLDER', JSON.stringify(r.json));
+    }
   } finally {
     Date.now = realNow;
   }

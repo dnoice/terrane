@@ -1,18 +1,21 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Totals and Quick Searches (Terrane Edition - v1.1)
+ *     - Title: Totals and Quick Searches (Terrane Edition - v1.2)
  *     - File Name: presets.js
  *     - Relative Path: web/js/presets.js
  *     - Artifact Type: javascript
- *     - Version: 1.1.0
- *     - Date: 11/14/2026
- *     - Update: Saturday, November 14, 2026
+ *     - Version: 1.2.0
+ *     - Date: 11/15/2026
+ *     - Update: Sunday, November 15, 2026
  *     - Author: Dennis 'dendogg' Smaltz
  *     - A.I. Acknowledgement: Anthropic - Claude Opus 5.5
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
  *
  * ✒ Changelog:
+ *     - 1.2.0 (11/15/2026) [dendogg + Anthropic - Claude Opus 5.5] — Big
+ *       and stale reads its query from reclaim.js (BIG_STALE), the one
+ *       place the Cleanup tab reads its thresholds too.
  *     - 1.1.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
  *       guide's row for gathering a selection becomes two, each a key and its
  *       words: Ctrl+↑ ↓ moves in the list without selecting, Space adds or
@@ -58,7 +61,8 @@
  *     Ctrl+K, "large media"    Quick search: Large media
  *
  * ✒ Other Important Information:
- *     - Dependencies: model.js (parseQuery, formatting), icons.js; app.js's
+ *     - Dependencies: model.js (parseQuery, formatting), icons.js,
+ *       reclaim.js (BIG_STALE); app.js's
  *       api: S, QUERY, LEDGER_SUB, AFTER_SELECT, SURVEY, COMMANDS,
  *       setQuery, section, say, el
  *     - Compatible platforms: any browser with ES2022 modules
@@ -70,6 +74,7 @@
 
 import { parseQuery, fmtBytes, fmtCount } from './model.js';
 import { icon } from './icons.js';
+import { BIG_STALE } from './reclaim.js';
 
 export const name = 'Totals and quick searches';
 
@@ -77,7 +82,8 @@ const OWNER = 'presets';
 
 /** The quick searches, in the order the Survey lists them. */
 export const PRESETS = Object.freeze([
-  { id: 'big-stale', label: 'Big and stale', query: '>100mb older:1y' },
+  // Cleanup's Big and stale group reads the same thresholds (reclaim.js).
+  { id: 'big-stale', label: 'Big and stale', query: BIG_STALE.query },
   { id: 'large-media', label: 'Large media', query: 'kind:video,audio,image >50mb' },
   { id: 'this-week', label: 'Changed this week', query: 'newer:7d' },
   { id: 'empty-folders', label: 'Empty folders', query: 'is:empty is:folder' },
