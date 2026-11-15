@@ -1,11 +1,11 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Tree Model (Terrane Edition - v1.6)
+ *     - Title: Tree Model (Terrane Edition - v1.7)
  *     - File Name: model.js
  *     - Relative Path: web/js/model.js
  *     - Artifact Type: javascript
- *     - Version: 1.6.0
+ *     - Version: 1.7.0
  *     - Date: 11/14/2026
  *     - Update: Saturday, November 14, 2026
  *     - Author: Dennis 'dendogg' Smaltz
@@ -13,6 +13,9 @@
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
  *
  * ✒ Changelog:
+ *     - 1.7.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] —
+ *       The kinds in mineral tones: oxidised teal, steel blue, mineral
+ *       coral, plum, ochre, bronze, sage, graphite and stone.
  *     - 1.6.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] —
  *       Region mode: a Model made with { regions: true } holds only the
  *       regions the page asked for, through fillRegion, refillRegion
@@ -28,17 +31,6 @@
  *       Camera RAW files are images: cr3, nrw, srf, sr2, raf, rw2, orf,
  *       pef, srw, 3fr, erf, kdc, mrw, x3f and iiq join cr2, nef, arw and
  *       dng. Canon's CR3 had counted as Other.
- *     - 1.4.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] —
- *       Double quotes keep spaces in one search token and are dropped:
- *       "two words" is one name term, and in:"My Folder" reaches its
- *       prefix as the value my folder and the raw My Folder. IMAGE_EXT
- *       and TEXT_EXT, the extensions a preview shows as a picture or
- *       reads as text, for the inspector and Quick look alike. ext: and
- *       kind: take comma lists, any of them: kind:video,audio,image.
- *       adopt(fresh) takes on a fresh model of the same directory and
- *       keeps every node still there (matched by name and kind), with
- *       fresh's totals and every folder dirty; it returns kept, added,
- *       removed and changed, for the warm start's catch-up.
  *     Earlier entries: see CHANGELOG.md
  *
  * ✒ Description:
@@ -141,15 +133,15 @@ export const D_LEN = 62;
 export const AGE_ROW = D_LEN - D_AB;
 
 export const KINDS = [
-  { key: 'code', label: 'Code', color: 0x1f8a7d },
-  { key: 'document', label: 'Documents', color: 0x3d5fa8 },
-  { key: 'image', label: 'Images', color: 0xc9546c },
-  { key: 'video', label: 'Video', color: 0x6c4a8f },
-  { key: 'audio', label: 'Audio', color: 0xd27a34 },
-  { key: 'archive', label: 'Archives', color: 0x7b5a41 },
-  { key: 'data', label: 'Data', color: 0x5f8f47 },
-  { key: 'binary', label: 'Binaries', color: 0x46504d },
-  { key: 'other', label: 'Other', color: 0x9aa39f },
+  { key: 'code', label: 'Code', color: 0x2e8377 },
+  { key: 'document', label: 'Documents', color: 0x4a6593 },
+  { key: 'image', label: 'Images', color: 0xbb6466 },
+  { key: 'video', label: 'Video', color: 0x654480 },
+  { key: 'audio', label: 'Audio', color: 0xbf8243 },
+  { key: 'archive', label: 'Archives', color: 0x8c6b47 },
+  { key: 'data', label: 'Data', color: 0x6c8851 },
+  { key: 'binary', label: 'Binaries', color: 0x4b5150 },
+  { key: 'other', label: 'Other', color: 0xa19e96 },
 ];
 
 const EXT = {};

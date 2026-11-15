@@ -1,11 +1,11 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Terrane Application (Terrane Edition - v1.17)
+ *     - Title: Terrane Application (Terrane Edition - v1.18)
  *     - File Name: app.js
  *     - Relative Path: web/js/app.js
  *     - Artifact Type: javascript
- *     - Version: 1.17.0
+ *     - Version: 1.18.0
  *     - Date: 11/14/2026
  *     - Update: Saturday, November 14, 2026
  *     - Author: Dennis 'dendogg' Smaltz
@@ -13,6 +13,9 @@
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
  *
  * ✒ Changelog:
+ *     - 1.18.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] —
+ *       Extensions step half as far within their kind, and a closed mass's
+ *       strata are its own body colour leaning toward each kind.
  *     - 1.17.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] —
  *       Panel B's head is a tab strip from B_TABS, the Inspector first and
  *       the default, the choice kept in this browser; both strips take the
@@ -23,32 +26,6 @@
  *     - 1.16.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] —
  *       A flavor the service was started with (--flavor, in /api/info) is
  *       taken once by this browser; a choice made in the guide since holds.
- *     - 1.15.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
- *       sheet's polish: the ledger head in two rows (the count and its tools,
- *       then the keys over the columns; Select all an icon) with one-line
- *       captions; facts from parts, sectionTitle and the path broken after
- *       each slash; the legend's whole chips behind +N; the status reads
- *       files, bytes, folders; the veil's error on its own line. A tree
- *       above the region threshold, or one a survey finds past it, is drawn
- *       from regions (regions.js) the page asks for as the eye nears them;
- *       a folder's region is held before you go there or select it; changed
- *       folders are read again as fresh regions. Region answers are decoded
- *       in a module worker, and regions are let go under a budget of held
- *       entries, never a pinned folder or one standing open. The service
- *       answers search, the survey and Verify there: Findings lists the
- *       first 5,000 of the true total as refs, each made a node when acted
- *       on, and marks by name dim and pin what is held. A warm start is
- *       checked by folder modification times (GET /api/check), and in
- *       region mode in place by the service while changes wait. What
- *       follows a region landing, a layout's location and a reveal's
- *       panels run in tasks of their own there; the Survey is not drawn
- *       again on select, and its closed sections of many rows build them
- *       when first opened; a reveal paints its selection once. After the
- *       review: changes the service read itself are asked for as kept,
- *       pinned children past a folder's 5,000 kept through refills, the
- *       search and survey asked again at a pace the service bears, and
- *       Findings turned page by page. A search's answer in region mode is
- *       painted and listed once as it lands, not twice in one task.
  *     Earlier entries: see CHANGELOG.md
  *
  * ✒ Description:
@@ -2364,7 +2341,7 @@ function screeHasMatch(i) {
  * kind.
  */
 const extTones = new Map();
-const TONE_STEPS = [-0.22, -0.11, 0, 0.12, 0.24];
+const TONE_STEPS = [-0.12, -0.06, 0, 0.07, 0.14];
 // Common neighbours get steps apart (.ts and .tsx, .tsx and .css, .jpg
 // and .png, .mov and .mp4); any other extension takes a step by its hash.
 const TONE_OF = {
@@ -2400,7 +2377,10 @@ function strataOf(node) {
   for (let k = 0; k < 9; k++) if (node.ks[k] > 0) order.push(k);
   order.sort((a, b) => node.ks[b] - node.ks[a]);
   const total = node.s || 1;
-  const tone = (k) => mixHex(THEME.clay, KINDS[k].color, 0.7);
+  // Each band is the mass's own body, the colour its lid takes, leaning
+  // toward its kind: the sides read as one object that shows what it holds.
+  const body = mixHex(THEME.clay, KINDS[order[0] ?? 8].color, 0.56);
+  const tone = (k) => mixHex(body, mixHex(THEME.clay, KINDS[k].color, 0.7), 0.62);
   if (!order.length) return null;
   const a = order[0];
   const b = order[1] ?? a;

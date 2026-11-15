@@ -1,10 +1,10 @@
 <!--
 ✒ Metadata
-    - Title: Terrane Readme (Terrane Edition - v1.20)
+    - Title: Terrane Readme (Terrane Edition - v1.21)
     - File Name: README.md
     - Relative Path: README.md
     - Artifact Type: docs
-    - Version: 1.20.0
+    - Version: 1.21.0
     - Date: 11/14/2026
     - Update: Saturday, November 14, 2026
     - Author: Dennis 'dendogg' Smaltz
@@ -12,6 +12,9 @@
     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
 
 ✒ Changelog:
+    - 1.21.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] —
+      What was verified records the precise terrain's first part:
+      machined edges, a satin finish and the kinds in mineral tones.
     - 1.20.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] —
       Preview, merged into `main`. Looking further gains Preview,
       panel B's second tab, with its keys, what it shows and why it
@@ -981,6 +984,7 @@ time.
 | Flavors on Windows 11 (11/14/2026), Edge 157 on an RTX 5050 laptop GPU: `npm test` with the new `flavors-test`, and `node tools/ui-check.mjs --no-shots`, both passes, on the default fixture, with `views` making every drag of every flavor with the mouse and judging what the eye did | `npm test`: 874 passed, 0 failed (77 in `flavors-test`). The interface check: 1438 passed, 1 failed, 6 skipped; the failure was the full-upload picture in `transitions`, one byte of one pixel a level apart, which the check now ignores while still counting anything over two levels (`transitions` again: 33 passed, 0 failed) |
 | The Guide window on Windows 11 (11/14/2026), Edge 157 on an RTX 5050 laptop GPU: `npm test`, and `node tools/ui-check.mjs --no-shots`, both passes, on the default fixture, with `seams`, `strata`, `time` and `interiors` reading Reading the world from the Guide's tab and `hardening` reaching the single-key setting in its Settings tab | `npm test`: 874 passed, 0 failed. The interface check: 1439 passed, 0 failed, 6 skipped |
 | Preview's final sweep on branch `tab-preview`, Windows 11 (11/14/2026): `node --check` on every script outside `web/vendor/`; `npm test`, now fourteen suites, `preview-test` last (Quick look's decisions against a copy of what it decided before its readers moved, over 356 files and modes; the text read through a fake fetch; the largest entries against a full sort over 1,000 random folders; 17 link targets); `npm run vendor -- --check`; the header of every file the branch touched; Markdown line lengths; and `node tools/ui-check.mjs --no-shots --port 5300` in both passes with Edge 157 on an RTX 5050 laptop GPU and the default fixture of 3,126 files: the earlier scenarios plus `preview`, `preview-regions` and `preview-disk`, with Preview's checks in `demo`, `demo-regions`, `hardening`, `polish` and `seams` | No syntax error in 108 scripts; 1,201 passed (255, 97, 57, 33, 60, 52, 54, 31, 80, 159, 68, 120, 77 and 58), none failed; every vendored file matches the manifest; 28 headers in rule; no Markdown line over 100 columns; 2974 passed, 0 failed, 8 skipped (1,563 and 3 with WebGL, 1,411 and 5 without, the same skips as before); draw calls at the baseline. An arrow held over 15 rows of the fixture, over 12 rows of the demo world and over 12 rows at 800 by 500 read one text each time, in both passes; a text cut at 256 KB built its 3,745 numbered lines in 10 and 11 ms. Merged into `main` after `main`'s Blender fix and `--flavor` were merged into the branch and checked again |
+| The precise terrain, part one, on branch `precision-terrain`, Windows 11 (11/14/2026), Edge 157 on an RTX 5050 laptop GPU: before and after shots of six poses of the demo world (overview, Projects, Photos, components, the street, Music); `npm test`; and, after `main` with Preview was merged in, `node tools/ui-check.mjs` scenarios views, interiors, landmarks, time, transitions, seams, preview, strata and polish, each on its own | `npm test`: 1,215 passed, 0 failed. views 33, interiors 118, landmarks 127 (2 skipped), time 80, transitions 33, seams 135, preview 158, strata 76 and polish 1,200 passed, none failed. The first landmarks run found its check of the benchmarks' draw call naming the pins by their unlit material; it now finds the pin mesh by its own count. A selection fill leaning from the box's colour toward the mark was tried and dropped: a teal box turned olive. Merged into `main` |
 
 Not verified: running on macOS; frame rate at street level in the largest
 trees on a hardware GPU; Open and Reveal reaching a desktop application on

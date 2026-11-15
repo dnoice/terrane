@@ -1,11 +1,11 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: 3D Viewport (Terrane Edition - v1.10)
+ *     - Title: 3D Viewport (Terrane Edition - v1.11)
  *     - File Name: viewport.js
  *     - Relative Path: web/js/viewport.js
  *     - Artifact Type: javascript
- *     - Version: 1.10.0
+ *     - Version: 1.11.0
  *     - Date: 11/14/2026
  *     - Update: Saturday, November 14, 2026
  *     - Author: Dennis 'dendogg' Smaltz
@@ -13,6 +13,9 @@
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
  *
  * ✒ Changelog:
+ *     - 1.11.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] —
+ *       A machined finish: a narrow bevel with a gentle lean, flat lids,
+ *       a satin roughness (0.6); pins are slimmer and lit as the boxes are.
  *     - 1.10.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] —
  *       A drag whose motion is none leaves the view alone and takes no
  *       grabbing cursor, so Blender's left and right buttons only click.
@@ -21,12 +24,6 @@
  *       Terrane's, Blender's, AutoCAD's and eight more; a walk motion for
  *       Unreal's left drag, and a middle double click that rises to the
  *       overview where a flavor asks for it.
- *     - 1.8.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] —
- *       Hatching, stipple and bands stay put: drawn from each box's own
- *       centre with one period for the whole box, blended between octaves,
- *       so the floating origin, a turn or a zoom no longer breaks them.
- *       Blender's controls: the middle button orbits, Shift grabs and
- *       moves, Ctrl flies in and out; numpad views (viewAbout).
  *     Earlier entries: see CHANGELOG.md
  *
  * ✒ Description:
@@ -362,7 +359,7 @@ function linear(hex) {
  *   footprint)
  */
 function boxMaterial(letters) {
-  const mat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.46, metalness: 0 });
+  const mat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.6, metalness: 0 });
   // The reading frame every name shares: the box axes nearest the view's
   // right and its way ahead on the ground (right x z, then ahead x z).
   mat.userData.letterAxes = { value: new THREE.Vector4(1, 0, 0, -1) };
@@ -492,12 +489,13 @@ function boxMaterial(letters) {
         float boxPixel() {
           return max(length(fwidth(vWorldP)) * 0.7071, 1e-6);
         }
-        // The bevel's width: a share of the short side, at least about a
-        // pixel and a half, at most a third of the short side.
+        // The bevel's width: a small share of the short side, at least
+        // about a pixel, at most a fifth of the short side: a machined
+        // arris that reads the edge, not a moulded round.
         float boxBevel(float px) {
           float smn = min(vBoxScale.x, min(vBoxScale.y, vBoxScale.z));
           float foot = min(vBoxScale.x, vBoxScale.z);
-          return min(max(min(smn * 0.16, foot * 0.06), px * 1.6), smn * 0.34);
+          return min(max(min(smn * 0.07, foot * 0.025), px * 1.15), smn * 0.2);
         }`)
       .replace('#include <color_fragment>', `#include <color_fragment>
         // Lettering. aLetter is (code, slot height, slot left, slot foot):
@@ -599,11 +597,12 @@ function boxMaterial(letters) {
             diffuseColor.rgb *= 1.0 - 0.5 * letterShade;
             diffuseColor.rgb = mix(diffuseColor.rgb, min(base * 1.18 + 0.02, vec3(1.0)), letterLit * 0.85);
           }
-          // Tops are faintly pillowed: a breath darker toward their rims.
+          // Tops are flat: the faintest falloff toward the rim, so a lid
+          // reads as cut stone, not a cushion.
           if (face.y > 0.5) {
             vec2 rim = (0.5 - abs(vBoxLocal.xz)) * vBoxScale.xz;
             float m = min(rim.x, rim.y) / max(min(vBoxScale.x, vBoxScale.z) * 0.5, 1e-6);
-            diffuseColor.rgb *= mix(0.95, 1.0, smoothstep(0.0, 0.6, m));
+            diffuseColor.rgb *= mix(0.985, 1.0, smoothstep(0.0, 0.4, m));
           }
           // Contact shade toward the foot of every side.
           float foot = min(vBoxScale.x, vBoxScale.z);
@@ -622,7 +621,8 @@ function boxMaterial(letters) {
           vec3 e = (0.5 - a) * vBoxScale;
           vec3 t = clamp(1.0 - e / r, 0.0, 1.0) * (vec3(1.0) - abs(face));
           t = t * t * (3.0 - 2.0 * t);
-          vec3 bent = normalize(face + s * t * 1.15);
+          // A gentle lean: the arris catches a little light, never a rim of it.
+          vec3 bent = normalize(face + s * t * 0.55);
           normal = normalize((viewMatrix * vec4(bent, 0.0)).xyz);
         }`)
       .replace('#include <dithering_fragment>', `#include <dithering_fragment>
@@ -920,10 +920,12 @@ export class Viewport {
     // floats cannot hold both scales in absolute coordinates.
     this.origin = { x: 0, y: 0, z: 0 };
 
-    const pinGeo = new THREE.ConeGeometry(0.5, 1.5, 4);
+    // A slim four-sided point, lit as the boxes are, so a pin reads as a
+    // made marker standing in the same light rather than a flat glyph.
+    const pinGeo = new THREE.ConeGeometry(0.34, 1.3, 4);
     pinGeo.rotateX(Math.PI);
-    pinGeo.translate(0, 0.75, 0);
-    const pins = new THREE.InstancedMesh(pinGeo, new THREE.MeshBasicMaterial({ color: 0xffffff, fog: false }), PIN_CAPACITY);
+    pinGeo.translate(0, 0.65, 0);
+    const pins = new THREE.InstancedMesh(pinGeo, new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.6, metalness: 0, fog: false }), PIN_CAPACITY);
     pins.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(PIN_CAPACITY * 3).fill(1), 3);
     pins.count = 0;
     pins.frustumCulled = false;
@@ -1422,7 +1424,7 @@ export class Viewport {
         // apex points up. A rotation, not a negative scale, so the faces
         // keep their winding.
         m.makeRotationX(Math.PI).scale(this.pinScale.set(s, s, s));
-        m.setPosition(g[o] - ox, topY + s * 1.65 - oy, g[o + 2] - oz);
+        m.setPosition(g[o] - ox, topY + s * 1.45 - oy, g[o + 2] - oz);
       } else {
         m.makeScale(s, s, s);
         m.setPosition(g[o] - ox, topY + s * 0.15 - oy, g[o + 2] - oz);

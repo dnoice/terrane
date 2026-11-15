@@ -1,11 +1,11 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Landmarks Scenario (Terrane Edition - v1.0)
+ *     - Title: Landmarks Scenario (Terrane Edition - v1.1)
  *     - File Name: landmarks.mjs
  *     - Relative Path: tools/ui-scenarios/landmarks.mjs
  *     - Artifact Type: test
- *     - Version: 1.0.1
+ *     - Version: 1.1.0
  *     - Date: 11/14/2026
  *     - Update: Saturday, November 14, 2026
  *     - Author: Dennis 'dendogg' Smaltz
@@ -13,6 +13,10 @@
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
  *
  * ✒ Changelog:
+ *     - 1.1.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] —
+ *       The benchmarks' draw call is found as the pin mesh by its own
+ *       instance count, since pins are now lit (MeshStandardMaterial, as
+ *       the boxes are) and no longer the one unlit instanced mesh.
  *     - 1.0.1 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
  *       Places tab is counted among the ledger's tabs by its strip's id
  *       (#ledger-tabs), since panel B's strip shares the class .tabs.
@@ -439,8 +443,12 @@ async function routes(t) {
     const two = await t.drawCalls();
     const base = t.baseline;
     const rec = t.recorded || t.baseline;
-    const pinsDrawn = two.drawn.filter((x) => /^Mesh MeshBasicMaterial x\d+$/.test(x));
-    const rest = two.drawn.filter((x) => !/^Mesh MeshBasicMaterial x\d+$/.test(x));
+    // The pin mesh is lit as the boxes are, so it is the instanced
+    // MeshStandardMaterial with the pins' own count; the boxes' comes first.
+    const pinN = await t.app((T) => T.S.view.pins.count);
+    const at = two.drawn.lastIndexOf(`Mesh MeshStandardMaterial x${pinN}`);
+    const pinsDrawn = pinN > 0 && at >= 0 ? [two.drawn[at]] : [];
+    const rest = at >= 0 ? [...two.drawn.slice(0, at), ...two.drawn.slice(at + 1)] : two.drawn;
     t.check(`at the overview the benchmarks add only the shared pin mesh to what is drawn (${two.calls} calls, baseline ${base.overview.calls}, recorded ${rec.overview.calls})`,
       pinsDrawn.length === 1 && two.calls === base.overview.calls + 1 && base.overview.calls === rec.overview.calls && JSON.stringify(rest) === JSON.stringify(base.overview.drawn), JSON.stringify(two.drawn));
     await t.key('/');
