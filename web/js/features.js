@@ -35,7 +35,7 @@
  *       as "Time could not start: ...") and install(api)
  *     - install(api) adds entries to the controller's registries: KEYS,
  *       ESCAPE, PIN_SOURCES, TIP_LINES, INSPECTOR.focus, .node and
- *       .many, READING, TABS, LAYOUT_OPTS, MENU, AFTER_LAYOUT,
+ *       .many, READING, TABS, B_TABS, LAYOUT_OPTS, MENU, AFTER_LAYOUT,
  *       AFTER_REFRESH, AFTER_SURVEY, AFTER_OP, AFTER_QUERY, SURVEY,
  *       COMMANDS, LEDGER_SUB, AFTER_FOCUS, AFTER_SELECT, TAB_SECTIONS,
  *       RENAME_MANY, DUP_GROUP, and the QUERY.is and QUERY.prefix

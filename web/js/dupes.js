@@ -51,6 +51,9 @@
  *       sentence that names the file
  *     - One removal to the holding area (runOp, type trash): one journal
  *       entry, its notice offers Undo, and the kept file is selected
+ *     - keepOf (from reclaim.js) and recheck(api, groups), the read
+ *       again before a move, 4,000 paths a request, are exported, so the
+ *       Cleanup tab keeps and checks by the same rules
  *     - Read-only and snapshot mode show the actions unavailable with
  *       the reason; the command palette offers the three keeps for the
  *       selected file

@@ -1,10 +1,10 @@
 <!--
 ✒ Metadata
-    - Title: Terrane Readme (Terrane Edition - v1.24)
+    - Title: Terrane Readme (Terrane Edition - v1.25)
     - File Name: README.md
     - Relative Path: README.md
     - Artifact Type: docs
-    - Version: 1.24.0
+    - Version: 1.25.0
     - Date: 11/15/2026
     - Update: Sunday, November 15, 2026
     - Author: Dennis 'dendogg' Smaltz
@@ -12,6 +12,19 @@
     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
 
 ✒ Changelog:
+    - 1.25.0 (11/15/2026) [dendogg + Anthropic - Claude Opus 5.5] —
+      Cleanup, on branch `tab-cleanup`. Doing things to files gains
+      the right panel's Cleanup tab: how to reach it, which folder it
+      shows, its four groups and the rule of each, its keys, the move
+      to the holding area as one change with its Undo, and what it says
+      in read-only, snapshot and region mode, for a folder removed and
+      for one that looks clean. Travelling names the right panel
+      without a letter and says what its tabs do. Very large
+      directories and the safety model cover the cleanup question. The
+      commands name cleanup-test; the project map lists cleanup.js,
+      reclaim.js, cleanup.css, cleanup-test and the cleanup scenarios.
+      What was verified records the final sweep of the branch; Not
+      verified adds what Cleanup could not see.
     - 1.24.0 (11/15/2026) [dendogg + Anthropic - Claude Opus 5.5] —
       What was verified records the precise terrain's second part as
       merged into `main`, with the checks run on the merge.
@@ -183,8 +196,9 @@
     place again, and what it shows beyond the ground plane: a date
     scrub, landmarks, working sessions, strata, archive interiors, a
     quick look at a file and Preview, which reads the selection beside
-    the world. Also what it can do to files, one or many at a time, how
-    those actions are kept safe, and where to start when continuing
+    the world. Also what it can do to files, one or many at a time,
+    Cleanup's suggestions for reclaiming space among them, how those
+    actions are kept safe, and where to start when continuing
     development.
 
 ✒ Key Features:
@@ -206,8 +220,11 @@
       with their keys and where places and searches are kept
     - Acting on many: the batch rename, duplicate cleanup, copy as, lists
       saved as CSV and a terminal opened in a folder
+    - Cleanup: ranked, sized suggestions for reclaiming space in one
+      folder, each with its rule, moved to the holding area as one change
     - Safety model and its limits, the archive listing, the new routes,
-      the warm cache, the region routes and what Preview reads included
+      the warm cache, the region routes, what Preview reads and what
+      Cleanup moves included
     - The checks (npm test, ui-check), what was verified, and what was
       not
     - Project map for continuing development
@@ -355,12 +372,16 @@ once:
   Previous and Next on its count row to turn through the rest, and the
   world pins the matches it holds.
 - The Survey, Verify by content, Working sessions, Changed with it and
-  the traverse, the palette's folders and files, and the quick
-  searches' counts.
+  the traverse, the palette's folders and files, the quick searches'
+  counts, and Cleanup's suggestions for a folder, counted across every
+  level beneath it.
 
 What is cut to a size, and says so:
 
 - Select all in Findings takes the first 1,000 matches.
+- Cleanup lists the 1,000 largest of each group and says so; the rest
+  come up after a move. Its duplicates come from the 400 largest sets
+  the survey found.
 - The Survey's empty folders, sealed folders and links show their first
   300 rows, as with a whole tree, and say "The first 300 of N.". Export
   CSV saves the first 1,000 of a Survey list and the page Findings
@@ -422,7 +443,7 @@ It does four things:
 | `npm run thumbs -- --huge` | Also thumbnail images over 80 megapixels, one at a time |
 | `npm run thumbs -- --heavy-svg` | Also render SVGs over 512 KB through Inkscape |
 | `node server/terrane.mjs --snapshot <folder>` | Serve a snapshot without the dev runner |
-| `npm test` | The service smoke test on a throwaway directory, then the Node checks of landmarks (`places-test`), working sessions (`relations-test`), strata (`strata-test`), archive interiors (`interior-test`), finding your way (`finding-test`), the batch rename (`rename-test`), CSV export (`export-test`), the warm start and its check (`warm-test`), the service's tree, its regions and questions (`regions-test`), the page's region mode against the whole model (`partial-test`), the demo world and its service (`demo-test`), the flavors (`flavors-test`) and the readers Quick look and Preview share (`preview-test`) |
+| `npm test` | The service smoke test on a throwaway directory, then the Node checks of landmarks (`places-test`), working sessions (`relations-test`), strata (`strata-test`), archive interiors (`interior-test`), finding your way (`finding-test`), the batch rename (`rename-test`), CSV export (`export-test`), the warm start and its check (`warm-test`), the service's tree, its regions and questions (`regions-test`), the page's region mode against the whole model (`partial-test`), the demo world and its service (`demo-test`), the flavors (`flavors-test`), the readers Quick look and Preview share (`preview-test`) and Cleanup's rules and its question (`cleanup-test`) |
 | `npm run ui-check` | Drive the page in headless Edge or Chrome, keyboard only, with and without WebGL, on a fresh fixture in the OS temp folder; compares draw calls with the recorded baseline |
 | `npm run ui-check -- time --pass nogl` | One scenario in one pass; `npm run ui-check -- --list` names every scenario |
 | `node tools/make-synthetic.mjs --entries 1m --out <folder>` | A synthetic structure snapshot of a million entries; see Synthetic snapshots and the scale harness |
@@ -602,11 +623,12 @@ world or the ledger list has focus: click the world, or Tab to it, and
 they work. Ctrl and Alt shortcuts act everywhere. A setting in the guide
 lets single-key shortcuts act wherever focus is.
 
-The panel on the right, B, opens on the Inspector, and the tabs beside
-it on its strip read the same selection another way (Preview, under
-Looking further). `]`, or its toggle in the view tools, hides and shows
-the right panel and says which tab it shows. Below 860 px wide (or at
-200% zoom) the right panel folds away, and `]` or the toggle opens it as a drawer
+The right panel opens on the Inspector. The tabs beside it on its strip
+read the same selection another way (Preview, under Looking further) or
+suggest what to do with its folder (Cleanup, under Doing things to
+files). `]`, or its toggle in the view tools, hides and shows the right
+panel and says which tab it shows. Below 860 px wide (or at 200% zoom)
+the right panel folds away, and `]` or the toggle opens it as a drawer
 over the world, on the tab chosen. On either panel's tab strip, ← and →
 move to the previous and next tab, Home and End to the first and last,
 and the tab reached is shown; Home there stays on the strip rather than
@@ -819,6 +841,7 @@ arrived.
 | Duplicate | Ctrl+D | Copies in place as `name copy.ext` |
 | Remove | Del | Moves to the holding area. Nothing is deleted |
 | Keep one copy | Survey and inspector, under verified duplicates; palette | The other copies move to the holding area |
+| Reclaim space | The right panel's Cleanup tab; menu (Suggest cleanup here); palette | Ranked suggestions for one folder; what stays checked moves to the holding area as one change |
 | Export CSV | Contents and Findings count rows, Survey, palette | Saved by the browser; nothing goes through the service |
 | Undo | Ctrl+Z, toolbar, Journal tab | Reverses the latest change. One that stops part way says how many items went back, and Undo again finishes it |
 | Restore, Purge | Journal tab | Purge is the only permanent deletion and asks first |
@@ -853,7 +876,81 @@ copies are hashed again first, and one that changed since it was
 verified stops the whole move. A group compared by sampling, its files
 over 16 MB, is called probable and its confirmation says so; a group
 not yet verified offers only Verify by content. A verification survives
-a refresh for every file whose size and last change are unchanged.
+a refresh for every file whose size and last change are unchanged, and
+an Undo that brings a file back from the holding area.
+
+**Cleanup.** The right panel's third tab suggests what in one folder
+could go, ranked by the space it frees, and moves what you leave
+checked to the holding area as one change. Right-click a folder and
+choose Suggest cleanup here (on a file, Suggest cleanup in its folder;
+on the ground, for this folder), choose CLEANUP on the right panel's
+strip, or Ctrl+K, "cleanup": Show Cleanup, or Suggest cleanup for this
+folder, whose line names the folder. The folder is the selection if it
+is a folder, else the selection's folder, else the folder you are in.
+The tab's head names it with its size, files and folders, and two
+buttons widen it: "in <parent>" and, deeper down, Whole world. Once you
+have chosen a folder the tab keeps it while you select and travel, and
+a bar under the head offers Suggest for it when you select or travel
+to another. Under the head it says what the move would free, as in
+"Could free 4.2 GB · 34% · 63 items", above one button that says what it
+moves before it is pressed, "Move 63 items, 4.2 GB". Four groups
+follow, the one that frees most first, each with its count and total,
+the rule that fills it in words, its rows, and a Move button of its
+own:
+
+- **Duplicates**: copies Verify by content found identical, never a
+  name or a size alone. Each set keeps one copy, shown first with a
+  check and never moved: the newest, or the oldest with Keep oldest, as
+  duplicate cleanup keeps. A set compared by samples, its files over
+  16 MB, is marked probable on its rows, in its note and in the
+  confirmation. Sets that only share a size are counted, with Verify by
+  content beside them.
+- **Big and stale**: files over 100 MB not changed in a year, the
+  thresholds of the Big and stale quick search. A copy a duplicate set
+  keeps or suggests is not listed here again.
+- **Caches and build output**: folders a tool makes and makes again,
+  from a fixed list of 18 names (`node_modules`, `__pycache__`,
+  `.pytest_cache`, `.cache`, `.next`, `.gradle`, `.parcel-cache` and the
+  rest, which "Which folders count" lists), and any folder holding
+  `pyvenv.cfg`, a Python environment. `dist`, `build`, `target` and
+  `coverage` count only beside the project file that makes them, so a
+  folder of plans called build is not one. Each row says which rule
+  found it and what makes it again, and nothing inside a listed folder
+  is listed twice.
+- **Empty folders**: folders that hold nothing at all, hidden files
+  included. A folder that holds only hidden files, such as `.DS_Store`,
+  is counted in the note and left alone. Moving these frees no space.
+
+Nothing inside a repository's `.git`, `.hg` or `.svn`, or an installed
+`site-packages` or `dist-packages`, is ever suggested, and no copy in
+them is kept or offered. A click on a row, or Enter, selects the item
+and frames it in the world, with the ledger's cursor on it. In a list,
+↑ and ↓ step through the rows, Home and End reach the group's first and
+last, and Space, or the row's box, leaves the item out or puts it back;
+every total and button changes in place, and the Guide lists these keys
+under Acting on many. What you leave out stays left out, by path, for
+as long as the page is open, across folders and moves.
+
+A Move asks once, naming what each group moves and its size, which
+copy each duplicate set keeps, and that nothing is deleted. The copies
+are hashed again first, and one changed since it was verified stops
+the whole move. Then everything goes to the holding area as one change:
+the notice's Undo, Ctrl+Z or the Journal tab puts every item back, and
+the space comes back only when the holding area is purged. One press
+moves at most 5,000 items and says so first. Afterwards the suggestions
+and totals are counted again and the tab says what is left to suggest.
+
+Read-only and snapshot mode show every suggestion with each Move
+unavailable and the reason; a snapshot holds no contents, so its copies
+cannot be verified. A warm start waits until the last session's tree is
+checked. In a very large directory the service counts the folder across
+every level; while it counts the moves wait, and a service that does
+not answer the question says plainly that the tab covers only the
+folders loaded. A folder removed from outside gives way to the nearest
+one still there ("old-export is no longer there; showing Downloads."),
+and one Terrane renames or moves is followed, and back on Undo. A
+folder with nothing to suggest says it looks clean and why, naming each
+rule it was read against.
 
 **Copy as.** Ctrl+C copies absolute paths. The context menu and the
 palette also copy names, and paths relative to the directory, for one
@@ -933,6 +1030,16 @@ that cannot be read.
   followed; each with the checks of any preview. A picture reaches it
   only through the thumbnail routes, never as the file. In snapshot
   mode it asks for no file's bytes at all.
+- Cleanup deletes nothing and has no route of its own that changes the
+  disk: a move is the same removal to the holding area as Del, one
+  journal entry through `POST /api/op`, refused in read-only and
+  snapshot mode, and the duplicate copies are hashed again through
+  `POST /api/hash` first. Its question, `GET /api/cleanup` (the folder,
+  `under`, and how many of each list, `limit`, at most 1,000), reads
+  the tree the service keeps, never the disk, behind the token, the
+  Host check and the generation like the other whole-tree questions; a
+  folder that is not there, a file, or a path that climbs out is
+  refused as `ENOFOLDER`.
 - The warm cache holds what a snapshot holds: names, sizes, dates and
   flags, never what a file contains. It is written only from a survey of
   the whole directory that ran to its end, and read back only when its
@@ -1020,6 +1127,7 @@ time.
 | Preview's final sweep on branch `tab-preview`, Windows 11 (11/14/2026): `node --check` on every script outside `web/vendor/`; `npm test`, now fourteen suites, `preview-test` last (Quick look's decisions against a copy of what it decided before its readers moved, over 356 files and modes; the text read through a fake fetch; the largest entries against a full sort over 1,000 random folders; 17 link targets); `npm run vendor -- --check`; the header of every file the branch touched; Markdown line lengths; and `node tools/ui-check.mjs --no-shots --port 5300` in both passes with Edge 157 on an RTX 5050 laptop GPU and the default fixture of 3,126 files: the earlier scenarios plus `preview`, `preview-regions` and `preview-disk`, with Preview's checks in `demo`, `demo-regions`, `hardening`, `polish` and `seams` | No syntax error in 108 scripts; 1,201 passed (255, 97, 57, 33, 60, 52, 54, 31, 80, 159, 68, 120, 77 and 58), none failed; every vendored file matches the manifest; 28 headers in rule; no Markdown line over 100 columns; 2974 passed, 0 failed, 8 skipped (1,563 and 3 with WebGL, 1,411 and 5 without, the same skips as before); draw calls at the baseline. An arrow held over 15 rows of the fixture, over 12 rows of the demo world and over 12 rows at 800 by 500 read one text each time, in both passes; a text cut at 256 KB built its 3,745 numbered lines in 10 and 11 ms. Merged into `main` after `main`'s Blender fix and `--flavor` were merged into the branch and checked again |
 | The precise terrain, part one, on branch `precision-terrain`, Windows 11 (11/14/2026), Edge 157 on an RTX 5050 laptop GPU: before and after shots of six poses of the demo world (overview, Projects, Photos, components, the street, Music); `npm test`; and, after `main` with Preview was merged in, `node tools/ui-check.mjs` scenarios views, interiors, landmarks, time, transitions, seams, preview, strata and polish, each on its own | `npm test`: 1,215 passed, 0 failed. views 33, interiors 118, landmarks 127 (2 skipped), time 80, transitions 33, seams 135, preview 158, strata 76 and polish 1,200 passed, none failed. The first landmarks run found its check of the benchmarks' draw call naming the pins by their unlit material; it now finds the pin mesh by its own count. A selection fill leaning from the box's colour toward the mark was tried and dropped: a teal box turned olive. Merged into `main` |
 | The precise terrain, part two, on branch `precision-terrain-2`, Windows 11 (11/15/2026), Edge 157 on an RTX 5050 laptop GPU: before and after shots of the demo world pinned to one moment (12,087 files), 13 poses at 1600 by 1000 and 1280 by 800, of `391c5a7`, the reviewed build and the fixed one; `npm test`; `node tools/ui-check.mjs --no-shots --port 5309`, both passes, after the last change to the code; the `scale` scenario on a 400,000-entry synthetic snapshot in regions; then the docs and sweep: `node --check` on every script outside `web/vendor/`, `npm test`, `node tools/vendor.mjs --check`, the header of every file the branch touched and Markdown line lengths | `npm test`: 1,234 passed, 0 failed (274 in the smoke test). The interface check: 2990 passed, 0 failed, 8 skipped; draw calls at the baseline (overview 7, selected 9, search 8, duplicate ties 10). At 400,000 entries the longest script task was 13.2 ms against the reviewed build's 12.8 ms on the same snapshot (a first run's one 18 ms frame did not recur), and the heap 26.7 MB at its peak; the 5,000,000-entry tour was not run, for want of free memory. The sweep: no syntax error in 108 scripts; `npm test` 1,234 passed, 0 failed; every vendored file matches the manifest; 14 headers in rule; no Markdown line over 100 columns. Tried and dropped: a name's floor measured only as it would stand facing the eye, behind a flatness gate, which printed names under 5 px as seen (the floor is now the smaller of the two, with larger shares and a step up the ladder to keep names); and a soft cap on heights, which made a fresh file's height follow its footprint (each folder has one recency scale instead). Merged into `main` after `main`'s removal of the panel letters was merged in and checked again: `npm test` 1,234 passed, 0 failed; the interface check's seams, preview, polish and core, both passes: seams 147, preview 158, polish 1,200 and core 73 passed, 0 failed |
+| Cleanup's final sweep on branch `tab-cleanup`, Windows 11 (11/15/2026): `node --check` on every script outside `web/vendor/`; `npm test`, now fifteen suites, `cleanup-test` last (the 18 cache names and the Python environment, nothing listed twice, nothing from `.git` or `site-packages`, the copy kept and never moved, the Big and stale thresholds against `runSearch`, empty and hidden-only folders, the ranking, the totals and the cap, and the page's walk equal to the service's question over 20,000 entries); `node tools/vendor.mjs --check`; the header of every file the branch touched; Markdown line lengths; and `node tools/ui-check.mjs --no-shots --port 5300` in both passes, every port it opens between 5300 and 5309, with Edge 157 on an RTX 5050 laptop GPU and the default fixture of 3,126 files: the earlier scenarios plus `cleanup`, `cleanup-disk` and `cleanup-regions`, with Cleanup's checks in `demo`, `polish` and `preview` | No syntax error in 112 scripts; 1,300 passed (274, 97, 57, 33, 60, 52, 54, 31, 80, 159, 68, 128, 91, 58 and 58), none failed; every vendored file matches the manifest; 24 headers in rule; no Markdown line over 100 columns; 3152 passed, 0 failed, 8 skipped (1,657 and 3 with WebGL, 1,495 and 5 without: what needs `--snapshot`, what needs a synthetic snapshot, a `splash` check the survey's timing left nothing to test, and without WebGL two checks of the world), `cleanup` 32, `cleanup-disk` 14 and `cleanup-regions` 9 in each pass, the first full run with them; draw calls at the baseline. In Node, 100,000 entries walked in 10.9 ms. Not yet merged into `main` |
 
 Not verified: running on macOS; frame rate at street level in the largest
 trees on a hardware GPU; Open and Reveal reaching a desktop application on
@@ -1052,8 +1160,8 @@ macOS, on Linux, in Firefox and Safari, on the 2-core software
 rasterizer, and with a screen reader; the budget reached in free
 travel rather than in the tour's halved step; the warm check of a
 large live directory on real disks; and the palette's path queries
-timed at 5,000,000 entries. From Preview: panel B's strip and Preview's
-pane with a screen reader; Preview showing a real photograph's
+timed at 5,000,000 entries. From Preview: the right panel's strip and
+Preview's pane with a screen reader; Preview showing a real photograph's
 thumbnail or playing real sound and film (the fixture's media are
 zeros and the demo world draws its pictures in the page, so the checks
 prove the thumbnail and byte-range requests and the sentences that
@@ -1066,7 +1174,14 @@ entries were measured); the look of real directories, other window
 sizes than 1600 by 1000 and 1280 by 800, and other browsers (every shot
 was of the demo world in Edge); and a flight to a folder begun close
 by, which in one probe came to rest higher than it aimed and looked
-past the folder's plate.
+past the folder's plate. From Cleanup: a move of thousands of items on
+real disks, and the 5,000-item cap reached in a browser (the checks
+move a few items, and Node checks the cap); the service's count of a
+folder in a real tree of millions of entries (the region scenario runs
+the fixture at a threshold of 0); duplicate sets compared by samples on
+real data, beyond the fixture's one set and the demo world's; the tab
+with a screen reader; the look of its head and grid in a shot, beyond
+what the `polish` check measures; and the tab in Firefox and Safari.
 
 ## Continuing development
 
@@ -1093,10 +1208,10 @@ web/css/tokens.css   the colours, type and space scales, named sizes, shadows,
 web/css/components/  controls, bar, ledger, stage, inspector, block, floating,
                      splash (the loading sheet), and one per feature: time,
                      places, traverse, strata, interior, palette, searches,
-                     quicklook, presets, batch, preview
+                     quicklook, presets, batch, preview, cleanup
 web/css/*.css        also: fonts, base, layout, utilities, motion, print
-web/js/app.js        controller: state, service calls, panels and the right panel's
-                     tab strip, progress, the warm start, and the
+web/js/app.js        controller: state, service calls, panels and the right
+                     panel's tab strip, progress, the warm start, and the
                      registries feature modules fill
 web/js/elsewhere.js  a page opened from disk says how to start the service
 web/js/demo.js       the demo world in the page: answers /api/ and the event
@@ -1107,8 +1222,8 @@ web/js/model.js      tree model, aggregation, search, survey, adopt; in region
                      mode the partial model the regions fill
 web/js/columns.js    the tree in typed columns, its regions and their answers,
                      DOM-free (the service, the demo and the checks)
-web/js/questions.js  search, survey, sessions and places over the columns,
-                     DOM-free
+web/js/questions.js  search, survey, sessions, places and Cleanup's
+                     question over the columns, DOM-free
 web/js/regions.js    the page's region client: asks, holds and lets go,
                      DOM-free
 web/js/region-worker.js  fetches and decodes region answers off the main
@@ -1148,11 +1263,15 @@ web/js/quicklook.js  Quick look: P, a file in a large sheet
 web/js/readers.js    what Quick look and Preview show a file as, the words
                      for what they cannot show, the text read, DOM-free
 web/js/presets.js    the selection's total, Quick searches, gathering by keyboard
-web/js/preview.js    Preview: the right panel's second tab, a quick look docked beside
-                     the world that follows the selection
+web/js/preview.js    Preview: the right panel's second tab, a quick look
+                     docked beside the world that follows the selection
 web/js/batch.js      Batch rename: F2 on several, its rules and preview
 web/js/rename.js     the batch rename's names and refusals, DOM-free
 web/js/dupes.js      Duplicate cleanup: keep one verified copy
+web/js/cleanup.js    Cleanup: the right panel's third tab, ranked
+                     suggestions for reclaiming space in one folder
+web/js/reclaim.js    Cleanup's rules: the caches' names, the walk, the
+                     copy kept, the ranking and totals, DOM-free
 web/js/copyas.js     Copy as: names and relative paths
 web/js/exports.js    lists saved as CSV
 web/js/csv.js        the CSV text and its file names, DOM-free
@@ -1195,11 +1314,14 @@ tools/ui-check.mjs   headless browser check; scenarios in tools/ui-scenarios/,
                      in the demo world at three window sizes), regions.mjs
                      (regions, regions-warm, regions-outside,
                      regions-switch), scale.mjs (synthetic snapshots only),
-                     views.mjs (steady conventions, Blender's controls) and
+                     views.mjs (steady conventions, Blender's controls),
                      preview.mjs (preview, preview-regions, preview-disk)
+                     and cleanup.mjs (cleanup, cleanup-disk,
+                     cleanup-regions)
 tools/flavors-test.mjs  every flavor in Node (in npm test)
 tools/preview-test.mjs  the readers Quick look and Preview share, in Node
-                     (last in npm test)
+tools/cleanup-test.mjs  Cleanup's rules, and the page's walk against the
+                     service's question, in Node (last in npm test)
 tools/make-fixture.mjs  the synthetic tree the checks run on (npm run fixture)
 tools/make-synthetic.mjs  synthetic structure snapshots, 1,000 to 10,000,000
                      entries, written without a file

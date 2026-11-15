@@ -1,10 +1,10 @@
 <!--
 ✒ Metadata
-    - Title: Terrane Architecture (Terrane Edition - v1.15)
+    - Title: Terrane Architecture (Terrane Edition - v1.16)
     - File Name: ARCHITECTURE.md
     - Relative Path: docs/ARCHITECTURE.md
     - Artifact Type: docs
-    - Version: 1.15.0
+    - Version: 1.16.0
     - Date: 11/15/2026
     - Update: Sunday, November 15, 2026
     - Author: Dennis 'dendogg' Smaltz
@@ -12,6 +12,20 @@
     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
 
 ✒ Changelog:
+    - 1.16.0 (11/15/2026) [dendogg + Anthropic - Claude Opus 5.5] —
+      Cleanup, on branch `tab-cleanup`. The service section adds the
+      sixth whole-tree question, `cleanup`, to the routes and to
+      Regions. Scale adds how Cleanup works out and draws its
+      suggestions, and the figures measured. The demo world names what
+      it seeds for Cleanup. The known limitations add Cleanup's, and
+      the open question of the folder it shows with nothing selected.
+      Visual identity adds Cleanup's head, summary, groups and rows, and
+      the stylesheet's cleanup module. Section 7 adds cleanup.js and
+      reclaim.js, Cleanup in the registries it fills, the api's
+      verifyDuplicates and the region client's stale, that it keeps
+      nothing in the browser, the keys of its lists, and a hazard: a
+      feature that keeps a path follows `AFTER_OP`. The B_TABS row
+      names the right panel without a letter.
     - 1.15.0 (11/15/2026) [dendogg + Anthropic - Claude Opus 5.5] —
       The precise terrain's second part. The spatial model: a folder's
       unit replaces the step of 4.5 % of each plateau's width, and the
@@ -281,7 +295,7 @@ browser                              service (127.0.0.1)
   GET  /api/check               ->   warm.mjs      the warm cache checked by folder times, as NDJSON
   GET  /api/tree | region       ->   regions.mjs   the tree kept in columns: its state; a folder's
                                                    children, a path's chain, folders read again
-  GET  /api/find | marks | survey | sessions | places
+  GET  /api/find | marks | survey | sessions | places | cleanup
                                 ->   questions.js  the questions that walk the whole tree
   GET  /api/events              ->   fs.watch      SSE: folders that changed (kept: read into the
                                                    service's tree), job progress
@@ -673,7 +687,18 @@ Node checks answer through the same code.
   lists the newest 40 working sessions, or a session's files (`k`, up to
   1,000, filtered by `q`), or a file's session and neighbours (`path`,
   `near`). `places` ranks every name with `fuzzy.js`, folders first, or
-  every path when the query holds a slash, at most 200.
+  every path when the query holds a slash, at most 200. `cleanup` walks
+  one folder (`under`, the root when empty) with the Cleanup tab's own
+  rules, `reclaim.js` `walk` over the columns: its caches and build
+  output, big and stale files and empty folders, each list's whole
+  count and bytes with its largest `limit` (0 to 1,000) as refs that
+  carry the rule's id, label and words; how many folders hold only
+  hidden files; cache names that could not be read; the `.git`, `.hg`,
+  `.svn`, `site-packages` and `dist-packages` folders left alone; and
+  the caches' paths (the first 1,000, with their total), which the page
+  needs to keep a duplicate copy inside one out of its sets. A folder
+  that is not there, a file or a path that climbs is `ENOFOLDER` (404):
+  the tree is read, never the disk.
 - **The survey's pace.** The survey is worked out before a tree is
   served (`prepMs`), so every region carries its candidates (`dup`) and
   heavyweights (`hv`) from the first. After a change it is worked out
@@ -711,6 +736,9 @@ Node checks answer through the same code.
 | A text in Preview as numbered lines in chunks of 200 under `content-visibility`, each chunk given the size its lines will take before it is drawn, so one End reaches the end; sized again when a wrapped pane's width changes | `preview.js` |
 | A folder's or a listing's largest entries found in one pass with a small sorted buffer, never a sort of the whole folder | `readers.js` `topBySize` |
 | The Inspector drawn only while its tab is chosen; otherwise marked stale, and drawn when chosen or printed | `app.js` |
+| Cleanup's suggestions from one stack walk under the folder through an accessor, the same code over the page's model and the service's columns: one visit per entry, never into a matched cache, `.git` or `site-packages`, the four lists sorted once; worked out at most once a frame, and only while its tab is shown, a hidden tab only marking itself out of date | `reclaim.js`, `cleanup.js` |
+| Cleanup's rows drawn 100 to a group, a duplicate set of thousands of copies cut part way (`dupPage`, a `Map` lookup per row); a box ticked or cleared changes the totals and buttons in place, with no redraw and no reordering until the next count | `reclaim.js`, `cleanup.js` |
+| In region mode Cleanup asks the service once per count, with a sequence number so a late answer is dropped; the hooks that run often (`AFTER_SELECT`, `AFTER_FOCUS`) only show or hide its offer bar | `cleanup.js` |
 | Above 100,000 entries the tree kept in the service in typed columns, every figure kept exact along a change's chain, a large folder's held set cached until it changes | `columns.js`, `regions.mjs` |
 | The page holds only the regions near the eye: the layout names the folders it would open, a prefetch from 0.6 of that distance, highest priority first | `layout.js`, `regions.js` |
 | Regions batched under 64 folders, 40,000 entries and about 4 MB an answer, at most two requests in flight, one region's nodes built per task | `columns.js`, `regions.js` |
@@ -928,6 +956,14 @@ walked down by the folder with most folders beneath, each region timed,
 | An arrow held over 12 rows at 800 by 500, Preview in the drawer (`hardening`) | one read, in both passes |
 | A text of 6,500 lines cut at 256 KB, its 3,745 lines read built as numbered lines (`preview-disk`, `terrane:preview-text`) | 10 ms with WebGL, 11 ms without |
 
+### Measured (Windows 11, 16 cores, 11/15/2026, Cleanup in Node)
+
+| Measure | Result |
+| ------- | ------ |
+| `reclaim.js` `walk` over 100,000 entries (`cleanup-test`) | 10.9 ms (the test's ceiling is 50 ms) |
+| The page's walk over a `model.js` Model against the service's `cleanup` over a `ColumnTree` of the same 20,000 synthetic entries | the same lists, totals, rules and caches' paths, for the root (7 caches, 1,542 big and stale files, 52 empty folders) and for a folder |
+| A duplicate set of 6,000 copies (`dupPage`) | 100 rows drawn, 5,900 left for Show more |
+
 ### Measured (Windows 11, RTX 5050 laptop GPU, Edge 157, 11/15/2026, the precise terrain)
 
 The second part of the precise terrain, on the demo world pinned to one
@@ -1012,7 +1048,7 @@ generated directory instead of none. Three modules do it, all in
 
 | Module | Does |
 | ------ | ---- |
-| `demo-world.js` | Builds the tree from one seed: about 12,000 files and 1,700 folders of a made-up studio drive, every date relative to the moment of building. Writes a file's text on demand, to its exact size, and lists a zip's entries, their packed bytes and the zip's own records adding up to its size. No DOM. |
+| `demo-world.js` | Builds the tree from one seed: about 12,000 files and 1,700 folders of a made-up studio drive, every date relative to the moment of building. Writes a file's text on demand, to its exact size, and lists a zip's entries, their packed bytes and the zip's own records adding up to its size. For Cleanup it also holds a folder with only `.DS_Store` in it, a `build` folder of shed plans with no project file beside it, and an empty folder inside a `node_modules`, drawn after every random choice with fixed sizes and times, so no seeded figure moved. No DOM. |
 | `demo-service.js` | The service's API over that tree: the same routes, parameters, records, answers and refusals, operations and undo journal, jobs with progress and cancel. Changes live in memory. No DOM. |
 | `demo.js` | Answers `fetch` and `EventSource` for `/api/` in the page, draws thumbnails on a canvas from each image's style and colour, synthesizes a tone for audio, and shows the welcome notice. |
 
@@ -1133,6 +1169,28 @@ Choices and their reasons:
   shows; that was not measured past about 20,000 entries. The
   Inspector keeps its own Preview section, a picture's thumbnail or a
   text's first 16 KB, beside the tab of that name.
+- Cleanup knows a cache by its name and, for `dist`, `build`,
+  `target` and `coverage`, a project file beside it, and a Python
+  environment by its `pyvenv.cfg`; it reads no file's contents and no
+  tool's settings. A person's own folder of such a name is listed with
+  the rule that found it, checked like any other, and can be left out.
+  A hidden file is one whose name starts with a dot, as elsewhere in
+  Terrane, never one with the Windows hidden attribute, so a folder
+  holding only `desktop.ini` is neither empty nor counted as holding
+  only hidden files. What is left out is kept by path for the page's
+  life only.
+- Cleanup's Big and stale group uses the quick search's thresholds,
+  over 100 MB and not changed in a year; the brief gave two years as
+  an example, and the quick search's one year was kept so that the two
+  never disagree. In region mode a group lists the service's 1,000
+  largest, and Duplicates comes from the survey's 400 largest sets of
+  up to 12 files; a press moves at most 5,000 items (`MOVE_MAX`),
+  because the holding area checks the paths of a removal against each
+  other.
+- With nothing selected, Cleanup shows the folder you are in, where
+  the brief said the world's root. It was kept, so that opening the tab
+  from where you stand shows that place, and Whole world is one press
+  away; the choice is Dennis's to confirm or reverse.
 - A batch rename refuses a chain or a swap outright rather than ordering
   it through temporary names, because Undo could not reverse it.
 - `say()` sets the live region's text, so a sentence said twice in a
@@ -1411,15 +1469,27 @@ direction is a survey sheet around a plaster world.
   numbers out; a counter would have reset at every chunk, since
   `content-visibility` scopes counters. Its foot's key hints are groups
   that never break, each dot held to the hint before it, so no line
-  begins with one. On paper the right panel prints the Inspector whichever tab
-  is chosen, its tab inked as the panel's heading.
+  begins with one. Cleanup's head is the inspector's too: "Suggestions
+  for" in the kind's place, the folder's name, Preview's "in <folder>"
+  button as the way up beside Whole world, and the facts in mono. Its
+  summary sets "Could free …" and the holding area's sentence at A over
+  one wide button. Its four groups are the ledger's disclosures, the
+  triangle at A and the title at B with the count and size at the
+  right; their notes stand at A. A row is the ledger's item: its check
+  box, the Guide setting's, in the mark slot at A, the name over its
+  path and rule at B, and the size in the figure column; the copy a set
+  keeps carries a check mark in that slot instead. A row left out turns
+  to the third text colour and opens its path line with "left out" in
+  the tight capitals; nothing is struck through. On paper the right
+  panel prints the Inspector whichever tab is chosen, its tab inked as
+  the panel's heading.
 - **Stylesheet structure**: `web/css/terrane.css` declares the layers
   `tokens, fonts, base, layout, components, utilities, motion, print`
   and imports its modules into them: one each for the other layers,
   and for components one per component group (controls, bar, ledger,
   stage, inspector, block, floating, splash) and one per feature (time,
   places, traverse, strata, interior, palette, searches, quicklook,
-  presets, batch, preview). Components read their colours
+  presets, batch, preview, cleanup). Components read their colours
   from `tokens.css`, never a raw colour (the loading sheet's artwork
   palette is scoped to the sheet); most sizes are tokens too, while
   component-local paddings and gaps are written in place. The grid is
@@ -1455,7 +1525,12 @@ their data through the DOM-free `memory.js`; `quicklook.js`;
 DOM-free `readers.js` it shares with `quicklook.js`, so the two never
 disagree on what a file is shown as or why it is not);
 `batch.js` (the batch rename, with the DOM-free `rename.js`);
-`dupes.js` (duplicate cleanup); `copyas.js`; `exports.js` (lists as
+`dupes.js` (duplicate cleanup, whose copy kept, `keepOf`, and read
+again before a move, `recheck`, Cleanup shares); `cleanup.js`
+(Cleanup, the right panel's third tab, whose rules are the DOM-free
+`reclaim.js`: the page, the service's `cleanup` question, the demo
+and `cleanup-test` all walk through it, and the Big and stale quick
+search reads its thresholds from it); `copyas.js`; `exports.js` (lists as
 CSV, with the DOM-free `csv.js`); `terminal.js`; and `flavors.js`
 (the flavors, DOM-free: what each drag does in Terrane's own and ten
 others, which the view reads through `setFlavor`, the guide's Mouse
@@ -1474,7 +1549,7 @@ and the rest still run.
 
 | Registry | An entry | Filled by |
 | -------- | -------- | --------- |
-| `KEYS` | `{ keys, mod, run(c), when, inList, guide, labels, palette, gl }`: the keyboard map, the `?` guide and the palette's actions as one table. `labels` gives one palette item per key (the lenses 1 to 4, the panels `[ ]`), `palette: false` keeps a key out of it (the arrows, Enter, the menu key), and `gl: true` marks it unavailable without WebGL (V, 0) | the controller, Time, Landmarks, Interiors, Palette (Ctrl+K), Quick look (P); guide rows only from Search history, Totals, Batch rename and Preview |
+| `KEYS` | `{ keys, mod, run(c), when, inList, guide, labels, palette, gl }`: the keyboard map, the `?` guide and the palette's actions as one table. `labels` gives one palette item per key (the lenses 1 to 4, the panels `[ ]`), `palette: false` keeps a key out of it (the arrows, Enter, the menu key), and `gl: true` marks it unavailable without WebGL (V, 0) | the controller, Time, Landmarks, Interiors, Palette (Ctrl+K), Quick look (P); guide rows only from Search history, Totals, Batch rename, Preview and Cleanup |
 | `ESCAPE` | `{ active(), clear(), typing }`, first active wins: floating surface 10, placing 20, kind filter 30, Time 40, Preview 45 (reading one of several, with focus in Preview), search 50, selection 70, an open archive 80 | the controller, Time, Preview, Interiors |
 | `PIN_SOURCES` | `{ pins(L, room) }`, added up in order to the 3,000-pin capacity: benchmarks 10, search 20, heavyweights 30 | the controller, Landmarks |
 | `TIP_LINES` | `{ lines(node, { i, type, L }) }`: hover lines after the name and summary: levels 10, Strata 15, matches 20, placing 30, copies 40, pixels 50, Landmarks 50, Time 60, Interiors 70 | the controller, Time, Landmarks, Strata, Interiors |
@@ -1482,31 +1557,35 @@ and the rest still run.
 | `INSPECTOR.many` | `{ build(nodes, ctx) }` with ctx `{ ro, off }`: sections after the Actions grid of a selection of several | Batch rename |
 | `READING` | `{ glyph, title, text }`: a Reading the world row | the controller and every Stage 5 feature |
 | `TABS` | `{ label, draw, list, count, enter, key }`: a ledger tab | the controller, Landmarks (Places) |
-| `B_TABS` | `{ label, icon, title, mount(host), show(host, { focus }), hide(), focusTarget(host) }`: a tab of the right panel, the Inspector 0 and Preview 20. The controller draws the strip and gives each feature tab a panel, `div.b-panel#b-panel-<id>` after `#inspector-body`; `mount` runs once, when the tab is first chosen; `show` whenever it is chosen while panel B is on screen, and again when panel B comes back (`]`, the drawer, the 860 px breakpoint); `hide` when it is left or panel B goes; `focusTarget` is where focus goes in it | the controller (the Inspector), Preview |
+| `B_TABS` | `{ label, icon, title, mount(host), show(host, { focus }), hide(), focusTarget(host) }`: a tab of the right panel, the Inspector 0, Preview 20 and Cleanup 30. The controller draws the strip and gives each feature tab a panel, `div.b-panel#b-panel-<id>` after `#inspector-body`; `mount` runs once, when the tab is first chosen; `show` whenever it is chosen while the right panel is on screen, and again when the panel comes back (`]`, the drawer, the 860 px breakpoint); `hide` when it is left or the panel goes; `focusTarget` is where focus goes in it | the controller (the Inspector), Preview, Cleanup |
 | `TAB_SECTIONS` | `{ tab, build() }`: a section a feature adds to a tab another one draws; the tab's draw appends `api.tabSections(tab)` after its own | Search history (Saved searches in Places, 30) |
 | `SURVEY` | `{ build(survey) }`: a Survey tab section: Working sessions 5, Quick searches 7, the controller's lists 10 to 50, Export as CSV 95 | the controller, Session traverse, Totals and quick searches, Export |
 | `LEDGER_SUB` | `{ tab, build(ctx) }`, ctx `{ items, search, focus }`: controls on the Contents or Findings count row, in a `span.sub-tools` after the count, each with a `data-k` so a redraw keeps focus on it; a tool is a 24 px icon button (`btn btn-icon sub-tool`) at the row's end: the selection's total 10, Save search… 50, Export CSV 60 | Totals, Search history, Export |
 | `LAYOUT_OPTS` | `{ options(opts) }`, merged into the layout's one options object | Time (`asOf`), Interiors (`inside`, `aliases`) |
-| `MENU` | `{ items(node, ctx), many(nodes, ctx) }`, at least one: `items` is a group after Open, Reveal and Copy path, or at the end for the folder you are in; `many` follows Copy paths in the menu of several, ctx `{ ro, off }` | Landmarks, Interiors, Session traverse, Remembered view (Copy link), Batch rename, Copy as, Terminal |
-| `COMMANDS` | `{ section, items() }`, each item `{ label, detail, hint, run(), off }`: the palette's actions that have no key, asked each time it opens; `off` is the reason an item cannot run | Landmarks, Session traverse, Palette (and a "Show <tab>" item for every `B_TABS` entry), Remembered view, Search history, Totals and quick searches, Preview (Wrap lines), Batch rename, Duplicate cleanup, Copy as, Export, Terminal |
+| `MENU` | `{ items(node, ctx), many(nodes, ctx) }`, at least one: `items` is a group after Open, Reveal and Copy path, or at the end for the folder you are in; `many` follows Copy paths in the menu of several, ctx `{ ro, off }` | Landmarks, Interiors, Session traverse, Remembered view (Copy link), Batch rename, Cleanup (25: Suggest cleanup here, in its folder, or for this folder), Copy as, Terminal |
+| `COMMANDS` | `{ section, items() }`, each item `{ label, detail, hint, run(), off }`: the palette's actions that have no key, asked each time it opens; `off` is the reason an item cannot run | Landmarks, Session traverse, Palette (and a "Show <tab>" item for every `B_TABS` entry), Remembered view, Search history, Totals and quick searches, Preview (Wrap lines), Batch rename, Duplicate cleanup, Cleanup (Suggest cleanup for this folder, its detail naming the folder), Copy as, Export, Terminal |
 | `RENAME_MANY` | `{ run(nodes) }`, the first entry wins: what F2 does with more than one item selected; with one, F2 is the single rename | Batch rename |
 | `DUP_GROUP` | `{ build(group, ctx) }`, ctx `{ node, where, ro }`: under a group of duplicate candidates, in the inspector's copies (`where: 'inspector'`) and after each group in the Survey (`'survey'`) | Duplicate cleanup |
 | `QUERY.is`, `QUERY.prefix` | `is:<word>` and `<name>:<value>` search tokens; built-in tokens cannot be replaced | Landmarks (`is:benchmark`), Session traverse (`session:N`), Search history (`in:`) |
 | `AFTER_LAYOUT` | `run(L)` at the end of every relayout | Landmarks, Session traverse, Remembered view, Preview |
-| `AFTER_REFRESH` | `run(dirs)` once a refresh has pruned selection, focus and trail; `null` after a warm start's check (or its Survey again) | Landmarks, Interiors, Palette, Preview |
-| `AFTER_SURVEY` | `run(survey, { full, warm, settled })` after every survey: `full` for a whole survey, `warm` for one of the last session's tree, `settled` for the check's; the age table is rebuilt first, at 10, and the kept view is put back at 80 | the controller and every Stage 5 feature, Palette, Remembered view, Preview |
-| `AFTER_OP` | `run(body, res)` once the service has carried out a change, before the affected folders are re-read: Undo included (`res.moved`), a batch rename (`res.renamed`, the pairs), and a change or an Undo that stopped part way (`res.partial`, with `res.results` or `res.moved`) | Landmarks |
+| `AFTER_REFRESH` | `run(dirs)` once a refresh has pruned selection, focus and trail; `null` after a warm start's check (or its Survey again) | Landmarks, Interiors, Palette, Preview, Cleanup |
+| `AFTER_SURVEY` | `run(survey, { full, warm, settled })` after every survey: `full` for a whole survey, `warm` for one of the last session's tree, `settled` for the check's; the age table is rebuilt first, at 10, and the kept view is put back at 80 | the controller and every Stage 5 feature, Palette, Remembered view, Preview, Cleanup |
+| `AFTER_OP` | `run(body, res)` once the service has carried out a change, before the affected folders are re-read: Undo included (`res.moved`), a batch rename (`res.renamed`, the pairs), and a change or an Undo that stopped part way (`res.partial`, with `res.results` or `res.moved`) | Landmarks, Cleanup |
 | `AFTER_QUERY` | `run(search, query)` whenever the search runs; it may set `search.sort` and `search.note` for Findings | Session traverse, Search history |
-| `AFTER_FOCUS` | `run(dir)` once the folder you are in has changed: `moveFocus`, and a refresh, a warm start's check or Rescan all that moved it (`focusMoved`) | Remembered view, Preview |
-| `AFTER_SELECT` | `run(sel, primary)` at the end of every selection change, quiet ones and `selectAll` included | Remembered view, Totals, Preview |
+| `AFTER_FOCUS` | `run(dir)` once the folder you are in has changed: `moveFocus`, and a refresh, a warm start's check or Rescan all that moved it (`focusMoved`) | Remembered view, Preview, Cleanup |
+| `AFTER_SELECT` | `run(sel, primary)` at the end of every selection change, quiet ones and `selectAll` included | Remembered view, Totals, Preview, Cleanup |
 
 `AFTER_OP` is what lets Landmarks follow Terrane's own renames and moves,
-and their undo, by path before the tree changes, after a reload too.
+and their undo, by path before the tree changes, after a reload too;
+Cleanup follows them the same way for its folder and for what is left
+out, and learns there that a removal or an Undo has happened, so its
+next count says what is left to suggest.
 `MENU` lets a feature offer its actions where the controller's are, and
 shows them unavailable, with the reason, where they do not apply.
 `AFTER_FOCUS` and `AFTER_SELECT` run often: a hook must be cheap and
 defer anything that is not, as the remembered view saves a second
-later and Preview reads once the arrows have rested.
+later, Preview reads once the arrows have rested, and Cleanup only
+shows or hides its offer bar.
 
 ### The api, sheets and browser storage
 
@@ -1533,7 +1612,8 @@ either mode; `ensure(dir)`, a folder's children held; `resolve(rel)`,
 ref made a node; `nearest(rel)`, the deepest node held on a path; each
 of these but `kids` and `nearest` is a promise, and with a whole tree
 answers at once. `ask(route, params)` puts a whole-tree question to the
-service (`find`, `marks`, `survey`, `sessions`, `places`) and resolves
+service (`find`, `marks`, `survey`, `sessions`, `places`, `cleanup`)
+and resolves
 to its answer; `resolveRow(ref)` makes a listed ref a node in its
 list's place; `notAtSize(what)` is the sentence for what the service
 does not answer at that size.
@@ -1546,6 +1626,20 @@ when `]` or a narrow window hid it, and false for a tab not registered;
 title; `contentsOrder(dir)`, a folder's held children in the order
 Contents lists them; and `get(route, params, { signal })`, whose signal
 aborts the request. `S.bTab` is the chosen tab.
+
+Cleanup added `verifyDuplicates()`, the controller's Verify by
+content, resolving once the survey's groups are split by hash. It is a
+seam in `app.js` rather than a module's work because it replaces
+`S.survey.dupGroups` and redraws the ledger, the legend and the
+inspector, which a module cannot do through the api. Verify now keeps
+what it proved by path in whole-tree mode too (`provedRel`, read
+through `provedOf` when a file's node is new and its size and last
+change still match), so a copy that Undo brings back from the holding
+area is still verified, for duplicate cleanup's Undo as for Cleanup's;
+Rescan all clears it. The region client gained `stale`, true once a
+stale generation or `close()` stopped it: every path it is asked for
+then resolves to null, which says nothing of the disk, so Cleanup keeps
+its folder while the tree is read again instead of giving it up.
 
 `ui.js` gains `openSheet(build, { className, label, onKey })`, a sheet
 in the shared dialog for what is richer than `ask()`: the palette,
@@ -1571,7 +1665,9 @@ the view and the searches say so once and keep working in memory until
 the tab closes. The address,
 `#/<folder>` with every segment percent-encoded, follows the folder you
 are in through `replaceState`; it never reaches the service, because
-the browser does not send a fragment.
+the browser does not send a fragment. Cleanup keeps nothing in the
+browser: its folder, its keep rule and what is left out last as long
+as the page.
 
 ### Key allocation
 
@@ -1588,11 +1684,14 @@ none either: its arrows, Home, End, Enter, P and Esc act inside its
 pane, the content's scroll first, and are kept from the window's
 handler, so Home in a scrolled text goes to its top rather than rising
 to the overview; P there is Quick look's own entry, run on Preview's
-item. Both tab strips, the ledger's and the right panel's, take ← →
-(wrapping), Home and End themselves (`stripKeys`), the tab reached
-chosen, under one core guide row, "← → on tabs". Their guide rows sit
-in the guide's sections Finding your way, Looking closer and Acting on
-many.
+item. Cleanup binds none: in each of its lists ↑ ↓, Home, End, Space
+and Enter act on the rows and are kept from the window's handler, so
+Home goes to the group's first row and Space leaves a row out; each
+list is one Tab stop, the row last reached. Both tab strips, the
+ledger's and the right panel's, take ← → (wrapping), Home and End
+themselves (`stripKeys`), the tab reached chosen, under one core guide
+row, "← → on tabs". Their guide rows sit in the guide's sections
+Finding your way, Looking closer and Acting on many.
 `inList` (default true) decides whether a key acts while the ledger list
 has focus; the guide is made from the same table. The guide also holds
 the single-key setting. It is off unless turned on there: a key that
@@ -1697,6 +1796,14 @@ the first survey.
   `api.bTabShown(id)` before it does, and pauses while a sheet is open,
   as Preview does. The Inspector is held to the same rule: its sections
   are built only while its tab is chosen, and printing draws it first.
+- **A path, and the changes that move it.** A feature that keeps a
+  folder or an item across time keeps its path, follows Terrane's own
+  renames, moves and their Undo through `AFTER_OP` before the tree
+  changes, and gives way to the nearest folder still there when a
+  refresh, or the service's `ENOFOLDER`, says it is gone, as Cleanup
+  does. In region mode a null from `api.resolve` while the region
+  client is `stale` or replaced is not a folder gone: wait for the next
+  survey.
 - **Two strips share `.tabs`.** The ledger's strip is `#ledger-tabs`,
   whose buttons carry `data-tab`, and the right panel's is `#b-tabs`, whose
   buttons carry `data-btab`; code that means one strip names it by its
