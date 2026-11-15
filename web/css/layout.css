@@ -1,11 +1,11 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Application Shell (Terrane Edition - v1.3)
+ *     - Title: Application Shell (Terrane Edition - v1.4)
  *     - File Name: layout.css
  *     - Relative Path: web/css/layout.css
  *     - Artifact Type: stylesheet
- *     - Version: 1.3.0
+ *     - Version: 1.4.0
  *     - Date: 11/14/2026
  *     - Update: Saturday, November 14, 2026
  *     - Author: Dennis 'dendogg' Smaltz
@@ -13,6 +13,9 @@
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
  *
  * ✒ Changelog:
+ *     - 1.4.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — A
+ *       feature tab's panel in panel B (.b-panel) fills the panel as
+ *       #inspector-body does, beside it.
  *     - 1.3.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
  *       ledger's head is at most two 30 px rows of one line: the count row
  *       (the count at A, a feature's tools as 24 px icons at its end) and the
@@ -23,14 +26,6 @@
  *       The ledger's count row holds a feature's controls (.sub-tools,
  *       such as Save search…) after its sort keys, and wraps them under
  *       the keys in a narrow ledger.
- *     - 1.1.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] —
- *       Below 860 px the inspector opens as a drawer over the world
- *       (body.show-inspector) instead of being unreachable; the title
- *       block's breakpoints moved to block.css, where they apply; the
- *       unused .panel-tool is gone. The drawer slides in from the right
- *       edge and back out; a ledger caption wraps instead of losing its
- *       last words, and a count and its sort keys share the sub-line
- *       while both fit, the keys moving under the count when not.
  *     Earlier entries: see CHANGELOG.md
  *
  * ✒ Description:
@@ -194,6 +189,8 @@ body:not(.no-ledger) #ledger, body:not(.no-inspector) #inspector { transition-de
    page taller than the window. */
 .ledger-body { position: relative; flex: 1; min-height: 0; overflow: auto; overscroll-behavior: contain; scrollbar-gutter: stable; }
 #inspector-body { position: relative; flex: 1; min-height: 0; overflow: auto; overscroll-behavior: contain; scrollbar-gutter: stable; }
+/* A feature tab's panel in panel B, beside #inspector-body: it scrolls inside itself. */
+.b-panel { position: relative; flex: 1; min-height: 0; }
 
 /* ---------- breakpoints ---------- */
 
