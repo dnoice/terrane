@@ -1,10 +1,10 @@
 <!--
 ✒ Metadata
-    - Title: Terrane Readme (Terrane Edition - v1.25)
+    - Title: Terrane Readme (Terrane Edition - v1.26)
     - File Name: README.md
     - Relative Path: README.md
     - Artifact Type: docs
-    - Version: 1.25.0
+    - Version: 1.26.0
     - Date: 11/15/2026
     - Update: Sunday, November 15, 2026
     - Author: Dennis 'dendogg' Smaltz
@@ -12,6 +12,10 @@
     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
 
 ✒ Changelog:
+    - 1.26.0 (11/15/2026) [dendogg + Anthropic - Claude Opus 5.5] —
+      What was verified records Cleanup as merged into `main`, with
+      the check run on the merge; duplicate cleanup and Cleanup's
+      Duplicates say which copy a tie of last change keeps.
     - 1.25.0 (11/15/2026) [dendogg + Anthropic - Claude Opus 5.5] —
       Cleanup, on branch `tab-cleanup`. Doing things to files gains
       the right panel's Cleanup tab: how to reach it, which folder it
@@ -870,7 +874,9 @@ does an open archive.
 **Duplicate cleanup.** Under a group of duplicate candidates that Verify
 by content has confirmed, in the Survey and in the inspector, Keep
 newest and Keep oldest (and the inspector's Keep this one) keep one file
-and move the other copies to the holding area as one change. A
+and move the other copies to the holding area as one change. Between
+copies with the same last change, as copies made by Explorer have, the
+path that sorts first is kept, so a refresh never changes which. A
 confirmation names what is kept, what moves and the size reclaimed. The
 copies are hashed again first, and one that changed since it was
 verified stops the whole move. A group compared by sampling, its files
@@ -900,11 +906,11 @@ own:
 
 - **Duplicates**: copies Verify by content found identical, never a
   name or a size alone. Each set keeps one copy, shown first with a
-  check and never moved: the newest, or the oldest with Keep oldest, as
-  duplicate cleanup keeps. A set compared by samples, its files over
-  16 MB, is marked probable on its rows, in its note and in the
-  confirmation. Sets that only share a size are counted, with Verify by
-  content beside them.
+  check and never moved: the newest, or the oldest with Keep oldest,
+  and on a tie the path that sorts first, as duplicate cleanup keeps. A
+  set compared by samples, its files over 16 MB, is marked probable on
+  its rows, in its note and in the confirmation. Sets that only share a
+  size are counted, with Verify by content beside them.
 - **Big and stale**: files over 100 MB not changed in a year, the
   thresholds of the Big and stale quick search. A copy a duplicate set
   keeps or suggests is not listed here again.
@@ -1127,7 +1133,7 @@ time.
 | Preview's final sweep on branch `tab-preview`, Windows 11 (11/14/2026): `node --check` on every script outside `web/vendor/`; `npm test`, now fourteen suites, `preview-test` last (Quick look's decisions against a copy of what it decided before its readers moved, over 356 files and modes; the text read through a fake fetch; the largest entries against a full sort over 1,000 random folders; 17 link targets); `npm run vendor -- --check`; the header of every file the branch touched; Markdown line lengths; and `node tools/ui-check.mjs --no-shots --port 5300` in both passes with Edge 157 on an RTX 5050 laptop GPU and the default fixture of 3,126 files: the earlier scenarios plus `preview`, `preview-regions` and `preview-disk`, with Preview's checks in `demo`, `demo-regions`, `hardening`, `polish` and `seams` | No syntax error in 108 scripts; 1,201 passed (255, 97, 57, 33, 60, 52, 54, 31, 80, 159, 68, 120, 77 and 58), none failed; every vendored file matches the manifest; 28 headers in rule; no Markdown line over 100 columns; 2974 passed, 0 failed, 8 skipped (1,563 and 3 with WebGL, 1,411 and 5 without, the same skips as before); draw calls at the baseline. An arrow held over 15 rows of the fixture, over 12 rows of the demo world and over 12 rows at 800 by 500 read one text each time, in both passes; a text cut at 256 KB built its 3,745 numbered lines in 10 and 11 ms. Merged into `main` after `main`'s Blender fix and `--flavor` were merged into the branch and checked again |
 | The precise terrain, part one, on branch `precision-terrain`, Windows 11 (11/14/2026), Edge 157 on an RTX 5050 laptop GPU: before and after shots of six poses of the demo world (overview, Projects, Photos, components, the street, Music); `npm test`; and, after `main` with Preview was merged in, `node tools/ui-check.mjs` scenarios views, interiors, landmarks, time, transitions, seams, preview, strata and polish, each on its own | `npm test`: 1,215 passed, 0 failed. views 33, interiors 118, landmarks 127 (2 skipped), time 80, transitions 33, seams 135, preview 158, strata 76 and polish 1,200 passed, none failed. The first landmarks run found its check of the benchmarks' draw call naming the pins by their unlit material; it now finds the pin mesh by its own count. A selection fill leaning from the box's colour toward the mark was tried and dropped: a teal box turned olive. Merged into `main` |
 | The precise terrain, part two, on branch `precision-terrain-2`, Windows 11 (11/15/2026), Edge 157 on an RTX 5050 laptop GPU: before and after shots of the demo world pinned to one moment (12,087 files), 13 poses at 1600 by 1000 and 1280 by 800, of `391c5a7`, the reviewed build and the fixed one; `npm test`; `node tools/ui-check.mjs --no-shots --port 5309`, both passes, after the last change to the code; the `scale` scenario on a 400,000-entry synthetic snapshot in regions; then the docs and sweep: `node --check` on every script outside `web/vendor/`, `npm test`, `node tools/vendor.mjs --check`, the header of every file the branch touched and Markdown line lengths | `npm test`: 1,234 passed, 0 failed (274 in the smoke test). The interface check: 2990 passed, 0 failed, 8 skipped; draw calls at the baseline (overview 7, selected 9, search 8, duplicate ties 10). At 400,000 entries the longest script task was 13.2 ms against the reviewed build's 12.8 ms on the same snapshot (a first run's one 18 ms frame did not recur), and the heap 26.7 MB at its peak; the 5,000,000-entry tour was not run, for want of free memory. The sweep: no syntax error in 108 scripts; `npm test` 1,234 passed, 0 failed; every vendored file matches the manifest; 14 headers in rule; no Markdown line over 100 columns. Tried and dropped: a name's floor measured only as it would stand facing the eye, behind a flatness gate, which printed names under 5 px as seen (the floor is now the smaller of the two, with larger shares and a step up the ladder to keep names); and a soft cap on heights, which made a fresh file's height follow its footprint (each folder has one recency scale instead). Merged into `main` after `main`'s removal of the panel letters was merged in and checked again: `npm test` 1,234 passed, 0 failed; the interface check's seams, preview, polish and core, both passes: seams 147, preview 158, polish 1,200 and core 73 passed, 0 failed |
-| Cleanup's final sweep on branch `tab-cleanup`, Windows 11 (11/15/2026): `node --check` on every script outside `web/vendor/`; `npm test`, now fifteen suites, `cleanup-test` last (the 18 cache names and the Python environment, nothing listed twice, nothing from `.git` or `site-packages`, the copy kept and never moved, the Big and stale thresholds against `runSearch`, empty and hidden-only folders, the ranking, the totals and the cap, and the page's walk equal to the service's question over 20,000 entries); `node tools/vendor.mjs --check`; the header of every file the branch touched; Markdown line lengths; and `node tools/ui-check.mjs --no-shots --port 5300` in both passes, every port it opens between 5300 and 5309, with Edge 157 on an RTX 5050 laptop GPU and the default fixture of 3,126 files: the earlier scenarios plus `cleanup`, `cleanup-disk` and `cleanup-regions`, with Cleanup's checks in `demo`, `polish` and `preview` | No syntax error in 112 scripts; 1,300 passed (274, 97, 57, 33, 60, 52, 54, 31, 80, 159, 68, 128, 91, 58 and 58), none failed; every vendored file matches the manifest; 24 headers in rule; no Markdown line over 100 columns; 3152 passed, 0 failed, 8 skipped (1,657 and 3 with WebGL, 1,495 and 5 without: what needs `--snapshot`, what needs a synthetic snapshot, a `splash` check the survey's timing left nothing to test, and without WebGL two checks of the world), `cleanup` 32, `cleanup-disk` 14 and `cleanup-regions` 9 in each pass, the first full run with them; draw calls at the baseline. In Node, 100,000 entries walked in 10.9 ms. Not yet merged into `main` |
+| Cleanup's final sweep on branch `tab-cleanup`, Windows 11 (11/15/2026): `node --check` on every script outside `web/vendor/`; `npm test`, now fifteen suites, `cleanup-test` last (the 18 cache names and the Python environment, nothing listed twice, nothing from `.git` or `site-packages`, the copy kept and never moved, the Big and stale thresholds against `runSearch`, empty and hidden-only folders, the ranking, the totals and the cap, and the page's walk equal to the service's question over 20,000 entries); `node tools/vendor.mjs --check`; the header of every file the branch touched; Markdown line lengths; and `node tools/ui-check.mjs --no-shots --port 5300` in both passes, every port it opens between 5300 and 5309, with Edge 157 on an RTX 5050 laptop GPU and the default fixture of 3,126 files: the earlier scenarios plus `cleanup`, `cleanup-disk` and `cleanup-regions`, with Cleanup's checks in `demo`, `polish` and `preview` | No syntax error in 112 scripts; 1,300 passed (274, 97, 57, 33, 60, 52, 54, 31, 80, 159, 68, 128, 91, 58 and 58), none failed; every vendored file matches the manifest; 24 headers in rule; no Markdown line over 100 columns; 3152 passed, 0 failed, 8 skipped (1,657 and 3 with WebGL, 1,495 and 5 without: what needs `--snapshot`, what needs a synthetic snapshot, a `splash` check the survey's timing left nothing to test, and without WebGL two checks of the world), `cleanup` 32, `cleanup-disk` 14 and `cleanup-regions` 9 in each pass, the first full run with them; draw calls at the baseline. In Node, 100,000 entries walked in 10.9 ms. Before the merge, the copy a set keeps on a tie of last change made the path that sorts first: `cleanup-test` 60 passed, and `dupes`, `cleanup`, `demo` and `regions` in both passes 361 passed, 0 failed. Merged into `main`, which had not moved since the branch was made; `npm test` on the merged branch: 1,302 passed, 0 failed, over fifteen suites, `cleanup-test` now 60 |
 
 Not verified: running on macOS; frame rate at street level in the largest
 trees on a hardware GPU; Open and Reveal reaching a desktop application on

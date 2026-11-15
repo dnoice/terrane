@@ -1,10 +1,10 @@
 <!--
 ✒ Metadata
-    - Title: Terrane Roadmap (Terrane Edition - v1.19)
+    - Title: Terrane Roadmap (Terrane Edition - v1.20)
     - File Name: ROADMAP.md
     - Relative Path: docs/ROADMAP.md
     - Artifact Type: docs
-    - Version: 1.19.0
+    - Version: 1.20.0
     - Date: 11/15/2026
     - Update: Sunday, November 15, 2026
     - Author: Dennis 'dendogg' Smaltz
@@ -12,6 +12,10 @@
     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
 
 ✒ Changelog:
+    - 1.20.0 (11/15/2026) [dendogg + Anthropic - Claude Opus 5.5] —
+      Cleanup is on `main`; `main` had not moved since its branch was
+      made. Next is the six other tabs, then the precise terrain's
+      third part: what the second left partly met or unmeasured.
     - 1.19.0 (11/15/2026) [dendogg + Anthropic - Claude Opus 5.5] —
       Cleanup, the second of the right panel's tabs beside the
       Inspector, is recorded as complete on branch `tab-cleanup`,
@@ -232,19 +236,27 @@ As of 11/15/2026:
   vocabulary that never prints one too small to read, and a far view
   in which a folder of tiny files reads as one mass in its kinds'
   colours. Merged in the commit titled "Merge precision-terrain-2: the precise terrain, part two".
-- **Complete, on branch `tab-cleanup`, waiting to be merged:**
+- **Complete, on `main`:**
   Cleanup, the second of the tabs beside the Inspector, after
   Preview: ranked, sized suggestions for reclaiming
   space in one folder (verified duplicates, big files untouched for a
   year, caches and build output from a fixed list of names, and empty
   folders), each with the rule that found it and a box to leave it
   out, moved to the holding area as one change that one Undo reverses.
-  Nothing is deleted from it.
-- **Next:** the merge of `tab-cleanup` into `main`; then the six other
-  tabs, built and merged one at a time: Shelf, Compare, Activity, Notes
-  and tags, Watch and Connections. The open ground beyond them is what
-  Stage 4 still lacks (section 4), the rest of Stage 6, and the Stage 5
-  deferrals in section 4.
+  Nothing is deleted from it. Merged in the commit titled
+  "Merge tab-cleanup: the Cleanup tab".
+- **Next:** the six other tabs, built and merged one at a time: Shelf,
+  Compare, Activity, Notes and tags, Watch and Connections. Then the
+  precise terrain, part three, for what the second part left partly
+  met or unmeasured: names at the overview in smaller windows (at
+  1280 × 800 the top-level folders print none); a flight begun close
+  by that comes to rest higher than it aimed, so where you are lands
+  on a neighbour, which no scenario covers yet; the 5,000,000-entry
+  scale tour on the new layout, which needs 6 GB free; and the
+  Duplicates lens's colour for a plain file, the same as the plaster
+  it stands on. The open ground beyond them is what Stage 4 still
+  lacks (section 4), the rest of Stage 6, and the Stage 5 deferrals in
+  section 4.
 
 Section 5 has the detail for every wave, for Preview, for the precise
 terrain's second part and for Cleanup.
@@ -521,8 +533,7 @@ Done on 11/13/2026 (Wave 3):
 - An Undo that stops part way keeps what is still to go back, so the
   next Undo resumes, after a restart too.
 
-Done on 11/15/2026, on branch `tab-cleanup`, waiting to be merged
-(Cleanup):
+Done on 11/15/2026 (Cleanup):
 
 - Reclaiming space in one folder: verified duplicates, big and stale
   files, caches and build output and empty folders, ranked and sized,
@@ -1342,7 +1353,7 @@ code both sides changed, both passes: seams 147, preview 158, polish
 in the commit titled "Merge precision-terrain-2: the precise terrain,
 part two".
 
-### Complete on branch `tab-cleanup`: Cleanup
+### Complete: Cleanup
 
 Cleanup is the second of the tabs planned beside the Inspector, after
 Preview, built on its own branch, `tab-cleanup`, made from `main` at
@@ -1350,7 +1361,7 @@ Preview, built on its own branch, `tab-cleanup`, made from `main` at
 review, a fix step, and a docs and sweep step. It joins the right
 panel's strip through the `B_TABS` registry Preview built, and moves
 files only through the holding area and the journal that Del and
-duplicate cleanup already use. It waits to be merged into `main`.
+duplicate cleanup already use.
 
 1. **The tab** (`173681e`): `web/js/reclaim.js`, the rules with no
    DOM, which the page, the service's question, the demo and the Node
@@ -1422,7 +1433,8 @@ The brief's points, as met:
   and total, opening to its rows. Duplicates: verified by content as
   `dupes.js` verifies, never by name or size alone; one copy kept per
   set by duplicate cleanup's own rule (`keepOf`, newest unless Keep
-  oldest) and shown first; a set compared by samples marked probable.
+  oldest, and on a tie the path that sorts first) and shown first; a
+  set compared by samples marked probable.
   Big and stale: the quick search's thresholds, over 100 MB and not
   changed in a year, both stated. Caches and build output: 18 names
   and any folder holding `pyvenv.cfg`, each row naming its rule,
@@ -1494,7 +1506,26 @@ GPU and the default fixture of 3,126 files:
   too (5301, 5302, 5306 and 5309 here), and from 5309 those would have
   fallen outside the ports 5300 to 5309 this machine allows.
 
-The branch waits to be merged into `main`.
+Before the merge, a look at the tab in the demo world, screenshots of
+the menu, the head, the groups, the probable set and the narrow
+drawer, found the copy kept for the Tidelines renders changing after
+an unrelated Undo: two copies shared a last change to the
+millisecond, as copies made by Explorer do, and `keepOf` kept the
+first listed, whose order a refresh can change. On a tie it now keeps
+the path that sorts first, for duplicate cleanup too, in the commit
+titled "The copy a duplicate set keeps holds through a refresh: on a
+tie, the path that sorts first": `cleanup-test` 60 passed, 0 failed,
+and the scenarios `dupes`, `cleanup`, `demo` and `regions` (with
+`cleanup-disk`, `cleanup-regions`, `demo-regions` and the three other
+`regions` scenarios), both passes, "361 passed, 0 failed". The full
+interface check above ran before that commit, which changed only
+`reclaim.js`, `dupes.js` and `cleanup-test`.
+
+`main` had not moved since the branch was made, so nothing was merged
+into the branch first. On the merged branch, `npm test`: 1,302 passed,
+0 failed, over fifteen suites, `cleanup-test` now 60. The branch is
+merged into `main` in the commit titled "Merge tab-cleanup: the
+Cleanup tab".
 
 ## 6. Development datasets
 
