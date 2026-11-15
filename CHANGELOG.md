@@ -1,10 +1,10 @@
 <!--
 ✒ Metadata
-    - Title: Shipped File Changelogs (Terrane Edition - v1.14)
+    - Title: Shipped File Changelogs (Terrane Edition - v1.15)
     - File Name: CHANGELOG.md
     - Relative Path: CHANGELOG.md
     - Artifact Type: docs
-    - Version: 1.14.0
+    - Version: 1.15.0
     - Date: 11/14/2026
     - Update: Saturday, November 14, 2026
     - Author: Dennis 'dendogg' Smaltz
@@ -12,6 +12,9 @@
     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
 
 ✒ Changelog:
+    - 1.15.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — Records the first part of the
+      precise terrain: viewport.js 1.11.0, app.js 1.17.0, model.js 1.7.0 and tokens.css 1.5.0,
+      whose 1.8.0, 1.14.0, 1.4.0 and 1.2.0 entries leave their headers; this file holds them.
     - 1.14.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — Records app.js 1.16.0,
       the flavor a launch names; its 1.13.0 entry leaves the header, and this file already
       holds it.
@@ -133,6 +136,17 @@ entry's long form, the header's words are copied in to open it, so the
 short form is kept too.
 
 ## web/js/app.js
+
+- 1.17.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — Extensions step half as far within their
+  kind, and a closed mass's strata are its own body colour leaning toward each kind. In full:
+  TONE_STEPS, the lighter and darker steps that tell one extension from another inside a
+  kind, narrow from -0.22 to 0.24 to -0.12 to 0.14, so a folder of mixed extensions reads as
+  one family and not a patchwork. strataOf mixes each band 62 % toward its kind's tone from
+  the mass's body (clay toward its largest kind, the colour its lid takes), where each band
+  had been its kind's tone alone; the sides read as one object and still show what it
+  holds. A selection keeps the mark's yellow and the ink frame: a fill leaning toward the
+  mark from the box's own colour was tried and dropped, since a teal or plum box leaning
+  toward yellow turned olive.
 
 - 1.16.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — A flavor the service was
   started with (--flavor, in /api/info) is taken once by this browser; a choice made in the
@@ -654,6 +668,19 @@ short form is kept too.
 
 ## web/js/viewport.js
 
+- 1.11.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — A machined finish: a narrow bevel with a
+  gentle lean, flat lids, a satin roughness (0.6); pins are slimmer and lit as the boxes are.
+  In full: the first part of the precise terrain, an art direction Dennis brought for the
+  world: precision-cut solids in a satin finish rather than moulded plastic. The bevel had
+  been 16 % of a box's shortest side (6 % of its footprint), at least 1.6 pixels and leaning
+  the normal by 1.15, so every rim caught a band of light and large masses looked inflated;
+  it is now 7 % (2.5 %), at least 1.15 pixels and at most a fifth of the short side, leaning
+  by 0.55, so an edge reads as an arris. Lids lose their pillowing (5 % darker toward the rim,
+  now 1.5 %). Roughness rises from 0.46 to 0.6, so highlights are soft and broad. A pin is a
+  four-sided point of radius 0.34 and length 1.3 (was 0.5 and 1.5) in MeshStandardMaterial,
+  lit and shaded with the boxes, where it had been flat MeshBasicMaterial and read as a glyph
+  pasted over the world. Checked with before and after shots of six poses of the demo world.
+
 - 1.10.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — A drag whose motion is none
   leaves the view alone and takes no grabbing cursor, so Blender's left and right buttons only
   click. In full: flavors.js 1.1.0 gives Blender's left and right buttons the motion none, on
@@ -854,6 +881,14 @@ short form is kept too.
 
 ## web/js/model.js
 
+- 1.7.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — The kinds in mineral tones: oxidised teal,
+  steel blue, mineral coral, plum, ochre, bronze, sage, graphite and stone. In full: code
+  0x1f8a7d to 0x2e8377, documents 0x3d5fa8 to 0x4a6593, images 0xc9546c to 0xbb6466, video
+  0x6c4a8f to 0x654480, audio 0xd27a34 to 0xbf8243, archives 0x7b5a41 to 0x8c6b47, data
+  0x5f8f47 to 0x6c8851, binaries 0x46504d to 0x4b5150, other 0x9aa39f to 0xa19e96: each kind
+  keeps its hue family and loses some saturation, so the world reads as harmonised mineral
+  pigments rather than toy colours. tokens.css's --k-* follow.
+
 - 1.6.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — Region mode: a Model made with {
   regions: true } holds only the regions the page asked for, through fillRegion, refillRegion
   (children kept by name and kind), dropRegion and setFigures, every figure the service's.
@@ -971,6 +1006,12 @@ short form is kept too.
 - 1.0.0 (11/12/2026) [dendogg + Anthropic - Claude Opus 5.5] — Initial release.
 
 ## web/css/tokens.css
+
+- 1.5.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — The file-kind pigments follow KINDS into
+  mineral tones. In full: --k-code #2e8377, --k-document #4a6593, --k-image #bb6466,
+  --k-video #654480, --k-audio #bf8243, --k-archive #8c6b47, --k-data #6c8851, --k-binary
+  #4b5150 and --k-other #a19e96, the twins of model.js 1.7.0's KINDS, so a swatch in the
+  ledger, the inspector or the legend is the colour of its blocks.
 
 - 1.4.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — The sheet's grid as tokens:
   --gutter, --mark-w and --mark-gap, and the text columns they make, --row-indent (B, 32 px, was

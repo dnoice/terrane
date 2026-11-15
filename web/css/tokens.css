@@ -1,11 +1,11 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Design Tokens (Terrane Edition - v1.4)
+ *     - Title: Design Tokens (Terrane Edition - v1.5)
  *     - File Name: tokens.css
  *     - Relative Path: web/css/tokens.css
  *     - Artifact Type: stylesheet
- *     - Version: 1.4.0
+ *     - Version: 1.5.0
  *     - Date: 11/14/2026
  *     - Update: Saturday, November 14, 2026
  *     - Author: Dennis 'dendogg' Smaltz
@@ -13,6 +13,8 @@
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
  *
  * ✒ Changelog:
+ *     - 1.5.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] —
+ *       The file-kind pigments follow KINDS into mineral tones.
  *     - 1.4.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
  *       sheet's grid as tokens: --gutter, --mark-w and --mark-gap, and the
  *       text columns they make, --row-indent (B, 32 px, was 28) and
@@ -29,15 +31,6 @@
  *       --hud-inset and --hud-lift set the instruments over the world on
  *       two rows, so the scale, the view tools, operations in progress
  *       and notices never stand on one another.
- *     - 1.2.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
- *       traverse in miniature: --tex-traverse (a dashed ink arc with its
- *       chevron, for the Reading glyph) and --tex-dash (a dashed ink
- *       stroke, for a working session's swatch). The Age lens ramp as
- *       primitives, --ramp-age-0 to --ramp-age-5 (the twins of
- *       THEME.ageRamp), and --tex-strata, a closed mass in three layers
- *       of it with a tick at half its height, for the typical-age glyph.
- *       --tex-chamber: a walled floor, the archive kind's colour around
- *       chalk, for the glyph of an archive looked inside.
  *     Earlier entries: see CHANGELOG.md
  *
  * ✒ Description:
@@ -108,15 +101,15 @@
   --verdigris: #1f7f73;
 
   /* file-kind pigments, matched to KINDS in web/js/model.js */
-  --k-code: #1f8a7d;
-  --k-document: #3d5fa8;
-  --k-image: #c9546c;
-  --k-video: #6c4a8f;
-  --k-audio: #d27a34;
-  --k-archive: #7b5a41;
-  --k-data: #5f8f47;
-  --k-binary: #46504d;
-  --k-other: #9aa39f;
+  --k-code: #2e8377;
+  --k-document: #4a6593;
+  --k-image: #bb6466;
+  --k-video: #654480;
+  --k-audio: #bf8243;
+  --k-archive: #8c6b47;
+  --k-data: #6c8851;
+  --k-binary: #4b5150;
+  --k-other: #a19e96;
 
   /* the world's plaster and clay, matched to THEME.plaster[0, 2, 5] and THEME.clay
      in web/js/theme.js, for the inspector's key; --mass is a closed mass as the

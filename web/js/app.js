@@ -1,11 +1,11 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Terrane Application (Terrane Edition - v1.16)
+ *     - Title: Terrane Application (Terrane Edition - v1.17)
  *     - File Name: app.js
  *     - Relative Path: web/js/app.js
  *     - Artifact Type: javascript
- *     - Version: 1.16.0
+ *     - Version: 1.17.0
  *     - Date: 11/14/2026
  *     - Update: Saturday, November 14, 2026
  *     - Author: Dennis 'dendogg' Smaltz
@@ -13,6 +13,9 @@
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
  *
  * ✒ Changelog:
+ *     - 1.17.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] —
+ *       Extensions step half as far within their kind, and a closed mass's
+ *       strata are its own body colour leaning toward each kind.
  *     - 1.16.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] —
  *       A flavor the service was started with (--flavor, in /api/info) is
  *       taken once by this browser; a choice made in the guide since holds.
@@ -42,10 +45,6 @@
  *       search and survey asked again at a pace the service bears, and
  *       Findings turned page by page. A search's answer in region mode is
  *       painted and listed once as it lands, not twice in one task.
- *     - 1.14.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] —
- *       The Guide is one window in four tabs: Keys, Mouse, Reading the
- *       world and Settings, the last one opened kept. Reading the world
- *       leaves the inspector for it, so the inspector's space is free.
  *     Earlier entries: see CHANGELOG.md
  *
  * ✒ Description:
@@ -2328,7 +2327,7 @@ function screeHasMatch(i) {
  * kind.
  */
 const extTones = new Map();
-const TONE_STEPS = [-0.22, -0.11, 0, 0.12, 0.24];
+const TONE_STEPS = [-0.12, -0.06, 0, 0.07, 0.14];
 // Common neighbours get steps apart (.ts and .tsx, .tsx and .css, .jpg
 // and .png, .mov and .mp4); any other extension takes a step by its hash.
 const TONE_OF = {
@@ -2364,7 +2363,10 @@ function strataOf(node) {
   for (let k = 0; k < 9; k++) if (node.ks[k] > 0) order.push(k);
   order.sort((a, b) => node.ks[b] - node.ks[a]);
   const total = node.s || 1;
-  const tone = (k) => mixHex(THEME.clay, KINDS[k].color, 0.7);
+  // Each band is the mass's own body, the colour its lid takes, leaning
+  // toward its kind: the sides read as one object that shows what it holds.
+  const body = mixHex(THEME.clay, KINDS[order[0] ?? 8].color, 0.56);
+  const tone = (k) => mixHex(body, mixHex(THEME.clay, KINDS[k].color, 0.7), 0.62);
   if (!order.length) return null;
   const a = order[0];
   const b = order[1] ?? a;

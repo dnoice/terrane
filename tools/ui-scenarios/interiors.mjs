@@ -1,11 +1,11 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Archive Interiors Scenario (Terrane Edition - v1.2)
+ *     - Title: Archive Interiors Scenario (Terrane Edition - v1.3)
  *     - File Name: interiors.mjs
  *     - Relative Path: tools/ui-scenarios/interiors.mjs
  *     - Artifact Type: test
- *     - Version: 1.2.0
+ *     - Version: 1.3.0
  *     - Date: 11/13/2026
  *     - Update: Friday, November 13, 2026
  *     - Author: Dennis 'dendogg' Smaltz
@@ -13,6 +13,9 @@
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
  *
  * ✒ Changelog:
+ *     - 1.3.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] —
+ *       The twin tie's colour is read from KINDS, not written out, so a
+ *       change of palette does not break it.
  *     - 1.2.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] —
  *       The twin ties cost the selection baseline and the one shared
  *       relation layer; the entry's style waits poll until it is drawn,
@@ -90,6 +93,7 @@
  */
 
 import fs from 'node:fs';
+import { KINDS } from '../../web/js/model.js';
 
 /** In the page: lists each path with the page's own token, or without it. */
 async function listInPage(paths, withToken) {
@@ -476,7 +480,7 @@ const chamber = {
         const s = v.relationSets.get('twins');
         return s && !v.relationsStale && v.relations.geometry.drawRange.count > 0 && { legs: s.legs.length / 6, count: v.relations.geometry.drawRange.count, color: s.color };
       }, { what: 'the twins relation drawn' });
-      t.check(`the twin is tied in the archive kind's colour: relation set 'twins', ${ties.legs} leg, draw range ${ties.count}`, ties.legs >= 1 && ties.count > 0 && ties.color === 0x7b5a41, JSON.stringify(ties));
+      t.check(`the twin is tied in the archive kind's colour: relation set 'twins', ${ties.legs} leg, draw range ${ties.count}`, ties.legs >= 1 && ties.count > 0 && ties.color === KINDS[5].color, JSON.stringify(ties));
       // The Duplicates lens pins no heavyweight files, so the frame holds
       // what the selection baseline holds, and the ties only the shared
       // relation layer, which is drawn only while it holds a line.
