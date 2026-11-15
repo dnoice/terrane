@@ -796,8 +796,9 @@ short form is kept too.
 
 - 1.12.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — Quiet foundations, names in a
   strict vocabulary (INK, LETTER_MIN, the ladder, nameContrast) and the far view: a tiny file
-  leans toward its band A and loses its contact halo. A flight frame() starts follows its box
-  while the layout refines on the way. In full: the second part of the precise
+  leans toward its band A and loses its contact halo; a box a few pixels thin keeps flat,
+  uncreased faces. A flight frame() starts follows its box while the layout refines on the
+  way. In full: the second part of the precise
   terrain, points 6 to 9 of docs/ART-DIRECTION.md. Foundations: a plateau's plate (aRole DIR)
   leans its bevel's normal by 0.3 (every other box 0.55), its side shade reaches 0.84 at the
   foot (others 0.66), and its riser loses the two fine courses, which aliased into a beaded
@@ -839,6 +840,10 @@ short form is kept too.
   sets to the colour its folder takes when it closes, so from far off a folder of tiny files
   reads as one mass in its kind's colour. The contact shadow takes uPxScale and fades out
   between 3 and 12 device pixels of footprint (uHaloPx), so tiny far blocks keep no dark halo.
+  A box whose shortest side stands under 8 pixels on screen fades its bevel's lean and its
+  creases out from there to 2 (an inked outline keeps its edge): removing the riser's courses
+  had not removed the beaded band along a far plate, which came from the two creases and a
+  sub-pixel lean meeting on a face two or three pixels tall.
   No mesh, attribute or draw call is added, and no work per frame on the CPU. A flight frame()
   starts keeps its box's key and foot (this.aim); when setLayout brings a layout in which that
   box has moved, as it does when what was gathered into scree comes out of it while the eye

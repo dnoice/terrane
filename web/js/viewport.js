@@ -16,8 +16,9 @@
  *     - 1.12.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] —
  *       Quiet foundations, names in a strict vocabulary (INK, LETTER_MIN,
  *       the ladder, nameContrast) and the far view: a tiny file leans
- *       toward its band A and loses its contact halo. A flight frame()
- *       starts follows its box while the layout refines on the way.
+ *       toward its band A and loses its contact halo; a box a few pixels
+ *       thin keeps flat, uncreased faces. A flight frame() starts follows
+ *       its box while the layout refines on the way.
  *     - 1.11.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] —
  *       A machined finish: a narrow bevel with a gentle lean, flat lids,
  *       a satin roughness (0.6); pins are slimmer and lit as the boxes are.
@@ -48,7 +49,8 @@
  *       its foot less and casts a narrower, lighter contact shadow
  *     - The far view: a file a few pixels wide on screen leans toward its
  *       band A (under the Kind lens its folder's mass colour) and casts no
- *       contact halo, so far off the world reads as organised masses
+ *       contact halo, and a box a few pixels thin keeps flat, uncreased
+ *       faces, so far off the world reads as organised masses
  *     - A place, not a diagram: perspective camera inside the scene, with
  *       sky, horizon, haze, a surveyed ground plane and sun shadows at a
  *       three-quarter angle to the view that
@@ -704,6 +706,9 @@ function boxMaterial(letters) {
           vec3 e = (0.5 - a) * vBoxScale;
           vec3 t = clamp(1.0 - e / r, 0.0, 1.0) * (vec3(1.0) - abs(face));
           t = t * t * (3.0 - 2.0 * t);
+          // A box a few pixels thin on screen keeps flat faces: a lean
+          // under a pixel only beads along it.
+          t *= smoothstep(2.0, 8.0, smn0() / boxPixel());
           // A gentle lean: the arris catches a little light, never a rim of
           // it; a plateau's plate leans less, so its rim stays quiet.
           vec3 bent = normalize(face + s * t * (vRole < 0.5 ? 0.3 : 0.55));
@@ -774,6 +779,10 @@ function boxMaterial(letters) {
           col = mix(col, uInk, crossInk * 0.85);
           float edge = 1.0 - smoothstep(fw * 0.7 * edgeW, fw * (0.7 * edgeW + 1.0), mid);
           edge *= smoothstep(3.0, 16.0, smid / fw) * 0.74 + 0.06;
+          // Nor a crease on a face a few pixels thin, such as a far
+          // plateau's plate: the two creases would meet and bead along it.
+          // An inked outline keeps its edge.
+          edge *= mix(smoothstep(2.0, 8.0, smn / max(length(fwidth(vWorldP)) * 0.7071, 1e-6)), 1.0, inked);
           // Ink for the conventions that need an outline; a soft crease in
           // the box's own tone for every other edge.
           vec3 crease = col * 0.62;
