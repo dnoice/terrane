@@ -1,10 +1,10 @@
 <!--
 ✒ Metadata
-    - Title: Shipped File Changelogs (Terrane Edition - v1.13)
+    - Title: Shipped File Changelogs (Terrane Edition - v1.15)
     - File Name: CHANGELOG.md
     - Relative Path: CHANGELOG.md
     - Artifact Type: docs
-    - Version: 1.13.0
+    - Version: 1.15.0
     - Date: 11/14/2026
     - Update: Saturday, November 14, 2026
     - Author: Dennis 'dendogg' Smaltz
@@ -12,17 +12,23 @@
     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
 
 ✒ Changelog:
-    - 1.13.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — Records panel B's tab
-      strip: app.js 1.16.0, index.html 1.8.0 and layout.css 1.4.0, and the first sections for
+    - 1.15.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — Records panel B's tab
+      strip: app.js 1.17.0, index.html 1.8.0 and layout.css 1.4.0, and the first sections for
       web/css/components/inspector.css (1.3.0) and web/css/print.css (1.3.0), whose 1.0.0
-      entries leave their headers with these releases. app.js's header rolls its 1.13.0 entry
+      entries leave their headers with these releases. app.js's header rolls its 1.14.0 entry
       out, index.html's its 1.5.0 and layout.css's its 1.1.0; this file already holds them.
       Then the Preview tab: features.js 1.5.0 and terrane.css 2.5.0, whose headers roll their
       1.2.0 and 2.2.0 entries out; this file already holds them. The review's fixes extend the
-      entries of app.js 1.16.0 and index.html 1.8.0 (] named for panel B), and terrane.css
+      entries of app.js 1.17.0 and index.html 1.8.0 (] named for panel B), and terrane.css
       2.5.0's long form says how Preview numbers its lines now and holds the foot's dots.
       The docs and sweep make the long forms of index.html 1.8.0 and layout.css 1.4.0 open
       with their headers' words, as the branch's other new entries do.
+    - 1.14.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — Records app.js 1.16.0,
+      the flavor a launch names; its 1.13.0 entry leaves the header, and this file already
+      holds it.
+    - 1.13.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — Records viewport.js
+      1.10.0, Blender's buttons kept for clicking; its 1.7.0 entry leaves the header, and this
+      file already holds it.
     - 1.12.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — Records Wave 4, merged
       with main's flavors and Guide window (app.js 1.15.0, floating.css 1.4.0). First, the
       polish of the panels:
@@ -139,7 +145,7 @@ short form is kept too.
 
 ## web/js/app.js
 
-- 1.16.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — Panel B's head is a tab strip
+- 1.17.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — Panel B's head is a tab strip
   from B_TABS, the Inspector first and the default, the choice kept in this browser; both strips
   take the arrows, Home and End. The Inspector draws only while chosen. The api gains B_TABS,
   drawBTabs, showBTab, bTabShown, composition's title, contentsOrder and get's signal. ] is panel
@@ -177,6 +183,17 @@ short form is kept too.
   held children in Contents' order, made from the comparator Contents lists with (sortedContents
   is now contentsOrder(S.focus), the Untouched order by dir's own typical age); get(route,
   params, { signal }) passes the signal to fetch.
+
+- 1.16.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — A flavor the service was
+  started with (--flavor, in /api/info) is taken once by this browser; a choice made in the
+  guide since holds. In full: takeLaunchFlavor runs before the view first takes its flavor. It
+  reads the launch flavor this browser took last (localStorage terrane.flavor-launch) and asks
+  flavors.js's startingFlavor what to start with; a launch flavor not yet taken becomes the
+  kept choice and the one taken, so every browser that opens a service started with --flavor
+  blender starts in Blender's flavor once. A flavor chosen in the guide afterwards is kept as
+  before and survives reloads, until a launch names a different flavor. Where storage is
+  refused the launch flavor holds for the page. Asked for by Dennis, so the local service
+  opens in Blender's hands.
 
 - 1.15.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — The sheet's polish: the ledger
   head in two rows (the count and its tools, then the keys over the columns; Select all an icon)
@@ -703,6 +720,16 @@ short form is kept too.
 - 1.0.0 (11/09/2026) [dendogg + Anthropic - Claude Fable 5.2] — Initial release.
 
 ## web/js/viewport.js
+
+- 1.10.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — A drag whose motion is none
+  leaves the view alone and takes no grabbing cursor, so Blender's left and right buttons only
+  click. In full: flavors.js 1.1.0 gives Blender's left and right buttons the motion none, on
+  Dennis's account of Blender's hands: the left button selects and never moves the scene, and
+  the right button opens a menu. Until then those presses fell back to Terrane's own meanings,
+  so a left drag slid the ground and a right drag orbited. Past the five-pixel slop the press is
+  no longer a click, so nothing is selected and no menu opens, and the pointer moves nothing. A
+  press released inside the slop is the click it always was: the left selects, the right opens
+  the menu, which every flavor already had.
 
 - 1.9.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — Drags follow a flavor
   (flavors.js, setFlavor): Terrane's, Blender's, AutoCAD's and eight more; a walk

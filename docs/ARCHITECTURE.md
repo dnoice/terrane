@@ -13,7 +13,7 @@
 
 ✒ Changelog:
     - 1.13.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] —
-      Preview, on branch `tab-preview`. Scale adds how Preview reads (the
+      Preview. Scale adds how Preview reads (the
       body after the arrows rest, superseded reads aborted, the last
       text and listing kept, nothing done while unseen), topBySize, the
       text's chunks, the Inspector drawn only while chosen, and the

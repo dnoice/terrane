@@ -1,10 +1,10 @@
 <!--
 ✒ Metadata
-    - Title: Terrane Roadmap (Terrane Edition - v1.13)
+    - Title: Terrane Roadmap (Terrane Edition - v1.14)
     - File Name: ROADMAP.md
     - Relative Path: docs/ROADMAP.md
     - Artifact Type: docs
-    - Version: 1.13.0
+    - Version: 1.14.0
     - Date: 11/14/2026
     - Update: Saturday, November 14, 2026
     - Author: Dennis 'dendogg' Smaltz
@@ -12,6 +12,10 @@
     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
 
 ✒ Changelog:
+    - 1.14.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] —
+      Preview is on `main`: `main`'s Blender fix and `--flavor` were
+      merged into its branch and checked again, and the branch merged.
+      Next is the seven other tabs.
     - 1.13.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] —
       Preview, the first of panel B's tabs, is recorded as complete on
       branch `tab-preview`, waiting to be merged, with its commits, the
@@ -179,7 +183,7 @@ As of 11/14/2026:
   columns and heights, three uppercase voices, labels and heads on one
   line, values that break only at their separators, nothing cut off
   without an ellipsis, and the `polish` check that measures all of it.
-- **Complete, on branch `tab-preview`, waiting to be merged:**
+- **Complete, on `main`:**
   Preview, the first of the tabs beside the Inspector. Panel B's head
   is a tab strip that features fill, the Inspector first and the
   default; Preview, next to it, is a quick look docked beside the world
@@ -187,8 +191,7 @@ As of 11/14/2026:
   from its thumbnail, sound and film in byte ranges, a zip's listing, a
   link's target, a folder's summary and several selected with their
   total, each case with nothing to show saying why.
-- **Next:** the merge of `tab-preview` into `main`; then the seven
-  other tabs, built and merged one at a time: Cleanup, Shelf, Compare,
+- **Next:** the seven other tabs, built and merged one at a time: Cleanup, Shelf, Compare,
   Activity, Notes and tags, Watch and Connections. The open ground
   beyond them is what Stage 4 still lacks (section 4), the rest of
   Stage 6, and the Stage 5 deferrals in section 4.
@@ -1016,7 +1019,7 @@ GPU and the default fixture of 3,126 files:
   in a 96 px column. The tabs now take the TIGHT voice and the column
   is 104 px.
 
-### Complete on branch `tab-preview`: Preview
+### Complete: Preview
 
 Preview is the first of the eight tabs planned beside the Inspector,
 built on its own branch, `tab-preview`, made from `main` at the Wave 4
@@ -1025,7 +1028,9 @@ built panel B's tab strip, which the other seven will join through the
 same registry. Its build steps ran one after another, each with Node
 checks in `npm test` and `ui-check` scenarios run one at a time in both
 passes before it committed; an adversarial review, a fix step and a
-docs and sweep step followed. It waits to be merged into `main`.
+docs and sweep step followed. With `main`'s Blender fix and
+`--flavor` merged into it and the checks run again, it was merged into
+`main` in the commit titled "Merge tab-preview: Preview, panel B's first tab".
 
 1. **The readers** (`4ecfa8e`): what Quick look decided and said moves
    out of `quicklook.js` into the DOM-free `web/js/readers.js`, which

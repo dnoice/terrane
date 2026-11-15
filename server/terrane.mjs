@@ -2,11 +2,11 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Terrane Service (Terrane Edition - v1.7)
+ *     - Title: Terrane Service (Terrane Edition - v1.8)
  *     - File Name: terrane.mjs
  *     - Relative Path: server/terrane.mjs
  *     - Artifact Type: CLI
- *     - Version: 1.7.0
+ *     - Version: 1.8.0
  *     - Date: 11/14/2026
  *     - Update: Saturday, November 14, 2026
  *     - Author: Dennis 'dendogg' Smaltz
@@ -14,6 +14,11 @@
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
  *
  * ✒ Changelog:
+ *     - 1.8.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] —
+ *       --flavor <id> names the flavor every page that opens this service
+ *       takes once (web/js/flavors.js's ids); GET /api/info reports it as
+ *       flavor, null without the option, and the banner says it. An id
+ *       that names no flavor is a usage error that lists the ids.
  *     - 1.7.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
  *       service keeps the tree and answers regions (server/regions.mjs,
  *       over web/js/columns.js). GET /api/tree[?build=1] says the tree's
@@ -262,6 +267,7 @@ import { inspect } from './archive.mjs';
 import { warmWriter, readWarm, warmPaths, warmInside, readWarmTree, checkWarm, sweepWarm, writeWarmTree } from './warm.mjs';
 import { makeRegions } from './regions.mjs';
 import { REGION_THRESHOLD } from '../web/js/columns.js';
+import { FLAVORS, flavorById, isFlavor } from '../web/js/flavors.js';
 
 const VERSION = '1.5.0';
 const WEB = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'web');
@@ -272,7 +278,7 @@ const option = (name, fallback) => {
   const i = args.indexOf(name);
   return i >= 0 && args[i + 1] ? args[i + 1] : fallback;
 };
-const VALUED = ['--port', '--snapshot', '--thumbs', '--region-threshold'];
+const VALUED = ['--port', '--snapshot', '--thumbs', '--region-threshold', '--flavor'];
 const positional = args.filter((a, i) => !a.startsWith('--') && !VALUED.includes(args[i - 1]));
 const snapshotArg = option('--snapshot', null);
 // Above this many entries (folders and files, the root counted) the tree
@@ -283,15 +289,18 @@ const thresholdText = String(args.includes('--region-threshold')
   : process.env.TERRANE_REGION_THRESHOLD || REGION_THRESHOLD).trim();
 const thresholdOk = /^\d{1,10}$/.test(thresholdText);
 const regionThreshold = thresholdOk ? Number(thresholdText) : REGION_THRESHOLD;
-const usageOk = (snapshotArg ? positional.length === 0 : positional.length === 1) && thresholdOk;
+// The flavor every page that opens this service takes once (--flavor).
+const flavorArg = option('--flavor', null);
+const flavorOk = flavorArg === null || isFlavor(flavorArg);
+const usageOk = (snapshotArg ? positional.length === 0 : positional.length === 1) && thresholdOk && flavorOk;
 
 if (!usageOk || flag('--help')) {
   console.error([
     '',
     '  Terrane ' + VERSION,
     '  Usage: node server/terrane.mjs <directory> [--read-only] [--port n] [--no-open] [--no-watch] [--no-warm]',
-    '                                 [--region-threshold n]',
-    '         node server/terrane.mjs --snapshot <folder or .db> [--port n] [--no-open] [--region-threshold n]',
+    '                                 [--region-threshold n] [--flavor id]',
+    '         node server/terrane.mjs --snapshot <folder or .db> [--port n] [--no-open] [--region-threshold n] [--flavor id]',
     '',
     '  Terrane only works inside the directory you name here. With --snapshot it',
     '  shows a recorded structure instead and touches no real files at all.',
@@ -301,7 +310,10 @@ if (!usageOk || flag('--help')) {
     '  --region-threshold n: above n entries the service keeps the tree and serves',
     `  it a folder at a time (default ${REGION_THRESHOLD.toLocaleString('en-US')}; 0 for every tree; also`,
     '  TERRANE_REGION_THRESHOLD).',
+    '  --flavor id: every page that opens the service starts in that flavor once',
+    `  (${FLAVORS.map((p) => p.id).join(', ')}); a flavor chosen in the guide since holds.`,
     ...(thresholdOk ? [] : ['', `  The region threshold "${thresholdText}" is not a whole number of entries, 0 or more.`]),
+    ...(flavorOk ? [] : ['', `  "${flavorArg}" is not a flavor. The flavors: ${FLAVORS.map((p) => p.id).join(', ')}.`]),
     '',
   ].join('\n'));
   process.exit(usageOk ? 0 : 1);
@@ -491,7 +503,7 @@ if (snap && !snapshotArg.endsWith('.db')) {
 
 const snapInfo = () => ({
   version: VERSION, root: snapMeta.root, name: snapMeta.name, sep: snapMeta.sep, platform: snapMeta.platform,
-  readOnly: true, watch: 'snapshot',
+  readOnly: true, watch: 'snapshot', flavor: flavorArg,
   snapshot: { takenAt: snapMeta.takenAt, folders: snapMeta.folders, files: snapMeta.files, bytes: snapMeta.bytes },
   warm: null,
   regions: regions.info(),
@@ -790,7 +802,7 @@ async function api(req, res, url) {
       const kept = warmOn ? await readWarm(guard.root) : null;
       return json(res, 200, {
         version: VERSION, root: guard.root, name: path.basename(guard.root) || guard.root, sep: path.sep,
-        platform: process.platform, readOnly, watch: watchState,
+        platform: process.platform, readOnly, watch: watchState, flavor: flavorArg,
         warm: warmInfo(kept),
         regions: regions.info({ warm: kept }),
       });
@@ -1037,6 +1049,7 @@ const listen = (attempt = 0) => {
         : [`  Authorized directory : ${guard.root}`,
           `  Mode                 : ${readOnly ? 'read-only' : 'read and write (no overwrite, no direct delete)'}`,
           ...(warmBlocked ? [`  Warm start           : off. The dataset home (${warmPaths(guard.root).dir}) is inside the directory; set TERRANE_DATA to a folder outside it.`] : [])]),
+      ...(flavorArg ? [`  Flavor               : ${flavorById(flavorArg).name}`] : []),
       `  Open                 : ${address}`,
       '',
       '  Ctrl+C to stop.',

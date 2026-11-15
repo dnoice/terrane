@@ -1,10 +1,10 @@
 <!--
 ✒ Metadata
-    - Title: Terrane Readme (Terrane Edition - v1.18)
+    - Title: Terrane Readme (Terrane Edition - v1.20)
     - File Name: README.md
     - Relative Path: README.md
     - Artifact Type: docs
-    - Version: 1.18.0
+    - Version: 1.20.0
     - Date: 11/14/2026
     - Update: Saturday, November 14, 2026
     - Author: Dennis 'dendogg' Smaltz
@@ -12,8 +12,8 @@
     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
 
 ✒ Changelog:
-    - 1.18.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] —
-      Preview, on branch `tab-preview`. Looking further gains Preview,
+    - 1.20.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] —
+      Preview, merged into `main`. Looking further gains Preview,
       panel B's second tab, with its keys, what it shows and why it
       shows nothing where it does; Quick look names Preview's button.
       Travelling says what panel B holds, that `]` names the tab it
@@ -26,6 +26,13 @@
       verified records the final sweep of the branch, and the three
       rows recorded on `main` after Wave 4's sweep join the table; Not
       verified adds what Preview could not see.
+    - 1.19.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] —
+      Launch: `--flavor <id>`, the flavor every page that opens the
+      service starts in once; Developing against real data: `npm run dev`
+      keeps it with the target.
+    - 1.18.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] —
+      Travelling: in Blender's flavor the left and right buttons never
+      move the view; a click selects and a right-click opens the menu.
     - 1.17.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] —
       Wave 4's polish of the sheet: the project map lists polish.mjs,
       and What was verified records its runs and those of every
@@ -280,6 +287,7 @@ keeps the last session's tree, says why and offers Survey again.
 | `--no-open` | Does not open the browser. |
 | `--no-watch` | Does not watch for outside changes; use Refresh. |
 | `--no-warm` | Keeps no tree of the last survey and serves none: every launch surveys before it draws, and the service writes nothing to the dataset home. |
+| `--flavor <id>` | Every page that opens the service starts in that flavor once, as if chosen in the guide: `blender`, `autocad`, `sketchup`, `maya`, `3dsmax`, `rhino`, `solidworks`, `unity`, `unreal`, `earth` or `terrane`. A flavor chosen in the guide afterwards holds until a launch names a different one. |
 | `--region-threshold <n>` | Above n entries (folders and files) the service keeps the tree and the page draws it in regions; 100,000 unless `TERRANE_REGION_THRESHOLD` says otherwise, and 0 for every tree. See Very large directories. |
 
 ```bash
@@ -368,6 +376,8 @@ npm run dev
 ```
 
 The first form remembers the target; after that `npm run dev` is enough.
+`npm run dev -- --flavor blender` is remembered the same way, so every
+later run opens in Blender's flavor.
 It does four things:
 
 1. Takes a structure snapshot if the newest is more than six hours old:
@@ -535,7 +545,9 @@ it does there:
 | Unreal Engine | Alt+drag | Middle-drag | Alt+right-drag |
 | Google Earth | Shift+drag | Drag | Right-drag |
 
-In Unity and Unreal Engine the right button looks around, and holding
+In Blender's flavor, as in Blender, the left and right buttons never
+move the view: a click selects and a right-click opens the menu. In
+Unity and Unreal Engine the right button looks around, and holding
 it while you press W A S D flies; Unreal's left drag walks forward and
 back and turns. In AutoCAD and SketchUp a middle double-click rises to
 the overview. A drag a flavor leaves alone keeps Terrane's meaning,
@@ -967,7 +979,7 @@ time.
 | Steady conventions and Blender's view controls on Windows 11 (11/14/2026), Edge 157 on an RTX 5050 laptop GPU: `npm test`, and `node tools/ui-check.mjs --no-shots`, both passes, on the default fixture, with the new `views` scenario (hatching and bands drawn with the floating origin moved and moved back under the same eye; the middle button's orbit, grab and fly; the numpad views). With the old origin-relative coordinates put back, the same check finds 6,045 and 11,984 pixels moved | `npm test`: 797 passed, 0 failed. The interface check: 1424 passed, 0 failed, 6 skipped; 7 of 840,160 pixels differ with the fix |
 | Flavors on Windows 11 (11/14/2026), Edge 157 on an RTX 5050 laptop GPU: `npm test` with the new `flavors-test`, and `node tools/ui-check.mjs --no-shots`, both passes, on the default fixture, with `views` making every drag of every flavor with the mouse and judging what the eye did | `npm test`: 874 passed, 0 failed (77 in `flavors-test`). The interface check: 1438 passed, 1 failed, 6 skipped; the failure was the full-upload picture in `transitions`, one byte of one pixel a level apart, which the check now ignores while still counting anything over two levels (`transitions` again: 33 passed, 0 failed) |
 | The Guide window on Windows 11 (11/14/2026), Edge 157 on an RTX 5050 laptop GPU: `npm test`, and `node tools/ui-check.mjs --no-shots`, both passes, on the default fixture, with `seams`, `strata`, `time` and `interiors` reading Reading the world from the Guide's tab and `hardening` reaching the single-key setting in its Settings tab | `npm test`: 874 passed, 0 failed. The interface check: 1439 passed, 0 failed, 6 skipped |
-| Preview's final sweep on branch `tab-preview`, Windows 11 (11/14/2026): `node --check` on every script outside `web/vendor/`; `npm test`, now fourteen suites, `preview-test` last (Quick look's decisions against a copy of what it decided before its readers moved, over 356 files and modes; the text read through a fake fetch; the largest entries against a full sort over 1,000 random folders; 17 link targets); `npm run vendor -- --check`; the header of every file the branch touched; Markdown line lengths; and `node tools/ui-check.mjs --no-shots --port 5300` in both passes with Edge 157 on an RTX 5050 laptop GPU and the default fixture of 3,126 files: the earlier scenarios plus `preview`, `preview-regions` and `preview-disk`, with Preview's checks in `demo`, `demo-regions`, `hardening`, `polish` and `seams` | No syntax error in 108 scripts; 1,201 passed (255, 97, 57, 33, 60, 52, 54, 31, 80, 159, 68, 120, 77 and 58), none failed; every vendored file matches the manifest; 28 headers in rule; no Markdown line over 100 columns; 2974 passed, 0 failed, 8 skipped (1,563 and 3 with WebGL, 1,411 and 5 without, the same skips as before); draw calls at the baseline. An arrow held over 15 rows of the fixture, over 12 rows of the demo world and over 12 rows at 800 by 500 read one text each time, in both passes; a text cut at 256 KB built its 3,745 numbered lines in 10 and 11 ms. Not yet merged into `main` |
+| Preview's final sweep on branch `tab-preview`, Windows 11 (11/14/2026): `node --check` on every script outside `web/vendor/`; `npm test`, now fourteen suites, `preview-test` last (Quick look's decisions against a copy of what it decided before its readers moved, over 356 files and modes; the text read through a fake fetch; the largest entries against a full sort over 1,000 random folders; 17 link targets); `npm run vendor -- --check`; the header of every file the branch touched; Markdown line lengths; and `node tools/ui-check.mjs --no-shots --port 5300` in both passes with Edge 157 on an RTX 5050 laptop GPU and the default fixture of 3,126 files: the earlier scenarios plus `preview`, `preview-regions` and `preview-disk`, with Preview's checks in `demo`, `demo-regions`, `hardening`, `polish` and `seams` | No syntax error in 108 scripts; 1,201 passed (255, 97, 57, 33, 60, 52, 54, 31, 80, 159, 68, 120, 77 and 58), none failed; every vendored file matches the manifest; 28 headers in rule; no Markdown line over 100 columns; 2974 passed, 0 failed, 8 skipped (1,563 and 3 with WebGL, 1,411 and 5 without, the same skips as before); draw calls at the baseline. An arrow held over 15 rows of the fixture, over 12 rows of the demo world and over 12 rows at 800 by 500 read one text each time, in both passes; a text cut at 256 KB built its 3,745 numbered lines in 10 and 11 ms. Merged into `main` after `main`'s Blender fix and `--flavor` were merged into the branch and checked again |
 
 Not verified: running on macOS; frame rate at street level in the largest
 trees on a hardware GPU; Open and Reveal reaching a desktop application on

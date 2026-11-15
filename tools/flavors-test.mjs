@@ -1,16 +1,27 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Flavors Test (Terrane Edition - v1.0)
+ *     - Title: Flavors Test (Terrane Edition - v1.2)
  *     - File Name: flavors-test.mjs
  *     - Relative Path: tools/flavors-test.mjs
  *     - Artifact Type: test
- *     - Version: 1.0.0
+ *     - Version: 1.2.0
  *     - Date: 11/14/2026
  *     - Update: Saturday, November 14, 2026
  *     - Author: Dennis 'dendogg' Smaltz
  *     - A.I. Acknowledgement: Anthropic - Claude Opus 5.5
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
+ *
+ * ✒ Changelog:
+ *     - 1.2.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] —
+ *       startingFlavor: a launch flavor is taken once and a later choice
+ *       holds; the service refuses a --flavor that names no flavor.
+ *     - 1.1.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] —
+ *       Blender's left and right buttons, with and without Shift and
+ *       Ctrl, move nothing; the guide's rows for such a button say what
+ *       its click does.
+ *     - 1.0.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] —
+ *       Initial release.
  *
  * ✒ Description:
  *     Checks the flavors in Node: every flavor's drags name a
@@ -38,7 +49,9 @@
  * ----------------------------------------------------------------------------
  */
 
-import { FLAVORS, MOTIONS, flavorById, motionFor, rowsFor, labelOf, install, DEFAULT_FLAVOR } from '../web/js/flavors.js';
+import { spawnSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
+import { FLAVORS, MOTIONS, flavorById, motionFor, rowsFor, labelOf, install, DEFAULT_FLAVOR, startingFlavor, isFlavor } from '../web/js/flavors.js';
 
 let passed = 0;
 let failed = 0;
@@ -75,6 +88,8 @@ for (const [b, mods, want] of before) {
 // Each tool's signature drags.
 const sig = [
   ['blender', 'middle', {}, 'orbit'], ['blender', 'middle', { shift: true }, 'slide'], ['blender', 'middle', { ctrl: true }, 'dolly'],
+  ['blender', 'left', {}, 'none'], ['blender', 'right', {}, 'none'], ['blender', 'left', { shift: true }, 'none'],
+  ['blender', 'left', { ctrl: true }, 'none'], ['blender', 'right', { shift: true }, 'none'], ['blender', 'right', { ctrl: true }, 'none'],
   ['blender', 'left', { alt: true }, 'orbit'], ['blender', 'left', { alt: true, shift: true }, 'slide'], ['blender', 'left', { alt: true, ctrl: true }, 'dolly'],
   ['autocad', 'middle', {}, 'slide'], ['autocad', 'middle', { shift: true }, 'orbit'],
   ['sketchup', 'middle', {}, 'orbit'], ['sketchup', 'middle', { shift: true }, 'slide'],
@@ -113,9 +128,31 @@ for (const p of FLAVORS) {
   const wrong = rows.filter(([k, d]) => {
     if (/double-click|any drag|other drags/.test(k)) return false;
     const pr = parse(k);
-    return !pr || MOTIONS[motionFor(p, pr[0], pr[1])] !== d;
+    if (!pr) return true;
+    const m = motionFor(p, pr[0], pr[1]);
+    // A button with no drag says what its click does after "Nothing".
+    return m === 'none' ? !d.startsWith(`${MOTIONS.none} (a click `) : MOTIONS[m] !== d;
   });
   check(`${p.name}: the guide's ${rows.length} rows say what each drag does`, rows.length >= 4 && wrong.length === 0, JSON.stringify(wrong));
+}
+
+const blenderRows = Object.fromEntries(rowsFor(flavorById('blender')));
+check('Blender\'s guide says its left and right buttons only click: a click selects, a right click opens the menu',
+  blenderRows.Drag === 'Nothing (a click selects)' && blenderRows['Right-drag'] === 'Nothing (a click opens the menu)', JSON.stringify(blenderRows));
+
+// The flavor a page starts with.
+const sf = (o) => JSON.stringify(startingFlavor(o));
+check('no launch flavor: the kept choice, else Terrane', sf({ kept: 'maya' }) === sf({ kept: 'maya', launch: null }) && startingFlavor({ kept: 'maya' }).id === 'maya' && startingFlavor({}).id === 'terrane' && startingFlavor({}).took === null);
+check('a launch flavor not yet taken wins once, and asks to be kept', sf({ launch: 'blender', taken: null, kept: 'terrane' }) === JSON.stringify({ id: 'blender', took: 'blender' }));
+check('once taken, a choice made since holds', sf({ launch: 'blender', taken: 'blender', kept: 'maya' }) === JSON.stringify({ id: 'maya', took: null }));
+check('a different launch flavor is taken again', startingFlavor({ launch: 'autocad', taken: 'blender', kept: 'maya' }).id === 'autocad');
+check('a launch id that names no flavor is ignored', startingFlavor({ launch: 'nope', kept: 'maya' }).id === 'maya' && !isFlavor('nope') && isFlavor('blender'));
+{
+  const run = (...a) => spawnSync(process.execPath, [fileURLToPath(new URL('../server/terrane.mjs', import.meta.url)), ...a], { encoding: 'utf8' });
+  const bad = run('--snapshot', 'nowhere', '--flavor', 'nope');
+  check('the service refuses a --flavor that names no flavor, and lists them', bad.status === 1 && /"nope" is not a flavor/.test(bad.stderr) && /blender/.test(bad.stderr), bad.stderr.slice(-200));
+  const help = run('--snapshot', 'nowhere', '--flavor', 'blender', '--help');
+  check('a --flavor that names one passes the usage check', help.status === 0 && /--flavor id/.test(help.stderr), help.stderr.slice(-200));
 }
 
 // The palette's commands.
