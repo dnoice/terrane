@@ -1,11 +1,11 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Shelf Scenarios (Terrane Edition - v1.0)
+ *     - Title: Shelf Scenarios (Terrane Edition - v1.1)
  *     - File Name: shelf.mjs
  *     - Relative Path: tools/ui-scenarios/shelf.mjs
  *     - Artifact Type: test
- *     - Version: 1.0.0
+ *     - Version: 1.1.0
  *     - Date: 11/15/2026
  *     - Update: Sunday, November 15, 2026
  *     - Author: Dennis 'dendogg' Smaltz
@@ -13,6 +13,9 @@
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
  *
  * ✒ Changelog:
+ *     - 1.1.0 (11/15/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
+ *       strip reads Inspector, Preview, Compare, Cleanup, Shelf, and the
+ *       Guide's K row names a Compare row.
  *     - 1.0.0 (11/15/2026) [dendogg + Anthropic - Claude Opus 5.5] —
  *       Initial release. After the review: Ctrl+K "shelf" holds the K
  *       entry among its eight actions, as Add to shelf and as Take off
@@ -280,8 +283,8 @@ const shelf = {
       title: document.getElementById('b-tab-shelf')?.title,
       mounted: 'mounted' in (document.getElementById('b-panel-shelf')?.dataset || {}),
     }));
-    t.check('the right panel\'s strip reads Inspector, Preview, Cleanup, Shelf, with no count, the inbox icon and its title',
-      same(s0.tabs, ['inspector:Inspector', 'preview:Preview', 'cleanup:Cleanup', 'shelf:Shelf']) && s0.icon === 'inbox' && /^Shelf: files and folders gathered from anywhere/.test(s0.title || '') && !s0.mounted, JSON.stringify(s0));
+    t.check('the right panel\'s strip reads Inspector, Preview, Compare, Cleanup, Shelf, with no count, the inbox icon and its title',
+      same(s0.tabs, ['inspector:Inspector', 'preview:Preview', 'compare:Compare', 'cleanup:Cleanup', 'shelf:Shelf']) && s0.icon === 'inbox' && /^Shelf: files and folders gathered from anywhere/.test(s0.title || '') && !s0.mounted, JSON.stringify(s0));
     await t.eval(() => { document.getElementById('ledger-list').focus(); return true; });
     const opts = await palette(t, 'shelf', (o) => o.some((x) => x.startsWith('Show Shelf|')) && o.some((x) => x.startsWith('Clear the shelf|')) && !o.some((x) => x.startsWith('Drop to eye level|')));
     const opt = (label) => opts.find((x) => x.startsWith(`${label}|`)) || '';
@@ -651,7 +654,7 @@ const shelfModes = {
     const guide = await t.eval(() => [...document.querySelectorAll('#dialog .guide > div')].map((d) => [d.querySelector('h3').textContent, [...d.querySelectorAll('dt')].map((dt) => `${dt.textContent}|${dt.nextElementSibling.textContent}`)]));
     await t.key('Escape');
     const many = (guide.find(([h]) => h === 'Acting on many') || [null, []])[1];
-    const want = ['K|Put the selection on the shelf, or take it off', 'K|In Preview, or on a Cleanup row: put that item on the shelf', 'Drag|Ledger rows onto the Shelf tab: put them on the shelf',
+    const want = ['K|Put the selection on the shelf, or take it off', 'K|In Preview, or on a Cleanup or Compare row: put that item on the shelf', 'Drag|Ledger rows onto the Shelf tab: put them on the shelf',
       '↑ ↓  Home  End|In the Shelf: the previous / next item, the first / last', 'Enter|In the Shelf: select the item and frame it in the world', 'Space|In the Shelf: add the item to the selection, or drop it',
       'Del|In the Shelf: take the item off the shelf (it stays on disk)'];
     t.check('the Guide holds the Shelf\'s seven rows under Acting on many', want.every((w) => many.includes(w)), JSON.stringify(many));

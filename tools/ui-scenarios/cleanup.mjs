@@ -1,11 +1,11 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Cleanup Scenarios (Terrane Edition - v1.1)
+ *     - Title: Cleanup Scenarios (Terrane Edition - v1.2)
  *     - File Name: cleanup.mjs
  *     - Relative Path: tools/ui-scenarios/cleanup.mjs
  *     - Artifact Type: test
- *     - Version: 1.1.0
+ *     - Version: 1.2.0
  *     - Date: 11/15/2026
  *     - Update: Sunday, November 15, 2026
  *     - Author: Dennis 'dendogg' Smaltz
@@ -13,6 +13,8 @@
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
  *
  * ✒ Changelog:
+ *     - 1.2.0 (11/15/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
+ *       strip reads Inspector, Preview, Compare, Cleanup, Shelf.
  *     - 1.1.0 (11/15/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
  *       strip reads Inspector, Preview, Cleanup, Shelf; K on a row puts
  *       its item on the Shelf, K again takes it off.
@@ -198,8 +200,8 @@ const cleanup = {
       mounted: 'mounted' in (document.getElementById('b-panel-cleanup')?.dataset || {}),
       title: document.getElementById('b-tab-cleanup')?.title,
     }));
-    t.check('the right panel\'s strip reads Inspector, Preview, Cleanup, Shelf, with Cleanup\'s list-checks icon and its title',
-      JSON.stringify(s0.tabs) === JSON.stringify(['inspector:Inspector', 'preview:Preview', 'cleanup:Cleanup', 'shelf:Shelf']) && s0.icons[2] === 'list-checks'
+    t.check('the right panel\'s strip reads Inspector, Preview, Compare, Cleanup, Shelf, with Cleanup\'s list-checks icon and its title',
+      JSON.stringify(s0.tabs) === JSON.stringify(['inspector:Inspector', 'preview:Preview', 'compare:Compare', 'cleanup:Cleanup', 'shelf:Shelf']) && s0.icons[2] === 'columns-2' && s0.icons[3] === 'list-checks'
       && s0.title === 'Cleanup: ranked suggestions for reclaiming space', JSON.stringify(s0));
     t.check('nothing is counted before Cleanup is chosen: no cleanup question, the tab not mounted', !s0.mounted && asked(t, 0).length === 0);
 

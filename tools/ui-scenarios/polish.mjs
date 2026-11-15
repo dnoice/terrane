@@ -1,11 +1,11 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Polish Scenario (Terrane Edition - v1.4)
+ *     - Title: Polish Scenario (Terrane Edition - v1.5)
  *     - File Name: polish.mjs
  *     - Relative Path: tools/ui-scenarios/polish.mjs
  *     - Artifact Type: test
- *     - Version: 1.4.0
+ *     - Version: 1.5.0
  *     - Date: 11/15/2026
  *     - Update: Sunday, November 15, 2026
  *     - Author: Dennis 'dendogg' Smaltz
@@ -13,6 +13,13 @@
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
  *
  * ✒ Changelog:
+ *     - 1.5.0 (11/15/2026) [dendogg + Anthropic - Claude Opus 5.5] —
+ *       Compare's poses: the node_modules pair at 1600 and 1280 (P26),
+ *       choosing a folder to compare with, the banner's buttons measured
+ *       (P27), and the drawer on Compare at 800 (P18f); C8 measures its
+ *       kind words, name, sentence, notes and the figures' first column at
+ *       A, the sides' marks, the rows' and the keys' swatches in the A slot
+ *       and their words at B, and its group heads at B.
  *     - 1.4.0 (11/15/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
  *       Shelf's poses: five items, one no longer there, at 1600 and 1280,
  *       and the drawer at 800; C8 measures its kind words, name, facts,
@@ -509,6 +516,31 @@ function INSTALL() {
           at('Shelf row text (B)', textLeft(r.querySelector('.nm')), 32, I, r);
         }
       }
+      // Compare (the right panel's tab between Preview and Cleanup): the
+      // inspector's grid; the sides' marks and the rows' and keys' swatches
+      // in the mark slot at A, their words at B.
+      const CM = one('#b-panel-compare');
+      if (I && shown(CM) && one('#inspector').getBoundingClientRect().left < innerWidth - 10) {
+        for (const k of $('#b-panel-compare .insp-kind')) at('Compare kind words (A)', textLeft(k), 12, I, k);
+        for (const e of $('#b-panel-compare .insp-name, #b-panel-compare .cmp-say, #b-panel-compare .cmp-note, #b-panel-compare .cmp-state').filter(shown).slice(0, 30)) {
+          at('Compare text and notes (A)', textLeft(e), 12, I, e);
+        }
+        for (const th of $('#b-panel-compare .cmp-facts tbody th').filter(shown).slice(0, 6)) at('Compare figures, first column (A)', textLeft(th), 12, I, th);
+        for (const b of $('#b-panel-compare .cmp-side').filter(shown)) {
+          mark('Compare side mark (A slot)', b.querySelector('.cmp-mark'), 12, I);
+          at('Compare side name (B)', textLeft(b.querySelector('.nm')), 32, I, b);
+        }
+        for (const sm of $('#b-panel-compare .cmp-group > summary').filter(shown).slice(0, 4)) at('Compare group head (B)', textLeft(sm.querySelector('.t')), 32, I, sm);
+        for (const r of $('#b-panel-compare .cmp-row').filter(shown).slice(0, 12)) {
+          const sw = r.querySelector('.swatch');
+          if (sw && shown(sw)) mark('Compare row swatch (A slot)', sw, 12, I);
+          at('Compare row text (B)', textLeft(r.querySelector('.nm')), 32, I, r);
+        }
+        for (const th of $('#b-panel-compare .cmp-key tbody th').filter(shown).slice(0, 8)) {
+          mark('Compare key swatch (A slot)', th.querySelector('.swatch'), 12, I);
+          at('Compare key label (B)', textLeft(th.querySelector('.cmp-key-t')), 32, I, th);
+        }
+      }
       const first = one('#block .cell');
       if (L && innerWidth >= 1101 && shown(first)) test('C8', Math.abs(R(first).right - R(one('#ledger')).right) <= 0.5, { at: 'first cell = ledger', cell: r2(R(first).right), ledger: r2(R(one('#ledger')).right) });
       const status = one('#status-label');
@@ -688,6 +720,17 @@ async function inCleanup(t) {
   });
 }
 
+/** The demo's node_modules pair, compared on the right panel's Compare tab (showing it opens the drawer at 800 px). */
+const NM_PAIR = ['Projects/harbor-api/node_modules', 'Projects/tidepool-web/node_modules'];
+async function inCompare(t) {
+  await t.app((T, rs) => {
+    T.api.selectAll(rs.map((r) => T.S.model.find(r)));
+    T.api.showBTab('compare');
+    return true;
+  }, NM_PAIR);
+  await t.waitFor(() => document.querySelectorAll('#b-panel-compare .cmp-group').length === 4, { timeout: 10000, what: 'the node_modules pair compared' });
+}
+
 /** The demo's paths the Shelf's poses hold, one of them nowhere. */
 const SHELF_RELS = [['Projects/harbor-api/README.md', 0], [COMPONENTS, 1], ['Downloads/invoice-2026-02.pdf', 0], ['Documents/Recipes', 1], ['Projects/harbor-api/gone-since.txt', 0]];
 
@@ -772,6 +815,14 @@ const POSES = [
   },
   { id: 'P24', name: 'Cleanup on the root, Big and stale open', at: '', small: 'skip', buttons: true, setup: inCleanup },
   { id: 'P25', name: 'the Shelf, five items, one no longer there', at: '', small: 'skip', buttons: true, setup: inShelf, after: leaveShelf },
+  { id: 'P26', name: 'Compare node_modules pair', at: '', small: 'skip', buttons: true, setup: inCompare },
+  {
+    id: 'P27', name: 'choosing a folder to compare with', at: '', buttons: true, setup: async (t) => {
+      await selectRel(t, 'Projects/harbor-api');
+      await listKey(t, 'c');
+      await t.waitFor(() => !document.getElementById('placing').hidden && document.getElementById('placing-here-words').textContent === 'Compare with where I am', { what: 'the banner while choosing' });
+    },
+  },
   {
     id: 'P18e', name: 'drawer on the Shelf', at: '', small: 'only', buttons: true, drawer: true, setup: async (t) => {
       await inShelf(t);
@@ -781,6 +832,13 @@ const POSES = [
       await leaveShelf(t);
       await listKey(t, ']');
     },
+  },
+  {
+    id: 'P18f', name: 'drawer on Compare', at: '', small: 'only', buttons: true, drawer: true, setup: async (t) => {
+      await inCompare(t);
+      await drawerOpen(t);
+    },
+    after: (t) => listKey(t, ']'),
   },
   {
     id: 'P18d', name: 'drawer on Cleanup', at: '', small: 'only', buttons: true, drawer: true, setup: async (t) => {

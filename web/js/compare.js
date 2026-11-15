@@ -340,10 +340,10 @@ export function install(api) {
     open.delete('only-1');
     if (o1 !== undefined) open.set('only-0', o1);
     if (o0 !== undefined) open.set('only-1', o0);
-    if (result) {
+    if (result?.res) {
       result = { ...result, key: pairKey(pair), datas: [result.datas[1], result.datas[0]] };
       rediff();
-    }
+    } else result = null;
     const lab = labOf(pair);
     api.say(`Swapped: ${MARKS[0]} is now ${lab[0]}, ${MARKS[1]} ${lab[1]}.`);
     if (api.bTabShown('compare')) draw();
@@ -566,7 +566,8 @@ export function install(api) {
 
   /** Parts from diff.js's whyText, a mark carrying its side's label for a screen reader. */
   function partsEl(parts, lab) {
-    return parts.map((p) => (typeof p === 'string' ? p : [mark(p.mark, { inline: true, sr: `${lab[p.mark]}${p.text ? ',' : ''}` }), p.text ? ` ${p.text}` : null]));
+    // el() flattens one level only: the parts are flattened here.
+    return parts.map((p) => (typeof p === 'string' ? p : [mark(p.mark, { inline: true, sr: `${lab[p.mark]}${p.text ? ',' : ''}` }), p.text ? ` ${p.text}` : null])).flat(Infinity);
   }
 
   /** The head: its kind words, its name for the state, the sides and the tools. */
@@ -1057,7 +1058,7 @@ export function install(api) {
       api.say(`${nm} was there when the benchmark was set and is no longer here.`);
       return;
     }
-    const [c0, c1] = await api.resolveAll([p0, p1]).catch(() => [null, null]);
+    const [c0, c1] = await Promise.all([p0, p1].map((p) => (p == null ? null : api.resolve(p).catch(() => null))));
     const copies = [c0, c1].filter(Boolean);
     if (!copies.length) {
       api.say(`${nm} is no longer there.`);
