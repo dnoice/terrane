@@ -6,19 +6,21 @@
  *     - Relative Path: tools/ui-scenarios/time.mjs
  *     - Artifact Type: test
  *     - Version: 1.2.0
- *     - Date: 11/14/2026
- *     - Update: Saturday, November 14, 2026
+ *     - Date: 11/15/2026
+ *     - Update: Sunday, November 15, 2026
  *     - Author: Dennis 'dendogg' Smaltz
  *     - A.I. Acknowledgement: Anthropic - Claude Opus 5.5
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
  *
  * ✒ Changelog:
  *     - 1.2.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — Twelve
- *       levels down, the slab is measured against lay.unit[i], the unit of
- *       the folder it stands in, and the check names the slab-to-unit
- *       ratio: a plate is now half its parent's unit, so a plateau's height
- *       is no longer the measure (a deliberate change of what the check
- *       asserts). The root's ratio is 0.08.
+ *       levels down, the slab is measured against the height unit of the
+ *       folder it stands in, min(lay.unit[i], TILE_H × lay.tile[i]), and the
+ *       check names the slab-to-height-unit ratio: a plate is now half its
+ *       parent's unit and a file's height is its folder's one recency
+ *       scale, so neither a plateau's height nor the unit alone is the
+ *       measure (a deliberate change of what the check asserts). The root's
+ *       ratio is 0.08.
  *     - 1.1.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — A crossed
  *       file's colour is its kind's in its extension's tone
  *       (api.kindTone), washed once.
@@ -51,8 +53,8 @@
  *       say "changed", never "created" or "arrived"
  *     - Inspector: Since MM/DD/YYYY with the table's figures and up to
  *       eight Where the change is rows that reveal, also without WebGL
- *     - Twelve levels down: the slab-to-unit ratio equals the root's, and
- *       a re-based origin moves no pixel of the cross
+ *     - Twelve levels down: the slab-to-height-unit ratio equals the
+ *       root's, and a re-based origin moves no pixel of the cross
  *
  * ✒ Usage Instructions:
  *     node tools/ui-check.mjs time
@@ -496,7 +498,7 @@ export default {
       const deep = await t.app(async (T, grains) => {
         const S = T.S;
         const L = S.layout;
-        const { buildLayout } = await import(new URL('js/layout.js', document.baseURI).href);
+        const { buildLayout, TILE_H } = await import(new URL('js/layout.js', document.baseURI).href);
         const depth = (n) => { let x = 0; for (let a = n; a.p; a = a.p) x++; return x; };
         const k = S.time.k;
         const A = S.ages;
@@ -508,11 +510,12 @@ export default {
             const dd = depth(f);
             if (dd < minDepth || dd > maxDepth) continue;
             if (lay.index.get(f.p) === undefined) continue;
-            // The slab is measured against the unit of the folder it stands
-            // in: a plate is half that unit, so no longer the measure.
-            const unit = lay.unit[i];
+            // The slab is measured against the height unit of the folder
+            // it stands in, min(unit, TILE_H × tile): a plate is half the
+            // unit, so no longer the measure.
+            const unit = Math.min(lay.unit[i], TILE_H * lay.tile[i]);
             const side = Math.min(lay.geo[i * 6 + 3], lay.geo[i * 6 + 5]);
-            // Where the unit term binds, the slab is a fixed share of it.
+            // Where the height unit's term binds, the slab is a fixed share of it.
             if (side * 0.05 >= unit * 0.08) out.push({ n: f.n, depth: dd, r: lay.geo[i * 6 + 4] / unit });
           }
           return out;
@@ -532,7 +535,7 @@ export default {
       const rootR = deep.top[0]?.r;
       const worst = deep.low.reduce((m, x) => Math.max(m, Math.abs(x.r - rootR)), 0);
       t.check(`twelve levels down, ${deep.primary} (depth ${deep.depth}) is a crossed slab`, deep.depth >= 13 && deep.aux === 2, JSON.stringify(deep).slice(0, 300));
-      t.check(`its slab-to-unit ratio equals the root level's within 1e-9 (${deep.low.length} deep and ${deep.top.length} root-level slabs; root ${rootR}, worst difference ${worst.toExponential(1)})`,
+      t.check(`its slab-to-height-unit ratio equals the root level's within 1e-9 (${deep.low.length} deep and ${deep.top.length} root-level slabs; root ${rootR}, worst difference ${worst.toExponential(1)})`,
         deep.top.length > 0 && deep.low.length > 0 && worst <= 1e-9, JSON.stringify({ top: deep.top.slice(0, 3), low: deep.low.slice(0, 3) }));
 
       if (t.gl) {

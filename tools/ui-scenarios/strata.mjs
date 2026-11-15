@@ -6,18 +6,23 @@
  *     - Relative Path: tools/ui-scenarios/strata.mjs
  *     - Artifact Type: test
  *     - Version: 1.1.0
- *     - Date: 11/14/2026
- *     - Update: Saturday, November 14, 2026
+ *     - Date: 11/15/2026
+ *     - Update: Sunday, November 15, 2026
  *     - Author: Dennis 'dendogg' Smaltz
  *     - A.I. Acknowledgement: Anthropic - Claude Opus 5.5
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
  *
  * ✒ Changelog:
  *     - 1.1.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
- *       far view of the precise terrain, with WebGL: in the fixture's
- *       folder with the most files, under the Kind lens every file's band
- *       A is the colour its folder takes when it closes and its other
- *       bands its own; under the Age lens band A is its own colour too.
+ *       far view of the precise terrain, with WebGL, in the fixture's
+ *       folder with the most files of more than one kind: under the Kind
+ *       lens every file's band A is its own kind's mass colour, washed
+ *       when hidden, and its other bands its own, so a file of the lesser
+ *       kind keeps its hue (band A was its folder's mass colour, which
+ *       recoloured lesser kinds: a deliberate change of what the check
+ *       asserts); the GPU holds each file's folder's tile in aShare and
+ *       none elsewhere; at the folder's own pose no file leans; under the
+ *       Age lens band A is its own colour too.
  *     - 1.0.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] —
  *       Initial release.
  *
@@ -48,8 +53,9 @@
  *       instance colours; strata-old's hover tip begins "Half its bytes
  *       unchanged since", and only under the Age lens
  *     - With WebGL, the far view: under the Kind lens a file's band A is
- *       the colour its folder takes when it closes, under the Age lens its
- *       own colour
+ *       its own kind's mass colour, so a lesser kind keeps its hue, under
+ *       the Age lens its own colour; each file carries its folder's tile
+ *       to the GPU, and none leans at its folder's own pose
  *     - Without WebGL: the real paint() at about 10,000 boxes under the
  *       Age lens, with the table and without it (the old colouring), at
  *       most 0.2 ms apart
@@ -197,14 +203,19 @@ const strata = {
     t.check('lens 1 puts the kind legend back', (await t.waitFor((T) => T.S.lens === 'kind' && document.getElementById('legend-label').textContent)) === 'Kind · click to isolate');
 
     if (t.gl) {
-      // The far view: in the folder with the most files, under the Kind
-      // lens a file's band A is the colour its folder takes when it closes
-      // (the shader leans a file a few pixels wide toward it); under the
-      // Age lens it is the file's own colour.
+      // The far view: in the fixture's folder with the most files of more
+      // than one kind, under the Kind lens every file's band A is its own
+      // kind's mass colour (washed as its own colour is when hidden), so a
+      // file of the folder's lesser kind keeps its kind's hue; the GPU
+      // holds each file's folder's tile beside its shares and none on any
+      // other box; and at this folder's pose no file leans at all, so
+      // every file shows its own colour. Under the Age lens band A is the
+      // file's own colour.
       await t.app((T) => {
         const dirs = [];
         (function walk(d) { dirs.push(d); for (const c of d.c) if (c.d) walk(c); }(T.S.model.root));
-        const most = dirs.filter((d) => d.p).sort((a, b) => b.c.filter((c) => !c.d).length - a.c.filter((c) => !c.d).length)[0];
+        const kinds = (d) => new Set(d.c.filter((c) => !c.d).map((c) => c.k)).size;
+        const most = dirs.filter((d) => d.p && kinds(d) > 1).sort((a, b) => b.c.filter((c) => !c.d).length - a.c.filter((c) => !c.d).length)[0];
         T.api.select(null);
         T.api.setFocus(most);
         return true;
@@ -213,34 +224,76 @@ const strata = {
       const bandsNow = async (T) => {
         const TH = await import(new URL('js/theme.js', document.baseURI).href);
         const M = await import(new URL('js/model.js', document.baseURI).href);
+        const VP = await import(new URL('js/viewport.js', document.baseURI).href);
         const v = T.S.view;
         const L = T.S.layout;
         let p = null;
         v.setPaint = function (q) { p = q; return Object.getPrototypeOf(this).setPaint.call(this, q); };
         T.api.repaint();
         delete v.setPaint;
-        const mass = (d) => {
-          let best = 8;
-          let max = 0;
-          for (let k = 0; k < 9; k++) if (d.ks[k] > max) { max = d.ks[k]; best = k; }
-          return TH.mixHex(TH.THEME.clay, M.KINDS[best].color, 0.56);
+        const mass = (n) => {
+          const c = TH.mixHex(TH.THEME.clay, M.KINDS[n.k].color, 0.56);
+          return n.f & M.FLAG_HIDDEN ? TH.mixHex(c, TH.THEME.paper, 0.4) : c;
         };
+        // How far the shader leans a file toward its band A from here: its
+        // folder's tile as the GPU holds it, on screen in device pixels.
+        const sh = v.aShare.array;
+        const pxScale = v.mesh.material.userData.pxScale.value;
+        const pr = v.renderer.getPixelRatio();
+        const lean = (i) => {
+          const o = i * 6;
+          const g = L.geo;
+          const d = Math.max(Math.hypot(Math.max(Math.abs(v.cam.x - g[o]) - g[o + 3] / 2, 0), Math.max(Math.abs(v.cam.y - g[o + 1]) - g[o + 4] / 2, 0), Math.max(Math.abs(v.cam.z - g[o + 2]) - g[o + 5] / 2, 0)), 1e-9);
+          const x = Math.min(1, Math.max(0, ((sh[i * 3 + 2] * pxScale) / d - VP.FAR_PX[0] * pr) / ((VP.FAR_PX[1] - VP.FAR_PX[0]) * pr)));
+          return 0.7 * (1 - x * x * (3 - 2 * x));
+        };
+        const here = T.S.focus;
+        const kindsHere = new Map();
+        for (const c of here.c) if (!c.d) kindsHere.set(c.k, (kindsHere.get(c.k) || 0) + 1);
+        const major = [...kindsHere.entries()].sort((a, b) => b[1] - a[1])[0]?.[0];
         let files = 0;
-        let toMass = 0;
         let own = 0;
+        let toKind = 0;
         let rest = 0;
+        let lesser = 0;
+        let lesserKept = 0;
+        let tileHeld = 0;
+        let tileNone = 0;
+        let others = 0;
+        let leaning = 0;
+        let mine = 0;
         for (let i = 0; i < L.n; i++) {
-          if (L.type[i] !== 1 || T.S.sel.has(L.node[i]) || L.aux[i] === 2) continue;
+          if (L.type[i] !== 1) {
+            others++;
+            if (sh[i * 3 + 2] === 0) tileNone++;
+            continue;
+          }
+          if (Math.abs(sh[i * 3 + 2] - L.tile[i]) <= 1e-6 * L.tile[i]) tileHeld++;
+          if (T.S.sel.has(L.node[i]) || L.aux[i] === 2) continue;
           files++;
-          if (p.bands[i * 3] === mass(L.node[i].p)) toMass++;
+          if (p.bands[i * 3] === mass(L.node[i])) toKind++;
           if (p.bands[i * 3] === p.color[i]) own++;
           if (p.bands[i * 3 + 1] === p.color[i] && p.bands[i * 3 + 2] === p.color[i] && p.shares[i * 2] === 1) rest++;
+          if (L.node[i].p === here) {
+            mine++;
+            if (lean(i) > 0) leaning++;
+            if (L.node[i].k !== major) {
+              lesser++;
+              if (p.bands[i * 3] === mass(L.node[i])) lesserKept++;
+            }
+          }
         }
-        return { lens: T.S.lens, files, toMass, own, rest, folder: T.S.focus.n };
+        return { lens: T.S.lens, files, toKind, own, rest, lesser, lesserKept, tileHeld, tileNone, others, n: L.n, mine, leaning, folder: here.n, kinds: kindsHere.size };
       };
       const kindBands = await t.app(bandsNow);
-      t.check(`under the Kind lens every file's band A is its folder's mass colour, its other bands its own (${kindBands.files} files in ${kindBands.folder})`,
-        kindBands.files > 10 && kindBands.toMass === kindBands.files && kindBands.rest === kindBands.files, JSON.stringify(kindBands));
+      t.check(`under the Kind lens every file's band A is its own kind's mass colour, washed when hidden, and its other bands its own (${kindBands.files} files)`,
+        kindBands.files > 10 && kindBands.toKind === kindBands.files && kindBands.rest === kindBands.files, JSON.stringify(kindBands));
+      t.check(`a file of a lesser kind in ${kindBands.folder} (${kindBands.kinds} kinds) keeps its own kind's hue: ${kindBands.lesserKept} of ${kindBands.lesser}`,
+        kindBands.lesser > 0 && kindBands.lesserKept === kindBands.lesser, JSON.stringify(kindBands));
+      t.check(`the GPU holds each file's folder's tile beside its shares and none on any other box (${kindBands.tileHeld} files, ${kindBands.tileNone} of ${kindBands.others} other boxes)`,
+        kindBands.tileHeld === kindBands.n - kindBands.others && kindBands.tileNone === kindBands.others, JSON.stringify(kindBands));
+      t.check(`at the folder's own pose no file of ${kindBands.folder} leans toward its band A, so each shows its own colour (${kindBands.mine} files, ${kindBands.leaning} leaning)`,
+        kindBands.mine > 10 && kindBands.leaning === 0, JSON.stringify(kindBands));
       await t.tabTo('#view');
       await t.key('2');
       await t.waitFor((T) => T.S.lens === 'age');

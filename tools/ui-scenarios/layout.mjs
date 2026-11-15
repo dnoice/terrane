@@ -6,8 +6,8 @@
  *     - Relative Path: tools/ui-scenarios/layout.mjs
  *     - Artifact Type: test
  *     - Version: 1.2.0
- *     - Date: 11/14/2026
- *     - Update: Saturday, November 14, 2026
+ *     - Date: 11/15/2026
+ *     - Update: Sunday, November 15, 2026
  *     - Author: Dennis 'dendogg' Smaltz
  *     - A.I. Acknowledgement: Anthropic - Claude Opus 5.5
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
@@ -15,8 +15,9 @@
  * ✒ Changelog:
  *     - 1.2.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
  *       precise terrain, part two: in both passes, layout.unit holds the
- *       unit of the folder each box stands in, and the files of every
- *       open plateau in the page's layout stand one channel apart.
+ *       unit of the folder each box stands in, layout.tile a tile for
+ *       every file and the root, and the files of every open plateau in
+ *       the page's layout stand one channel apart.
  *     - 1.1.0 (11/12/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
  *       box shader has six bounded style branches now that CROSSED draws;
  *       the AUX table is read with BOX and STYLE.
@@ -35,8 +36,9 @@
  *     - Any data, both passes; the viewport parts run with WebGL only
  *     - Reads BOX, STYLE and MAX_BOXES from the module the page loaded
  *     - Reads the compiled fragment shader back from the GL context
- *     - The unit of each box's folder (layout.unit), and one channel between
- *       the files of every open plateau
+ *     - The unit of each box's folder (layout.unit), a tile for every file
+ *       (layout.tile), and one channel between the files of every open
+ *       plateau
  *     - Feeds the viewport a 73,500-box layout made from the real one and
  *       checks the count drawn, the notice (said once) and recovery
  *
@@ -86,6 +88,9 @@ export default {
       const M = await import(new URL('js/model.js', document.baseURI).href);
       const g = L.geo;
       const unit = L.unit instanceof Float64Array && L.unit.length === L.n && L.unit[0] === LY.unitOf(LY.WORLD, LY.WORLD);
+      // And a tile, its folder's, that every file's height and far view
+      // are measured in.
+      const tile = L.tile instanceof Float64Array && L.tile.length === L.n && L.tile[0] > 0 && L.type.every((ty, i) => ty !== LY.BOX.FILE || L.tile[i] > 0);
       const kidsOf = new Map();
       for (let i = 1; i < L.n; i++) {
         const pi = L.index.get(L.type[i] === LY.BOX.SCREE ? L.node[i] : L.node[i].p);
@@ -125,9 +130,10 @@ export default {
         const hi = Math.max(...widths);
         if (hi - lo > tol || Math.abs(lo - fileCh) > tol) odd.push(`${L.node[pi].n}: ${lo / S} to ${hi / S} S, want ${fileCh / S}`);
       }
-      return { unit, plateaus, pairs, odd: odd.slice(0, 4) };
+      return { unit, tile, plateaus, pairs, odd: odd.slice(0, 4) };
     });
     t.check('layout.unit holds the unit of the folder each box stands in, the root its own', ch.unit);
+    t.check('layout.tile holds a tile for every file, and the root its own', ch.tile);
     t.check(`the files of every open plateau stand one channel apart (${ch.plateaus} plateaus, ${ch.pairs} facing pairs)`, ch.plateaus > 0 && ch.odd.length === 0, JSON.stringify(ch.odd));
     if (!t.gl) return;
 

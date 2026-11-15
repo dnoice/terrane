@@ -6,17 +6,18 @@
  *     - Relative Path: web/js/app.js
  *     - Artifact Type: javascript
  *     - Version: 1.19.0
- *     - Date: 11/14/2026
- *     - Update: Saturday, November 14, 2026
+ *     - Date: 11/15/2026
+ *     - Update: Sunday, November 15, 2026
  *     - Author: Dennis 'dendogg' Smaltz
  *     - A.I. Acknowledgement: Anthropic - Claude Opus 5.5
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
  *
  * ✒ Changelog:
  *     - 1.19.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] —
- *       The far view: under the Kind lens a file's band A is the colour
- *       its folder takes when it closes; TONE_STEPS comes from theme.js.
- *       A child folder is where you are once it spans half the view.
+ *       The far view: under the Kind lens a file's band A is its own
+ *       kind's mass colour, washed when hidden; TONE_STEPS comes from
+ *       theme.js. A child folder is where you are once it spans half the
+ *       view.
  *     - 1.18.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] —
  *       Extensions step half as far within their kind, and a closed mass's
  *       strata are its own body colour leaning toward each kind.
@@ -2421,9 +2422,11 @@ function paint() {
   const I = S.interior;
   const room = I ? L.chamber : null;
   // The far view: under the Kind lens, with nothing filtered, searched or
-  // being placed, a file's band A is the colour its folder takes when it
-  // closes; the shader leans a file a few pixels wide toward it, so far
-  // off a folder of tiny files reads as one mass. One colour per folder.
+  // being placed, a file's band A is its own kind's mass colour (the
+  // colour a folder of that kind takes when it closes), washed as its
+  // own colour is when it is hidden; the shader leans the files of a
+  // folder whose entries are a few pixels wide toward it, so far off the
+  // folder reads as one mass in its kinds' colours. One colour per kind.
   const far = S.lens === 'kind' && filter < 0 && !search && !placing;
   const massOf = far ? new Map() : null;
 
@@ -2504,11 +2507,14 @@ function paint() {
       shares[i * 2] = st.s1; shares[i * 2 + 1] = st.s2;
     } else {
       let a = c;
-      if (far && type === BOX.FILE && !picked && L.aux[i] !== AUX.CROSSED && node.p?.ks) {
-        a = massOf.get(node.p);
+      if (far && type === BOX.FILE && !picked && L.aux[i] !== AUX.CROSSED) {
+        const hidden = !!(node.f & FLAG_HIDDEN);
+        const k = node.k * 2 + (hidden ? 1 : 0);
+        a = massOf.get(k);
         if (a === undefined) {
-          a = mixHex(THEME.clay, KINDS[dominantKind(node.p)].color, 0.56);
-          massOf.set(node.p, a);
+          a = mixHex(THEME.clay, KINDS[node.k].color, 0.56);
+          if (hidden) a = mixHex(a, THEME.paper, 0.4);
+          massOf.set(k, a);
         }
       }
       bands[i * 3] = a;

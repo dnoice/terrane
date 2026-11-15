@@ -7,8 +7,8 @@
  *     - Relative Path: tools/smoke-test.mjs
  *     - Artifact Type: test
  *     - Version: 1.8.0
- *     - Date: 11/14/2026
- *     - Update: Saturday, November 14, 2026
+ *     - Date: 11/15/2026
+ *     - Update: Sunday, November 15, 2026
  *     - Author: Dennis 'dendogg' Smaltz
  *     - A.I. Acknowledgement: Anthropic - Claude Opus 5.5
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
@@ -16,30 +16,44 @@
  * ✒ Changelog:
  *     - 1.8.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
  *       precise terrain, part two. The time view's slab is now measured
- *       against L.unit[i], min(unit × 0.08, side × 0.05), and the map of
- *       plateau risers is gone: a plate is now half its parent's unit, so
- *       the slab is measured against the unit (a deliberate change of what
- *       the check asserts). A new section lays out the demo world from the
- *       overview, (300, 500, 500) and (100, 150, -100): layout.unit is a
- *       Float64Array of n, the root's unitOf(WORLD) and every other box's
- *       its plateau's; every open plateau is min(half its unit, a tenth of
- *       its side) thick and open siblings five units wide share one
- *       thickness; each child's slot (the child grown by half its channel)
- *       tiles its plateau inside the pad, so every channel between facing
+ *       against the folder's height unit, min(min(L.unit[i], TILE_H ×
+ *       L.tile[i]) × 0.08, side × 0.05), and the map of plateau risers is
+ *       gone: a plate is now half its parent's unit and a file's height
+ *       one recency scale per folder (a deliberate change of what the
+ *       check asserts). A new section lays out the demo world from the
+ *       overview, (300, 500, 500) and (100, 150, -100): layout.unit and
+ *       layout.tile are Float64Arrays of n, the root's own and every other
+ *       box's its plateau's (the tile the side of the tile its
+ *       lower-quartile entry would take); every open plateau is min(half
+ *       its unit, a tenth of its side) thick and open siblings five units
+ *       wide share one thickness; each child's slot (the child grown by
+ *       half its channel, a folder's three file channels or 0.12 / 0.88
+ *       of its square, and by half a file's on a side at the edge) tiles
+ *       its plateau inside the pad, so every channel between facing
  *       children is the sum of their half channels within 1e-9 S, the
- *       quarter guard aside; a child at the margin line stands at its
- *       type's margin; area per byte within a folder varies at most 1.2
- *       times for blocks 0.04 S wide; no file is taller than its short
- *       side; and in one of 25 equal folders, 144 equal files aged over ten
- *       years never fall in height as freshness rises, the soft cap
- *       binding on most. A names section: nameContrast reads 3:1 or more
- *       on every surface a name is printed on (each kind in each of
- *       TONE_STEPS and its hidden wash, every kind's mass colour, clay,
- *       each plaster, mark, garnet, a plain file, and 21 steps each of
- *       the age and size ramps for files and masses) and 6:1 on plaster;
- *       INK, LETTER_MIN, LETTER_FULL and TONE_STEPS are frozen, the
- *       shader inks names from INK, and app.js keeps no TONE_STEPS of
- *       its own.
+ *       quarter guard aside; sibling folders stand at least as far apart
+ *       as the old rule of 6 % of each slot gave them; every block at the
+ *       margin line stands exactly 0.04 S from the edge, a folder as a
+ *       file does (it stood a wider half channel in: a deliberate change);
+ *       area per byte within a folder varies at most 1.2 times for blocks
+ *       0.04 S wide; every file stands its folder's height unit times
+ *       0.35 + 3.4 f², and two files of one folder changed within the
+ *       same hour stand within 3 % (no file taller than its short side
+ *       before: a small file may now stand taller than wide, a deliberate
+ *       change); and in one of 25 equal folders, 144 equal files aged
+ *       over ten years stand on that one scale, never falling as
+ *       freshness rises, the freshest no taller than 0.9 of the tile. A
+ *       names section: nameContrast reads 3:1 or more on every surface a
+ *       name is printed on (each kind in each of TONE_STEPS and its
+ *       hidden wash, every kind's mass colour, clay, each plaster, mark,
+ *       garnet, a plain file, and 21 steps each of the age and size ramps
+ *       for files and masses) and 6:1 on plaster; INK, LETTER_MIN (7, 6),
+ *       LETTER_FULL (8, 7), FAR_PX (2, 6) and TONE_STEPS are frozen, the
+ *       shader inks names from INK and fades them on the smaller of
+ *       their seen and facing size from a pixel under the floor,
+ *       LID_FILE is 0.16 and LID_MASS 0.2 on a ladder of the fourth root
+ *       of two, the far view reads each file's tile from aShare, and
+ *       app.js keeps no TONE_STEPS of its own.
  *     - 1.7.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
  *       one-date-formatter check sets demo-world.js aside: it writes ISO
  *       dates only into the demo world's made-up file names, which the
@@ -240,9 +254,11 @@
  *       every ladder step keeps the present's boxes and lowers only what
  *       changed after the date
  *     - The precise terrain, without the service: the demo world's unit,
- *       plates, channels, margins, area per byte and tiles from three eyes
+ *       tile, plates, channels, streets, margins, area per byte and one
+ *       recency scale per folder from three eyes
  *     - Names on the blocks, without a browser: one ink rule that reads
- *       3:1 or more on every surface a name is printed on
+ *       3:1 or more on every surface a name is printed on, the floors,
+ *       the fade and the vocabulary's shares
  *     - The source, read as text: one date formatter, no dead export in
  *       the shared modules, no idle icon, colours only from tokens.css,
  *       no shell anywhere the service launches a program, and every
@@ -1756,11 +1772,11 @@ check('box and style codes are frozen and unique, with WALL 4 and CROSSED 6 rese
 const capacity = Number(fs.readFileSync(new URL('../web/js/viewport.js', import.meta.url), 'utf8').match(/const CAPACITY = (\d+);/)?.[1]);
 check(`the viewport holds more boxes (${capacity}) than a layout may (${MAX_BOXES})`, capacity >= MAX_BOXES);
 
-console.log('\nThe precise terrain: unit, plates, channels, area and tiles (no service)');
+console.log('\nThe precise terrain: unit, plates, channels, streets, area and heights (no service)');
 {
   // The demo world from three eyes: the overview, a middle distance and
   // a street. Everything inside a folder is measured in its unit.
-  const { unitOf, MARGIN, WORLD } = await import(new URL('../web/js/layout.js', import.meta.url));
+  const { unitOf, MARGIN, WORLD, TILE_H } = await import(new URL('../web/js/layout.js', import.meta.url));
   const { kids: kidsOf, freshness } = await import(new URL('../web/js/model.js', import.meta.url));
   const { createDemoService } = await import(new URL('../web/js/demo-service.js', import.meta.url));
   const DNOW = Date.UTC(2026, 10, 14, 20);
@@ -1770,8 +1786,8 @@ console.log('\nThe precise terrain: unit, plates, channels, area and tiles (no s
   const dIds = [];
   for (const batch of (await dsvc.handle('GET', 'scan', { path: '' })).batches) dm.ingest(batch, dIds, dm.root);
   const demoEyes = [['overview', { x: 0, y: 900, z: 1200 }], ['middle', { x: 300, y: 500, z: 500 }], ['street', { x: 100, y: 150, z: -100 }]];
-  const probs = { unit: [], plate: [], channel: [], margin: [], area: [], tall: [] };
-  const counts = { boxes: 0, plates: 0, pairs: 0, guarded: 0, margins: 0, folders: 0, ratio: 0 };
+  const probs = { unit: [], tile: [], plate: [], channel: [], street: [], margin: [], area: [], scale: [], age: [] };
+  const counts = { boxes: 0, plates: 0, pairs: 0, guarded: 0, margins: 0, folders: 0, ratio: 0, streets: 0, least: Infinity, files: 0, ages: 0, ageWorst: 1 };
   const note = (k, why) => { if (probs[k].length < 5) probs[k].push(why); };
   for (const [label, cam] of demoEyes) {
     const L = buildLayout(dm.root, { cam, grain: 0.006, now: DNOW });
@@ -1780,16 +1796,67 @@ console.log('\nThe precise terrain: unit, plates, channels, area and tiles (no s
     // The plateau a box stands on: its folder's for a scree, its parent's otherwise.
     const plateauOf = (i) => (i === 0 ? -1 : L.index.get(L.type[i] === BOX.SCREE ? L.node[i] : L.node[i].p) ?? -1);
     const unitAt = (pi) => unitOf(g[pi * 6 + 3], g[pi * 6 + 5]);
+    // A plateau's measures, as the layout takes them: its file channel,
+    // pad, area per weight and the tile, the side of the tile its
+    // lower-quartile entry (among the 5,000 largest) would take: its
+    // square less a file's channel.
+    const measures = new Map();
+    const measureOf = (pi) => {
+      let mm = measures.get(pi);
+      if (mm) return mm;
+      const dir = L.node[pi];
+      const w = g[pi * 6 + 3];
+      const d = g[pi * 6 + 5];
+      const S = Math.min(w, d);
+      const count = kidsOf(dir);
+      const fileCh = S * Math.min(0.012, 0.1 / Math.sqrt(Math.max(count, 1)));
+      const pad = S * MARGIN - fileCh / 2;
+      const eps = (dir.s / count) * 0.12 + 1;
+      const perWeight = ((w - pad * 2) * (d - pad * 2)) / (dir.s + eps * count);
+      const q = Math.min(Math.floor(0.75 * (count - 1)), 4999, dir.c.length - 1);
+      const square = Math.sqrt((dir.c[q].s + eps) * perWeight);
+      mm = { S, fileCh, pad, eps, perWeight, tile: Math.max(square - fileCh, square * 0.5) };
+      measures.set(pi, mm);
+      return mm;
+    };
     if (!(L.unit instanceof Float64Array) || L.unit.length !== L.n) note('unit', `${label}: layout.unit is not a Float64Array of n`);
+    if (!(L.tile instanceof Float64Array) || L.tile.length !== L.n) note('tile', `${label}: layout.tile is not a Float64Array of n`);
     if (!Object.is(L.unit[0], unitOf(WORLD, WORLD))) note('unit', `${label}: the root's unit is ${L.unit[0]}`);
+    if (Math.abs(L.tile[0] - measureOf(0).tile) > 1e-12 * measureOf(0).tile) note('tile', `${label}: the root's tile is ${L.tile[0]}, want ${measureOf(0).tile}`);
     const children = new Map();
+    const byFolder = new Map();
     for (let i = 1; i < L.n; i++) {
       const pi = plateauOf(i);
       if (pi < 0 || L.type[pi] !== BOX.DIR) { note('unit', `${label}: ${L.node[i].n} stands on no plateau`); continue; }
       if (!Object.is(L.unit[i], unitAt(pi))) note('unit', `${label}: ${L.node[i].n} has unit ${L.unit[i]}, its plateau ${unitAt(pi)}`);
+      const tile = measureOf(pi).tile;
+      if (Math.abs(L.tile[i] - tile) > 1e-12 * tile) note('tile', `${label}: ${L.node[i].n} has tile ${L.tile[i]}, its plateau ${tile}`);
       if (!children.has(pi)) children.set(pi, []);
       children.get(pi).push(i);
-      if (L.type[i] === BOX.FILE && g[i * 6 + 4] > Math.min(g[i * 6 + 3], g[i * 6 + 5])) note('tall', `${label}: ${L.node[i].n} is ${g[i * 6 + 4]} tall on a ${Math.min(g[i * 6 + 3], g[i * 6 + 5])} side`);
+      // One recency scale per folder: a file's height is its folder's
+      // height unit, min(unit, TILE_H tile), times 0.35 + 3.4 f^2.
+      if (L.type[i] === BOX.FILE) {
+        counts.files++;
+        const f = freshness(L.node[i].m, DNOW);
+        const want = Math.min(L.unit[i], TILE_H * L.tile[i]) * (0.35 + 3.4 * f * f);
+        if (Math.abs(g[i * 6 + 4] - want) > 1e-9 * want) note('scale', `${label}: ${L.node[i].n} is ${g[i * 6 + 4]} tall, its folder's scale gives ${want}`);
+        if (!byFolder.has(pi)) byFolder.set(pi, []);
+        byFolder.get(pi).push(i);
+      }
+    }
+    // Files of equal age stand equal: any two in one folder changed within
+    // the same hour stand within 3 % of each other.
+    for (const list of byFolder.values()) {
+      list.sort((a, b) => L.node[a].m - L.node[b].m);
+      for (let k = 1; k < list.length; k++) {
+        const a = list[k - 1];
+        const b = list[k];
+        if (L.node[b].m - L.node[a].m > 3600000) continue;
+        counts.ages++;
+        const r = Math.max(g[a * 6 + 4], g[b * 6 + 4]) / Math.min(g[a * 6 + 4], g[b * 6 + 4]);
+        counts.ageWorst = Math.max(counts.ageWorst, r);
+        if (r > 1.03) note('age', `${label}: ${L.node[a].n} and ${L.node[b].n}, changed within an hour, stand ${r.toFixed(3)} times apart`);
+      }
     }
     // Plates: half the unit they stand in, at most a tenth of their side.
     const sibs = new Map();
@@ -1806,36 +1873,41 @@ console.log('\nThe precise terrain: unit, plates, channels, area and tiles (no s
       }
     }
     for (const [pi, set] of sibs) if (set.size > 1) note('plate', `${label}: the open plateaus in ${L.node[pi].n} are ${[...set].join(', ')} thick`);
-    // Channels and margins, folder by folder.
+    // Channels, streets and margins, folder by folder.
     for (const [pi, list] of children) {
       const dir = L.node[pi];
       const po = pi * 6;
-      const S = Math.min(g[po + 3], g[po + 5]);
-      const fileCh = S * Math.min(0.012, 0.1 / Math.sqrt(Math.max(kidsOf(dir), 1)));
-      const pad = S * MARGIN - fileCh / 2;
+      const { S, fileCh, pad, eps, perWeight } = measureOf(pi);
+      const margin = S * MARGIN;
       const px0 = g[po] - g[po + 3] / 2, px1 = g[po] + g[po + 3] / 2, pz0 = g[po + 2] - g[po + 5] / 2, pz1 = g[po + 2] + g[po + 5] / 2;
+      const tol = 1e-9 * S;
+      // A child's channel: a file's (and the scree's), or a folder's, the
+      // wider of three file channels and 0.12 / 0.88 of its square's side.
       const R = list.map((i) => {
         const o = i * 6;
-        const c = L.type[i] === BOX.DIR || L.type[i] === BOX.CAP ? fileCh * 3 : fileCh;
+        const folder = L.type[i] === BOX.DIR || L.type[i] === BOX.CAP;
+        const c = folder ? Math.max(fileCh * 3, (0.12 / 0.88) * Math.sqrt((L.node[i].s + eps) * perWeight)) : fileCh;
         const m = Math.min(g[o + 3], g[o + 5]);
-        return { i, c, guard: c > m, x0: g[o] - g[o + 3] / 2, x1: g[o] + g[o + 3] / 2, z0: g[o + 2] - g[o + 5] / 2, z1: g[o + 2] + g[o + 5] / 2 };
+        return { i, c, folder, guard: c > m, x0: g[o] - g[o + 3] / 2, x1: g[o] + g[o + 3] / 2, z0: g[o + 2] - g[o + 5] / 2, z1: g[o + 2] + g[o + 5] / 2 };
       });
-      const tol = 1e-9 * S;
+      // Every block at the edge stands exactly MARGIN of S from it, a
+      // folder as a file does.
       for (const a of R) {
         if (a.guard) { counts.guarded++; continue; }
-        for (const [d, want] of [[a.x0 - px0, pad + a.c / 2], [px1 - a.x1, pad + a.c / 2], [a.z0 - pz0, pad + a.c / 2], [pz1 - a.z1, pad + a.c / 2]]) {
-          if (d > pad + a.c / 2 + fileCh * 0.5) continue;
+        for (const d of [a.x0 - px0, px1 - a.x1, a.z0 - pz0, pz1 - a.z1]) {
+          if (d > margin + fileCh * 0.5) continue;
           counts.margins++;
-          if (Math.abs(d - want) > tol) note('margin', `${label}: ${L.node[a.i].n} stands ${d / S} S from ${dir.n}'s edge, want ${want / S}`);
+          if (Math.abs(d - margin) > tol) note('margin', `${label}: ${L.node[a.i].n} stands ${d / S} S from ${dir.n}'s edge, want ${MARGIN}`);
         }
       }
-      // Each child's slot: the child grown by its half channel, or by half
-      // its short side where the quarter guard binds. The slots must tile
-      // the plateau inside its pad, so every channel between two facing
-      // children is the sum of their half channels and nothing else.
+      // Each child's slot: the child grown by half its channel, by half a
+      // file's on a side at the edge, or by half its short side where the
+      // quarter guard binds. The slots must tile the plateau inside its
+      // pad, so every channel between two facing children is the sum of
+      // their half channels and nothing else.
       for (const r of R) {
-        const h = r.guard ? Math.min(r.x1 - r.x0, r.z1 - r.z0) / 2 : r.c / 2;
-        Object.assign(r, { sx0: r.x0 - h, sx1: r.x1 + h, sz0: r.z0 - h, sz1: r.z1 + h });
+        const grow = (d) => (r.guard ? Math.min(r.x1 - r.x0, r.z1 - r.z0) / 2 : Math.abs(d - margin) <= tol ? fileCh / 2 : r.c / 2);
+        Object.assign(r, { sx0: r.x0 - grow(r.x0 - px0), sx1: r.x1 + grow(px1 - r.x1), sz0: r.z0 - grow(r.z0 - pz0), sz1: r.z1 + grow(pz1 - r.z1) });
       }
       const inner = (px1 - px0 - 2 * pad) * (pz1 - pz0 - 2 * pad);
       const covered = R.reduce((sum, r) => sum + (r.sx1 - r.sx0) * (r.sz1 - r.sz0), 0);
@@ -1853,11 +1925,18 @@ console.log('\nThe precise terrain: unit, plates, channels, area and tiles (no s
             if (a.guard || b.guard) continue;
             counts.pairs++;
             if (Math.abs(gap - (a.c + b.c) / 2) > tol) note('channel', `${label}: ${L.node[a.i].n} to ${L.node[b.i].n} in ${dir.n} is ${gap / S} S, want ${(a.c + b.c) / 2 / S}`);
+            // Two folders facing: a street at least as wide as the old
+            // rule gave them, 6 % of each one's slot.
+            if (a.folder && b.folder) {
+              const old = 0.06 * (Math.min(a.sx1 - a.sx0, a.sz1 - a.sz0) + Math.min(b.sx1 - b.sx0, b.sz1 - b.sz0));
+              counts.streets++;
+              counts.least = Math.min(counts.least, gap / old);
+              if (gap < old - tol) note('street', `${label}: ${L.node[a.i].n} to ${L.node[b.i].n} in ${dir.n} is ${gap}, the old rule gave ${old}`);
+            }
           }
         }
       }
       // Area per byte, over the blocks at least 0.04 S on a side.
-      const eps = (dir.s / kidsOf(dir)) * 0.12 + 1;
       const per = R.filter((r) => L.type[r.i] !== BOX.SCREE && Math.min(r.x1 - r.x0, r.z1 - r.z0) >= 0.04 * S).map((r) => ((r.x1 - r.x0) * (r.z1 - r.z0)) / (L.node[r.i].s + eps));
       if (per.length >= 2) {
         counts.folders++;
@@ -1868,14 +1947,18 @@ console.log('\nThe precise terrain: unit, plates, channels, area and tiles (no s
     }
   }
   check(`layout.unit is a Float64Array of n; the root's is unitOf(WORLD) and every other box's is its plateau's unit (${counts.boxes} boxes from three eyes)`, probs.unit.length === 0, probs.unit.join(' | '));
+  check('layout.tile is a Float64Array of n; every box\'s is its plateau\'s tile, the side of the tile its lower-quartile entry would take, and the root\'s its own', probs.tile.length === 0, probs.tile.join(' | '));
   check(`every open plateau is min(half its unit, a tenth of its side) thick, the root half its own, and open siblings at least five units wide share one thickness (${counts.plates} plateaus)`, probs.plate.length === 0, probs.plate.join(' | '));
   check(`every channel between facing children is the sum of their half channels within 1e-9 S (${counts.pairs} pairs; ${counts.guarded} blocks where the quarter guard binds set aside)`, counts.pairs > 100 && probs.channel.length === 0, probs.channel.join(' | '));
-  check(`a child at the margin line stands at the margin for its type: a file 0.04 S, a folder 0.04 S and its wider half channel (${counts.margins} edges)`, counts.margins > 50 && probs.margin.length === 0, probs.margin.join(' | '));
+  check(`sibling folders stand at least as far apart as the old rule of 6 % of each side gave them (${counts.streets} facing pairs, the narrowest ${counts.least.toFixed(3)} times that)`, counts.streets > 20 && probs.street.length === 0, probs.street.join(' | '));
+  check(`every block at the margin line stands exactly 0.04 S from its plateau's edge, a folder as a file does (${counts.margins} edges)`, counts.margins > 50 && probs.margin.length === 0, probs.margin.join(' | '));
   check(`area per byte within a folder varies at most 1.2 times for blocks at least 0.04 S on a side (${counts.folders} folders, worst ${counts.ratio.toFixed(3)})`, counts.folders > 10 && probs.area.length === 0, probs.area.join(' | '));
-  check('no file is taller than its short side', probs.tall.length === 0, probs.tall.join(' | '));
-  // Equal files over ten years of ages, in one of 25 equal folders, so the
-  // folder is under 200 wide, its tiles a couple of units wide, and the
-  // soft cap binds: height never falls as freshness rises.
+  check(`one recency scale per folder: every file stands its folder's height unit, min(unit, TILE_H × tile), times 0.35 + 3.4 f² (${counts.files} files)`, counts.files > 100 && probs.scale.length === 0, probs.scale.join(' | '));
+  check(`files of equal age in one folder stand equal: changed within the same hour, within 3 % (${counts.ages} pairs, the widest ${counts.ageWorst.toFixed(4)} times)`, counts.ages > 20 && probs.age.length === 0, probs.age.join(' | '));
+  // Equal files over ten years of ages, in one of 25 equal folders: one
+  // scale, so height never falls as freshness rises, and the freshest, a
+  // tile of the folder's tile, stands no taller than 0.9 of it and no
+  // taller than wide.
   const em2 = new Model('tiles');
   const tiles = [];
   for (let k = 0; k < 144; k++) tiles.push(`t${k}.dat`, 4096, DNOW - Math.round(Math.expm1((k / 143) * Math.log1p(3650)) * 86400000), 0);
@@ -1884,30 +1967,26 @@ console.log('\nThe precise terrain: unit, plates, channels, area and tiles (no s
   em2.ingest(tileRecs, [], em2.root);
   const TL = buildLayout(em2.root, { cam: { x: 0, y: 900, z: 1200 }, grain: 0.0005, now: DNOW, force: new Set([em2.root.c.find((c) => c.n === 'equal')]) });
   const tileBoxes = [];
-  for (let i = 0; i < TL.n; i++) if (TL.type[i] === BOX.FILE && TL.node[i].p.n === 'equal') tileBoxes.push({ f: freshness(TL.node[i].m, DNOW), h: TL.geo[i * 6 + 4], side: Math.min(TL.geo[i * 6 + 3], TL.geo[i * 6 + 5]), u: TL.unit[i] });
-  const bySide = new Map();
-  for (const b of tileBoxes) {
-    const k = b.side.toPrecision(9);
-    if (!bySide.has(k)) bySide.set(k, []);
-    bySide.get(k).push(b);
-  }
+  for (let i = 0; i < TL.n; i++) if (TL.type[i] === BOX.FILE && TL.node[i].p.n === 'equal') tileBoxes.push({ f: freshness(TL.node[i].m, DNOW), h: TL.geo[i * 6 + 4], side: Math.min(TL.geo[i * 6 + 3], TL.geo[i * 6 + 5]), u: Math.min(TL.unit[i], TILE_H * TL.tile[i]), tile: TL.tile[i] });
+  tileBoxes.sort((a, b) => a.f - b.f);
   let falls = 0;
-  let softened = 0;
-  for (const list of bySide.values()) {
-    list.sort((a, b) => a.f - b.f);
-    for (let k = 1; k < list.length; k++) if (list[k].h < list[k - 1].h - 1e-12 * list[k - 1].h) falls++;
-    for (const b of list) if (b.h < b.u * (0.35 + 3.4 * b.f * b.f) - 1e-9) softened++;
+  let off = 0;
+  for (let k = 0; k < tileBoxes.length; k++) {
+    const b = tileBoxes[k];
+    if (k > 0 && b.h < tileBoxes[k - 1].h - 1e-12 * b.h) falls++;
+    if (Math.abs(b.h - b.u * (0.35 + 3.4 * b.f * b.f)) > 1e-9 * b.h) off++;
   }
-  const widest = Math.max(...[...bySide.values()].map((l) => l.length));
-  check(`in a folder of 144 equal files aged over ten years, height never falls as freshness rises (${tileBoxes.length} tiles in ${bySide.size} widths, up to ${widest} alike; ${softened} under the soft cap) and none is taller than wide`,
-    tileBoxes.length === 144 && widest >= 10 && falls === 0 && softened > 20 && tileBoxes.every((b) => b.h <= b.side), `${falls} falls, ${softened} softened, ${widest} alike`);
+  const freshest = tileBoxes.at(-1);
+  check(`in a folder of 144 equal files aged over ten years, every height is the folder's unit times 0.35 + 3.4 f², so height never falls as freshness rises; the freshest stands no taller than 0.9 of the folder's tile and none taller than wide (${tileBoxes.length} tiles, unit ${freshest?.u.toPrecision(4)})`,
+    tileBoxes.length === 144 && falls === 0 && off === 0 && freshest.h <= 0.9 * freshest.tile + 1e-9 && tileBoxes.every((b) => b.h <= b.side), `${falls} falls, ${off} off the scale`);
+  check('TILE_H is 0.24, so a fresh file the size of its folder\'s tile stands 0.9 of its side', TILE_H === 0.24 && Math.abs(TILE_H * 3.75 - 0.9) < 1e-12);
 }
 
 console.log('\nNames on the blocks: one ink rule and its contrast (no service)');
 {
   // Every colour a name is printed on, through the shader's ink rule as
   // nameContrast mirrors it: at least 3:1 on each.
-  const { nameContrast, INK, LETTER_MIN, LETTER_FULL } = await import(new URL('../web/js/viewport.js', import.meta.url));
+  const { nameContrast, INK, LETTER_MIN, LETTER_FULL, LID_FILE, LID_MASS, LADDER, FAR_PX } = await import(new URL('../web/js/viewport.js', import.meta.url));
   const { THEME, TONE_STEPS, mixHex, ramp } = await import(new URL('../web/js/theme.js', import.meta.url));
   const { KINDS } = await import(new URL('../web/js/model.js', import.meta.url));
   const surfaces = [];
@@ -1934,8 +2013,19 @@ console.log('\nNames on the blocks: one ink rule and its contrast (no service)')
   const inkLine = /lum > \$\{glf\(INK\.split\)\} \? mix\(base \* \$\{glf\(INK\.keep\)\}, uInkL, \$\{glf\(INK\.dark\)\}\) : mix\(base, uLightL, \$\{glf\(INK\.pale\)\}\)/.test(src)
     && /letterCov \* \$\{glf\(INK\.cover\)\}/.test(src);
   check('INK is frozen, and the shader inks names from it', Object.isFrozen(INK) && inkLine && JSON.stringify(INK) === '{"split":0.2,"keep":0.1,"dark":0.75,"pale":0.9,"cover":0.95}');
-  check('the floors are frozen and a file\'s stands above a folder\'s: 7 and 6 px, full at 9 and 8',
-    Object.isFrozen(LETTER_MIN) && Object.isFrozen(LETTER_FULL) && JSON.stringify(LETTER_MIN) === '[7,6]' && JSON.stringify(LETTER_FULL) === '[9,8]');
+  // The floors and the fade: a name is gated, and faded in over a pixel
+  // either side of its floor, on the smaller of its capitals as seen and
+  // as facing the eye, so a slanted name either reads or is left off and
+  // a printed one stands at half ink or more.
+  check('the floors are frozen and a file\'s stands above a folder\'s: 7 and 6 px, full a pixel over each, at 8 and 7',
+    Object.isFrozen(LETTER_MIN) && Object.isFrozen(LETTER_FULL) && JSON.stringify(LETTER_MIN) === '[7,6]' && JSON.stringify(LETTER_FULL) === '[8,7]');
+  check('the shader fades a name on the smaller of its size as seen and as facing the eye, from a pixel under its floor',
+    src.includes('mix(uLetterPx.w, uLetterPx.y, quiet), min(capPx, capFace))') && src.includes('(2 * LETTER_MIN[f] - LETTER_FULL[f]) * pr')
+    && src.includes('Math.min(score, px) >= LETTER_MIN[face]') && !src.includes('LETTER_FLAT'));
+  check('the vocabulary: a file\'s name 0.16 of its lid, quieter than a closed mass\'s 0.2, on a ladder of the fourth root of two',
+    LID_FILE === 0.16 && LID_MASS === 0.2 && Math.abs(LADDER ** 4 - 2) < 1e-12);
+  check('the far view leans the files of a folder whose tile stands 2 to 6 px on screen, from the tile each carries in aShare',
+    Object.isFrozen(FAR_PX) && JSON.stringify(FAR_PX) === '[2,6]' && src.includes('attribute vec3 aShare;') && src.includes('float tilePx = aShare.z * uPxScale / nearD;'));
   check('TONE_STEPS is frozen in theme.js and app.js keeps no copy of its own', Object.isFrozen(TONE_STEPS) && TONE_STEPS.length === 5
     && !/const TONE_STEPS/.test(fs.readFileSync(new URL('../web/js/app.js', import.meta.url), 'utf8')));
 }
@@ -2236,7 +2326,7 @@ check('a file answers from its own date and size; steps off the ladder are refus
   && JSON.stringify(et.bands(file).bytes) === '[1000,0,0,0,0,0]' && refused === 5 && Object.isFrozen(et) && Object.isFrozen(et.T) && et.T[1] === AT - DAY);
 
 console.log('\nTime view (no service)');
-const { AUX } = await import(new URL('../web/js/layout.js', import.meta.url));
+const { AUX, TILE_H } = await import(new URL('../web/js/layout.js', import.meta.url));
 const { crossedAt, fmtDay } = await import(new URL('../web/js/time.js', import.meta.url));
 check('AUX names the time view\'s marks, frozen: NONE 0, SUNK 1, CROSSED 2', Object.isFrozen(AUX) && JSON.stringify(AUX) === '{"NONE":0,"SUNK":1,"CROSSED":2}');
 check('dates are written MM/DD/YYYY', fmtDay(new Date(2026, 8, 28, 23, 59).getTime()) === '09/28/2026' && fmtDay(new Date(1996, 0, 2).getTime()) === '01/02/1996');
@@ -2275,8 +2365,10 @@ for (const [label, cam, grain, force] of timeEyes) {
       if (h > prev.geo[o + 4]) bad(`${node.n} rose`);
       if (Math.abs(L.geo[o + 1] - h / 2 - (present.geo[o + 1] - present.geo[o + 4] / 2)) > 1e-9 * Math.max(1, Math.abs(present.geo[o + 1]))) bad(`${node.n} left its plateau`);
       // A plate is half its parent's unit, so the slab is measured against
-      // the unit of the folder the box stands in, not its plateau's height.
-      const slab = Math.min(L.unit[i] * 0.08, side * 0.05);
+      // the folder the box stands in, not its plateau's height: its height
+      // unit, min(unit, TILE_H × tile), so a slab never stands taller than
+      // the oldest file beside it.
+      const slab = Math.min(Math.min(L.unit[i], TILE_H * L.tile[i]) * 0.08, side * 0.05);
       const ax = L.aux[i];
       if (ax === AUX.CROSSED) timeCounts.crossed++;
       if (ax === AUX.SUNK) timeCounts.sunk++;
