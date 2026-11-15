@@ -38,8 +38,10 @@
  *       Show Preview with panel B hidden; the Guide's rows; no POST
  *     - preview-regions (threshold 0): a folder not held shows its figures
  *       and then its largest rows; a file reads; Findings' refs step
- *     - preview-disk (writes): a file and a folder deleted from outside,
- *       and a file grown on disk read again
+ *     - preview-disk (writes): a text of 6,500 lines cut at 256 KB,
+ *       numbered 1 to its last line read, built in one short task
+ *       (terrane:preview-text), and one End reaching its end; a file and
+ *       a folder deleted from outside; a file grown on disk read again
  *
  * ✒ Usage Instructions:
  *     node tools/ui-check.mjs preview preview-regions preview-disk --no-shots --port 5300
