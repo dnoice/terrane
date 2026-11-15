@@ -19,7 +19,7 @@
  *       review: a folder holding pyvenv.cfg is a Python environment, listed
  *       whole; site-packages and dist-packages are never walked, and no
  *       copy inside them, or inside a cache the folder lies in, is kept or
- *       suggested.
+ *       suggested; dupPage cuts a large set's rows.
  *
  * ✒ Description:
  *     What in one folder could go, and by which rule: verified duplicate
@@ -48,6 +48,7 @@
  *       the cache and the keep is chosen among the rest, so no move of any
  *       group ever takes the last copy; a copy inside .git, an installed
  *       package or a Python environment is never kept or suggested
+ *     - dupPage: the rows a list draws, n copies in all, a large set cut
  *     - combine: four groups ranked by the space they free, ties in a fixed
  *       order with Empty folders last; a kept or suggested copy is never
  *       listed as big and stale as well
@@ -360,6 +361,25 @@ export function dupSuggestions(groups, scopeRel, claimed, how, { claimedCut = fa
   return { sets, pending };
 }
 const bySizeRel = (a, b) => b.s - a.s || (a.rel < b.rel ? -1 : a.rel > b.rel ? 1 : 0);
+
+/**
+ * The duplicate rows a list draws: each set's copies, n in all, the last
+ * set reached cut part way, so a set of thousands of copies draws n rows.
+ * Returns { page: [{ set, copies }], more }, more the copies not drawn.
+ */
+export function dupPage(sets, n) {
+  const page = [];
+  let used = 0;
+  let all = 0;
+  for (const s of sets) {
+    all += s.copies.length;
+    if (used >= n) continue;
+    const copies = s.copies.length > n - used ? s.copies.slice(0, n - used) : s.copies;
+    page.push({ set: s, copies });
+    used += copies.length;
+  }
+  return { page, more: all - used };
+}
 
 /** The four groups, their ids in the order ties fall. */
 export const GROUPS = Object.freeze([

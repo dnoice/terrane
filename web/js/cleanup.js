@@ -24,7 +24,8 @@
  *       the parent; the offer bar and state line speak through say(); a
  *       folder renamed or moved by Terrane is followed; no copy is offered
  *       inside a cache the folder is or lies in, nor in .git or
- *       site-packages, which are never suggested from.
+ *       site-packages, which are never suggested from; a set of thousands
+ *       of copies draws a page of rows, not all of them.
  *
  * ✒ Description:
  *     The right panel's Cleanup tab: ranked, sized suggestions for
@@ -92,7 +93,7 @@
  */
 
 import {
-  walk, modelAccess, dupSuggestions, combine, totals, movePaths, folderRule, inVcs, inPackages, CACHE_RULES, ENV_RULE, BIG_STALE, MOVE_MAX,
+  walk, modelAccess, dupSuggestions, dupPage, combine, totals, movePaths, folderRule, inVcs, inPackages, CACHE_RULES, ENV_RULE, BIG_STALE, MOVE_MAX,
 } from './reclaim.js';
 import { recheck } from './dupes.js';
 import { ask, el } from './ui.js';
@@ -501,14 +502,14 @@ export function install(api) {
   function rowsOf(g, n) {
     const out = [];
     if (g.id === 'dups') {
-      let used = 0;
-      for (const s of g.sets) {
-        if (used >= n) break;
-        out.push(keptEl(s));
-        for (const c of s.copies) out.push(rowEl(g.items.find((x) => x.rel === c.rel) || c, g));
-        used += s.copies.length;
+      // n copies in all, a set cut part way when it is large; its kept copy first.
+      const byRel = new Map(g.items.map((x) => [x.rel, x]));
+      const { page, more } = dupPage(g.sets, n);
+      for (const { set, copies } of page) {
+        out.push(keptEl(set));
+        for (const c of copies) out.push(rowEl(byRel.get(c.rel) || c, g));
       }
-      return { rows: out, more: g.items.length - Math.min(g.items.length, used) };
+      return { rows: out, more };
     }
     for (const it of g.items.slice(0, n)) out.push(rowEl(it, g));
     return { rows: out, more: Math.max(0, g.items.length - n) };

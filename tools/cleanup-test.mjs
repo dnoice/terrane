@@ -17,7 +17,8 @@
  *       Initial release. After the review: a Python environment (a folder
  *       holding pyvenv.cfg) is one cache, nothing in it listed or offered as
  *       a copy; site-packages is never walked; no copy is offered inside a
- *       cache the folder lies in; the service counts as the page does.
+ *       cache the folder lies in; the service counts as the page does;
+ *       a set of 6,000 copies draws 100 rows.
  *
  * ✒ Description:
  *     Checks the Cleanup tab's rules (web/js/reclaim.js) in Node, with no
@@ -195,6 +196,14 @@ section('1b. Python environments and installed packages');
   const nm = { verified: true, files: [f('p/node_modules/a/LICENSE', 1), f('p/node_modules/b/LICENSE', 2)] };
   check('a folder that is or lies in a cache offers no copy in it (scopeCached)',
     RC.dupSuggestions([nm], 'p/node_modules', [], 'newest').sets.length === 1 && RC.dupSuggestions([nm], 'p/node_modules', [], 'newest', { scopeCached: true }).sets.length === 0);
+  const many = { keep: f('k'), copies: Array.from({ length: 6000 }, (_, i) => f(`m/${i}`)) };
+  const two = [{ keep: f('a'), copies: Array.from({ length: 60 }, (_, i) => f(`a/${i}`)) }, { keep: f('b'), copies: Array.from({ length: 60 }, (_, i) => f(`b/${i}`)) }];
+  const p1 = RC.dupPage([many], 100);
+  const p2 = RC.dupPage(two, 100);
+  const p3 = RC.dupPage(two, 200);
+  check(`dupPage draws n copies in all, a set of 6,000 cut to 100 (${p1.page[0].copies.length}, ${p1.more} more), two of 60 to 60 and 40 (${p2.page.map((x) => x.copies.length).join(', ')})`,
+    p1.page.length === 1 && p1.page[0].copies.length === 100 && p1.more === 5900 && same(p2.page.map((x) => x.copies.length), [60, 40]) && p2.more === 20
+    && same(p3.page.map((x) => x.copies.length), [60, 60]) && p3.more === 0 && p2.page[1].set === two[1]);
   check('inVcs and inPackages read the folders above the last segment', RC.inVcs('r/.git/x') && !RC.inVcs('r/.git') && RC.inPackages('a/dist-packages/x') && !RC.inPackages('site-packages'));
 
   // The service's walk agrees on all of it.
