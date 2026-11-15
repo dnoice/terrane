@@ -347,15 +347,18 @@ async function cleanupIn(t) {
   const dup = await t.waitFor(() => {
     const P = document.getElementById('b-panel-cleanup');
     const rows = [...P.querySelectorAll('[data-group=dups] .cl-row')].map((r) => ({ rel: r.dataset.rel, kept: r.classList.contains('is-kept'), path: r.querySelector('.path').textContent }));
-    const tide = rows.filter((r) => /Tidelines_v6_final/.test(r.rel));
-    return tide.length >= 2 && { tide, note: P.querySelector('[data-group=dups] > .cl-note')?.textContent ?? '' };
+    // A render suggested, and its set's kept copy: the kept row before it.
+    const i = rows.findIndex((r) => !r.kept && /Tidelines_v6_final/.test(r.rel));
+    let k = i;
+    while (k > 0 && !rows[k].kept) k--;
+    return i > 0 && rows[k].kept && { kept: rows[k], copy: rows[i], note: P.querySelector('[data-group=dups] > .cl-note')?.textContent ?? '' };
   }, { timeout: 15000, what: 'the Tidelines set verified' });
   await t.app(() => { document.querySelector('#b-panel-cleanup [data-move=dups] .btn').click(); return true; });
   const body = await t.waitFor(() => document.getElementById('dialog').open && document.querySelector('#dialog .cl-confirm')?.textContent, { timeout: 5000, what: 'the confirmation' });
   await t.key('Escape');
   await t.waitFor(() => !document.getElementById('dialog').open, { what: 'the confirmation left' });
-  const keptRow = dup.tide.find((r) => r.kept);
-  const copyRow = dup.tide.find((r) => !r.kept);
+  const keptRow = dup.kept;
+  const copyRow = dup.copy;
   t.check(`the Tidelines renders, compared by samples, are probable: the kept row (${keptRow?.path}), the copy (${copyRow?.path}), the note and the confirmation say so`,
     / · probable$/.test(keptRow?.path || '') && / · a probable copy, changed /.test(copyRow?.path || '') && /probable/i.test(dup.note) && /probably, not certainly, the same/.test(body || ''),
     JSON.stringify({ dup, body }));
