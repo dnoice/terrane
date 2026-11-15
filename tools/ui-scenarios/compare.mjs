@@ -325,7 +325,13 @@ const compare = {
     const tipLines = await t.app((T, r) => {
       const self = T.S.model.find(r);
       const other = T.S.model.find(r.replace(/left$/, 'right'));
-      const line = (n) => [...T.api.TIP_LINES].map((x) => x.lines(n, { type: 0 })).filter(Boolean);
+      const line = (n) => [...T.api.TIP_LINES].map((x) => {
+        try {
+          return x.lines(n, { type: 0, i: -1, L: T.S.layout });
+        } catch {
+          return null;
+        }
+      }).flat().filter(Boolean);
       return { self: line(self), other: line(other) };
     }, `${LAB}/left`);
     t.check(`the hover line says what a click does (${tipLines.other.join(' / ')}) and why not on the folder itself (${tipLines.self.join(' / ')})`,

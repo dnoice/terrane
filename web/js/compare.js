@@ -1046,8 +1046,28 @@ export function install(api) {
       api.say(`${labOf(pair)[i]} is no longer there.`);
       return;
     }
+    frameOne(n);
+  }
+
+  /**
+   * Frames one copy and selects both. reveal() selects what it frames, at
+   * once or, in region mode, in a later task, so both are selected after
+   * it, and again once that task has run.
+   */
+  function frameBoth(nodes, primary) {
+    frameOne(primary);
+    api.selectAll(nodes, primary);
+    setTimeout(() => {
+      const held = S.sel.size === nodes.length && nodes.every((n) => S.sel.has(n)) && S.primary === primary;
+      if (!held && S.primary === primary) api.selectAll(nodes, primary);
+    }, 60);
+  }
+
+  /** Frames a node; without WebGL there is no flight, so the location moves to its folder. */
+  function frameOne(n) {
     api.reveal(n);
-    if (S.noGL && n.d) api.setFocus?.(n);
+    const dir = n.d ? n : n.p;
+    if (S.noGL && dir) api.setFocus(dir.d ? dir : dir.p);
   }
 
   async function frameRow(row, g) {
@@ -1068,20 +1088,17 @@ export function install(api) {
       return;
     }
     if (copies.length === 1) {
-      api.selectAll(copies, copies[0]);
-      api.reveal(copies[0]);
+      frameOne(copies[0]);
       if (both && p0 && p1) api.say(`${nm} is no longer in ${c0 ? lab[1] : lab[0]}; selected the one in ${c0 ? lab[0] : lab[1]}.`);
       return;
     }
     const again = S.sel.size === 2 && S.sel.has(c0) && S.sel.has(c1);
     if (again && S.primary === c0) {
-      api.selectAll([c0, c1], c1);
-      api.reveal(c1);
+      frameBoth([c0, c1], c1);
       api.say(`Framed the one in ${lab[1]}.`);
       return;
     }
-    api.selectAll([c0, c1], c0);
-    api.reveal(c0);
+    frameBoth([c0, c1], c0);
     api.say(`Selected ${nm} in both folders; framed the one in ${lab[0]}. Enter again frames the other.`);
   }
 
@@ -1366,8 +1383,7 @@ export function install(api) {
         out.push({
           label: `Select its match in "${m.label}"`, icon: ICON,
           run: () => {
-            api.selectAll([m.other], m.other);
-            api.reveal(m.other);
+            frameOne(m.other);
             api.say(`Selected ${m.other.n} in ${m.label}.`);
           },
         });
