@@ -1,10 +1,10 @@
 <!--
 ✒ Metadata
-    - Title: Terrane Roadmap (Terrane Edition - v1.21)
+    - Title: Terrane Roadmap (Terrane Edition - v1.22)
     - File Name: ROADMAP.md
     - Relative Path: docs/ROADMAP.md
     - Artifact Type: docs
-    - Version: 1.21.0
+    - Version: 1.22.0
     - Date: 11/15/2026
     - Update: Sunday, November 15, 2026
     - Author: Dennis 'dendogg' Smaltz
@@ -12,6 +12,10 @@
     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
 
 ✒ Changelog:
+    - 1.22.0 (11/15/2026) [dendogg + Anthropic - Claude Opus 5.5] —
+      The Shelf is on `main`; `main` had not moved since its branch
+      was made. Next is the five other tabs, then the precise
+      terrain's third part.
     - 1.21.0 (11/15/2026) [dendogg + Anthropic - Claude Opus 5.5] —
       The Shelf, the third of the right panel's tabs beside the
       Inspector, is recorded as complete on branch `tab-shelf`, waiting
@@ -253,26 +257,27 @@ As of 11/15/2026:
   out, moved to the holding area as one change that one Undo reverses.
   Nothing is deleted from it. Merged in the commit titled
   "Merge tab-cleanup: the Cleanup tab".
-- **Complete, on branch `tab-shelf`, waiting to be merged:** the
-  Shelf, the third of the tabs beside the Inspector, after Preview and
-  Cleanup: a tray that gathers files and folders from anywhere (K, the
-  world's menu, ledger rows dragged onto its tab, every match in
-  Findings, Preview and Cleanup), keeps them by path in this browser
-  across travel and reloads, and moves, copies, renames, exports or
-  shows them together, each change that writes one Undo. An item no
-  longer there is marked and offered for removal, never dropped.
-- **Next:** the merge of `tab-shelf` into `main`; then the five other
-  tabs, built and merged one at a time: Compare, Activity, Notes and
-  tags, Watch and Connections. Then the precise terrain, part three,
-  for what the second part left partly met or unmeasured: names at the
-  overview in smaller windows (at 1280 × 800 the top-level folders
-  print none); a flight begun close by that comes to rest higher than
-  it aimed, so where you are lands on a neighbour, which no scenario
-  covers yet; the 5,000,000-entry scale tour on the new layout, which
-  needs 6 GB free; and the Duplicates lens's colour for a plain file,
-  the same as the plaster it stands on. The open ground beyond them is
-  what Stage 4 still lacks (section 4), the rest of Stage 6, and the
-  Stage 5 deferrals in section 4.
+- **Complete, on `main`:** the Shelf, the third of the tabs beside
+  the Inspector, after Preview and Cleanup: a tray that gathers files
+  and folders from anywhere (K, the world's menu, ledger rows dragged
+  onto its tab, every match in Findings, Preview and Cleanup), keeps
+  them by path in this browser across travel and reloads, and moves,
+  copies, renames, exports or shows them together, each change that
+  writes one Undo. An item no longer there is marked and offered for
+  removal, never dropped. Merged in the commit titled "Merge
+  tab-shelf: the Shelf".
+- **Next:** the five other tabs, built and merged one at a time:
+  Compare, Activity, Notes and tags, Watch and Connections. Then the
+  precise terrain, part three, for what the second part left partly
+  met or unmeasured: names at the overview in smaller windows (at
+  1280 × 800 the top-level folders print none); a flight begun close
+  by that comes to rest higher than it aimed, so where you are lands
+  on a neighbour, which no scenario covers yet; the 5,000,000-entry
+  scale tour on the new layout, which needs 6 GB free; and the
+  Duplicates lens's colour for a plain file, the same as the plaster
+  it stands on. The open ground beyond them is what Stage 4 still
+  lacks (section 4), the rest of Stage 6, and the Stage 5 deferrals in
+  section 4.
 
 Section 5 has the detail for every wave, for Preview, for the precise
 terrain's second part, for Cleanup and for the Shelf.
@@ -557,8 +562,7 @@ Done on 11/15/2026 (Cleanup):
   journal entry that one Undo reverses; in a very large directory the
   service counts the folder across every level.
 
-Done on 11/15/2026, on branch `tab-shelf`, waiting to be merged (the
-Shelf):
+Done on 11/15/2026 (the Shelf):
 
 - Acting on many from several places: up to 1,000 files and folders
   gathered by path and kept in the browser, then moved, copied or
@@ -1551,7 +1555,7 @@ into the branch first. On the merged branch, `npm test`: 1,302 passed,
 merged into `main` in the commit titled "Merge tab-cleanup: the
 Cleanup tab".
 
-### Complete on branch `tab-shelf`: the Shelf
+### Complete: the Shelf
 
 The Shelf is the third of the tabs planned beside the Inspector, after
 Preview and Cleanup, built on its own branch, `tab-shelf`, made from
@@ -1733,7 +1737,21 @@ GPU and the default fixture of 3,126 files:
   `preview` 64 in each, `copy-as` 14, `regions-warm` 8 and
   `cleanup-regions` 9 in each passed in full.
 
-The branch waits to be merged into `main`.
+Before the merge, the review's walk-through of the demo world, its
+screenshots at 1600 × 1000, 1280 × 800 and 800 × 500 and its log of
+what each step said, was read again against the fixes: the empty
+state, gathering by K, the menu, Findings and Preview, the list and its
+keys, Show in the world, Move to… with its placing bar, Rename…,
+Export CSV, an item no longer there, Clear and Put back, and a reload.
+It found nothing more to change. Free memory stayed under the 2,500 MB
+a browser asks on this machine, so no new browser walk was made; the
+fixes it would have looked at are each held by a check in the `shelf`
+scenarios, which passed in both passes.
+
+`main` had not moved since the branch was made, so nothing was merged
+into the branch first. On the merged branch, `npm test`: 1,358
+passed, 0 failed, over sixteen suites. The branch is merged into
+`main` in the commit titled "Merge tab-shelf: the Shelf".
 
 ## 6. Development datasets
 
