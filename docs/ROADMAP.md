@@ -1,10 +1,10 @@
 <!--
 ✒ Metadata
-    - Title: Terrane Roadmap (Terrane Edition - v1.17)
+    - Title: Terrane Roadmap (Terrane Edition - v1.18)
     - File Name: ROADMAP.md
     - Relative Path: docs/ROADMAP.md
     - Artifact Type: docs
-    - Version: 1.17.0
+    - Version: 1.18.0
     - Date: 11/15/2026
     - Update: Sunday, November 15, 2026
     - Author: Dennis 'dendogg' Smaltz
@@ -12,6 +12,10 @@
     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
 
 ✒ Changelog:
+    - 1.18.0 (11/15/2026) [dendogg + Anthropic - Claude Opus 5.5] —
+      The precise terrain's second part is on `main`, after `main`'s
+      removal of the panel letters was merged into its branch and
+      checked again; Next is the seven other tabs.
     - 1.17.0 (11/15/2026) [dendogg + Anthropic - Claude Opus 5.5] —
       The precise terrain's second part is recorded as complete on
       branch `precision-terrain-2`, waiting to be merged, with its
@@ -211,7 +215,7 @@ As of 11/15/2026:
   mineral tones, extensions half a step apart within their kind, a
   closed mass's strata from its own body colour, and pins lit with the
   boxes. Merged in the commit titled "Merge precision-terrain: the precise terrain, part one".
-- **Complete on branch `precision-terrain-2`, waiting to be merged:**
+- **Complete, on `main`:**
   the precise terrain, part two, the rest of `docs/ART-DIRECTION.md`:
   the spacing (one even channel between a folder's files, wider streets
   between groups, one margin at every plateau's edge), quiet
@@ -219,9 +223,8 @@ As of 11/15/2026:
   plaster), files on one recency scale per folder, names in a strict
   vocabulary that never prints one too small to read, and a far view
   in which a folder of tiny files reads as one mass in its kinds'
-  colours.
-- **Next:** merging the precise terrain's second part into `main`.
-  Then the seven other tabs, built and merged
+  colours. Merged in the commit titled "Merge precision-terrain-2: the precise terrain, part two".
+- **Next:** the seven other tabs, built and merged
   one at a time: Cleanup, Shelf, Compare, Activity, Notes and tags,
   Watch and Connections. The open ground
   beyond them is what Stage 4 still lacks (section 4), the rest of
@@ -1157,7 +1160,7 @@ GPU and the default fixture of 3,126 files:
 
 The branch is merged into `main`, as this section's first paragraph says.
 
-### Complete on branch `precision-terrain-2`: the precise terrain, part two
+### Complete: the precise terrain, part two
 
 The layout and lettering side of the art direction in
 `docs/ART-DIRECTION.md`: its points 4, 5, 6, 7, 8 and 9. Part one
@@ -1303,7 +1306,16 @@ GPU:
   tour was not run: the machine had 2.8 GB of memory free, and the
   scale harness needs 6 GB for a million entries or more.
 
-The branch is not yet merged into `main`.
+Before the merge, `main`'s removal of the panel letters was merged
+into the branch: `main` kept its numbers and the branch took the next
+(app.js 1.20.0, CHANGELOG.md 1.18.0, README.md 1.23.0,
+docs/ARCHITECTURE.md 1.15.0, this file 1.17.0). On the merged branch:
+`npm test` 1,234 passed, 0 failed; the headers of the 14 files the
+branch touched in rule; and the interface check's scenarios for the
+code both sides changed, both passes: seams 147, preview 158, polish
+1,200 and core 73 passed, 0 failed. The branch is merged into `main`
+in the commit titled "Merge precision-terrain-2: the precise terrain,
+part two".
 
 ## 6. Development datasets
 
