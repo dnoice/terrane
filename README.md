@@ -25,7 +25,8 @@
       and no longer calls demo-test the last of npm test. What was
       verified records the final sweep of the branch, and the three
       rows recorded on `main` after Wave 4's sweep join the table; Not
-      verified adds what Preview could not see.
+      verified adds what Preview could not see. The project map lists
+      docs/ART-DIRECTION.md, the art direction for the world's blocks.
     - 1.19.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] —
       Launch: `--flavor <id>`, the flavor every page that opens the
       service starts in once; Developing against real data: `npm run dev`
@@ -1155,7 +1156,7 @@ tools/make-synthetic.mjs  synthetic structure snapshots, 1,000 to 10,000,000
                      entries, written without a file
 tools/scale.mjs      the scale measurement over synthetic trees
 tools/vendor.mjs     fetch and verify the vendored browser libraries
-docs/                ARCHITECTURE.md, ROADMAP.md
+docs/                ARCHITECTURE.md, ROADMAP.md, ART-DIRECTION.md
 ```
 
 There is no build step. Edit a file and reload the page. A feature lives
@@ -1163,7 +1164,9 @@ in its own module, listed in `web/js/features.js`, and reaches the
 controller only through the registries it is handed; `docs/ARCHITECTURE.md`
 section 7 describes them. The design decisions and their trade-offs are in
 `docs/ARCHITECTURE.md`; the staged plan, the minimum filesystem scope and
-the exploration loop are in `docs/ROADMAP.md`.
+the exploration loop are in `docs/ROADMAP.md`. The look the world's blocks
+are built toward, Precision Architectural Terrain, is in
+`docs/ART-DIRECTION.md`.
 
 For GitHub Pages (deploy from the `main` branch, root folder), the root
 `index.html` forwards visitors to `web/`, so the interface keeps a
