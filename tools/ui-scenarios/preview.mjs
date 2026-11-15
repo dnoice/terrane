@@ -69,7 +69,18 @@ const pv = () => {
     cut: q('.pv-cut:not([hidden])')?.textContent ?? null,
     where: q('.pv-where:not([hidden])')?.textContent ?? null,
     lines: all('.pv-line').length,
-    resets: all('.pv-chunk').map((c) => c.style.counterReset),
+    // The numbers the lines carry (the first 50), and whether the first is
+    // drawn: its ::before takes room beside the text.
+    nums: all('.pv-line').slice(0, 50).map((l) => l.dataset.n),
+    lastNum: all('.pv-line').at(-1)?.dataset.n ?? null,
+    chunks: all('.pv-chunk').length,
+    numbersDrawn: (() => {
+      const l = q('.pv-line');
+      if (!l) return false;
+      const cs = getComputedStyle(l, '::before');
+      // The computed content is the attribute's value, or attr() itself.
+      return (cs.content.startsWith(`"${l.dataset.n}"`) || /attr\(data-n\)/.test(cs.content)) && cs.display !== 'none' && `${cs.content}`;
+    })(),
     notes: all('.pv-note:not([hidden])').map((n) => n.textContent),
     heads: all('.section-title .t').map((n) => n.textContent),
     rows: all('.pv-rows .item .nm').map((n) => n.textContent),
@@ -202,8 +213,9 @@ const preview = {
     const readme = await until(t, 'README.md', (s) => s.lines > 0);
     const want = countLines(fs.readFileSync(t.abs(README), 'utf8'));
     const rr = raws(t, mark);
-    t.check(`README.md reads as Markdown text, its ${want} lines numbered, one chunk counting from 1`,
-      readme.kind === 'Markdown text · .md' && readme.lines === want && readme.resets[0] === 'pl 0' && readme.tools.includes('Wrap lines') && readme.tools.includes('Quick look'), JSON.stringify(readme));
+    t.check(`README.md reads as Markdown text, its ${want} lines numbered 1 to ${want}, each number drawn beside its line`,
+      readme.kind === 'Markdown text · .md' && readme.lines === want && JSON.stringify(readme.nums) === JSON.stringify(Array.from({ length: want }, (_, i) => String(i + 1)))
+      && readme.numbersDrawn && readme.tools.includes('Wrap lines') && readme.tools.includes('Quick look'), JSON.stringify(readme));
     t.check(`the head says the facts and the folder it is in (${readme.facts}; ${readme.where})`,
       new RegExp(`^\\d+ B · ${want} lines · LF · changed \\d\\d/\\d\\d/\\d{4}$`).test(readme.facts) && readme.where === 'in site', JSON.stringify(readme));
     t.check('one raw read, of README.md, at most 256 KB', rr.length === 1 && rr[0].path === README && rr[0].max === 262144, JSON.stringify(rr));
@@ -605,22 +617,36 @@ const previewDisk = {
     const read = Math.ceil(262144 / LINE);
     t.note(`a text of ${LONG.toLocaleString('en-US')} lines, 256 KB of it read: ${long.lines.toLocaleString('en-US')} lines built in ${ms} ms (terrane:preview-text)`);
     t.check(`and built in one short task (${ms} ms)`, ms >= 0 && ms < 400, String(ms));
-    t.check(`the long text is cut at 256 KB and numbered in chunks (${long.lines} lines, ${long.resets.length} chunks, the last from ${long.resets.at(-1)})`,
-      !!long.cut && long.lines === read && long.resets.length === Math.ceil(long.lines / 200) && long.resets.at(-1) === `pl ${(long.resets.length - 1) * 200}`,
-      JSON.stringify({ lines: long.lines, read, resets: long.resets.slice(-2), cut: long.cut }));
-    const visible = await t.eval(() => {
+    t.check(`the long text is cut at 256 KB and numbered in chunks of 200 (${long.lines} lines, ${long.chunks} chunks, numbered 1 to ${long.lastNum})`,
+      !!long.cut && long.lines === read && long.chunks === Math.ceil(long.lines / 200) && long.nums[0] === '1' && long.lastNum === String(read) && long.numbersDrawn,
+      JSON.stringify({ lines: long.lines, read, chunks: long.chunks, first: long.nums[0], last: long.lastNum, cut: long.cut }));
+    // End in the pane scrolls to the end in one press: the chunks not drawn
+    // yet hold the room their lines will take.
+    await t.eval(() => { document.querySelector('#b-panel-preview .pv-pane').focus(); return true; });
+    await t.key('End');
+    // The browser scrolls smoothly: read once the pane has stood still for
+    // six frames (three seconds at most).
+    const visible = await t.eval(() => new Promise((r) => {
       const p = document.querySelector('#b-panel-preview .pv-pane');
-      p.scrollTop = p.scrollHeight;
-      return new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(() => {
-        p.scrollTop = p.scrollHeight;
-        requestAnimationFrame(() => {
-          const box = p.getBoundingClientRect();
-          const seen = [...document.querySelectorAll('#b-panel-preview .pv-line')].filter((l) => { const b = l.getBoundingClientRect(); return b.height > 0 && b.bottom > box.top && b.top < box.bottom; });
-          r({ last: seen.at(-1)?.textContent.slice(0, 5) ?? null, count: seen.length });
+      const until = performance.now() + 3000;
+      let was = -1;
+      let still = 0;
+      const look = () => requestAnimationFrame(() => {
+        still = p.scrollTop === was ? still + 1 : 0;
+        was = p.scrollTop;
+        if (still < 6 && performance.now() < until) return look();
+        const box = p.getBoundingClientRect();
+        const seen = [...document.querySelectorAll('#b-panel-preview .pv-line')].filter((l) => { const b = l.getBoundingClientRect(); return b.height > 0 && b.bottom > box.top && b.top < box.bottom; });
+        const chunks = [...document.querySelectorAll('#b-panel-preview .pv-chunk')];
+        return r({
+          last: seen.at(-1)?.dataset.n ?? null, text: seen.at(-1)?.textContent.slice(0, 5) ?? null, atEnd: p.scrollTop + p.clientHeight >= p.scrollHeight - 1, primary: window.__terrane.S.primary?.n,
+          sizes: chunks.slice(0, 2).concat(chunks.slice(-2)).map((c) => `${c.style.containIntrinsicHeight}/${Math.round(c.getBoundingClientRect().height)}`),
         });
-      })));
-    });
-    t.check(`at the end of the pane the last line shown is the last one read, ${read} (${visible.last})`, Number(visible.last) === read, JSON.stringify(visible));
+      });
+      look();
+    }));
+    t.check(`one End in the pane reaches the end of the text, line ${read} (${visible.last}), and stays on long.log`,
+      visible.last === String(read) && Number(visible.text) === read && visible.atEnd && visible.primary === 'long.log', JSON.stringify(visible));
 
     // A file grown on disk is read again.
     await goTo(t, 'preview-disk/grow.txt');

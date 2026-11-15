@@ -29,13 +29,13 @@
  *       break only at " · "
  *     - The pane takes the room left, scrolls inside itself, and draws
  *       its focus ring inside its edge
- *     - Text in DM Mono with line numbers from CSS counters (each chunk
- *       resets its own, since content-visibility scopes counters), wrapped
- *       or running on, the numbers kept in view when lines run on
+ *     - Text in DM Mono with line numbers drawn from each line's own
+ *       (data-n), in chunks that content-visibility skips off screen,
+ *       wrapped or running on, the numbers kept in view when lines run on
  *     - A picture fitted to the pane on the stipple and its own colour; a
  *       player the pane's width
- *     - The foot's hints are groups that never break; the drawer lets
- *       them wrap between groups
+ *     - The foot's hints are groups that never break; the drawer keeps
+ *       the first two, so its pane keeps room to read in
  *     - A new subject fades in; nothing moves under reduced motion
  *
  * ✒ Other Important Information:
@@ -44,7 +44,7 @@
  *       .section-title, .comp), interior.css (locked and escaping
  *       swatches), motion.css (fade-in); web/js/preview.js builds it
  *     - Compatible platforms: current evergreen browsers (container
- *       queries, content-visibility, counters)
+ *       queries, content-visibility, alternative text in content)
  * ----------------------------------------------------------------------------
  */
 
@@ -170,8 +170,7 @@
   overflow-wrap: anywhere;
 }
 .pv-line::before {
-  content: counter(pl) / "";
-  counter-increment: pl;
+  content: attr(data-n) / "";
   color: var(--text-3);
   text-align: right;
   user-select: none;
@@ -222,7 +221,11 @@
 .pv-foot kbd { margin-right: 2px; font-size: var(--fs-2xs); }
 .pv-foot .hint { white-space: nowrap; }
 
-/* The drawer: facts stack (inspector.css), and the hints wrap between groups. */
+/* The drawer: facts stack (inspector.css), the hints wrap between groups,
+   and only the first two stay, so the pane keeps room to read in; the
+   Guide and the pane's own description name every key. */
 @container inspector (max-width: 270px) {
   .pv-foot { line-height: 1.8; }
+  /* Hint, separator, hint: what follows the third child goes. */
+  .pv-foot > :nth-child(n + 4) { display: none; }
 }

@@ -27,9 +27,10 @@
  *     - Follows the selection: the head (kind, name, the folder it is in,
  *       facts) at once, the body once the arrows rest (140 ms), every read
  *       a newer subject supersedes aborted and a late answer dropped
- *     - Text: the first 256 KB with line numbers (CSS counters per chunk
- *       of 200 lines, content-visibility), what kind of text it is, its
- *       lines, endings and byte order mark; Wrap lines kept in this browser
+ *     - Text: the first 256 KB with line numbers (each line's own, drawn
+ *       by CSS; chunks of 200 lines under content-visibility, each sized
+ *       from its lines), what kind of text it is, its lines, endings and
+ *       byte order mark; Wrap lines kept in this browser
  *     - Pictures only through thumbs.js, the largest rung that fits, with
  *       the picture's size and colour; never the original
  *     - Sound and film in the browser's player, in byte ranges, nothing
@@ -181,7 +182,8 @@ export function install(api) {
     const kbd = (text) => el('kbd', { text });
     const out = [];
     for (const g of groups) {
-      if (out.length) out.push(' · ');
+      // A separator of its own, so the drawer can keep only the first hints.
+      if (out.length) out.push(el('span', { class: 'sep', text: ' · ' }));
       out.push(el('span', { class: 'hint' }, ...g.map((x) => (typeof x === 'string' && x.startsWith('#') ? kbd(x.slice(1)) : x))));
     }
     ui.foot.replaceChildren(...out);
@@ -535,7 +537,12 @@ export function install(api) {
     performance.measure('terrane:preview-text', { start: t0 });
   }
 
-  /** The text as numbered lines, in chunks that each reset their own counter. */
+  /**
+   * The text as numbered lines in chunks of 200. Each line carries its
+   * number (data-n), which CSS draws: a counter reset per chunk counted
+   * from 1 on every line in Edge 157, since content-visibility's style
+   * containment scopes counters to the chunk.
+   */
   function buildText(text) {
     const rows = text.split(/\r\n|\n|\r/);
     if (rows.length > 1 && rows.at(-1) === '') rows.pop();
@@ -546,17 +553,17 @@ export function install(api) {
       const chunk = document.createElement('div');
       chunk.className = 'pv-chunk';
       const end = Math.min(rows.length, i + CHUNK_LINES);
-      chunk.style.counterReset = `pl ${i}`;
       // Each line's length in characters (a tab as four), for sizeChunks.
       const lens = [];
       const frag = document.createDocumentFragment();
       for (let j = i; j < end; j++) {
         const line = document.createElement('div');
         line.className = 'pv-line';
+        line.dataset.n = String(j + 1);
         line.textContent = rows[j];
         frag.append(line);
         let n = rows[j].length;
-        for (let k = rows[j].indexOf('	'); k >= 0; k = rows[j].indexOf('	', k + 1)) n += 3;
+        for (let k = rows[j].indexOf('\t'); k >= 0; k = rows[j].indexOf('\t', k + 1)) n += 3;
         lens.push(n);
       }
       chunk.lens = lens;
@@ -798,7 +805,9 @@ export function install(api) {
 
   function severalBody(nodes, out) {
     const { rows, more, moreBytes } = selectionRows(nodes, SELECTION_ROWS);
-    out.append(el('div', { class: 'pv-rows' }, rows.map((x) => pickRow(x, api.relLabel(x.p || x) || '/', (n) => startPeek(n, rows)))));
+    // The folder each is in, by name (the whole path is the row's title):
+    // a path cut at its end would hide the part that tells them apart.
+    out.append(el('div', { class: 'pv-rows' }, rows.map((x) => pickRow(x, x.p ? `in ${x.p.n}` : '/', (n) => startPeek(n, rows)))));
     if (more) out.append(note(`and ${fmtCount(more)} more, ${fmtBytes(moreBytes)}`));
   }
 
