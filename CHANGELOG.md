@@ -134,16 +134,16 @@ short form is kept too.
 
 ## web/js/app.js
 
-- 1.16.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — A flavor the service was started with
-  (--flavor, in /api/info) is taken once by this browser; a choice made in the guide since
-  holds. In full: takeLaunchFlavor runs before the view first takes its flavor. It reads the
-  launch flavor this browser took last (localStorage terrane.flavor-launch) and asks
+- 1.16.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — A flavor the service was
+  started with (--flavor, in /api/info) is taken once by this browser; a choice made in the
+  guide since holds. In full: takeLaunchFlavor runs before the view first takes its flavor. It
+  reads the launch flavor this browser took last (localStorage terrane.flavor-launch) and asks
   flavors.js's startingFlavor what to start with; a launch flavor not yet taken becomes the
-  kept choice and the one taken, so every browser that opens a service started with
-  --flavor blender starts in Blender's flavor once. A flavor chosen in the guide afterwards
-  is kept as before and survives reloads, until a launch names a different flavor. Where
-  storage is refused the launch flavor holds for the page. Asked for by Dennis, so the local
-  service opens in Blender's hands.
+  kept choice and the one taken, so every browser that opens a service started with --flavor
+  blender starts in Blender's flavor once. A flavor chosen in the guide afterwards is kept as
+  before and survives reloads, until a launch names a different flavor. Where storage is
+  refused the launch flavor holds for the page. Asked for by Dennis, so the local service
+  opens in Blender's hands.
 
 - 1.15.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — The sheet's polish: the ledger
   head in two rows (the count and its tools, then the keys over the columns; Select all an icon)
