@@ -1,18 +1,22 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Layout Safety Scenario (Terrane Edition - v1.1)
+ *     - Title: Layout Safety Scenario (Terrane Edition - v1.2)
  *     - File Name: layout.mjs
  *     - Relative Path: tools/ui-scenarios/layout.mjs
  *     - Artifact Type: test
- *     - Version: 1.1.0
- *     - Date: 11/12/2026
- *     - Update: Thursday, November 12, 2026
+ *     - Version: 1.2.0
+ *     - Date: 11/14/2026
+ *     - Update: Saturday, November 14, 2026
  *     - Author: Dennis 'dendogg' Smaltz
  *     - A.I. Acknowledgement: Anthropic - Claude Opus 5.5
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
  *
  * ✒ Changelog:
+ *     - 1.2.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
+ *       precise terrain, part two: in both passes, layout.unit holds the
+ *       unit of the folder each box stands in, and the files of every
+ *       open plateau in the page's layout stand one channel apart.
  *     - 1.1.0 (11/12/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
  *       box shader has six bounded style branches now that CROSSED draws;
  *       the AUX table is read with BOX and STYLE.
@@ -31,6 +35,8 @@
  *     - Any data, both passes; the viewport parts run with WebGL only
  *     - Reads BOX, STYLE and MAX_BOXES from the module the page loaded
  *     - Reads the compiled fragment shader back from the GL context
+ *     - The unit of each box's folder (layout.unit), and one channel between
+ *       the files of every open plateau
  *     - Feeds the viewport a 73,500-box layout made from the real one and
  *       checks the count drawn, the notice (said once) and recovery
  *
@@ -70,6 +76,58 @@ export default {
     t.check('AUX names the time view\'s marks: SUNK 1, CROSSED 2', JSON.stringify(got.auxCodes) === JSON.stringify({ NONE: 0, SUNK: 1, CROSSED: 2 }), JSON.stringify(got.auxCodes));
     t.check('the code tables are frozen', got.frozen);
     t.check('the title block does not report blocks left out', !/left out/.test(got.status), got.status);
+
+    // The precise terrain: every box carries the unit of the folder it
+    // stands in, and the files of one folder stand one channel apart.
+    const ch = await t.app(async (T) => {
+      const L = T.S.layout;
+      const LY = await import(new URL('js/layout.js', document.baseURI).href);
+      const M = await import(new URL('js/model.js', document.baseURI).href);
+      const g = L.geo;
+      const unit = L.unit instanceof Float64Array && L.unit.length === L.n && L.unit[0] === LY.unitOf(LY.WORLD, LY.WORLD);
+      const kidsOf = new Map();
+      for (let i = 1; i < L.n; i++) {
+        const pi = L.index.get(L.type[i] === LY.BOX.SCREE ? L.node[i] : L.node[i].p);
+        if (pi === undefined) continue;
+        if (!kidsOf.has(pi)) kidsOf.set(pi, []);
+        kidsOf.get(pi).push(i);
+      }
+      let plateaus = 0;
+      let pairs = 0;
+      const odd = [];
+      for (const [pi, list] of kidsOf) {
+        if (L.type[pi] !== LY.BOX.DIR || list.length > 600) continue;
+        const S = Math.min(g[pi * 6 + 3], g[pi * 6 + 5]);
+        const fileCh = S * Math.min(0.012, 0.1 / Math.sqrt(Math.max(M.kids(L.node[pi]), 1)));
+        const tol = 1e-9 * S;
+        // Files only, each grown by half the file channel to its slot.
+        const R = list.filter((i) => L.type[i] === LY.BOX.FILE && Math.min(g[i * 6 + 3], g[i * 6 + 5]) >= fileCh).map((i) => {
+          const o = i * 6;
+          return { x0: g[o] - g[o + 3] / 2, x1: g[o] + g[o + 3] / 2, z0: g[o + 2] - g[o + 5] / 2, z1: g[o + 2] + g[o + 5] / 2 };
+        });
+        const widths = [];
+        for (const a of R) {
+          for (const b of R) {
+            const ox = Math.min(a.x1, b.x1) - Math.max(a.x0, b.x0);
+            const oz = Math.min(a.z1, b.z1) - Math.max(a.z0, b.z0);
+            const gx = b.x0 - a.x1;
+            const gz = b.z0 - a.z1;
+            // Facing: overlapping across a gap no wider than a group's channel.
+            if (oz > tol && gx > 0 && gx < fileCh * 2.5) widths.push(gx);
+            if (ox > tol && gz > 0 && gz < fileCh * 2.5) widths.push(gz);
+          }
+        }
+        if (!widths.length) continue;
+        plateaus++;
+        pairs += widths.length;
+        const lo = Math.min(...widths);
+        const hi = Math.max(...widths);
+        if (hi - lo > tol || Math.abs(lo - fileCh) > tol) odd.push(`${L.node[pi].n}: ${lo / S} to ${hi / S} S, want ${fileCh / S}`);
+      }
+      return { unit, plateaus, pairs, odd: odd.slice(0, 4) };
+    });
+    t.check('layout.unit holds the unit of the folder each box stands in, the root its own', ch.unit);
+    t.check(`the files of every open plateau stand one channel apart (${ch.plateaus} plateaus, ${ch.pairs} facing pairs)`, ch.plateaus > 0 && ch.odd.length === 0, JSON.stringify(ch.odd));
     if (!t.gl) return;
 
     const shader = await t.app((T) => {

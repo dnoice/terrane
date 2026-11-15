@@ -1,11 +1,11 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Terrace Layout (Terrane Edition - v1.5)
+ *     - Title: Terrace Layout (Terrane Edition - v1.6)
  *     - File Name: layout.js
  *     - Relative Path: web/js/layout.js
  *     - Artifact Type: javascript
- *     - Version: 1.5.0
+ *     - Version: 1.6.0
  *     - Date: 11/14/2026
  *     - Update: Saturday, November 14, 2026
  *     - Author: Dennis 'dendogg' Smaltz
@@ -13,6 +13,11 @@
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
  *
  * ✒ Changelog:
+ *     - 1.6.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] —
+ *       Everything in a folder is measured in its unit (unitOf, layout.unit):
+ *       plateaus are plates half a unit thick, files stand one even channel
+ *       apart and folders three, a margin of 0.04 S, footprints compensated
+ *       to stay size, and tiles never taller than they are wide.
  *     - 1.5.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] —
  *       Region mode: a folder's count is kids(dir), so one held in part
  *       puts its tail's entries and bytes in its scree; a folder whose
@@ -25,13 +30,6 @@
  *       archive's root as a plateau keyed by the file, whose contents
  *       open by distance like any folder's. layout.chamber gives the
  *       range of the chamber's boxes.
- *     - 1.3.0 (11/12/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
- *       time view: given asOf, a file changed after that date lies flat as
- *       a crossed slab, an empty folder changed after it does too, and a
- *       closed mass is lowered by the share of its bytes kept unchanged,
- *       down to a crossed slab when nothing was kept. Footprints, the box
- *       count and key order stay those of the present. AUX names the
- *       per-box marks.
  *     Earlier entries: see CHANGELOG.md
  *
  * ✒ Description:
@@ -45,11 +43,19 @@
  *     - Footprint is storage: every folder is a plateau whose area is its
  *       share of its parent, divided by a squarified treemap so shapes stay
  *       close to square and comparable
- *     - Elevation is nesting: each level stands one step above its parent,
- *       and the step is proportional to the plateau, so the landscape is
- *       self-similar and can be travelled at any scale
+ *     - Elevation is nesting: each level stands on a thin plate, half the
+ *       unit of the folder it stands in; a folder's unit is 4.5% of its
+ *       short side (at most 9), so the landscape is self-similar and can
+ *       be travelled at any scale
  *     - Height is recency: a file stands tall when recently modified and
- *       wears down toward the plateau as it ages (log scale, ten years)
+ *       wears down toward the plateau as it ages (log scale, ten years),
+ *       0.35 to 3.75 units, softened toward a cap so a tile is never
+ *       taller than it is wide
+ *     - Spacing in the folder's measure: one channel between its files
+ *       (1.2% of its short side, narrower in a crowded folder), three
+ *       times that beside a folder, and a margin of 4% at the plateau's
+ *       edge; the weights are compensated for the channels, so area stays
+ *       size
  *     - Unfolding by approach: a folder stands open when the eye is close
  *       enough to read its contents and closes again further out (with
  *       hysteresis); a closed mass is taller the more levels it conceals
@@ -95,6 +101,11 @@
  *     layout.top[i]     highest point of everything standing on box i
  *     layout.aux[i]     a feature's mark for box i, 0 when unmarked: an
  *                       AUX code (SUNK, CROSSED) in the time view
+ *     layout.unit[i]    Float64Array: the unit of the folder box i stands
+ *                       in (the root's own unit for the root; a scree's
+ *                       folder's; for an archive's walls and floor, the
+ *                       folder holding the file), what its height, name
+ *                       and channel are measured in
  *     layout.scree      Map of box index to { count, size }
  *     layout.chamber    the open archive's boxes, { from, floor, to }:
  *                       four walls from `from`, the floor at `floor`,
@@ -119,7 +130,10 @@
  *       changed folder, not to the size of the tree
  *     - Limitations: the base footprint means areas are proportional to
  *       size plus a small constant, so a folder of many tiny files reads
- *       slightly larger than its bytes alone
+ *       slightly larger than its bytes alone; the channel compensation is
+ *       exact for square slots, and area per byte within a folder agrees
+ *       within about 14% for the rest; on the smallest slots a channel
+ *       stops at a quarter of the slot's side
  * ----------------------------------------------------------------------------
  */
 
@@ -149,16 +163,46 @@ export const STYLE = Object.freeze({ PLAIN: 0, HATCH: 1, HOLLOW: 2, STIPPLE: 3, 
 export const AUX = Object.freeze({ NONE: 0, SUNK: 1, CROSSED: 2 });
 
 export const WORLD = 1000;
-export const RISER_MAX = 9;
-const RISER_RATIO = 0.045;
+/**
+ * The unit: everything inside a folder is measured in that folder, whose
+ * unit is UNIT_RATIO of its short side, at most UNIT_MAX. Its plateau's
+ * thickness, its files' heights, the channels between its blocks and the
+ * margin at its edge are all set in it, so a folder looks the same from
+ * as many of its own widths away, at any depth.
+ */
+export const UNIT_MAX = 9;
+const UNIT_RATIO = 0.045;
+export const unitOf = (w, d) => Math.min(Math.min(w, d) * UNIT_RATIO, UNIT_MAX);
+// A plateau is a thin plate: half the unit of the folder it stands in,
+// never more than a tenth of its own short side. An open archive's floor
+// is a share of its file's short side only, as its walls are.
+const PLATE = 0.5;
+const PLATE_SIDE = 0.1;
+const FLOOR_PLATE = 0.02;
+/**
+ * Spacing, as shares of the folder's short side S: a file stands MARGIN
+ * from the plateau's edge; the channel between two files is CHANNEL, or
+ * DENSITY over the square root of the folder's count when that is
+ * narrower, so a crowded folder keeps its seams in proportion; a folder
+ * among the children (open, closed, empty or sealed) takes GROUP times a
+ * file's channel, so groups stand apart from one another.
+ */
+export const MARGIN = 0.04;
+const CHANNEL = 0.012;
+const DENSITY = 0.1;
+const GROUP = 3;
+// A file tile is never taller than it is wide: above TILE_KNEE of its cap
+// its height softens toward the cap, TILE_CAP of its short side and a hair.
+const TILE_CAP = 0.9;
+const TILE_KNEE = 0.6;
 const OPEN_AT = 0.135;
 // A closed folder whose children are not held is asked for a little
 // before it would open: from this share of the distance it opens at.
 const PREFETCH = 0.6;
 const PER_FOLDER_MAX = 5000;
-// A crossed slab: a share of its plateau's step, or of its own short side
+// A crossed slab: a share of its folder's unit, or of its own short side
 // when that is smaller, so it reads the same at every scale.
-const SLAB_RISER = 0.08;
+const SLAB_UNIT = 0.08;
 const SLAB_SIDE = 0.05;
 // An archive's chamber: walls this share of the footprint's short side
 // thick and high. Shares only, so the chamber is the same at every depth.
@@ -247,6 +291,7 @@ function attempt(root, opts) {
   const geo = [];
   const top = [];
   const aux = [];
+  const unitArr = [];
   const scree = new Map();
   // Region mode: folders whose children the page does not hold yet, which
   // this layout would open ({ node, pri }, pri the ratio over OPEN_AT).
@@ -257,8 +302,9 @@ function attempt(root, opts) {
   // The budget is checked before every box, whoever pushes it. A box that
   // would pass MAX_BOXES is refused (-1) and ends the attempt, so n never
   // passes the viewport's capacity. `ax` is a free byte per box for a
-  // feature's own mark, read back as layout.aux.
-  const push = (k, nd, t, lvl, cx, cy, cz, sx, sy, sz, ax = 0) => {
+  // feature's own mark, read back as layout.aux; `un` is the unit of the
+  // folder the box stands in, read back as layout.unit.
+  const push = (k, nd, t, lvl, cx, cy, cz, sx, sy, sz, ax = 0, un = 0) => {
     if (over || key.length >= MAX_BOXES) {
       over = true;
       return -1;
@@ -267,18 +313,23 @@ function attempt(root, opts) {
     geo.push(cx, cy, cz, sx, sy, sz);
     top.push(cy + sy / 2);
     aux.push(ax);
+    unitArr.push(un);
     return key.length - 1;
   };
 
   // `k` is the plateau's identity across layouts: the folder itself, or
   // another object when a feature keys a plateau by something else.
-  const place = (dir, x, z, w, d, y, lvl, k = dir) => {
-    // The step height belongs to the plateau: the world is self-similar,
-    // so a folder looks the same from as many of its own widths away.
-    const riser = Math.min(Math.min(w, d) * RISER_RATIO, RISER_MAX);
-    const idx = push(k, dir, BOX.DIR, lvl, x + w / 2, y + riser / 2, z + d / 2, w, riser, d);
+  // `plate` is the plateau's thickness, which the folder it stands in
+  // sets, and `upUnit` that folder's unit.
+  const place = (dir, x, z, w, d, y, lvl, k, plate, upUnit) => {
+    // Everything on the plateau is measured in its own unit: the world is
+    // self-similar, so a folder looks the same from as many of its own
+    // widths away.
+    const S = Math.min(w, d);
+    const unit = unitOf(w, d);
+    const idx = push(k, dir, BOX.DIR, lvl, x + w / 2, y + plate / 2, z + d / 2, w, plate, d, 0, upUnit);
     if (idx < 0) return y;
-    const base = y + riser;
+    const base = y + plate;
     let peak = base;
     const items = dir.c;
     if (!items.length || over) return peak;
@@ -291,13 +342,18 @@ function attempt(root, opts) {
       items.sort((a, b) => b.s - a.s);
       dir.dirty = false;
     }
-    const pad = Math.min(w, d) * 0.035;
+    // The channels: one width between the files of this folder, GROUP
+    // times it beside a folder. Each child is inset by half its channel,
+    // so a file stands exactly MARGIN of S from the edge.
+    const fileCh = S * Math.min(CHANNEL, DENSITY / Math.sqrt(Math.max(count, 1)));
+    const groupCh = fileCh * GROUP;
+    const pad = S * MARGIN - fileCh / 2;
     const iw = w - pad * 2;
     const id = d - pad * 2;
     const total = dir.s + eps * count;
     const perWeight = (iw * id) / total;
     // Smallest side worth drawing here, from how far away the eye is.
-    const reach = Math.max(distToRect(cam, x, z, w, d, base), Math.min(w, d) * 0.02);
+    const reach = Math.max(distToRect(cam, x, z, w, d, base), S * 0.02);
     const minSide = reach * grain;
     const minArea = minSide * minSide;
     let big = 0;
@@ -331,6 +387,29 @@ function attempt(root, opts) {
       weights[big] = Math.max(wsum, (minArea * 2.5) / perWeight);
     }
     const rects = new Float64Array(n * 4);
+    const chOf = (i) => (i < big && items[i].d ? groupCh : fileCh);
+    // Footprint stays size: each weight w becomes (c + r sqrt(w))^2, c its
+    // channel, so once a square slot gives up its channel the rest is
+    // r^2 w. r fills the inner area A: W r^2 + 2 B r + C = A, with W the
+    // weights' sum, B the sum of c sqrt(w) and C that of c^2. The weights
+    // are rewritten in place, so no array is made.
+    let sumW = 0;
+    let sumB = 0;
+    let sumC = 0;
+    for (let i = 0; i < n; i++) {
+      const c = chOf(i);
+      const r = Math.sqrt(weights[i]);
+      sumW += weights[i];
+      sumB += c * r;
+      sumC += c * c;
+      weights[i] = r;
+    }
+    const disc = sumB * sumB - sumW * (sumC - iw * id);
+    const rk = disc > 0 ? (-sumB + Math.sqrt(disc)) / sumW : 0;
+    for (let i = 0; i < n; i++) {
+      const v = rk > 0 ? chOf(i) + rk * weights[i] : weights[i];
+      weights[i] = v * v;
+    }
     squarify(weights, n, x + pad, z + pad, iw, id, rects);
 
     // Once the budget is spent, nothing more is placed in this attempt.
@@ -339,16 +418,18 @@ function attempt(root, opts) {
       let rz = rects[i * 4 + 1];
       let rw = rects[i * 4 + 2];
       let rd = rects[i * 4 + 3];
-      const gap = Math.min(rw, rd) * 0.06;
-      rx += gap; rz += gap; rw -= gap * 2; rd -= gap * 2;
+      // Half its channel on every side, never more than a quarter of the
+      // slot's short side, so the smallest slot keeps half of itself.
+      const half = Math.min(chOf(i) / 2, Math.min(rw, rd) * 0.25);
+      rx += half; rz += half; rw -= half * 2; rd -= half * 2;
       if (rw <= 0 || rd <= 0) continue;
       const cx = rx + rw / 2;
       const cz = rz + rd / 2;
       const side = Math.min(rw, rd);
       if (i === big) {
-        const h = riser * 0.2;
+        const h = unit * 0.2;
         dir._scree ||= { scree: true };
-        const si = push(dir._scree, dir, BOX.SCREE, lvl + 1, cx, base + h / 2, cz, rw, h, rd);
+        const si = push(dir._scree, dir, BOX.SCREE, lvl + 1, cx, base + h / 2, cz, rw, h, rd, 0, unit);
         if (si >= 0) scree.set(si, { count: screeCount, size: screeSize, from: big });
         continue;
       }
@@ -356,28 +437,34 @@ function attempt(root, opts) {
       let t;
       if (!ch.d && inside && ch === inside.host) {
         // The open archive's file stands as its chamber (below).
-        t = chamber(ch, rx, rz, rw, rd, base, lvl + 1);
+        t = chamber(ch, rx, rz, rw, rd, base, lvl + 1, unit);
       } else if (!ch.d) {
         // Heights keep their freshness from now; only what changed after
         // the date looked back to is lowered.
+        // A tile: 0.35 to 3.75 units by freshness, softened toward its cap
+        // above the knee, so it rises with freshness and never stands
+        // taller than it is wide.
         const fresh = freshness(ch.m, now);
-        let h = Math.min(riser * (0.35 + 3.4 * fresh * fresh), side * 1.8 + riser * 0.15);
+        let h = unit * (0.35 + 3.4 * fresh * fresh);
+        const capH = side * TILE_CAP + Math.min(unit * 0.15, side * 0.1);
+        const knee = capH * TILE_KNEE;
+        if (h > knee) h = knee + (capH - knee) * (1 - Math.exp(-(h - knee) / (capH - knee)));
         let ax = AUX.NONE;
         if (asOf && ch.m > asOfT) {
-          h = Math.min(riser * SLAB_RISER, side * SLAB_SIDE);
+          h = Math.min(unit * SLAB_UNIT, side * SLAB_SIDE);
           ax = AUX.CROSSED;
         }
         t = base + h;
-        push(ch, ch, BOX.FILE, lvl + 1, cx, base + h / 2, cz, rw, h, rd, ax);
+        push(ch, ch, BOX.FILE, lvl + 1, cx, base + h / 2, cz, rw, h, rd, ax, unit);
       } else if (ch.e || kids(ch) === 0) {
-        let h = Math.min(ch.e ? riser : riser * 0.3, side);
+        let h = Math.min(ch.e ? unit : unit * 0.3, side);
         let ax = AUX.NONE;
         if (asOf && !ch.e && ch.m > asOfT) {
-          h = Math.min(riser * SLAB_RISER, side * SLAB_SIDE);
+          h = Math.min(unit * SLAB_UNIT, side * SLAB_SIDE);
           ax = AUX.CROSSED;
         }
         t = base + h;
-        push(ch, ch, BOX.CAP, lvl + 1, cx, base + h / 2, cz, rw, h, rd, ax);
+        push(ch, ch, BOX.CAP, lvl + 1, cx, base + h / 2, cz, rw, h, rd, ax, unit);
       } else {
         // A folder opens when the eye is near enough for its contents to
         // read; it closes again a little further out, so it cannot flicker.
@@ -392,13 +479,13 @@ function attempt(root, opts) {
           open = false;
         }
         ch._open = open;
-        if (open) t = place(ch, rx, rz, rw, rd, base, lvl + 1);
+        if (open) t = place(ch, rx, rz, rw, rd, base, lvl + 1, ch, Math.min(PLATE * unit, PLATE_SIDE * side), unit);
         else {
-          let h = Math.min(side * RISER_RATIO * (1.6 + 1.1 * Math.min(ch.h + 1, 8)), side * 0.9);
+          let h = Math.min(side * UNIT_RATIO * (1.6 + 1.1 * Math.min(ch.h + 1, 8)), side * 0.9);
           let ax = AUX.NONE;
           if (asOf && ch.mm > asOfT) {
             // Never below a slab, so stepping further back never raises it.
-            const slab = Math.min(riser * SLAB_RISER, side * SLAB_SIDE);
+            const slab = Math.min(unit * SLAB_UNIT, side * SLAB_SIDE);
             const kept = Math.min(1, asOf.kept(ch));
             if (kept > 0) {
               h = Math.max(slab, h * kept);
@@ -409,7 +496,7 @@ function attempt(root, opts) {
             }
           }
           t = base + h;
-          push(ch, ch, BOX.CAP, lvl + 1, cx, base + h / 2, cz, rw, h, rd, ax);
+          push(ch, ch, BOX.CAP, lvl + 1, cx, base + h / 2, cz, rw, h, rd, ax, unit);
         }
       }
       if (t > peak) peak = t;
@@ -421,8 +508,10 @@ function attempt(root, opts) {
   // An open archive on its file's footprint: four walls on the edges and,
   // between them, the archive's root as a plateau keyed by the file, so
   // the file's box becomes the floor in a transition and back again. The
-  // walls' node is the file; the floor's is the archive's root.
-  const chamber = (host, x, z, w, d, y, lvl) => {
+  // walls' node is the file; the floor's is the archive's root. upUnit is
+  // the unit of the folder that holds the file, which the walls and the
+  // floor stand in.
+  const chamber = (host, x, z, w, d, y, lvl, upUnit) => {
     const side = Math.min(w, d);
     const th = side * WALL_THICK;
     const h = side * WALL_HIGH;
@@ -432,19 +521,22 @@ function attempt(root, opts) {
     // them, so the chamber is the same whichever way its footprint lies.
     const ew = w >= d ? w : w - th * 2;
     const nd = w >= d ? d - th * 2 : d;
-    push(north, host, BOX.WALL, lvl, x + w / 2, y + h / 2, z + th / 2, ew, h, th);
-    push(south, host, BOX.WALL, lvl, x + w / 2, y + h / 2, z + d - th / 2, ew, h, th);
-    push(west, host, BOX.WALL, lvl, x + th / 2, y + h / 2, z + d / 2, th, h, nd);
-    push(east, host, BOX.WALL, lvl, x + w - th / 2, y + h / 2, z + d / 2, th, h, nd);
+    push(north, host, BOX.WALL, lvl, x + w / 2, y + h / 2, z + th / 2, ew, h, th, 0, upUnit);
+    push(south, host, BOX.WALL, lvl, x + w / 2, y + h / 2, z + d - th / 2, ew, h, th, 0, upUnit);
+    push(west, host, BOX.WALL, lvl, x + th / 2, y + h / 2, z + d / 2, th, h, nd, 0, upUnit);
+    push(east, host, BOX.WALL, lvl, x + w - th / 2, y + h / 2, z + d / 2, th, h, nd, 0, upUnit);
     if (over) return y;
     const floor = key.length;
-    const peak = place(inside.root, x + th, z + th, w - th * 2, d - th * 2, y, lvl, host);
+    // The floor is a share of the file's short side, as the walls are.
+    const peak = place(inside.root, x + th, z + th, w - th * 2, d - th * 2, y, lvl, host, side * FLOOR_PLATE, upUnit);
     chamberAt = { from, floor: key.length > floor ? floor : -1, to: key.length };
     return Math.max(peak, y + h);
   };
 
-  place(root, -WORLD / 2, -WORLD / 2, WORLD, WORLD, 0, 0);
-  return { over, key, node, type, level, geo, top, aux, scree, chamber: chamberAt, want };
+  // The root stands half its own unit thick and is measured in that unit.
+  const rootUnit = unitOf(WORLD, WORLD);
+  place(root, -WORLD / 2, -WORLD / 2, WORLD, WORLD, 0, 0, root, PLATE * rootUnit, rootUnit);
+  return { over, key, node, type, level, geo, top, aux, unit: unitArr, scree, chamber: chamberAt, want };
 }
 
 /**
@@ -473,7 +565,7 @@ export function buildLayout(root, options = {}) {
   }
   return {
     n: r.key.length, key: r.key, node: r.node, type: Uint8Array.from(r.type), level: Uint8Array.from(r.level),
-    geo: Float64Array.from(r.geo), top: Float64Array.from(r.top), aux: Uint8Array.from(r.aux), scree: r.scree, index, root,
+    geo: Float64Array.from(r.geo), top: Float64Array.from(r.top), aux: Uint8Array.from(r.aux), unit: Float64Array.from(r.unit), scree: r.scree, index, root,
     coarsened: opts.grain !== grain, over: r.over, chamber: r.chamber,
     want: r.want.sort((a, b) => b.pri - a.pri),
   };

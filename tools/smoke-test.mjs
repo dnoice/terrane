@@ -2,18 +2,37 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Service Smoke Test (Terrane Edition - v1.7)
+ *     - Title: Service Smoke Test (Terrane Edition - v1.8)
  *     - File Name: smoke-test.mjs
  *     - Relative Path: tools/smoke-test.mjs
  *     - Artifact Type: test
- *     - Version: 1.7.0
- *     - Date: 11/13/2026
- *     - Update: Friday, November 13, 2026
+ *     - Version: 1.8.0
+ *     - Date: 11/14/2026
+ *     - Update: Saturday, November 14, 2026
  *     - Author: Dennis 'dendogg' Smaltz
  *     - A.I. Acknowledgement: Anthropic - Claude Opus 5.5
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
  *
  * ✒ Changelog:
+ *     - 1.8.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
+ *       precise terrain, part two. The time view's slab is now measured
+ *       against L.unit[i], min(unit × 0.08, side × 0.05), and the map of
+ *       plateau risers is gone: a plate is now half its parent's unit, so
+ *       the slab is measured against the unit (a deliberate change of what
+ *       the check asserts). A new section lays out the demo world from the
+ *       overview, (300, 500, 500) and (100, 150, -100): layout.unit is a
+ *       Float64Array of n, the root's unitOf(WORLD) and every other box's
+ *       its plateau's; every open plateau is min(half its unit, a tenth of
+ *       its side) thick and open siblings five units wide share one
+ *       thickness; each child's slot (the child grown by half its channel)
+ *       tiles its plateau inside the pad, so every channel between facing
+ *       children is the sum of their half channels within 1e-9 S, the
+ *       quarter guard aside; a child at the margin line stands at its
+ *       type's margin; area per byte within a folder varies at most 1.2
+ *       times for blocks 0.04 S wide; no file is taller than its short
+ *       side; and in one of 25 equal folders, 144 equal files aged over ten
+ *       years never fall in height as freshness rises, the soft cap
+ *       binding on most.
  *     - 1.7.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
  *       one-date-formatter check sets demo-world.js aside: it writes ISO
  *       dates only into the demo world's made-up file names, which the
@@ -213,6 +232,8 @@
  *     - The time view, without the service: the layout looked back to
  *       every ladder step keeps the present's boxes and lowers only what
  *       changed after the date
+ *     - The precise terrain, without the service: the demo world's unit,
+ *       plates, channels, margins, area per byte and tiles from three eyes
  *     - The source, read as text: one date formatter, no dead export in
  *       the shared modules, no idle icon, colours only from tokens.css,
  *       no shell anywhere the service launches a program, and every
@@ -1725,6 +1746,153 @@ check('box and style codes are frozen and unique, with WALL 4 and CROSSED 6 rese
 const capacity = Number(fs.readFileSync(new URL('../web/js/viewport.js', import.meta.url), 'utf8').match(/const CAPACITY = (\d+);/)?.[1]);
 check(`the viewport holds more boxes (${capacity}) than a layout may (${MAX_BOXES})`, capacity >= MAX_BOXES);
 
+console.log('\nThe precise terrain: unit, plates, channels, area and tiles (no service)');
+{
+  // The demo world from three eyes: the overview, a middle distance and
+  // a street. Everything inside a folder is measured in its unit.
+  const { unitOf, MARGIN, WORLD } = await import(new URL('../web/js/layout.js', import.meta.url));
+  const { kids: kidsOf, freshness } = await import(new URL('../web/js/model.js', import.meta.url));
+  const { createDemoService } = await import(new URL('../web/js/demo-service.js', import.meta.url));
+  const DNOW = Date.UTC(2026, 10, 14, 20);
+  const dsvc = createDemoService({ now: DNOW });
+  const dm = new Model(dsvc.world.root.name);
+  dm.now = DNOW;
+  const dIds = [];
+  for (const batch of (await dsvc.handle('GET', 'scan', { path: '' })).batches) dm.ingest(batch, dIds, dm.root);
+  const demoEyes = [['overview', { x: 0, y: 900, z: 1200 }], ['middle', { x: 300, y: 500, z: 500 }], ['street', { x: 100, y: 150, z: -100 }]];
+  const probs = { unit: [], plate: [], channel: [], margin: [], area: [], tall: [] };
+  const counts = { boxes: 0, plates: 0, pairs: 0, guarded: 0, margins: 0, folders: 0, ratio: 0 };
+  const note = (k, why) => { if (probs[k].length < 5) probs[k].push(why); };
+  for (const [label, cam] of demoEyes) {
+    const L = buildLayout(dm.root, { cam, grain: 0.006, now: DNOW });
+    const g = L.geo;
+    counts.boxes += L.n;
+    // The plateau a box stands on: its folder's for a scree, its parent's otherwise.
+    const plateauOf = (i) => (i === 0 ? -1 : L.index.get(L.type[i] === BOX.SCREE ? L.node[i] : L.node[i].p) ?? -1);
+    const unitAt = (pi) => unitOf(g[pi * 6 + 3], g[pi * 6 + 5]);
+    if (!(L.unit instanceof Float64Array) || L.unit.length !== L.n) note('unit', `${label}: layout.unit is not a Float64Array of n`);
+    if (!Object.is(L.unit[0], unitOf(WORLD, WORLD))) note('unit', `${label}: the root's unit is ${L.unit[0]}`);
+    const children = new Map();
+    for (let i = 1; i < L.n; i++) {
+      const pi = plateauOf(i);
+      if (pi < 0 || L.type[pi] !== BOX.DIR) { note('unit', `${label}: ${L.node[i].n} stands on no plateau`); continue; }
+      if (!Object.is(L.unit[i], unitAt(pi))) note('unit', `${label}: ${L.node[i].n} has unit ${L.unit[i]}, its plateau ${unitAt(pi)}`);
+      if (!children.has(pi)) children.set(pi, []);
+      children.get(pi).push(i);
+      if (L.type[i] === BOX.FILE && g[i * 6 + 4] > Math.min(g[i * 6 + 3], g[i * 6 + 5])) note('tall', `${label}: ${L.node[i].n} is ${g[i * 6 + 4]} tall on a ${Math.min(g[i * 6 + 3], g[i * 6 + 5])} side`);
+    }
+    // Plates: half the unit they stand in, at most a tenth of their side.
+    const sibs = new Map();
+    for (let i = 0; i < L.n; i++) {
+      if (L.type[i] !== BOX.DIR) continue;
+      counts.plates++;
+      const side = Math.min(g[i * 6 + 3], g[i * 6 + 5]);
+      const want = i === 0 ? 0.5 * unitOf(WORLD, WORLD) : Math.min(0.5 * L.unit[i], 0.1 * side);
+      if (Math.abs(g[i * 6 + 4] - want) > 1e-12 * want) note('plate', `${label}: ${L.node[i].n} is ${g[i * 6 + 4]} thick, want ${want}`);
+      if (i > 0 && side >= 5 * L.unit[i]) {
+        const pi = plateauOf(i);
+        if (!sibs.has(pi)) sibs.set(pi, new Set());
+        sibs.get(pi).add(g[i * 6 + 4]);
+      }
+    }
+    for (const [pi, set] of sibs) if (set.size > 1) note('plate', `${label}: the open plateaus in ${L.node[pi].n} are ${[...set].join(', ')} thick`);
+    // Channels and margins, folder by folder.
+    for (const [pi, list] of children) {
+      const dir = L.node[pi];
+      const po = pi * 6;
+      const S = Math.min(g[po + 3], g[po + 5]);
+      const fileCh = S * Math.min(0.012, 0.1 / Math.sqrt(Math.max(kidsOf(dir), 1)));
+      const pad = S * MARGIN - fileCh / 2;
+      const px0 = g[po] - g[po + 3] / 2, px1 = g[po] + g[po + 3] / 2, pz0 = g[po + 2] - g[po + 5] / 2, pz1 = g[po + 2] + g[po + 5] / 2;
+      const R = list.map((i) => {
+        const o = i * 6;
+        const c = L.type[i] === BOX.DIR || L.type[i] === BOX.CAP ? fileCh * 3 : fileCh;
+        const m = Math.min(g[o + 3], g[o + 5]);
+        return { i, c, guard: c > m, x0: g[o] - g[o + 3] / 2, x1: g[o] + g[o + 3] / 2, z0: g[o + 2] - g[o + 5] / 2, z1: g[o + 2] + g[o + 5] / 2 };
+      });
+      const tol = 1e-9 * S;
+      for (const a of R) {
+        if (a.guard) { counts.guarded++; continue; }
+        for (const [d, want] of [[a.x0 - px0, pad + a.c / 2], [px1 - a.x1, pad + a.c / 2], [a.z0 - pz0, pad + a.c / 2], [pz1 - a.z1, pad + a.c / 2]]) {
+          if (d > pad + a.c / 2 + fileCh * 0.5) continue;
+          counts.margins++;
+          if (Math.abs(d - want) > tol) note('margin', `${label}: ${L.node[a.i].n} stands ${d / S} S from ${dir.n}'s edge, want ${want / S}`);
+        }
+      }
+      // Each child's slot: the child grown by its half channel, or by half
+      // its short side where the quarter guard binds. The slots must tile
+      // the plateau inside its pad, so every channel between two facing
+      // children is the sum of their half channels and nothing else.
+      for (const r of R) {
+        const h = r.guard ? Math.min(r.x1 - r.x0, r.z1 - r.z0) / 2 : r.c / 2;
+        Object.assign(r, { sx0: r.x0 - h, sx1: r.x1 + h, sz0: r.z0 - h, sz1: r.z1 + h });
+      }
+      const inner = (px1 - px0 - 2 * pad) * (pz1 - pz0 - 2 * pad);
+      const covered = R.reduce((sum, r) => sum + (r.sx1 - r.sx0) * (r.sz1 - r.sz0), 0);
+      if (Math.abs(covered - inner) > 1e-9 * inner) note('channel', `${label}: the slots in ${dir.n} cover ${covered / inner} of the plateau inside its pad`);
+      if (R.length > 600) continue;
+      for (const a of R) {
+        for (const b of R) {
+          if (a === b) continue;
+          const ox = Math.min(a.sx1, b.sx1) - Math.max(a.sx0, b.sx0);
+          const oz = Math.min(a.sz1, b.sz1) - Math.max(a.sz0, b.sz0);
+          if (ox > tol && oz > tol) note('channel', `${label}: the slots of ${L.node[a.i].n} and ${L.node[b.i].n} in ${dir.n} overlap`);
+          // Facing: b's slot begins where a's ends, along x or along z.
+          for (const [gap, edge, over] of [[b.x0 - a.x1, b.sx0 - a.sx1, oz], [b.z0 - a.z1, b.sz0 - a.sz1, ox]]) {
+            if (Math.abs(edge) > tol || over <= tol) continue;
+            if (a.guard || b.guard) continue;
+            counts.pairs++;
+            if (Math.abs(gap - (a.c + b.c) / 2) > tol) note('channel', `${label}: ${L.node[a.i].n} to ${L.node[b.i].n} in ${dir.n} is ${gap / S} S, want ${(a.c + b.c) / 2 / S}`);
+          }
+        }
+      }
+      // Area per byte, over the blocks at least 0.04 S on a side.
+      const eps = (dir.s / kidsOf(dir)) * 0.12 + 1;
+      const per = R.filter((r) => L.type[r.i] !== BOX.SCREE && Math.min(r.x1 - r.x0, r.z1 - r.z0) >= 0.04 * S).map((r) => ((r.x1 - r.x0) * (r.z1 - r.z0)) / (L.node[r.i].s + eps));
+      if (per.length >= 2) {
+        counts.folders++;
+        const ratio = Math.max(...per) / Math.min(...per);
+        counts.ratio = Math.max(counts.ratio, ratio);
+        if (ratio > 1.2) note('area', `${label}: area per byte in ${dir.n} varies ${ratio.toFixed(3)} times`);
+      }
+    }
+  }
+  check(`layout.unit is a Float64Array of n; the root's is unitOf(WORLD) and every other box's is its plateau's unit (${counts.boxes} boxes from three eyes)`, probs.unit.length === 0, probs.unit.join(' | '));
+  check(`every open plateau is min(half its unit, a tenth of its side) thick, the root half its own, and open siblings at least five units wide share one thickness (${counts.plates} plateaus)`, probs.plate.length === 0, probs.plate.join(' | '));
+  check(`every channel between facing children is the sum of their half channels within 1e-9 S (${counts.pairs} pairs; ${counts.guarded} blocks where the quarter guard binds set aside)`, counts.pairs > 100 && probs.channel.length === 0, probs.channel.join(' | '));
+  check(`a child at the margin line stands at the margin for its type: a file 0.04 S, a folder 0.04 S and its wider half channel (${counts.margins} edges)`, counts.margins > 50 && probs.margin.length === 0, probs.margin.join(' | '));
+  check(`area per byte within a folder varies at most 1.2 times for blocks at least 0.04 S on a side (${counts.folders} folders, worst ${counts.ratio.toFixed(3)})`, counts.folders > 10 && probs.area.length === 0, probs.area.join(' | '));
+  check('no file is taller than its short side', probs.tall.length === 0, probs.tall.join(' | '));
+  // Equal files over ten years of ages, in one of 25 equal folders, so the
+  // folder is under 200 wide, its tiles a couple of units wide, and the
+  // soft cap binds: height never falls as freshness rises.
+  const em2 = new Model('tiles');
+  const tiles = [];
+  for (let k = 0; k < 144; k++) tiles.push(`t${k}.dat`, 4096, DNOW - Math.round(Math.expm1((k / 143) * Math.log1p(3650)) * 86400000), 0);
+  const tileRecs = [[0, -1, 'tiles', DNOW, 0, []], [1, 0, 'equal', DNOW, 0, tiles]];
+  for (let k = 0; k < 24; k++) tileRecs.push([2 + k, 0, `beside-${k}`, DNOW, 0, ['one.dat', 4096 * 144, DNOW, 0]]);
+  em2.ingest(tileRecs, [], em2.root);
+  const TL = buildLayout(em2.root, { cam: { x: 0, y: 900, z: 1200 }, grain: 0.0005, now: DNOW, force: new Set([em2.root.c.find((c) => c.n === 'equal')]) });
+  const tileBoxes = [];
+  for (let i = 0; i < TL.n; i++) if (TL.type[i] === BOX.FILE && TL.node[i].p.n === 'equal') tileBoxes.push({ f: freshness(TL.node[i].m, DNOW), h: TL.geo[i * 6 + 4], side: Math.min(TL.geo[i * 6 + 3], TL.geo[i * 6 + 5]), u: TL.unit[i] });
+  const bySide = new Map();
+  for (const b of tileBoxes) {
+    const k = b.side.toPrecision(9);
+    if (!bySide.has(k)) bySide.set(k, []);
+    bySide.get(k).push(b);
+  }
+  let falls = 0;
+  let softened = 0;
+  for (const list of bySide.values()) {
+    list.sort((a, b) => a.f - b.f);
+    for (let k = 1; k < list.length; k++) if (list[k].h < list[k - 1].h - 1e-12 * list[k - 1].h) falls++;
+    for (const b of list) if (b.h < b.u * (0.35 + 3.4 * b.f * b.f) - 1e-9) softened++;
+  }
+  const widest = Math.max(...[...bySide.values()].map((l) => l.length));
+  check(`in a folder of 144 equal files aged over ten years, height never falls as freshness rises (${tileBoxes.length} tiles in ${bySide.size} widths, up to ${widest} alike; ${softened} under the soft cap) and none is taller than wide`,
+    tileBoxes.length === 144 && widest >= 10 && falls === 0 && softened > 20 && tileBoxes.every((b) => b.h <= b.side), `${falls} falls, ${softened} softened, ${widest} alike`);
+}
+
 console.log('\nRelation lines (no service)');
 const THREE = await import(new URL('../web/vendor/three/three.module.js', import.meta.url));
 const { relationVertices } = await import(new URL('../web/js/viewport.js', import.meta.url));
@@ -2051,8 +2219,6 @@ for (const [label, cam, grain, force] of timeEyes) {
     timeCounts.boxes += L.n;
     const bad = (why) => { if (timeProblems.length < 6) timeProblems.push(`${label} step ${k}: ${why}`); };
     if (L.n !== present.n || L.key.some((x, i) => x !== present.key[i])) { bad('box count or key order'); continue; }
-    const riser = new Map();
-    for (let i = 0; i < L.n; i++) if (L.type[i] === BOX.DIR) riser.set(L.node[i], L.geo[i * 6 + 4]);
     for (let i = 0; i < L.n; i++) {
       const o = i * 6;
       const node = L.node[i];
@@ -2061,7 +2227,9 @@ for (const [label, cam, grain, force] of timeEyes) {
       if ([0, 2, 3, 5].some((q) => !Object.is(L.geo[o + q], present.geo[o + q]))) bad(`footprint of ${node.n}`);
       if (h > prev.geo[o + 4]) bad(`${node.n} rose`);
       if (Math.abs(L.geo[o + 1] - h / 2 - (present.geo[o + 1] - present.geo[o + 4] / 2)) > 1e-9 * Math.max(1, Math.abs(present.geo[o + 1]))) bad(`${node.n} left its plateau`);
-      const slab = Math.min(riser.get(node.p) * 0.08, side * 0.05);
+      // A plate is half its parent's unit, so the slab is measured against
+      // the unit of the folder the box stands in, not its plateau's height.
+      const slab = Math.min(L.unit[i] * 0.08, side * 0.05);
       const ax = L.aux[i];
       if (ax === AUX.CROSSED) timeCounts.crossed++;
       if (ax === AUX.SUNK) timeCounts.sunk++;

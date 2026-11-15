@@ -1,10 +1,10 @@
 <!--
 ✒ Metadata
-    - Title: Shipped File Changelogs (Terrane Edition - v1.16)
+    - Title: Shipped File Changelogs (Terrane Edition - v1.17)
     - File Name: CHANGELOG.md
     - Relative Path: CHANGELOG.md
     - Artifact Type: docs
-    - Version: 1.16.0
+    - Version: 1.17.0
     - Date: 11/14/2026
     - Update: Saturday, November 14, 2026
     - Author: Dennis 'dendogg' Smaltz
@@ -12,6 +12,9 @@
     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
 
 ✒ Changelog:
+    - 1.17.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — Records the second part of the
+      precise terrain: layout.js 1.6.0, whose 1.3.0 entry leaves its header; this file already
+      holds it.
     - 1.16.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — Records the first part of the
       precise terrain: viewport.js 1.11.0, app.js 1.18.0, model.js 1.7.0 and tokens.css 1.5.0,
       whose 1.8.0, 1.15.0, 1.4.0 and 1.2.0 entries leave their headers; this file holds them.
@@ -704,6 +707,41 @@ short form is kept too.
 - 1.0.0 (11/09/2026) [dendogg + Anthropic - Claude Fable 5.2] — Initial release.
 
 ## web/js/layout.js
+
+- 1.6.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — Everything in a folder is measured
+  in its unit (unitOf, layout.unit): plateaus are plates half a unit thick, files stand one even
+  channel apart and folders three, a margin of 0.04 S, footprints compensated to stay size, and
+  tiles never taller than they are wide. In full: the second part of the precise terrain, the
+  layout side of the art direction in docs/ART-DIRECTION.md (points 4, 5 and 6). A folder's unit
+  is unitOf(w, d) = min(0.045 × its short side S, 9), the old riser formula, so every height
+  measured in it keeps its value: RISER_RATIO and RISER_MAX become UNIT_RATIO and UNIT_MAX
+  (exported, with unitOf and MARGIN), and SLAB_RISER becomes SLAB_UNIT (0.08). place() takes
+  the plateau's thickness and the unit it stands in: a plateau is min(0.5 × the parent's unit,
+  0.1 × its own short side) thick (PLATE, PLATE_SIDE), the root half its own unit (4.5, was 9),
+  an open archive's floor 0.02 of its file's short side (FLOOR_PLATE), like its walls; every
+  plateau wider than 200 is now 4.5 thick and sibling plateaus share one thickness, where the
+  riser had been 4.5 % of each plateau's own side and varied up to 6.3 times between siblings.
+  Spacing: the file channel is S × min(0.012, 0.1 / sqrt(kids(dir))), a folder among the
+  children (open, closed, empty or sealed) takes three times it, and each child is inset by
+  half its channel on every side, at most a quarter of its slot's short side, which replaces a
+  gap of 6 % of the block's own short side that made big blocks stand in wide streets and small
+  ones nearly touch; the pad is 0.04 S less half a file channel, so a file stands 0.04 S from
+  the edge and a folder about 0.052 S. Before squarify each weight w (bytes + eps) becomes
+  (c + r sqrt(w))^2, c its channel, r solved so the weights fill the inner area (kept raw when
+  r is not positive), rewritten in place; area per byte within a folder on the demo world is
+  1.014 at the median and 1.136 at worst (1.058 and 1.113 before). A file's height is still
+  unit × (0.35 + 3.4 × fresh^2), but its hard cap (1.8 × side + 0.15 × riser) is replaced by a
+  soft one: above 0.6 of capH = 0.9 × side + min(0.15 × unit, 0.1 × side) it eases toward capH,
+  so height rises with freshness and no tile is taller than it is wide (12 of 74 files at the
+  projects pose were). Closed masses, empty and sealed folders, the scree and crossed slabs keep
+  their numbers, measured in the unit. layout.unit (Float64Array, push's new trailing argument)
+  gives each box the unit of the folder it stands in: the root its own, a scree its folder's,
+  an archive's walls and floor the folder that holds the file. Every folder's arrangement moves
+  once, since the compensated weights make squarify choose other rows (in the demo world
+  Projects and Music trade places at the overview), and folders open at somewhat different
+  distances; layout costs 8 to 13 % more per box. tools/smoke-test.mjs checks the unit, the
+  plates, the channels, the margins, area per byte and the tiles on the demo world from three
+  eyes.
 
 - 1.5.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — Region mode: a folder's count is
   kids(dir), so one held in part puts its tail's entries and bytes in its scree; a folder whose

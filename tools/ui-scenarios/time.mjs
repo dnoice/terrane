@@ -1,18 +1,24 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Time Scenario (Terrane Edition - v1.1)
+ *     - Title: Time Scenario (Terrane Edition - v1.2)
  *     - File Name: time.mjs
  *     - Relative Path: tools/ui-scenarios/time.mjs
  *     - Artifact Type: test
- *     - Version: 1.1.0
- *     - Date: 11/13/2026
- *     - Update: Friday, November 13, 2026
+ *     - Version: 1.2.0
+ *     - Date: 11/14/2026
+ *     - Update: Saturday, November 14, 2026
  *     - Author: Dennis 'dendogg' Smaltz
  *     - A.I. Acknowledgement: Anthropic - Claude Opus 5.5
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
  *
  * ✒ Changelog:
+ *     - 1.2.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — Twelve
+ *       levels down, the slab is measured against lay.unit[i], the unit of
+ *       the folder it stands in, and the check names the slab-to-unit
+ *       ratio: a plate is now half its parent's unit, so a plateau's height
+ *       is no longer the measure (a deliberate change of what the check
+ *       asserts). The root's ratio is 0.08.
  *     - 1.1.0 (11/13/2026) [dendogg + Anthropic - Claude Opus 5.5] — A crossed
  *       file's colour is its kind's in its extension's tone
  *       (api.kindTone), washed once.
@@ -45,7 +51,7 @@
  *       say "changed", never "created" or "arrived"
  *     - Inspector: Since MM/DD/YYYY with the table's figures and up to
  *       eight Where the change is rows that reveal, also without WebGL
- *     - Twelve levels down: the slab-to-riser ratio equals the root's, and
+ *     - Twelve levels down: the slab-to-unit ratio equals the root's, and
  *       a re-based origin moves no pixel of the cross
  *
  * ✒ Usage Instructions:
@@ -501,12 +507,13 @@ export default {
             const f = lay.node[i];
             const dd = depth(f);
             if (dd < minDepth || dd > maxDepth) continue;
-            const pi = lay.index.get(f.p);
-            if (pi === undefined) continue;
-            const riser = lay.geo[pi * 6 + 4];
+            if (lay.index.get(f.p) === undefined) continue;
+            // The slab is measured against the unit of the folder it stands
+            // in: a plate is half that unit, so no longer the measure.
+            const unit = lay.unit[i];
             const side = Math.min(lay.geo[i * 6 + 3], lay.geo[i * 6 + 5]);
-            // Where the riser term binds, the slab is a fixed share of it.
-            if (side * 0.05 >= riser * 0.08) out.push({ n: f.n, depth: dd, r: lay.geo[i * 6 + 4] / riser });
+            // Where the unit term binds, the slab is a fixed share of it.
+            if (side * 0.05 >= unit * 0.08) out.push({ n: f.n, depth: dd, r: lay.geo[i * 6 + 4] / unit });
           }
           return out;
         };
@@ -525,7 +532,7 @@ export default {
       const rootR = deep.top[0]?.r;
       const worst = deep.low.reduce((m, x) => Math.max(m, Math.abs(x.r - rootR)), 0);
       t.check(`twelve levels down, ${deep.primary} (depth ${deep.depth}) is a crossed slab`, deep.depth >= 13 && deep.aux === 2, JSON.stringify(deep).slice(0, 300));
-      t.check(`its slab-to-riser ratio equals the root level's within 1e-9 (${deep.low.length} deep and ${deep.top.length} root-level slabs; root ${rootR}, worst difference ${worst.toExponential(1)})`,
+      t.check(`its slab-to-unit ratio equals the root level's within 1e-9 (${deep.low.length} deep and ${deep.top.length} root-level slabs; root ${rootR}, worst difference ${worst.toExponential(1)})`,
         deep.top.length > 0 && deep.low.length > 0 && worst <= 1e-9, JSON.stringify({ top: deep.top.slice(0, 3), low: deep.low.slice(0, 3) }));
 
       if (t.gl) {
