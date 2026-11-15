@@ -1,10 +1,10 @@
 <!--
 ✒ Metadata
-    - Title: Terrane Roadmap (Terrane Edition - v1.14)
+    - Title: Terrane Roadmap (Terrane Edition - v1.15)
     - File Name: ROADMAP.md
     - Relative Path: docs/ROADMAP.md
     - Artifact Type: docs
-    - Version: 1.14.0
+    - Version: 1.15.0
     - Date: 11/14/2026
     - Update: Saturday, November 14, 2026
     - Author: Dennis 'dendogg' Smaltz
@@ -12,6 +12,10 @@
     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
 
 ✒ Changelog:
+    - 1.15.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] —
+      The precise terrain's first part is on `main`, from the art
+      direction in docs/ART-DIRECTION.md; Next is its second part, then
+      the seven other tabs.
     - 1.14.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] —
       Preview is on `main`: `main`'s Blender fix and `--flavor` were
       merged into its branch and checked again, and the branch merged.
@@ -191,8 +195,17 @@ As of 11/14/2026:
   from its thumbnail, sound and film in byte ranges, a zip's listing, a
   link's target, a folder's summary and several selected with their
   total, each case with nothing to show saying why.
-- **Next:** the seven other tabs, built and merged one at a time: Cleanup, Shelf, Compare,
-  Activity, Notes and tags, Watch and Connections. The open ground
+- **Complete, on `main`:** the precise terrain, part one, from the art
+  direction in `docs/ART-DIRECTION.md`: machined edges (a narrow bevel
+  with a gentle lean), a satin finish with flat lids, the kinds in
+  mineral tones, extensions half a step apart within their kind, a
+  closed mass's strata from its own body colour, and pins lit with the
+  boxes. Merged in the commit titled "Merge precision-terrain: the precise terrain, part one".
+- **Next:** the precise terrain, part two: the spacing, the
+  foundations, the proportions, the names and the far view of
+  `docs/ART-DIRECTION.md`. Then the seven other tabs, built and merged
+  one at a time: Cleanup, Shelf, Compare, Activity, Notes and tags,
+  Watch and Connections. The open ground
   beyond them is what Stage 4 still lacks (section 4), the rest of
   Stage 6, and the Stage 5 deferrals in section 4.
 
