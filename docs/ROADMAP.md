@@ -1,10 +1,10 @@
 <!--
 ✒ Metadata
-    - Title: Terrane Roadmap (Terrane Edition - v1.23)
+    - Title: Terrane Roadmap (Terrane Edition - v1.24)
     - File Name: ROADMAP.md
     - Relative Path: docs/ROADMAP.md
     - Artifact Type: docs
-    - Version: 1.23.0
+    - Version: 1.24.0
     - Date: 11/15/2026
     - Update: Sunday, November 15, 2026
     - Author: Dennis 'dendogg' Smaltz
@@ -12,6 +12,11 @@
     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
 
 ✒ Changelog:
+    - 1.24.0 (11/15/2026) [dendogg + Anthropic - Claude Opus 5.5] —
+      Compare is on `main`, after a look in the demo world that kept a
+      row's figures whole, gave Only in heads their side's mark and a
+      key's words one line; `main` had not moved. Next is the four
+      other tabs, then the precise terrain's third part.
     - 1.23.0 (11/15/2026) [dendogg + Anthropic - Claude Opus 5.5] —
       Compare, the fourth of the right panel's tabs beside the
       Inspector and the third on its strip, is recorded as complete on
@@ -275,7 +280,7 @@ As of 11/15/2026:
   writes one Undo. An item no longer there is marked and offered for
   removal, never dropped. Merged in the commit titled "Merge
   tab-shelf: the Shelf".
-- **Complete, on branch `tab-compare`, waiting to be merged:** Compare,
+- **Complete, on `main`:** Compare,
   the fourth of the tabs beside the Inspector, which stands between
   Preview and Cleanup on the strip: two folders, or a folder and its
   benchmark, side by side, chosen by C and a click on the other, the
@@ -283,11 +288,11 @@ As of 11/15/2026:
   benchmark or the palette. It shows their sizes and counts, their
   makeup by kind and by last change as bars on one scale, and what is
   only in one, in both but changed and the same, each ranked by size
-  and each row a way into the world. It never writes.
-- **Next:** the merge of `tab-compare` into `main`; then the four
-  other tabs, built and merged one at a time: Activity, Notes and
-  tags, Watch and Connections. Then the
-  precise terrain, part three, for what the second part left partly
+  and each row a way into the world. It never writes. Merged in the
+  commit titled "Merge tab-compare: Compare".
+- **Next:** the four other tabs, built and merged one at a time:
+  Activity, Notes and tags, Watch and Connections. Then the precise
+  terrain, part three, for what the second part left partly
   met or unmeasured: names at the overview in smaller windows (at
   1280 × 800 the top-level folders print none); a flight begun close
   by that comes to rest higher than it aimed, so where you are lands
@@ -537,13 +542,12 @@ Waves 1 and 2 (section 5), and Wave 3 delivered three of the deferrals:
 | Vertical organisation | 2, 3 (Untouched) | Strata, without using the space above: the inspector's Bytes by last change in six strata, and closed masses coloured by their typical age under the Age lens. Contents sorted Untouched, longest untouched first by typical age | Staffs above the plateaus; leaders to the largest descendants |
 | Landmarks and memory | 1, 3 (places files) | Benchmarks: B measures a folder, a verdigris survey mark and its tag stand on it, and the Places tab says what changed since, including what left it. One return point: H marks where you stand, J flies back and swaps the two. Export and import of places as a file, saved searches with them | A trail of where you have been, under a name and a drawing convention other than the traverse's; coverage; search over benchmarks beyond `is:benchmark` |
 
-Done on 11/15/2026, on branch `tab-compare`, waiting to be merged
-(Compare): two folders, or a folder and its benchmark, compared in the
-right panel, which serves two candidates at once. For Landmarks it
-sets a folder beside its benchmark in the Places tab's words; for
-Relations across the tree its empty state lists the folders of the
-same name elsewhere, a first step toward same-name siblings, which
-stay deferred in the world itself.
+Done on 11/15/2026 (Compare): two folders, or a folder and its
+benchmark, compared in the right panel, which serves two candidates at
+once. For Landmarks it sets a folder beside its benchmark in the Places
+tab's words; for Relations across the tree its empty state lists the
+folders of the same name elsewhere, a first step toward same-name
+siblings, which stay deferred in the world itself.
 
 What each answers that the ledger alone cannot:
 
@@ -1784,7 +1788,7 @@ into the branch first. On the merged branch, `npm test`: 1,358
 passed, 0 failed, over sixteen suites. The branch is merged into
 `main` in the commit titled "Merge tab-shelf: the Shelf".
 
-### Complete on branch `tab-compare`: Compare
+### Complete: Compare
 
 Compare is the fourth of the tabs planned beside the Inspector, after
 Preview, Cleanup and the Shelf, and stands third on the strip, between
@@ -2002,7 +2006,33 @@ GPU and the default fixture of 3,126 files:
   45 in each pass, `polish` 697 and 695, `seams` 81 and 74, `preview`
   64 in each.
 
-The branch waits to be merged into `main`.
+Before the merge, a look at the tab in the demo world, screenshots at
+1600 × 1000, 1280 × 800 and 800 × 500 of the menu, the empty state
+with its Same name elsewhere, the choice by C, the photo event against
+the old laptop's copy, the two `node_modules` and a row's Enter, and
+the palette, found three things to set right, in the commit titled
+"Compare's row lines keep a figure with its unit, Only in heads show
+their side's mark, and a key's words keep one line". In a narrow panel
+a changed row's line broke a figure from its unit ("786" over "KB"),
+so each run between its separators now moves to the next line whole.
+An Only in head spent its one line on a path and ended in an ellipsis
+("Only in ○ tidep…"), so it shows its side's mark, as the table and
+the bars do, with the folder's name read to a screen reader and shown
+on hover; letting heads wrap was tried and dropped, since the `polish`
+check holds every disclosure's head to one line. And a key's words
+wrapped beside its wide figure columns ("Over three" over "years"), so
+a key's figure columns are narrower than the table's. In both, changed
+still ends in an ellipsis at 1280 × 800, as any head too long for its
+line does. The scenarios they touch, `compare`, `compare-modes`,
+`compare-regions`, `polish`, `demo`, `demo-regions`, `hardening` and
+`hardening-disk`, both passes: "1706 passed, 0 failed, 2 skipped"
+(`compare` 45 in each pass, `polish` 697 with WebGL and 695 without;
+the skips are Compare in snapshot mode).
+
+`main` had not moved since the branch was made, so nothing was merged
+into the branch first. On the merged branch, `npm test`: 1,433 passed,
+0 failed, over seventeen suites. The branch is merged into `main` in
+the commit titled "Merge tab-compare: Compare".
 
 ## 6. Development datasets
 
