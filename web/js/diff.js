@@ -16,7 +16,8 @@
  *     - 1.0.0 (11/15/2026) [dendogg + Anthropic - Claude Opus 5.5] —
  *       Initial release: two folders' direct entries matched by name, what
  *       is only in one, in both but changed, and the same, ranked by size;
- *       the labels, the sentence and the row lines Compare speaks.
+ *       the labels, the sentence and the row lines Compare speaks, and
+ *       what Select all on a group takes and says.
  *
  * ✒ Description:
  *     The logic of the right panel's Compare tab, without the DOM, so the
@@ -43,6 +44,9 @@
  *       partialText
  *     - Sentences say "changed", never "created" or "added", and dates
  *       read MM/DD/YYYY
+ *     - Select all on a group (groupPaths, selectLabel, selectedText):
+ *       Findings' 5,000 (1,000 in region mode), largest first, a row's
+ *       copies together, "both copies" only for a pair of folders
  *
  * ✒ Usage Instructions:
  *     import { sideOfFolder, diff, labels, sentence } from './diff.js';
@@ -394,3 +398,56 @@ export function partialText(bench) {
   return `The benchmark kept the ${fmtCount(bench.kept)} largest of its ${fmtCount(all)} entries by name; the other ${fmtCount(r.n)} (${fmtBytes(r.s)}) were summed, so an entry not among them then is listed as here now, not among the ${fmtCount(bench.kept)} largest then.`;
 }
 
+
+/** The most items Select all on a group takes, as Findings' Select all does: 5,000, and 1,000 in region mode. */
+export const SELECT_CAP = 5000;
+export const SELECT_CAP_REGIONS = 1000;
+
+/** Whether Select all on group id takes both copies of each row: In both, not against a benchmark. */
+const bothCopies = (id, bench) => !bench && (id === 'changed' || id === 'same');
+
+/**
+ * The paths Select all on a group takes: rows in their order (largest
+ * first), a row's copies together or not at all, at most cap paths.
+ * pathOf(row, i) is side i's path for the row, or null (a benchmark side
+ * has none). sides is [i] for an Only-in group, [0, 1] for one in both.
+ * Returns { paths, total }, total the paths the whole group holds.
+ */
+export function groupPaths(rows, sides, pathOf, cap = SELECT_CAP) {
+  const paths = [];
+  let total = 0;
+  let full = false;
+  for (const r of rows) {
+    const ps = sides.map((i) => pathOf(r, i)).filter(Boolean);
+    total += ps.length;
+    if (full || paths.length + ps.length > cap) {
+      full = true;
+      continue;
+    }
+    paths.push(...ps);
+  }
+  return { paths, total };
+}
+
+/** Select all's button words for a group of n rows: "(both copies)" only for a pair of folders, "the largest" above the cap. */
+export function selectLabel(id, n, { bench = false, cap = SELECT_CAP } = {}) {
+  const two = bothCopies(id, bench);
+  const most = two ? Math.floor(cap / 2) : cap;
+  const head = n > most ? `Select the largest ${fmtCount(most)}` : `Select all ${fmtCount(n)}`;
+  return two ? `${head} (both copies)` : head;
+}
+
+/**
+ * What Select all says once it has selected: how many, of how many when
+ * the cap stopped it, where they are, and what acts on them. got is the
+ * items selected, taken the paths asked for, total the group's paths.
+ */
+export function selectedText({ id, i = 0, lab, bench = false, got, taken = got, total = taken, cap = SELECT_CAP, regions = false, writable = true }) {
+  const where = id === 'changed' ? (bench ? 'changed since the benchmark' : 'in both and changed, both copies')
+    : id === 'same' ? (bench ? 'the same as at the benchmark' : 'in both and the same, both copies')
+      : bench ? 'here now, not then' : `only in ${lab[i]}`;
+  const head = taken < total
+    ? `Selected the largest ${fmtCount(got)} of ${fmtCount(total)} items ${where}: Select all takes at most ${fmtCount(cap)}${regions ? ' at this size' : ''}.`
+    : `Selected ${plural(got, 'item')} ${where}.`;
+  return `${head} ${writable ? 'Copy to… or Move to… acts on them; ' : ''}K puts them on the shelf.`;
+}

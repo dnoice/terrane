@@ -21,9 +21,9 @@
  *     browser or a service: the four groups and their ranking, the time
  *     tolerance, how folders, kinds, unread entries and links are judged,
  *     case folding by platform, a benchmark pair against places.compare,
- *     the labels and sentences, region mode through columns.js and
- *     regions.js against the whole model, the cost at 2 × 100,000 entries,
- *     and the demo world's two pairs.
+ *     the labels and sentences, Select all's cap and words, region mode
+ *     through columns.js and regions.js against the whole model, the cost
+ *     at 2 × 100,000 entries, and the demo world's two pairs.
  *
  * ✒ Key Features:
  *     - diff basics: only in each, changed, the same, counts and bytes;
@@ -41,6 +41,9 @@
  *       diff equal to the whole model's over the held names, unsent equal
  *       to the tail, and unsentText's words
  *     - 2 × 100,000 entries compared in under 400 ms
+ *     - Select all on a group: at most Findings' 5,000 paths (1,000 in
+ *       region mode), largest first, a row's copies together; its button
+ *       and sentence, "both copies" only for a pair of folders
  *     - The demo world: the two node_modules differ every way; the
  *       laptop's copy of the oldest event holds 24 of its shots, the same
  *
@@ -64,6 +67,7 @@ const { treeFrom, answer } = await import(new URL('../web/js/columns.js', import
 const { createRegions, decode } = await import(new URL('../web/js/regions.js', import.meta.url).href);
 const { createDemoService } = await import(new URL('../web/js/demo-service.js', import.meta.url).href);
 const { sideOfFolder, sideOfBench, diff, labels, sentence, shortSentence, whyText, partsText, unsentText, partialText, TOLERANCE_MS } = D;
+const { groupPaths, selectLabel, selectedText, SELECT_CAP, SELECT_CAP_REGIONS } = D;
 
 let passed = 0;
 let failed = 0;
@@ -332,6 +336,59 @@ section('Performance');
     best = Math.min(best, performance.now() - t0);
   }
   check(`2 × 100,000 entries compared in ${best.toFixed(0)} ms (under 400)`, best < 400 && res.count.names === 120000, JSON.stringify(res.count));
+}
+
+/* ---------- Select all ---------- */
+section("Select all on a group: Findings' cap, copies together, and its words");
+{
+  // 6,000 names in both, each a different size on each side: 6,000 rows In both, changed.
+  const spec = { left: {}, right: {} };
+  for (let k = 0; k < 6000; k++) {
+    spec.left[`f${k}.bin`] = [1000 + k];
+    spec.right[`f${k}.bin`] = [3000 + k];
+  }
+  spec.left['own.txt'] = [5];
+  const m = build(spec);
+  const [a, b] = sides(m, 'left', 'right');
+  const res = diff(a, b);
+  const pathOf = (row, i) => (row.name[i] == null ? null : `${i ? 'right' : 'left'}/${row.name[i]}`);
+  const g = groupPaths(res.changed, [0, 1], pathOf, SELECT_CAP);
+  check(`a pair's changed group of ${res.changed.length} rows takes ${g.paths.length} of ${g.total} paths, at most ${SELECT_CAP}`,
+    res.changed.length === 6000 && g.paths.length === SELECT_CAP && g.total === 12000, JSON.stringify([res.changed.length, g.paths.length, g.total]));
+  check("largest first, each row's two copies together", g.paths[0] === `left/${res.changed[0].name[0]}` && g.paths[1] === `right/${res.changed[0].name[1]}` && res.changed[0].name[0] === 'f5999.bin'
+    && g.paths.at(-1) === `right/${res.changed[2499].name[1]}`, JSON.stringify(g.paths.slice(0, 2)));
+  check("an odd cap never splits a row's copies", groupPaths(res.changed, [0, 1], pathOf, 5001).paths.length === 5000);
+  check(`region mode's cap: ${SELECT_CAP_REGIONS}`, groupPaths(res.changed, [0, 1], pathOf, SELECT_CAP_REGIONS).paths.length === SELECT_CAP_REGIONS);
+  const one = groupPaths(res.only[0], [0], pathOf);
+  check('an Only-in group: one path a row, all of them under the cap', same(one, { paths: ['left/own.txt'], total: 1 }), JSON.stringify(one));
+  const benchOf = (row, i) => (i === 1 ? null : pathOf(row, 0));
+  const bg = groupPaths(res.changed, [0, 1], benchOf, SELECT_CAP);
+  check('against a benchmark only the folder now has paths: one copy a row, the total counting those only', bg.paths.length === SELECT_CAP && bg.total === 6000 && bg.paths.every((p) => p.startsWith('left/')), JSON.stringify([bg.paths.length, bg.total]));
+
+  const labs = [
+    [selectLabel('changed', 40), 'Select all 40 (both copies)'],
+    [selectLabel('same', 6000), 'Select the largest 2,500 (both copies)'],
+    [selectLabel('only-0', 6000), 'Select the largest 5,000'],
+    [selectLabel('only-1', 1200, { cap: SELECT_CAP_REGIONS }), 'Select the largest 1,000'],
+    [selectLabel('changed', 40, { bench: true }), 'Select all 40'],
+    [selectLabel('same', 6000, { bench: true }), 'Select the largest 5,000'],
+  ];
+  check(`the button's words: "(both copies)" for a pair of folders only, "the largest" above the cap (${labs.map(([x]) => x).join(' | ')})`, labs.every(([x, y]) => x === y), JSON.stringify(labs));
+
+  const lab = ['left', 'right'];
+  const said = [
+    [selectedText({ id: 'only-0', i: 0, lab, got: 3 }), 'Selected 3 items only in left. Copy to… or Move to… acts on them; K puts them on the shelf.'],
+    [selectedText({ id: 'only-1', i: 1, lab, got: 1, writable: false }), 'Selected 1 item only in right. K puts them on the shelf.'],
+    [selectedText({ id: 'changed', lab, got: 5000, taken: 5000, total: 12000 }),
+      'Selected the largest 5,000 of 12,000 items in both and changed, both copies: Select all takes at most 5,000. Copy to… or Move to… acts on them; K puts them on the shelf.'],
+    [selectedText({ id: 'same', lab, got: 1000, taken: 1000, total: 1400, cap: SELECT_CAP_REGIONS, regions: true, writable: false }),
+      'Selected the largest 1,000 of 1,400 items in both and the same, both copies: Select all takes at most 1,000 at this size. K puts them on the shelf.'],
+    [selectedText({ id: 'changed', lab: ['left, now', 'left, 11/01/2026 12:00'], bench: true, got: 2 }), 'Selected 2 items changed since the benchmark. Copy to… or Move to… acts on them; K puts them on the shelf.'],
+    [selectedText({ id: 'same', lab: ['left, now', 'left, 11/01/2026 12:00'], bench: true, got: 7 }), 'Selected 7 items the same as at the benchmark. Copy to… or Move to… acts on them; K puts them on the shelf.'],
+    [selectedText({ id: 'only-0', i: 0, lab: ['left, now', 'left, 11/01/2026 12:00'], bench: true, got: 1 }), 'Selected 1 item here now, not then. Copy to… or Move to… acts on them; K puts them on the shelf.'],
+  ];
+  for (const [got, want] of said) check(`said: "${got}"`, got === want, `want "${want}"`);
+  check('a benchmark pair\'s words never say "both copies"', said.slice(4).every(([x]) => !/both copies/.test(x)));
 }
 
 /* ---------- the demo world ---------- */

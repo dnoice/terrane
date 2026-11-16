@@ -34,6 +34,8 @@
  *       Esc cancels and the earlier pair comes back
  *     - The sides marked ● and ○, never letters; names told apart by the
  *       shortest path tails that differ
+ *     - Select all on a group takes at most Findings' 5,000 items (1,000
+ *       in region mode), largest first, and says how many of how many
  *     - The four groups as disclosures, 100 rows at a time; one Tab stop
  *       per list; ↑ ↓ Home End, Enter selects and frames (in both: Enter
  *       again frames the other copy), → compares inside a folder in both,
@@ -63,8 +65,8 @@
  *       (foldFor); app.js's api: S, B_TABS, KEYS, MENU, COMMANDS,
  *       AFTER_SELECT, AFTER_FOCUS, AFTER_REFRESH, AFTER_SURVEY, AFTER_OP,
  *       pick, picking, stopPick, showBTab, bTabShown, resolve, resolveAll,
- *       ensure, nearest, ask, regionMode, reveal, selectAll, relPath,
- *       hostOf, writable, kindTone, listCursor, sectionTitle,
+ *       ensure, nearest, ask, regionMode, reveal, setFocus, selectAll,
+ *       relPath, hostOf, writable, kindTone, listCursor, sectionTitle,
  *       actionButton, notice, say
  *     - Storage: none; the pair lasts as long as the page
  *     - Compatible platforms: any browser with ES2022 modules
@@ -79,7 +81,10 @@ import { fmtBytes, fmtCount, fmtDay, fmtDate, plural, KINDS, kindOf, refFrom } f
 import { cssHex } from './theme.js';
 import { strataOf, typicalAge, STRATA, shareFigure } from './strata.js';
 import { foldFor } from './rename.js';
-import { sideOfFolder, sideOfBench, diff, labels, sentence, shortSentence, whyText, unsentText, partialText, rowName, rowSize, ROWS } from './diff.js';
+import {
+  sideOfFolder, sideOfBench, diff, labels, sentence, shortSentence, whyText, unsentText, partialText, rowName, rowSize, ROWS,
+  groupPaths, selectLabel, selectedText, SELECT_CAP, SELECT_CAP_REGIONS,
+} from './diff.js';
 
 export const name = 'Compare';
 
@@ -104,6 +109,16 @@ const joinRel = (base, n) => (base ? `${base}/${n}` : n);
 /** rel carried from one path to another: itself or inside it, else null. */
 const carried = (rel, from, to) => (rel === from ? to : rel.startsWith(`${from}/`) ? `${to}${rel.slice(from.length)}` : null);
 const under = (rel, base) => rel === base || base === '' || rel.startsWith(`${base}/`);
+/**
+ * The folder a side's label sits in: the path above the label's own
+ * tail, so the head reads the name, then where it is, never the name
+ * twice ("2020/2020-04 Night sky" in "Photos"); the root for a top folder.
+ */
+const whereIs = (rel, label) => {
+  if (!rel) return 'the root itself';
+  const above = rel === label ? '' : rel.endsWith(`/${label}`) ? rel.slice(0, -label.length - 1) : parentOf(rel);
+  return above || 'the root';
+};
 const pathPair = (x) => Array.isArray(x) && typeof x[0] === 'string' && x[0] !== '' && typeof x[1] === 'string' && x[1] !== '' && x[0] !== x[1];
 
 export function install(api) {
@@ -142,6 +157,8 @@ export function install(api) {
   let sugCache = new Map();
   let sugSeq = 0;
   let sugRegion = { name: null, list: null };
+  /** The folder whose suggestions the empty tab shows (undefined: none drawn yet). */
+  let sugFor;
   /** The gone words last said, so a redraw does not say them again. */
   let saidGone = '';
 
@@ -196,6 +213,9 @@ export function install(api) {
    * comparison said once it is drawn. note is said before it.
    */
   function setPair(sides, { note = '', keepTrail = false } = {}) {
+    // A pair made while the other folder was being chosen (two compared
+    // from the menu, a drop, the palette, a benchmark) ends the choosing.
+    endPick();
     pair = { sides };
     if (!keepTrail) trail = [];
     result = null;
@@ -210,6 +230,16 @@ export function install(api) {
   }
 
   const folderSide = (n) => ({ type: 'folder', rel: typeof n === 'string' ? n : api.relPath(n) });
+
+  /** Ends Compare's own choosing, if any, without its cancel saying the earlier pair is back. */
+  function endPick() {
+    if (picking && api.picking()) {
+      taking = true;
+      api.stopPick();
+      taking = false;
+    }
+    picking = null;
+  }
 
   /** Shows the tab with focus in it, or draws it again where it is. */
   function reveal() {
@@ -254,11 +284,7 @@ export function install(api) {
       api.say(`Cannot compare "${f?.n ?? 'that'}": ${why}.`);
       return;
     }
-    if (picking && api.picking()) {
-      taking = true;
-      api.stopPick();
-      taking = false;
-    }
+    endPick();
     const rel = api.relPath(f);
     picking = { first: rel, name: f.n };
     justCleared = false;
@@ -595,12 +621,12 @@ export function install(api) {
     const datas = result?.key === pairKey(pair) ? result.datas : null;
     ui.sides.replaceChildren(...pair.sides.map((s, i) => {
       const d = datas?.[i]?.data;
-      const path = s.type === 'bench' ? `measured ${fmtDate(benchOf(s.id)?.m.at ?? s.at)}` : s.rel || 'the root';
+      const path = s.type === 'bench' ? `measured ${fmtDate(benchOf(s.id)?.m.at ?? s.at)}` : whereIs(s.rel, lab[i]);
       const b = el('button', {
         class: 'cmp-side', type: 'button', 'data-side': String(i), 'data-k': `side-${i}`, title: `Select and frame ${s.rel || rootName()}`,
         onclick: () => frameSide(i),
       }, mark(i), el('span', { class: 'sr', text: `${i ? 'Second' : 'First'}, ${MARKS[i]}: ` }),
-      el('span', { class: 'cmp-side-text' }, el('span', { class: 'nm', text: lab[i], title: lab[i] }), el('span', { class: 'path', text: path, title: path })),
+      el('span', { class: 'cmp-side-text' }, el('span', { class: 'nm', text: lab[i], title: lab[i] }), el('span', { class: 'path', text: path, title: s.type === 'bench' ? path : s.rel || rootName() })),
       el('span', { class: 'fig', text: d ? fmtBytes(d.s) : '' }));
       return el('li', {}, b);
     }));
@@ -863,7 +889,7 @@ export function install(api) {
     if (g.id === 'changed') parts.push(note(result.res.bench ? 'Entries whose size or file count changed since the benchmark; its times were not kept.' : 'Files differ in size, or in their last change by more than 2 seconds; folders in size or in how many files or folders they hold. → compares inside a folder.'));
     if (g.id === 'same') parts.push(note(result.res.bench ? 'The same size and file count as when measured.' : 'Files match by name, size and last change within 2 seconds. Folders here match in size and counts; → compares their files.'));
     if (n) {
-      const label = g.id === 'changed' || g.id === 'same' ? `Select all ${fmtCount(n)} (both copies)` : `Select all ${fmtCount(n)}`;
+      const label = selectLabel(g.id, n, { bench: !!result.res.bench, cap: selectCap() });
       const off = result.res.bench && g.i === (pair.sides[0].type === 'bench' ? 0 : 1) ? 'they are no longer here' : null;
       parts.push(el('div', { class: 'cmp-actions' }, keyed(api.actionButton(label, () => selectGroup(g, lab), { icon: 'selectAll', off }), `all-${g.id}`)));
       parts.push(list);
@@ -977,6 +1003,7 @@ export function install(api) {
       }
     }
     ui.sugs.replaceChildren(...sugs);
+    sugFor = picking ? undefined : f ? api.relPath(f) : null;
   }
 
   /** Puts focus where the next draw asked, or back where it was. */
@@ -1114,27 +1141,36 @@ export function install(api) {
     for (const n of nodes) shelf.run({ node: n });
   }
 
+  /** The most items Select all takes now: Findings' limits, lower in region mode. */
+  const selectCap = () => (api.regionMode() ? SELECT_CAP_REGIONS : SELECT_CAP);
+
+  /** Selects a group's items, largest first, up to the cap, and says how many of how many. */
   async function selectGroup(g, lab) {
-    const paths = [];
-    for (const r of g.rows) {
-      if (g.i !== undefined) paths.push(pathOf(r, g.i));
-      else paths.push(pathOf(r, 0), pathOf(r, 1));
-    }
-    const nodes = (await api.resolveAll(paths.filter(Boolean)).catch(() => [])).filter(Boolean);
+    if (!rowsLive()) return;
+    const bench = !!result.res.bench;
+    const regions = api.regionMode();
+    const cap = selectCap();
+    const { paths, total } = groupPaths(g.rows, g.i !== undefined ? [g.i] : [0, 1], pathOf, cap);
+    const nodes = (await api.resolveAll(paths).catch(() => [])).filter(Boolean);
     if (!nodes.length) {
       api.say('None of these is there now.');
       return;
     }
     api.selectAll(nodes, nodes[0]);
-    const where = g.id === 'only-0' || g.id === 'only-1' ? `only in ${lab[g.i]}` : g.id === 'changed' ? 'in both and changed, both copies' : 'in both and the same, both copies';
-    const w = writableNow();
-    api.say(`Selected ${plural(nodes.length, 'item')} ${where}. ${w ? 'Copy to… or Move to… acts on them; ' : ''}K puts them on the shelf.`);
+    api.say(selectedText({ id: g.id, i: g.i, lab, bench, got: nodes.length, taken: paths.length, total, cap, regions, writable: writableNow() }));
   }
+
+  /** The rows on screen belong to the pair compared now (not one a frame from being drawn again). */
+  const rowsLive = () => !!pair && !!result?.res && result.key === pairKey(pair);
 
   function onListKey(e) {
     if (e.ctrlKey || e.metaKey || e.altKey) return;
     const btn = e.target.closest?.('button.cmp-item');
-    if (!btn || btn.classList.contains('cmp-sug')) return;
+    if (!btn || btn.classList.contains('cmp-sug') || !btn.closest('li')?.cmp) return;
+    if (!rowsLive()) {
+      if (['Enter', 'ArrowRight', 'ArrowLeft', 'k', 'K'].includes(e.key)) e.preventDefault();
+      return;
+    }
     const list = btn.closest('.cmp-list');
     const li = btn.closest('li');
     const btns = [...list.querySelectorAll('button.cmp-item')];
@@ -1164,7 +1200,7 @@ export function install(api) {
 
   function onListClick(e) {
     const btn = e.target.closest?.('button.cmp-item');
-    if (!btn || btn.classList.contains('cmp-sug')) return;
+    if (!btn || btn.classList.contains('cmp-sug') || !btn.closest('li')?.cmp || !rowsLive()) return;
     const li = btn.closest('li');
     roving(btn.closest('.cmp-list'), btn);
     frameRow(li.cmp.row, li.cmp.g);
@@ -1172,7 +1208,7 @@ export function install(api) {
 
   function onListDbl(e) {
     const btn = e.target.closest?.('button.cmp-item');
-    if (!btn || btn.classList.contains('cmp-sug')) return;
+    if (!btn || btn.classList.contains('cmp-sug') || !btn.closest('li')?.cmp || !rowsLive()) return;
     const r = btn.closest('li').cmp.row;
     if (r.x[0] && r.x[1] && r.d[0] && r.d[1] && !result.res.bench) drill(r);
   }
@@ -1246,6 +1282,8 @@ export function install(api) {
     // is, and only a change while hidden (queue) makes it out of date.
     seq++;
     if (pair && !(result?.res && result.key === pairKey(pair))) dirty = true;
+    // Clear holds back comparing the two selected only until the tab is left.
+    justCleared = false;
   }
 
   /* ---------- following ---------- */
@@ -1418,13 +1456,35 @@ export function install(api) {
     },
   });
 
-  // Cheap: the start button's words and the offer of the two selected, only while shown.
+  // Cheap: the start button's words, the same-name suggestions (for a new
+  // folder only; the walk is kept per name) and the offer of the two
+  // selected, only while shown.
   const light = () => {
     if (!ui || !api.bTabShown('compare')) return;
-    if (!pair || picking) drawStart();
+    if (!pair && !picking) {
+      // A button redrawn under focus hands it on: the same one if still
+      // offered, else the start button.
+      const a = document.activeElement;
+      const had = ui.sugs.contains(a) || ui.startExtra.contains(a) ? a.dataset.k || null : undefined;
+      const f = candidate();
+      const rel = f ? api.relPath(f) : null;
+      if (rel === sugFor) drawStart();
+      else drawEmpty();
+      if (had !== undefined && !ui.body.contains(document.activeElement)) {
+        const to = (had && ui.empty.querySelector(`[data-k="${CSS.escape(had)}"]`)) || ui.start;
+        if (!to.closest('[hidden]')) to.focus({ preventScroll: true });
+      }
+    } else if (picking) drawStart();
     else drawHead();
   };
-  api.AFTER_SELECT.add({ id: 'compare', owner: OWNER, run: () => light() });
+  api.AFTER_SELECT.add({
+    id: 'compare', owner: OWNER,
+    run: () => {
+      // A new selection after Clear: opening the tab compares two selected folders again.
+      justCleared = false;
+      light();
+    },
+  });
   api.AFTER_FOCUS.add({ id: 'compare', owner: OWNER, run: () => light() });
   api.AFTER_REFRESH.add({
     id: 'compare', owner: OWNER,
@@ -1432,7 +1492,12 @@ export function install(api) {
       opPending = false;
       clearTimeout(opTimer);
       sugCache = new Map();
-      if (!pair) return;
+      if (!pair) {
+        // The empty tab's suggestions may name a folder renamed or removed: drawn again.
+        sugFor = undefined;
+        light();
+        return;
+      }
       if (!dirs) {
         queue();
         return;

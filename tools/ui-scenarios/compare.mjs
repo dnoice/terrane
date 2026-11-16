@@ -33,7 +33,10 @@
  *       Enter on a ledger row; the groups' counts and bytes; ↓ Enter, Enter
  *       again, → and ←, K; Select all; Swap; Clear and Undo; travel and ]
  *       twice; the menu's Compare with…, Compare these two, the choice's
- *       first item, its match; a drag of two rows; Compare with now; the
+ *       first item, its match; Compare these two and a drag of two rows
+ *       while choosing, each ending the choice; Clear, then the tab left
+ *       and opened with two others selected; the suggestions and the
+ *       sides' lines; Compare with now and its Select all; the
  *       rename followed and back on Ctrl+Z; the folder removed and back;
  *       the Guide's rows
  *     - compare-modes (read-only): no change sent from any Compare action,
@@ -76,7 +79,7 @@ const cmp = () => {
     key: P?.dataset.shown ?? null,
     kind: q('.insp-kind')?.textContent ?? null,
     name: q('.insp-name')?.textContent ?? null,
-    sides: [...(P?.querySelectorAll('.cmp-side') || [])].map((b) => ({ nm: b.querySelector('.nm').textContent, path: b.querySelector('.path').textContent, fig: b.querySelector('.fig').textContent })),
+    sides: [...(P?.querySelectorAll('.cmp-side') || [])].map((b) => ({ nm: b.querySelector('.nm').textContent, path: b.querySelector('.path').textContent, full: b.querySelector('.path').title, fig: b.querySelector('.fig').textContent })),
     tools: [...(P?.querySelectorAll('.cmp-tools button') || [])].map((b) => b.textContent.trim()),
     say: vis(q('.cmp-say')) ? q('.cmp-say').textContent : null,
     lead: vis(q('.cmp-lead')) ? q('.cmp-lead').textContent : null,
@@ -312,6 +315,12 @@ const compare = {
     t.check('the empty state says what Compare does, offers to start, and names the other ways; no live region inside the tab',
       e0.lead === "See two folders' size, makeup and age together, and what each holds that the other does not." && /^Compare ".+" with…$/.test(e0.start || '')
       && e0.notes.includes('Right-click a folder for Compare with…, or drag two folders here from the list.') && e0.live === 0, JSON.stringify(e0));
+    await t.app((T, r) => { T.api.select(T.S.model.find(r)); return true; }, `${LAB}/left`);
+    const sg0 = await drawn(t, (s) => s.start === 'Compare "left" with…' && s.sugs.includes('compare-lab/elsewhere/left'), 'the twin of left suggested');
+    await t.app((T, r) => { T.api.select(T.S.model.find(r)); return true; }, `${LAB}/right`);
+    const sg1 = await drawn(t, (s) => s.start === 'Compare "right" with…', 'the start button following the selection');
+    t.check(`the start button and the same-name suggestions follow the selection (left: ${sg0.sugs.join(', ')}; right: ${sg1.sugs.join(', ') || 'none'})`,
+      !sg1.sugs.includes(`${LAB}/elsewhere/left`), JSON.stringify({ left: sg0.sugs, right: sg1.sugs }));
 
     /* ---- choosing, cancelling, choosing again ---- */
     await selectRels(t, [`${LAB}/left`]);
@@ -353,6 +362,9 @@ const compare = {
     const r1 = await drawn(t, (s) => s.groups.length === 4 && s.focus === 'name', 'left and right compared');
     t.check(`Enter on right in the ledger takes it: "${r1.name}", the sides ${r1.sides.map((s) => s.nm).join(' and ')}, focus on the head`,
       r1.name === 'left and right' && same(r1.sides.map((s) => s.nm), ['left', 'right']) && r1.tools.includes('Swap') && r1.tools.includes('Clear'), JSON.stringify(r1));
+    t.check(`each side reads its name, then the folder it is in, the full path on hover (${r1.sides.map((s) => `${s.nm} · ${s.path}`).join('; ')})`,
+      same(r1.sides.map((s) => s.path), [LAB, LAB]) && same(r1.sides.map((s) => s.full), [`${LAB}/left`, `${LAB}/right`]), JSON.stringify(r1.sides));
+    t.check('Select all on In both says both copies for a pair of folders', r1.buttons.some((b) => /^Select all \d+ \(both copies\)$/.test(b)), JSON.stringify(r1.buttons));
     const said1 = await said(t, /^Comparing left with right\. /, 'the comparison said');
     t.check(`the sentence is said and shown (${said1.slice(0, 80)}…)`, said1.endsWith(r1.say) && !/created|added/.test(r1.say), r1.say);
     t.check(`the four groups' counts and bytes equal diff.js over the same folders on disk (${platform}: ${r1.groups.map((g) => `${g.id} ${g.count}`).join(', ')})`,
@@ -419,6 +431,25 @@ const compare = {
     const kept = await drawn(t, (s) => s.groups.length === 4, 'kept after travel');
     t.check('after travel, the Inspector and ] twice, the pair is kept and shown at once', kept.name === 'left and right' && groupsMatch(kept, want), JSON.stringify(kept.name));
 
+    /* ---- Clear, then the tab left and opened with two other folders selected ---- */
+    await t.app((T, rs) => { T.api.selectAll(rs.map((r) => T.S.model.find(r))); return true; }, [`${LAB}/left`, `${LAB}/right`]);
+    await press(t, '#b-panel-compare [data-k=clear]');
+    const cl2 = await drawn(t, (s) => s.name === 'Two folders, side by side', 'cleared with two selected');
+    await t.app((T, rs) => {
+      document.getElementById('b-tab-inspector').click();
+      T.api.select(null);
+      T.api.selectAll(rs.map((r) => T.S.model.find(r)));
+      return true;
+    }, [`${LAB}/left`, `${LAB}/elsewhere/left`]);
+    await showCompare(t);
+    const again = await drawn(t, (s) => s.name === 'Two folders named left' && s.groups.length === 4, 'two others compared on opening the tab again');
+    t.check('after Clear the two selected are not compared on their own, but leaving and opening the tab with two others selected compares them at once',
+      cl2.buttons.includes('Compare the 2 selected folders') && same(again.sides.map((s) => s.full), [`${LAB}/left`, `${LAB}/elsewhere/left`]), JSON.stringify({ cleared: cl2.buttons, again: again.sides }));
+    t.check('two of one name: each side reads the shortest tail that tells them apart, then the folder above it, never the name twice',
+      same(again.sides.map((s) => s.nm), [`${LAB}/left`, 'elsewhere/left']) && same(again.sides.map((s) => s.path), ['the root', LAB]), JSON.stringify(again.sides));
+    await t.app((T, rs) => { T.api.selectAll(rs.map((r) => T.S.model.find(r))); T.api.KEYS.get('compare').run({}); return true; }, [`${LAB}/left`, `${LAB}/right`]);
+    await drawn(t, (s) => s.name === 'left and right' && s.groups.length === 4, 'left and right once more');
+
     /* ---- the world's menu ---- */
     const m1 = await worldMenu(t, `${LAB}/elsewhere/left`);
     const cw = m1.find((m) => m.label === 'Compare with…');
@@ -439,6 +470,19 @@ const compare = {
     await t.waitFor((T) => !T.S.picking, { what: 'choosing ended' });
     await t.app((T) => { T.api.stopPick(); return true; });
 
+    /* ---- two folders compared while choosing: the choice ends ---- */
+    await selectRels(t, [`${LAB}/elsewhere/left`]);
+    await t.key('c');
+    await t.waitFor((T) => !!T.S.picking, { what: 'choosing from elsewhere/left again' });
+    await worldMenu(t, [`${LAB}/left`, `${LAB}/right`], 'Compare these two');
+    const ct = await drawn(t, (s) => s.name === 'left and right' && s.groups.length === 4, 'Compare these two while choosing');
+    const ctPick = await t.app((T) => ({ picking: !!T.S.picking, banner: !document.getElementById('placing').hidden }));
+    t.check('while choosing, Compare these two on the menu ends the choice: the banner goes and the new pair is drawn at once',
+      !ctPick.picking && !ctPick.banner && !!ct.say, JSON.stringify({ ctPick, name: ct.name }));
+    await selectRels(t, [`${LAB}/right`]);
+    await t.key('c');
+    await t.waitFor((T) => !!T.S.picking, { what: 'choosing from right before the drag' });
+
     /* ---- a drag of two rows onto the tab ---- */
     await t.app((T, rs) => {
       T.S.drag = rs.map((r) => T.S.model.find(r));
@@ -450,7 +494,9 @@ const compare = {
       return true;
     }, [`${LAB}/left`, `${LAB}/elsewhere/left`]);
     const dr = await drawn(t, (s) => s.name === 'Two folders named left' && s.groups.length === 4, 'the dragged pair');
-    t.check(`dragging two folder rows onto the tab compares them ("${dr.name}", ${dr.sides.map((s) => s.nm).join(' and ')})`, same(dr.sides.map((s) => s.nm), ['compare-lab/left', 'elsewhere/left']), JSON.stringify(dr.sides));
+    const drPick = await t.app((T) => ({ picking: !!T.S.picking, banner: !document.getElementById('placing').hidden }));
+    t.check(`dragging two folder rows onto the tab while choosing ends the choice and compares them ("${dr.name}", ${dr.sides.map((s) => s.nm).join(' and ')})`,
+      same(dr.sides.map((s) => s.nm), ['compare-lab/left', 'elsewhere/left']) && !drPick.picking && !drPick.banner, JSON.stringify({ sides: dr.sides, drPick }));
 
     /* ---- a benchmark ---- */
     await selectRels(t, [`${LAB}/left`]);
@@ -472,6 +518,11 @@ const compare = {
       !!cwn && same(words, ['Here now, not then', 'No longer here', 'Changed since', 'The same']) && bn.sides[0].nm === 'left, now' && /^left, \d{2}\/\d{2}\/\d{4} \d{2}:\d{2}$/.test(bn.sides[1].nm), JSON.stringify(bn));
     t.check('the file written after the benchmark is listed as here now, not then', bn.groups[0].keys.includes('0/written-later.bin'), JSON.stringify(bn.groups[0].keys));
     t.check('a note says what a benchmark kept', bn.notes.some((n) => /64 largest entries by name/.test(n)), JSON.stringify(bn.notes));
+    t.check(`against a benchmark Select all never says both copies (${bn.buttons.filter((b) => /^Select/.test(b)).join(' | ')})`,
+      bn.buttons.some((b) => /^Select all \d+$/.test(b)) && !bn.buttons.some((b) => /both copies/.test(b)), JSON.stringify(bn.buttons));
+    await press(t, '#b-panel-compare [data-k=all-only-0]');
+    const bnSaid = await said(t, /^Selected \d+ items? here now, not then\./, 'Select all against the benchmark said');
+    t.check(`Select all against a benchmark says where, without both copies (${bnSaid})`, !/both copies/.test(bnSaid));
     await t.app((T) => {
       T.S.tab = 'places';
       T.api.drawLedger();
@@ -494,11 +545,11 @@ const compare = {
     await drawn(t, (s) => s.name === 'left and right' && s.groups.length === 4, 'left and right again');
     await t.app((T) => T.api.runOp({ type: 'rename', path: 'compare-lab/right', name: 'right-renamed' }));
     const rn = await drawn(t, (s) => s.name === 'left and right-renamed' && s.groups.length === 4, 'the rename followed');
-    t.check('Terrane\'s rename of right is followed', rn.sides[1].path === `${LAB}/right-renamed`, JSON.stringify(rn.sides));
+    t.check('Terrane\'s rename of right is followed', rn.sides[1].full === `${LAB}/right-renamed` && rn.sides[1].nm === 'right-renamed', JSON.stringify(rn.sides));
     await t.tabTo('#view', { max: 80 });
     await t.key('Ctrl+Z');
     const un = await drawn(t, (s) => s.name === 'left and right' && s.groups.length === 4, 'Undo followed');
-    t.check('Ctrl+Z puts the name back, and the pair follows it', un.sides[1].path === `${LAB}/right`, JSON.stringify(un.sides));
+    t.check('Ctrl+Z puts the name back, and the pair follows it', un.sides[1].full === `${LAB}/right`, JSON.stringify(un.sides));
     fs.rmSync(at('right'), { recursive: true, force: true });
     await t.app((T) => { T.api.refreshDirs(['compare-lab']); return true; });
     const gone = await drawn(t, (s) => s.error && /no longer there/.test(s.state || ''), 'right gone');
