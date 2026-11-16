@@ -449,5 +449,6 @@ export function selectedText({ id, i = 0, lab, bench = false, got, taken = got, 
   const head = taken < total
     ? `Selected the largest ${fmtCount(got)} of ${fmtCount(total)} items ${where}: Select all takes at most ${fmtCount(cap)}${regions ? ' at this size' : ''}.`
     : `Selected ${plural(got, 'item')} ${where}.`;
-  return `${head} ${writable ? 'Copy to… or Move to… acts on them; ' : ''}K puts them on the shelf.`;
+  const them = got === 1 ? 'it' : 'them';
+  return `${head} ${writable ? `Copy to… or Move to… acts on ${them}; ` : ''}K puts ${them} on the shelf.`;
 }

@@ -300,7 +300,9 @@ const compare = {
       same(s0.tabs, ['inspector:Inspector', 'preview:Preview', 'compare:Compare', 'cleanup:Cleanup', 'shelf:Shelf']) && s0.icons[2] === 'columns-2'
       && s0.title === 'Compare: two folders side by side, and what differs' && !s0.mounted, JSON.stringify(s0));
     await t.eval(() => { document.getElementById('ledger-list').focus(); return true; });
-    const opts = await palette(t, 'compare', (o) => o.some((x) => x.startsWith('Show Compare|')) && o.some((x) => x.startsWith('Clear the compared folders|')));
+    // Ranked: the full list of actions, Drop to eye level among them, is gone.
+    const opts = await palette(t, 'compare', (o) => o.some((x) => x.startsWith('Show Compare|')) && o.some((x) => x.startsWith('Clear the compared folders|'))
+      && !o.some((x) => x.startsWith('Drop to eye level|')));
     const opt = (label) => opts.find((x) => x.startsWith(`${label}|`)) || '';
     t.check(`Ctrl+K "compare" lists Show Compare first, then the commands, each saying why when it cannot run (${opt('Compare the two selected folders')})`,
       opts[0].startsWith('Show Compare|') && /\|C\|/.test(opt('Compare with…').replace(/ · C\|/, '|C|')) && /Unavailable: select two folders first/.test(opt('Compare the two selected folders'))
@@ -399,7 +401,7 @@ const compare = {
     await press(t, '#b-panel-compare [data-k=all-only-0]');
     const selAll = await t.waitFor((T, n) => T.S.sel.size === n && T.S.sel.size, { args: [want['only-0'].count], what: 'Select all' });
     const selSaid = await said(t, /^Selected \d+ items? only in left\./, 'Select all said');
-    t.check(`Select all ${selAll} selects every row only in left and says what acts on them (${selSaid})`, /Copy to… or Move to… acts on them; K puts them on the shelf\.$/.test(selSaid));
+    t.check(`Select all ${selAll} selects every row only in left and says what acts on them (${selSaid})`, /Copy to… or Move to… acts on (it|them); K puts (it|them) on the shelf\.$/.test(selSaid));
 
     /* ---- Swap, Clear and Undo ---- */
     await press(t, '#b-panel-compare [data-k=swap]');
@@ -612,7 +614,7 @@ const compareModes = {
     if (g0) {
       await press(t, `#b-panel-compare [data-k=all-${g0.id}]`);
       const w = await said(t, /^Selected \d+ items? only in /, 'Select all said');
-      t.check(`read-only: the Select-all sentence leaves out Copy and Move (${w})`, !/Copy to…|Move to…/.test(w) && /K puts them on the shelf\.$/.test(w));
+      t.check(`read-only: the Select-all sentence leaves out Copy and Move (${w})`, !/Copy to…|Move to…/.test(w) && /K puts (it|them) on the shelf\.$/.test(w));
     }
     await press(t, '#b-panel-compare [data-k=swap]');
     await press(t, '#b-panel-compare [data-k=clear]');

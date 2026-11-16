@@ -14,8 +14,9 @@
  *
  * ✒ Changelog:
  *     - 1.1.0 (11/15/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
- *       strip reads Inspector, Preview, Compare, Cleanup, Shelf, and the
- *       Guide's K row names a Compare row.
+ *       strip reads Inspector, Preview, Compare, Cleanup, Shelf, the
+ *       Guide's K row names a Compare row, and the title calls the Shelf
+ *       the fifth tab.
  *     - 1.0.0 (11/15/2026) [dendogg + Anthropic - Claude Opus 5.5] —
  *       Initial release. After the review: Ctrl+K "shelf" holds the K
  *       entry among its eight actions, as Add to shelf and as Take off
@@ -264,7 +265,7 @@ function buildLab(root) {
 
 const shelf = {
   name: 'shelf',
-  title: 'Shelf: the right panel\'s fourth tab, gathered into, kept, acted on with one Undo, and left (writes)',
+  title: 'Shelf: the right panel\'s fifth tab, gathered into, kept, acted on with one Undo, and left (writes)',
   data: 'fixture',
   write: true,
   timeout: 300000,

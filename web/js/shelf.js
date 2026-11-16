@@ -14,7 +14,9 @@
  *
  * ✒ Changelog:
  *     - 1.1.0 (11/15/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
- *       K guide row names a Compare row too: K there runs this entry.
+ *       K guide row names a Compare row too: K there runs this entry, on
+ *       both of a row's copies at once (run({ nodes })), so one sentence
+ *       says what happened and K again takes both off.
  *     - 1.0.0 (11/15/2026) [dendogg + Anthropic - Claude Opus 5.5] —
  *       Initial release. After the review: the palette's gathering
  *       commands use the menu's words (Add to shelf, Take off the shelf,
@@ -36,7 +38,8 @@
  *     - K puts the selection on the shelf, or takes it off when all of it
  *       is there; Add to shelf on the world's menu and in the palette; rows
  *       dragged from the ledger onto the Shelf tab; Add all to the shelf on
- *       the Findings count row; K in Preview's pane and on a Cleanup row
+ *       the Findings count row; K in Preview's pane and on a Cleanup or
+ *       Compare row, whose run({ node }) or run({ nodes }) toggles those
  *     - Each item: its kind's swatch, its name, its folder and kind, its
  *       size; newest first; one Tab stop, ↑ ↓ Home End, Enter frames it,
  *       Space adds it to the selection or drops it, Del takes it off
@@ -909,6 +912,11 @@ export function install(api) {
     id: 'shelf', owner: OWNER, keys: ['k'], palette: false,
     guide: [MANY, 'K', 'Put the selection on the shelf, or take it off'],
     run: (c = {}) => {
+      // Several at once (a Compare row's two copies): one toggle, one sentence.
+      if (Array.isArray(c.nodes)) {
+        toggle(c.nodes);
+        return undefined;
+      }
       if (c.node) {
         toggle([c.node]);
         return undefined;

@@ -19,7 +19,8 @@
  *       (P27), and the drawer on Compare at 800 (P18f); C8 measures its
  *       kind words, name, sentence, notes and the figures' first column at
  *       A, the sides' marks, the rows' and the keys' swatches in the A slot
- *       and their words at B, and its group heads at B.
+ *       and their words at B, and its group heads at B. The comments name
+ *       Cleanup and the Shelf the fourth and fifth tabs.
  *     - 1.4.0 (11/15/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
  *       Shelf's poses: five items, one no longer there, at 1600 and 1280,
  *       and the drawer at 800; C8 measures its kind words, name, facts,
@@ -485,7 +486,7 @@ function INSTALL() {
           at('Preview item text (B)', textLeft(it.querySelector('.nm') || it), 32, I, it);
         }
       }
-      // Cleanup (the right panel's third tab): the inspector's grid. Its
+      // Cleanup (the right panel's fourth tab): the inspector's grid. Its
       // group heads are disclosures as the ledger's are: the triangle in the
       // mark slot at A, the title at B.
       const CL = one('#b-panel-cleanup');
@@ -502,7 +503,7 @@ function INSTALL() {
           at('Cleanup row text (B)', textLeft(r.querySelector('.nm')), 32, I, r);
         }
       }
-      // The Shelf (the right panel's fourth tab): the inspector's grid, its
+      // The Shelf (the right panel's fifth tab): the inspector's grid, its
       // rows as the inspector's items, the swatch in the mark slot at A.
       const SH = one('#b-panel-shelf');
       if (I && shown(SH) && one('#inspector').getBoundingClientRect().left < innerWidth - 10) {

@@ -14,7 +14,8 @@
  *
  * ✒ Changelog:
  *     - 1.2.0 (11/15/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
- *       strip reads Inspector, Preview, Compare, Cleanup, Shelf.
+ *       strip reads Inspector, Preview, Compare, Cleanup, Shelf, and the
+ *       scenario's title calls Cleanup the fourth tab.
  *     - 1.1.0 (11/15/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
  *       strip reads Inspector, Preview, Cleanup, Shelf; K on a row puts
  *       its item on the Shelf, K again takes it off.
@@ -186,7 +187,7 @@ const LINES = `(e) => {
 
 const cleanup = {
   name: 'cleanup',
-  title: 'Cleanup: the right panel\'s third tab, found, read and used by keyboard (read-only)',
+  title: 'Cleanup: the right panel\'s fourth tab, found, read and used by keyboard (read-only)',
   data: 'fixture',
   timeout: 300000,
   async run(t) {

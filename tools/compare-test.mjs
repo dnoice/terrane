@@ -378,17 +378,18 @@ section("Select all on a group: Findings' cap, copies together, and its words");
   const lab = ['left', 'right'];
   const said = [
     [selectedText({ id: 'only-0', i: 0, lab, got: 3 }), 'Selected 3 items only in left. Copy to… or Move to… acts on them; K puts them on the shelf.'],
-    [selectedText({ id: 'only-1', i: 1, lab, got: 1, writable: false }), 'Selected 1 item only in right. K puts them on the shelf.'],
+    [selectedText({ id: 'only-1', i: 1, lab, got: 1, writable: false }), 'Selected 1 item only in right. K puts it on the shelf.'],
+    [selectedText({ id: 'only-1', i: 1, lab, got: 1 }), 'Selected 1 item only in right. Copy to… or Move to… acts on it; K puts it on the shelf.'],
     [selectedText({ id: 'changed', lab, got: 5000, taken: 5000, total: 12000 }),
       'Selected the largest 5,000 of 12,000 items in both and changed, both copies: Select all takes at most 5,000. Copy to… or Move to… acts on them; K puts them on the shelf.'],
     [selectedText({ id: 'same', lab, got: 1000, taken: 1000, total: 1400, cap: SELECT_CAP_REGIONS, regions: true, writable: false }),
       'Selected the largest 1,000 of 1,400 items in both and the same, both copies: Select all takes at most 1,000 at this size. K puts them on the shelf.'],
     [selectedText({ id: 'changed', lab: ['left, now', 'left, 11/01/2026 12:00'], bench: true, got: 2 }), 'Selected 2 items changed since the benchmark. Copy to… or Move to… acts on them; K puts them on the shelf.'],
     [selectedText({ id: 'same', lab: ['left, now', 'left, 11/01/2026 12:00'], bench: true, got: 7 }), 'Selected 7 items the same as at the benchmark. Copy to… or Move to… acts on them; K puts them on the shelf.'],
-    [selectedText({ id: 'only-0', i: 0, lab: ['left, now', 'left, 11/01/2026 12:00'], bench: true, got: 1 }), 'Selected 1 item here now, not then. Copy to… or Move to… acts on them; K puts them on the shelf.'],
+    [selectedText({ id: 'only-0', i: 0, lab: ['left, now', 'left, 11/01/2026 12:00'], bench: true, got: 1 }), 'Selected 1 item here now, not then. Copy to… or Move to… acts on it; K puts it on the shelf.'],
   ];
   for (const [got, want] of said) check(`said: "${got}"`, got === want, `want "${want}"`);
-  check('a benchmark pair\'s words never say "both copies"', said.slice(4).every(([x]) => !/both copies/.test(x)));
+  check('a benchmark pair\'s words never say "both copies"', said.slice(5).every(([x]) => !/both copies/.test(x)));
 }
 
 /* ---------- the demo world ---------- */

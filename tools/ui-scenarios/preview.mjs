@@ -16,7 +16,8 @@
  *     - 1.4.0 (11/15/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
  *       strip reads Inspector, Preview, Compare, Cleanup, Shelf, with
  *       Compare's columns-2 icon; ArrowLeft from the Shelf steps through
- *       Cleanup and Compare back to Preview.
+ *       Cleanup and Compare back to Preview. The Guide's check reads
+ *       Preview's four rows after P, Compare's following them.
  *     - 1.3.0 (11/15/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
  *       strip reads Inspector, Preview, Cleanup, Shelf: End reaches the
  *       Shelf, ArrowLeft from the Inspector wraps to it, and on through
@@ -737,8 +738,9 @@ const preview = {
     const closer = guide.find(([h]) => h === 'Looking closer')?.[1] || [];
     const selecting = guide.find(([h]) => h === 'Selecting and going places')?.[1] || [];
     const P_ROW = 'P|Quick look at the selected file, or at Preview\'s item';
-    t.check('the Guide lists Preview\'s keys under Looking closer, after Quick look\'s P (one P row), ] as panel B\'s, and the strips\' arrows under Selecting',
-      JSON.stringify(closer.slice(closer.indexOf(P_ROW))) === JSON.stringify([P_ROW, '← →|In Preview: previous / next item',
+    // Preview's rows follow P; Compare's come after them in the same section.
+    t.check('the Guide lists Preview\'s keys under Looking closer, after Quick look\'s P (one P row), ] as the right panel\'s, and the strips\' arrows under Selecting',
+      JSON.stringify(closer.slice(closer.indexOf(P_ROW), closer.indexOf(P_ROW) + 4)) === JSON.stringify([P_ROW, '← →|In Preview: previous / next item',
         'Home  End|In Preview: first / last item, once the text is at its top / end', 'Esc|In Preview, reading one of several: back to the list'])
       && closer.filter((x) => x.startsWith('P|')).length === 1
       && selecting.includes('[  ]|Hide ledger / right panel') && selecting.includes('← → on tabs|Previous / next tab (Home, End: first, last)'), JSON.stringify({ closer, selecting }));

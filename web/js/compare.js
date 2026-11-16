@@ -768,8 +768,9 @@ export function install(api) {
     return el('table', { class: 'cmp-facts' },
       el('thead', {}, el('tr', {}, el('th', { scope: 'col' }, el('span', { class: 'sr', text: 'Figure' })),
         [0, 1].map((i) => el('th', { scope: 'col' }, mark(i, { sr: lab[i] }))))),
-      el('tbody', {}, rows.map(([t, f]) => el('tr', {}, el('th', { scope: 'row', text: t }), ds.map((d) => el('td', { text: fig(d, f) })))),
-      el('tr', {}, el('th', { scope: 'row', text: 'Half unchanged since' }), ds.map((d, i) => el('td', {}, half(tas[i], d))))));
+      // The row heads speak in the tight voice (base.css), as table heads do.
+      el('tbody', {}, rows.map(([t, f]) => el('tr', {}, el('th', { scope: 'row', class: 'caps-tight', text: t }), ds.map((d) => el('td', { text: fig(d, f) })))),
+      el('tr', {}, el('th', { scope: 'row', class: 'caps-tight', text: 'Half unchanged since' }), ds.map((d, i) => el('td', {}, half(tas[i], d))))));
   }
 
   /** Two bars on one scale: rows of [mark, track] with segments, or words in the track. */
@@ -1138,7 +1139,8 @@ export function install(api) {
       api.say(`${rowName(row)} is no longer there.`);
       return;
     }
-    for (const n of nodes) shelf.run({ node: n });
+    // Both copies in one toggle: one sentence, and K again takes both off.
+    shelf.run({ nodes });
   }
 
   /** The most items Select all takes now: Findings' limits, lower in region mode. */

@@ -18,7 +18,9 @@
  *       api offers pick, picking and stopPick: a pick shows the banner
  *       with its words, Enter on the world and the banner's here button
  *       take a folder, Escape cancels, and placing's ESCAPE and TIP_LINES
- *       ids stay as they were.
+ *       ids stay as they were. With WebGL the here button waits for the
+ *       flight to make the folder where you are, and the location goes
+ *       back to the root before AFTER_FOCUS is listened to.
  *     - 1.13.0 (11/15/2026) [dendogg + Anthropic - Claude Opus 5.5] — K
  *       is the Shelf's in the key allocation. A registered B tab with a
  *       count draws it on its label, and drawBTabCounts changes it in
@@ -576,10 +578,16 @@ export default {
     await t.tabTo('#view', { max: 80 });
     await t.key('Enter');
     const p1 = await t.waitFor((T) => !T.api.picking() && window.__seamPick.log.slice(), { what: 'Enter taking the pick' });
+    // With WebGL the location follows the flight, so the here button waits
+    // until the folder is where you are.
+    const hereDir = await t.app((T) => {
+      const d = T.S.model.root.c.find((c) => c.d && !c.e);
+      T.api.setFocus(d);
+      return d.n;
+    });
+    await t.waitFor((T, n) => T.S.focus?.n === n && T.S.focus.p === T.S.model.root, { args: [hereDir], what: 'the location on the folder' });
     await t.app((T) => {
-      const s = window.__seamPick.spec('here');
-      T.api.setFocus(T.S.model.root.c.find((c) => c.d && !c.e));
-      T.api.pick(s);
+      T.api.pick(window.__seamPick.spec('here'));
       document.getElementById('placing-here').click();
       return true;
     });
@@ -595,7 +603,9 @@ export default {
     t.check(`Enter on the world and the banner's here button take the folder; Escape cancels (${p3.log.join('; ')})`,
       p1.includes(`enter took ${pick.dir}`) && p2.some((x) => x.startsWith('here took')) && p3.log.includes('esc cancelled') && p3.banner && p3.here === 'Place where I am', JSON.stringify([p1, p2, p3]));
     t.check('placing and picking share the ESCAPE and TIP_LINES entries, their ids unchanged', p3.esc.includes('placing') && p3.tips.includes('placing') && !p3.esc.some((x) => /pick/.test(x)), JSON.stringify([p3.esc, p3.tips]));
-    await t.app((T) => { T.api.select(null); delete window.__seamPick; return true; });
+    // Back to the root, so the AFTER_FOCUS check below sees the location change.
+    await t.app((T) => { T.api.select(null); delete window.__seamPick; T.api.setFocus(T.S.model.root); return true; });
+    await t.waitFor((T) => T.S.focus === T.S.model.root, { timeout: 8000, what: 'the location back at the root' });
     await t.tabTo('#b-tabs [data-btab=seam-b]', { max: 120 });
     await t.key('Enter');
     const bShown = await t.waitFor((T) => T.S.bTab === 'seam-b' && {

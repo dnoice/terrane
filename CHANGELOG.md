@@ -16,6 +16,11 @@
       app.js 1.23.0, index.html 1.10.0, features.js 1.8.0, landmarks.js 1.5.0, icons.js
       1.5.0, terrane.css 2.8.0 and palette.js 1.4.0, whose 1.20.0, 1.7.0, 1.5.0, 1.2.0,
       1.2.0, 2.5.0 and 1.1.0 entries leave their headers; this file already holds them.
+      The docs and sweep extend features.js 1.8.0, whose header now calls Compare the right
+      panel's third tab, installed after the Shelf, and palette.js 1.4.0, whose header now names
+      the right panel without a letter; their long forms here open with the extended words.
+      terrane.css 2.8.0's long form says how the Compare tab's tables read in a narrow panel,
+      as the sweep's interface check had them set.
     - 1.20.0 (11/15/2026) [dendogg + Anthropic - Claude Opus 5.5] — Records the Shelf tab:
       app.js 1.22.0, features.js 1.7.0, terrane.css 2.7.0, icons.js 1.4.0 and inspector.css
       1.4.0, whose 1.19.0, 1.4.0, 2.4.0, 1.1.0 and 1.1.0 entries leave their headers; this file
@@ -797,8 +802,10 @@ short form is kept too.
   gutter inside the scroll gutter, in DM Mono tabular figures; each bar's track runs from B to
   the right gutter in the soft rule's colour, and the bar in it is as long as its folder is
   large beside the other; group heads are the ledger's disclosures and rows stand at A and B
-  as Cleanup's; #view.is-picking shows a pointer. Below 300 px the tables keep three columns
-  with 84 px figures. No new colour.
+  as Cleanup's; #view.is-picking shows a pointer. The figures' row heads take the TIGHT voice
+  (.caps-tight); a side's name and folder and a key's words wrap rather than end in an
+  ellipsis; and at 300 px or less (the drawer, a 1280 window) each row's head stands on its
+  own line at A over its two figures. No new colour.
 
 - 2.7.0 (11/15/2026) [dendogg + Anthropic - Claude Opus 5.5] — Imports components/shelf.css
   after cleanup.css: the right panel's Shelf tab, its head, empty state, actions and rows. The
@@ -1233,12 +1240,13 @@ short form is kept too.
 
 ## web/js/features.js
 
-- 1.8.0 (11/15/2026) [dendogg + Anthropic - Claude Opus 5.5] — Compare, a right-panel tab
-  (compare.js) between Preview and Cleanup, after the Shelf; C is Compare's. It is installed
-  after shelf.js and adds a B_TABS entry at order 25 with a drop, the C key with five guide
-  rows under Looking closer, a menu group at 26 (Compare with…, its benchmark, its match),
-  Compare these two for two selected, palette commands under Compare, and hooks that only
-  schedule its work; its logic is the DOM-free diff.js, which compare-test checks in Node.
+- 1.8.0 (11/15/2026) [dendogg + Anthropic - Claude Opus 5.5] — Compare, the right panel's
+  third tab (compare.js), between Preview and Cleanup, installed after the Shelf; C is
+  Compare's. In full: it adds a B_TABS entry at order 25 with a drop, the C key with five
+  guide rows under Looking closer, a menu group at 26 (Compare with…, its benchmark, its
+  match), Compare these two for two selected, palette commands under Compare, and hooks that
+  only schedule its work; its logic is the DOM-free diff.js, which compare-test checks in
+  Node. With Compare at order 25, Cleanup and the Shelf stand fourth and fifth on the strip.
 
 - 1.7.0 (11/15/2026) [dendogg + Anthropic - Claude Opus 5.5] — The Shelf, the right panel's
   fourth tab (shelf.js), after Cleanup; K is the Shelf's. It is installed after cleanup.js and
@@ -1770,11 +1778,13 @@ short form is kept too.
 
 - 1.4.0 (11/15/2026) [dendogg + Anthropic - Claude Opus 5.5] — A query of three letters or more
   that a right-panel tab's name starts with lists that tab's Show item first, so Ctrl+K "compare"
-  finds Show Compare before the Compare commands. In full: the palette ranks its actions by how
-  early and how closely the query falls in each label, so "Compare with…" outranked "Show
-  Compare"; a Show item now carries its tab's id, and when the query begins the tab's name the
-  item moves to the head of the actions. Show Shelf, Show Cleanup and Show Preview already came
-  first for their names, and still do.
+  finds Show Compare before the Compare commands. The header names the right panel without a
+  letter. In full: the palette ranks its actions by how early and how closely the query falls
+  in each label, so "Compare with…" outranked "Show Compare"; a Show item now carries its tab's
+  id, and when the query begins the tab's name the item moves to the head of the actions. Show
+  Shelf, Show Cleanup and Show Preview already came first for their names, and still do. The
+  header's Key Features and Examples, which named the panel by letter, now say the right
+  panel, and its dependencies name every api member the palette reads.
 
 - 1.3.0 (11/14/2026) [dendogg + Anthropic - Claude Opus 5.5] — The tabs' commands are listed under
   Right panel, the one shown now marked "Right panel · shown now". In full: the section and the

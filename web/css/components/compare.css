@@ -34,7 +34,10 @@
  *       colour; the bar inside it is as long as its folder is large
  *     - Group heads as the ledger's disclosures: the triangle at A, the
  *       words at B; rows at A and B as Cleanup's
- *     - Below 300 px the table keeps its three columns at 84 px figures
+ *     - At 300 px or less each row's head stands on its own line at A,
+ *       over its two figures; a side's name and folder, and a key's words,
+ *       wrap rather than end in an ellipsis
+ *     - The figures' row heads are the TIGHT voice (.caps-tight)
  *     - The world shows a pointer while a folder is being chosen
  *
  * ✒ Other Important Information:
@@ -100,8 +103,9 @@
 @media (hover: hover) { .cmp-side:hover { --sweep: 100%; } }
 .cmp-side > .cmp-mark { justify-self: center; align-self: start; margin-top: calc((1.25em - 10px) / 2); }
 .cmp-side-text { min-width: 0; }
-.cmp-side .nm { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.cmp-side .path { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-3); font: 400 var(--fs-xs) / 1.3 var(--mono); }
+/* A side's name and folder wrap, a long path breaking anywhere, so both stay whole in a narrow panel. */
+.cmp-side .nm { display: block; overflow-wrap: anywhere; }
+.cmp-side .path { display: block; overflow-wrap: anywhere; color: var(--text-3); font: 400 var(--fs-xs) / 1.3 var(--mono); }
 .cmp-side .fig { color: var(--text-2); font: 400 var(--fs-fig) / 1 var(--mono); font-variant-numeric: tabular-nums; }
 .cmp-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 8px; }
 .cmp-tools .btn { white-space: nowrap; }
@@ -176,12 +180,11 @@
 /* The head row's marks sit over their figures' right edge, in the key voice. */
 .cmp-facts thead th { min-height: var(--hit-min); justify-content: flex-end; border-top: 0; }
 .cmp-facts thead th:first-child { justify-content: flex-start; }
+/* Row heads: the TIGHT voice (.caps-tight, base.css); only colour and line height here. */
 .cmp-facts tbody th {
   min-width: 0;
   color: var(--text-3);
-  font: 500 var(--fs-3xs) / 1.2 var(--sans);
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  line-height: 1.2;
   text-align: left;
 }
 .cmp-key tbody th {
@@ -194,7 +197,8 @@
   text-align: left;
 }
 .cmp-key tbody th > .swatch { justify-self: center; }
-.cmp-key-t { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-2); }
+/* A key's words wrap rather than end in an ellipsis: "One to three years" stays whole. */
+.cmp-key-t { min-width: 0; overflow-wrap: break-word; color: var(--text-2); line-height: 1.2; }
 .cmp-key td { color: var(--text-2); }
 .cmp-key tr.is-none th, .cmp-key tr.is-none td { color: var(--text-3); }
 .cmp-key tr.is-none .swatch { opacity: 0.4; }
@@ -240,9 +244,17 @@
 /* While a folder is chosen for Compare, the world shows a pointer. */
 #view.is-picking { cursor: pointer; }
 
-/* A narrow right panel keeps the three columns; names end in an ellipsis. */
+/*
+ * A narrow right panel (the drawer, a window of 1280 or less) has no room
+ * for a column of words beside two of figures: each row's head stands on
+ * a line of its own, at A, over its two figures, and the marks' row heads
+ * the two figure columns.
+ */
 @container inspector (max-width: 300px) {
-  .cmp-facts, .cmp-key { grid-template-columns: minmax(0, 1fr) 84px 84px; }
+  .cmp-facts, .cmp-key { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  .cmp-facts thead th:first-child { grid-column: 1 / -1; min-height: 0; }
+  .cmp-facts tbody th, .cmp-key tbody th { grid-column: 1 / -1; min-height: 0; padding-top: 7px; }
+  .cmp-facts td, .cmp-key td { min-height: 22px; border-top: 0; }
 }
 
 @media (prefers-reduced-motion: reduce) {

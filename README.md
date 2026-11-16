@@ -1,10 +1,10 @@
 <!--
 ✒ Metadata
-    - Title: Terrane Readme (Terrane Edition - v1.28)
+    - Title: Terrane Readme (Terrane Edition - v1.29)
     - File Name: README.md
     - Relative Path: README.md
     - Artifact Type: docs
-    - Version: 1.28.0
+    - Version: 1.29.0
     - Date: 11/15/2026
     - Update: Sunday, November 15, 2026
     - Author: Dennis 'dendogg' Smaltz
@@ -12,6 +12,24 @@
     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
 
 ✒ Changelog:
+    - 1.29.0 (11/15/2026) [dendogg + Anthropic - Claude Opus 5.5] —
+      Compare, on branch `tab-compare`. Looking further gains the right
+      panel's Compare tab: what it is for, the ways to start it (C and
+      the choice of the other folder, the world's menu, two folders
+      selected or dragged onto its tab, a benchmark, the palette), what
+      it shows first, its figures, bars and four groups, how two entries
+      are matched and judged, its keys, Swap and Clear, and what it
+      does across travel, with a folder no longer there, and in
+      read-only, snapshot and region mode; the keys table gains C and
+      the tab's own. Travelling names the tab beside Preview; Cleanup
+      and the Shelf are the fourth and fifth tabs, and K on a Compare
+      row puts its item on the Shelf. Very large directories say what
+      Compare asks of the service and what it leaves uncompared; the
+      safety model says it only reads. The commands name compare-test;
+      the project map lists compare.js, diff.js, compare.css,
+      compare-test and the compare scenarios. What was verified records
+      the final sweep of the branch; Not verified adds what Compare
+      could not see.
     - 1.28.0 (11/15/2026) [dendogg + Anthropic - Claude Opus 5.5] —
       What was verified records the Shelf as merged into `main`, with
       the check run on the merge.
@@ -217,8 +235,9 @@
     touching that data, how to read and travel its world and find a
     place again, and what it shows beyond the ground plane: a date
     scrub, landmarks, working sessions, strata, archive interiors, a
-    quick look at a file and Preview, which reads the selection beside
-    the world. Also what it can do to files, one or many at a time,
+    quick look at a file, Preview, which reads the selection beside the
+    world, and Compare, which sets two folders side by side and lists
+    what differs. Also what it can do to files, one or many at a time,
     Cleanup's suggestions for reclaiming space among them, the Shelf
     that gathers them from anywhere to act on together, how those
     actions are kept safe, and where to start when continuing
@@ -241,6 +260,9 @@
     - Looking further: time, landmarks, working sessions, strata,
       archive interiors, Quick look, Preview, totals and quick searches,
       with their keys and where places and searches are kept
+    - Compare: two folders, or a folder and its benchmark, side by side,
+      with what is only in one, what changed and what is the same,
+      ranked by size; it never writes
     - Acting on many: the batch rename, duplicate cleanup, copy as, lists
       saved as CSV and a terminal opened in a folder
     - Cleanup: ranked, sized suggestions for reclaiming space in one
@@ -248,8 +270,8 @@
     - The Shelf: files and folders gathered from anywhere and kept in
       this browser, then moved, copied, renamed or exported together
     - Safety model and its limits, the archive listing, the new routes,
-      the warm cache, the region routes, what Preview reads, what
-      Cleanup moves and what the Shelf keeps included
+      the warm cache, the region routes, what Preview and Compare read,
+      what Cleanup moves and what the Shelf keeps included
     - The checks (npm test, ui-check), what was verified, and what was
       not
     - Project map for continuing development
@@ -404,6 +426,9 @@ once:
   them ("Finding the shelf's 14 items across the tree…"). Until then a
   row whose folder is not loaded shows the size it had when it was put
   on the shelf, and its tooltip says so.
+- Compare's two folders, each read as its region before they are
+  compared ("Reading both folders…"), and its Same name elsewhere,
+  which asks the service for folders of that name across the tree.
 
 What is cut to a size, and says so:
 
@@ -413,6 +438,13 @@ What is cut to a size, and says so:
 - Cleanup lists the 1,000 largest of each group and says so; the rest
   come up after a move. Its duplicates come from the 400 largest sets
   the survey found.
+- Compare matches the entries each folder's region holds, its 5,000
+  largest, while its figures, kinds and ages are the whole folder's.
+  Where a folder holds more, a note says how many of its smallest were
+  not compared and that an entry listed as only in the other folder may
+  be among them. Select all on one of its groups takes the 1,000
+  largest items (5,000 with a whole tree) and says how many of how
+  many.
 - The Survey's empty folders, sealed folders and links show their first
   300 rows, as with a whole tree, and say "The first 300 of N.". Export
   CSV saves the first 1,000 of a Survey list and the page Findings
@@ -474,7 +506,7 @@ It does four things:
 | `npm run thumbs -- --huge` | Also thumbnail images over 80 megapixels, one at a time |
 | `npm run thumbs -- --heavy-svg` | Also render SVGs over 512 KB through Inkscape |
 | `node server/terrane.mjs --snapshot <folder>` | Serve a snapshot without the dev runner |
-| `npm test` | The service smoke test on a throwaway directory, then the Node checks of landmarks (`places-test`), working sessions (`relations-test`), strata (`strata-test`), archive interiors (`interior-test`), finding your way (`finding-test`), the batch rename (`rename-test`), CSV export (`export-test`), the warm start and its check (`warm-test`), the service's tree, its regions and questions (`regions-test`), the page's region mode against the whole model (`partial-test`), the demo world and its service (`demo-test`), the flavors (`flavors-test`), the readers Quick look and Preview share (`preview-test`), Cleanup's rules and its question (`cleanup-test`) and the Shelf's store (`shelf-test`) |
+| `npm test` | The service smoke test on a throwaway directory, then the Node checks of landmarks (`places-test`), working sessions (`relations-test`), strata (`strata-test`), archive interiors (`interior-test`), finding your way (`finding-test`), the batch rename (`rename-test`), CSV export (`export-test`), the warm start and its check (`warm-test`), the service's tree, its regions and questions (`regions-test`), the page's region mode against the whole model (`partial-test`), the demo world and its service (`demo-test`), the flavors (`flavors-test`), the readers Quick look and Preview share (`preview-test`), Cleanup's rules and its question (`cleanup-test`), the Shelf's store (`shelf-test`) and Compare's diff (`compare-test`) |
 | `npm run ui-check` | Drive the page in headless Edge or Chrome, keyboard only, with and without WebGL, on a fresh fixture in the OS temp folder; compares draw calls with the recorded baseline |
 | `npm run ui-check -- time --pass nogl` | One scenario in one pass; `npm run ui-check -- --list` names every scenario |
 | `node tools/make-synthetic.mjs --entries 1m --out <folder>` | A synthetic structure snapshot of a million entries; see Synthetic snapshots and the scale harness |
@@ -656,9 +688,10 @@ lets single-key shortcuts act wherever focus is.
 
 The right panel opens on the Inspector. The tabs beside it on its strip
 read the same selection another way (Preview, under Looking further),
-suggest what to do with its folder (Cleanup, under Doing things to
-files), or hold what you gather from anywhere to act on together (the
-Shelf, there too; its tab carries how many items it holds). `]`, or its
+set its folder beside another and list what differs (Compare, there
+too), suggest what to do with its folder (Cleanup, under Doing things
+to files), or hold what you gather from anywhere to act on together
+(the Shelf, there too; its tab carries how many items it holds). `]`, or its
 toggle in the view tools, hides and shows the right panel and says
 which tab it shows. Below 860 px wide (or at 200% zoom)
 the right panel folds away, and `]` or the toggle opens it as a drawer
@@ -726,6 +759,8 @@ snapshot's are kept apart from the live directory's.
 | P | Quick look at the selected file, or at Preview's item; ← → step through the list shown, and P or Escape closes it |
 | ← → in Preview | The previous and next item of the list shown; Home and End the first and last. A long text scrolls to its edge first |
 | ↓ ↑, Enter, Esc in Preview | Reach the rows below; open the file or go into the folder, or with several selected read the first; back to the list of several |
+| C | Compare the selected folder (a file's folder, or with nothing selected the folder you are in) with another: click the other in the world, or press Enter on it in the list; Escape cancels. With two folders selected, compare them |
+| ↑ ↓, Enter, → ←, K in Compare | Step through a group (Home and End to its ends); select the item in both folders and frame the first copy, Enter again the second; compare inside a folder that is in both, and back out; put the item on the Shelf |
 | `session:N` in Find | The N-th newest working session (`session:1` is the newest) |
 
 **Time.** The world looks back to one of 19 dates on a fixed ladder, from
@@ -844,6 +879,108 @@ text, a picture, a player), with focus back in Preview when it closes,
 and elsewhere says why it would not. While Preview is not on screen,
 or a sheet covers the page, it reads and plays nothing.
 
+**Compare.** The right panel's third tab sets two folders side by
+side: two copies of a project, a photo folder and its backup, a folder
+now and at its benchmark. It shows what each weighs and holds, their
+makeup by kind and by last change on one scale, and what differs, each
+list ranked by size. It only reads: nothing it does changes the disk.
+To start it:
+
+- Select a folder and press C (on a file, its folder; with nothing
+  selected, the folder you are in), then click the other folder in the
+  world, press Enter on it in the ledger, or travel to it and choose
+  Compare with where I am on the banner. Escape, or the banner's
+  Cancel, ends the choice and brings back any earlier comparison. A
+  file clicked stands for its folder, and the sentence says so; a
+  folder that cannot be compared is refused in words and the choice
+  goes on.
+- Right-click a folder and choose Compare with… (on a file, Compare
+  its folder with…; on the ground, Compare this folder with…). While
+  you choose, the menu of any other folder offers Compare with "<the
+  first folder>".
+- With two folders selected, press C or choose Compare these two on
+  the menu, and they are compared at once; opening the tab does the
+  same while nothing is being compared, and otherwise its head offers
+  Compare the 2 selected instead. Drag one or two folder rows from the
+  ledger onto the Compare tab: two are compared, one starts the
+  choice.
+- On a folder with a benchmark, Compare with its benchmark on the menu,
+  Compare with now in the inspector's Benchmark section, or Compare on
+  its row in the Places tab.
+- Choose COMPARE on the right panel's strip, or Ctrl+K, "compare":
+  Show Compare first, then Compare with…, Compare the two selected
+  folders, Compare with its benchmark, Swap the compared folders and
+  Clear the compared folders.
+
+Empty, the tab says what it is for and offers Compare "<folder>"
+with… for the selected folder, or the one you are in, and where they
+apply Compare the 2 selected folders and Compare with its benchmark;
+under them, Same name elsewhere lists up to six folders of that name
+across the tree, largest first, and a press on one compares it. The
+offer follows the selection. While you choose, the tab says how, with
+Cancel.
+
+The head names the pair ("Two folders named node_modules", "Coast and
+Pictures/Coast", "harbor-api, now and then") over its two sides, each
+behind its mark, ● for the first and ○ for the second, with its name,
+the folder it is in and its size; a side pressed is selected and
+framed. Two folders of one name are told apart by the shortest ends of
+their paths that differ. Swap and Clear stand under the sides; Clear's
+notice has Undo. A sentence then says what was found, as in "The second
+is 291 MB smaller, with 53 fewer files. Of 77 names, 24 are in both and
+the same, 53 only in 2020/2020-04 Night sky and none only in
+Pictures/2020-04 Night sky.", and the tab shows:
+
+- the figures side by side: size, files, folders, entries, the newest
+  change, and the date since which half of the bytes have not changed;
+- By kind and By last change, each two bars on one scale, so the
+  smaller folder's bar is the shorter, with a key of the largest kinds
+  and of the six strata;
+- What differs, four groups, each with its count and size: Only in ●
+  and the first's name, Only in ○ and the second's, In both, changed,
+  and In both, the same. The first group with anything in it is open;
+  the same is closed until opened.
+
+Entries are matched by name, as the system compares names: on Windows
+and macOS `README.md` and `readme.md` are one entry, on Linux two. A
+file has changed when its size differs or its last change differs by
+more than 2 seconds (FAT keeps time in 2-second steps); a folder when
+its size or the number of files or folders in it differs, never by its
+own time. An entry that is a folder on one side and a file on the
+other, that cannot be read on one, or that is a link on one only, has
+changed too. A changed row's line says how, as in "● 10 B · ○ 2.44 KB ·
+larger in ○" or "same size; changed later in ● (11/02/2026,
+11/01/2026)". No file's contents are read.
+
+A group draws 100 rows, then Show 100 more. Its Select all selects
+what it lists, both copies of an entry in both folders, up to 5,000
+items, the largest first, and says how many of how many. Each list is
+one Tab stop: ↑ and ↓ step through it and Home and End reach its ends;
+Enter, or a click, selects the item in both folders and frames the
+copy in the first, and Enter again frames the other; → on a folder in
+both, marked with a chevron, or a double-click, compares inside it, and
+← or Back out one level returns; K puts the item, both copies where it
+is in both, on the Shelf, and K again takes it off. The Guide lists
+these keys under Looking closer.
+
+Against a benchmark the groups read No longer here, Here now, not then,
+Changed since and The same, as the Places tab does. A benchmark kept
+its 64 largest entries by name with their sizes and file counts, and
+summed the rest; kinds and ages were not measured then. The tab says
+so, and an entry the benchmark only summed is listed as here now, not
+among the 64 largest then.
+
+The pair is kept by path as long as the page, while you travel and
+while the tab is hidden, and follows Terrane's own renames and moves
+and their Undo. A folder moved or removed outside Terrane is said to be
+no longer there; the other's figures stay, with Compare "<the other>"
+with… and Clear, and the comparison returns when the folder does. One
+removed to the holding area says that restoring it, or Undo, brings
+the comparison back. Above 50,000 entries the tab says "Comparing N
+entries…" before it draws. It works the same in read-only and snapshot
+mode, since it writes nothing, and while a warm start's tree is
+checked it says the figures may change.
+
 **Totals and quick searches.** While more than one item is selected,
 the Contents and Findings count rows say what the selection weighs, as
 in "3 selected · 1.2 GB", counting an item inside another selected
@@ -915,7 +1052,7 @@ not yet verified offers only Verify by content. A verification survives
 a refresh for every file whose size and last change are unchanged, and
 an Undo that brings a file back from the holding area.
 
-**Cleanup.** The right panel's third tab suggests what in one folder
+**Cleanup.** The right panel's fourth tab suggests what in one folder
 could go, ranked by the space it frees, and moves what you leave
 checked to the holding area as one change. Right-click a folder and
 choose Suggest cleanup here (on a file, Suggest cleanup in its folder;
@@ -988,9 +1125,9 @@ and one Terrane renames or moves is followed, and back on Undo. A
 folder with nothing to suggest says it looks clean and why, naming each
 rule it was read against.
 
-**The Shelf.** The right panel's fourth tab is a tray for files and
+**The Shelf.** The right panel's fifth tab is a tray for files and
 folders gathered from anywhere, the world, the ledger, Findings,
-Preview, Cleanup and one folder after another, so that you can act on
+Preview, Compare, Cleanup and one folder after another, so that you can act on
 them together. It keeps them by path while you travel and across
 reloads. Putting something on the shelf, or taking it off, never
 touches the disk. To put things on it:
@@ -1007,8 +1144,8 @@ touches the disk. To put things on it:
 - After a search, Add all to the shelf, the shelf's icon on the
   Findings count row, puts every match listed on it.
 - K in Preview's pane puts the item it shows on the shelf (a row's
-  item, when several are shown), and K on a Cleanup row puts that
-  row's item.
+  item, when several are shown), and K on a Cleanup or Compare row
+  puts that row's item.
 - Ctrl+K, "shelf": Add to shelf (or Take off the shelf) with K, Add
   this folder to shelf, Add all results to shelf, and Show Shelf, which
   opens the tab.
@@ -1158,6 +1295,14 @@ that cannot be read.
   followed; each with the checks of any preview. A picture reaches it
   only through the thumbnail routes, never as the file. In snapshot
   mode it asks for no file's bytes at all.
+- Compare has no route of its own and sends nothing that changes the
+  disk. It compares names, sizes, counts and times the page already
+  holds, never a file's contents; in a very large directory it reads
+  each folder through `GET /api/region`, and its Same name elsewhere
+  through the `places` question, `GET /api/places`, both behind the
+  token and the Host check like every route. Its Select all and K only
+  select and gather; what is then done to them goes through the
+  operations as anywhere else. It keeps nothing in the browser.
 - Cleanup deletes nothing and has no route of its own that changes the
   disk: a move is the same removal to the holding area as Del, one
   journal entry through `POST /api/op`, refused in read-only and
@@ -1266,6 +1411,7 @@ time.
 | The precise terrain, part two, on branch `precision-terrain-2`, Windows 11 (11/15/2026), Edge 157 on an RTX 5050 laptop GPU: before and after shots of the demo world pinned to one moment (12,087 files), 13 poses at 1600 by 1000 and 1280 by 800, of `391c5a7`, the reviewed build and the fixed one; `npm test`; `node tools/ui-check.mjs --no-shots --port 5309`, both passes, after the last change to the code; the `scale` scenario on a 400,000-entry synthetic snapshot in regions; then the docs and sweep: `node --check` on every script outside `web/vendor/`, `npm test`, `node tools/vendor.mjs --check`, the header of every file the branch touched and Markdown line lengths | `npm test`: 1,234 passed, 0 failed (274 in the smoke test). The interface check: 2990 passed, 0 failed, 8 skipped; draw calls at the baseline (overview 7, selected 9, search 8, duplicate ties 10). At 400,000 entries the longest script task was 13.2 ms against the reviewed build's 12.8 ms on the same snapshot (a first run's one 18 ms frame did not recur), and the heap 26.7 MB at its peak; the 5,000,000-entry tour was not run, for want of free memory. The sweep: no syntax error in 108 scripts; `npm test` 1,234 passed, 0 failed; every vendored file matches the manifest; 14 headers in rule; no Markdown line over 100 columns. Tried and dropped: a name's floor measured only as it would stand facing the eye, behind a flatness gate, which printed names under 5 px as seen (the floor is now the smaller of the two, with larger shares and a step up the ladder to keep names); and a soft cap on heights, which made a fresh file's height follow its footprint (each folder has one recency scale instead). Merged into `main` after `main`'s removal of the panel letters was merged in and checked again: `npm test` 1,234 passed, 0 failed; the interface check's seams, preview, polish and core, both passes: seams 147, preview 158, polish 1,200 and core 73 passed, 0 failed |
 | Cleanup's final sweep on branch `tab-cleanup`, Windows 11 (11/15/2026): `node --check` on every script outside `web/vendor/`; `npm test`, now fifteen suites, `cleanup-test` last (the 18 cache names and the Python environment, nothing listed twice, nothing from `.git` or `site-packages`, the copy kept and never moved, the Big and stale thresholds against `runSearch`, empty and hidden-only folders, the ranking, the totals and the cap, and the page's walk equal to the service's question over 20,000 entries); `node tools/vendor.mjs --check`; the header of every file the branch touched; Markdown line lengths; and `node tools/ui-check.mjs --no-shots --port 5300` in both passes, every port it opens between 5300 and 5309, with Edge 157 on an RTX 5050 laptop GPU and the default fixture of 3,126 files: the earlier scenarios plus `cleanup`, `cleanup-disk` and `cleanup-regions`, with Cleanup's checks in `demo`, `polish` and `preview` | No syntax error in 112 scripts; 1,300 passed (274, 97, 57, 33, 60, 52, 54, 31, 80, 159, 68, 128, 91, 58 and 58), none failed; every vendored file matches the manifest; 24 headers in rule; no Markdown line over 100 columns; 3152 passed, 0 failed, 8 skipped (1,657 and 3 with WebGL, 1,495 and 5 without: what needs `--snapshot`, what needs a synthetic snapshot, a `splash` check the survey's timing left nothing to test, and without WebGL two checks of the world), `cleanup` 32, `cleanup-disk` 14 and `cleanup-regions` 9 in each pass, the first full run with them; draw calls at the baseline. In Node, 100,000 entries walked in 10.9 ms. Before the merge, the copy a set keeps on a tie of last change made the path that sorts first: `cleanup-test` 60 passed, and `dupes`, `cleanup`, `demo` and `regions` in both passes 361 passed, 0 failed. Merged into `main`, which had not moved since the branch was made; `npm test` on the merged branch: 1,302 passed, 0 failed, over fifteen suites, `cleanup-test` now 60 |
 | The Shelf's final sweep on branch `tab-shelf`, Windows 11 (11/15/2026): `node --check` on every script outside `web/vendor/`; `npm test`, now sixteen suites, `shelf-test` last (the key and its snapshot form, the paths accepted and refused, an exact duplicate left where it is, the 1,000 cap, take off, clear and put back, renames and moves followed and Undo's pairs back, junk kept read as nothing, two stores on one storage, storage that refuses, the helpers, and 1,000 items followed and read back in under 50 ms); `node tools/vendor.mjs --check`; the header of every file the branch touched; Markdown line lengths; and `node tools/ui-check.mjs --no-shots --port 5300` in both passes, every port it opens between 5300 and 5309, with Edge 157 on an RTX 5050 laptop GPU and the default fixture of 3,126 files: the earlier scenarios plus `shelf`, `shelf-modes` and `shelf-regions`, with the Shelf's checks in `seams`, `polish`, `preview`, `cleanup`, `hardening` and `demo` | No syntax error in 116 scripts; 1,358 passed (276, 97, 57, 33, 60, 52, 54, 31, 80, 159, 68, 130, 91, 58, 60 and 52), none failed; every vendored file matches the manifest; 29 headers in rule; no Markdown line over 100 columns; the interface check, run once after the docs: 3127 passed, 14 failed, 8 skipped (1,641 passed, 7 failed and 3 skipped with WebGL; 1,486, 7 and 5 without; the skips as before: what needs `--snapshot`, what needs a synthetic snapshot, a `splash` check the survey's timing left nothing to test, and without WebGL two checks of the world), over 56 scenarios with WebGL and 52 without, the first full run with the Shelf and the first run of the other scenarios the branch touched: `shelf` 46, `shelf-modes` 14 and `shelf-regions` 7 passed in each pass, `polish` 647 with WebGL and 645 without, `hardening` 38 and 31, `cleanup` 33 in each; draw calls at the baseline. The failures were four checks the branch had left behind, in `seams`, `preview`, `copy-as` and `demo`, fixed in the checks with the code unchanged, and a timeout each in `regions-warm` and `cleanup-regions` on a machine short of memory. The failed scenarios and those that share their files, run again in both passes: 468 passed, 2 failed, both `demo`'s Undo check, which read the world in the moment after the shelf had followed; waiting for the world too, `demo` and `demo-regions`: 103 passed, 0 failed. In Node, 1,000 items followed and written in 1.3 ms and read back in 0.3 ms. Merged into `main`, which had not moved since the branch was made; `npm test` on the merged branch: 1,358 passed, 0 failed, over sixteen suites |
+| Compare's final sweep on branch `tab-compare`, Windows 11 (11/15/2026): `node --check` on every script outside `web/vendor/`; `npm test`, now seventeen suites, `compare-test` last (the four groups and their ranking, the 2-second tolerance at 2,000 and 2,001 ms, folders judged by size and counts, a kind clash, an unread entry and a link, folding by platform and its fallback, a benchmark pair equal to `places.compare` in both orders, the labels and sentences, region mode against the whole model at 6,000 entries, Select all's cap and words, two folders of 100,000 entries, and the demo world's pairs); `node tools/vendor.mjs --check`; the header of every file the branch touched; Markdown line lengths; and `node tools/ui-check.mjs --no-shots --port 5300` in both passes, every port it opens between 5300 and 5309, with Edge 157 on an RTX 5050 laptop GPU and the default fixture of 3,126 files: the earlier scenarios plus `compare`, `compare-modes` and `compare-regions`, with Compare's checks in `seams`, `polish`, `preview`, `cleanup`, `shelf`, `hardening` and `demo` | No syntax error in 120 scripts; 1,433 passed (276, 97, 57, 33, 60, 52, 54, 31, 80, 159, 68, 130, 91, 58, 60, 52 and 75), none failed; every vendored file matches the manifest; 26 headers in rule; no Markdown line over 100 columns; the interface check, run once after the docs and the branch's first run in a browser: 3528 passed, 16 failed, 10 skipped (1,826 passed, 8 failed and 4 skipped with WebGL; 1,702, 8 and 6 without; the skips as before, and Compare in snapshot mode, which no run served), over 59 scenarios with WebGL and 55 without: `compare` 44, `compare-modes` 8 and `compare-regions` 7 passed in each pass; draw calls at the baseline. The failures, eight in each pass: `compare`'s Ctrl+K check read the palette before its query ranked it; `polish` found the figures' row heads in a fourth uppercase voice and a key's words, a side's name and, in the drawer, the row heads cut off, now set in the tight voice, wrapped, and stacked over their figures in a right panel of 300 px or less; `preview`'s Guide check wanted nothing after Preview's rows, where Compare's now follow; and `seams` pressed the banner's here button before the flight landed, and without WebGL left the location where its AFTER_FOCUS check then went. Select all of one item now says "it", and K on a row in both folders puts both copies on the shelf in one toggle. Those scenarios and the ones whose code changed, run again in both passes: 2064 passed, 0 failed, 2 skipped (`compare` 45 in each pass, `polish` 697 and 695, `seams` 81 and 74). In Node, two folders of 100,000 entries compared in 145 to 178 ms over three runs. Not yet merged into `main` |
 
 Not verified: running on macOS; frame rate at street level in the largest
 trees on a hardware GPU; Open and Reveal reaching a desktop application on
@@ -1329,7 +1475,18 @@ checks move seven items, and three in the demo world); the shelf in a
 real tree of millions of entries (the region scenario runs the fixture
 at a threshold of 0); the tab with a screen reader; its look in a shot,
 beyond what the `polish` check measures; and the tab in Firefox and
-Safari.
+Safari. From Compare: the other folder chosen by a click on its box in
+the world (the checks press Enter on a ledger row or on the world, and
+the banner's button); two folders of hundreds of thousands of entries
+in a browser (Node compares two of 100,000 in under 200 ms; the scenarios
+compare the fixture's folders); a real tree of millions of entries,
+and the note of entries a region did not send, in a browser (the
+region scenario runs the fixture at a threshold of 0, where nothing is
+cut, and Node checks the note); names folded as macOS folds them on a
+Mac (Node checks the rule); snapshot mode in a browser (no run served
+a snapshot; the tab writes nothing, so it reads as in read-only mode);
+the tab with a screen reader; its look in a shot, beyond what the
+`polish` check measures; and the tab in Firefox and Safari.
 
 ## Continuing development
 
@@ -1356,7 +1513,8 @@ web/css/tokens.css   the colours, type and space scales, named sizes, shadows,
 web/css/components/  controls, bar, ledger, stage, inspector, block, floating,
                      splash (the loading sheet), and one per feature: time,
                      places, traverse, strata, interior, palette, searches,
-                     quicklook, presets, batch, preview, cleanup, shelf
+                     quicklook, presets, batch, preview, cleanup, shelf,
+                     compare
 web/css/*.css        also: fonts, base, layout, utilities, motion, print
 web/js/app.js        controller: state, service calls, panels and the right
                      panel's tab strip, progress, the warm start, and the
@@ -1416,14 +1574,19 @@ web/js/preview.js    Preview: the right panel's second tab, a quick look
 web/js/batch.js      Batch rename: F2 on several, its rules and preview
 web/js/rename.js     the batch rename's names and refusals, DOM-free
 web/js/dupes.js      Duplicate cleanup: keep one verified copy
-web/js/cleanup.js    Cleanup: the right panel's third tab, ranked
+web/js/cleanup.js    Cleanup: the right panel's fourth tab, ranked
                      suggestions for reclaiming space in one folder
 web/js/reclaim.js    Cleanup's rules: the caches' names, the walk, the
                      copy kept, the ranking and totals, DOM-free
-web/js/shelf.js      the Shelf: the right panel's fourth tab, files and
+web/js/shelf.js      the Shelf: the right panel's fifth tab, files and
                      folders gathered from anywhere to act on together
 web/js/shelf-store.js  what the Shelf keeps, by path, in this browser:
                      add, take off, follow a move, merge two tabs, DOM-free
+web/js/compare.js    Compare: the right panel's third tab, two folders, or
+                     a folder and its benchmark, side by side
+web/js/diff.js       Compare's logic: two folders' entries matched and
+                     sorted into four groups, the labels, the sentences
+                     and what Select all takes, DOM-free
 web/js/copyas.js     Copy as: names and relative paths
 web/js/exports.js    lists saved as CSV
 web/js/csv.js        the CSV text and its file names, DOM-free
@@ -1468,14 +1631,19 @@ tools/ui-check.mjs   headless browser check; scenarios in tools/ui-scenarios/,
                      regions-switch), scale.mjs (synthetic snapshots only),
                      views.mjs (steady conventions, Blender's controls),
                      preview.mjs (preview, preview-regions, preview-disk),
-                     cleanup.mjs (cleanup, cleanup-disk, cleanup-regions)
-                     and shelf.mjs (shelf, shelf-modes, shelf-regions)
+                     cleanup.mjs (cleanup, cleanup-disk, cleanup-regions),
+                     shelf.mjs (shelf, shelf-modes, shelf-regions) and
+                     compare.mjs (compare, compare-modes, compare-regions)
 tools/flavors-test.mjs  every flavor in Node (in npm test)
 tools/preview-test.mjs  the readers Quick look and Preview share, in Node
 tools/cleanup-test.mjs  Cleanup's rules, and the page's walk against the
                      service's question, in Node
 tools/shelf-test.mjs the Shelf's store in Node: paths, the cap, following,
-                     two tabs, storage that refuses (last in npm test)
+                     two tabs, storage that refuses
+tools/compare-test.mjs  Compare's diff in Node: the groups, the 2-second
+                     tolerance, folding, a benchmark pair against
+                     places.compare, region mode, Select all's cap and the
+                     demo world's pairs (last in npm test)
 tools/make-fixture.mjs  the synthetic tree the checks run on (npm run fixture)
 tools/make-synthetic.mjs  synthetic structure snapshots, 1,000 to 10,000,000
                      entries, written without a file

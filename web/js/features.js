@@ -14,8 +14,8 @@
  *
  * ✒ Changelog:
  *     - 1.8.0 (11/15/2026) [dendogg + Anthropic - Claude Opus 5.5] —
- *       Compare, a right-panel tab (compare.js) between Preview and
- *       Cleanup, after the Shelf; C is Compare's.
+ *       Compare, the right panel's third tab (compare.js), between
+ *       Preview and Cleanup, installed after the Shelf; C is Compare's.
  *     - 1.7.0 (11/15/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
  *       Shelf, the right panel's fourth tab (shelf.js), after Cleanup; K
  *       is the Shelf's.
