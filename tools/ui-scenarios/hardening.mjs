@@ -1,11 +1,11 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Hardening Scenarios (Terrane Edition - v1.9)
+ *     - Title: Hardening Scenarios (Terrane Edition - v1.10)
  *     - File Name: hardening.mjs
  *     - Relative Path: tools/ui-scenarios/hardening.mjs
  *     - Artifact Type: test
- *     - Version: 1.9.0
+ *     - Version: 1.10.0
  *     - Date: 11/15/2026
  *     - Update: Sunday, November 15, 2026
  *     - Author: Dennis 'dendogg' Smaltz
@@ -13,6 +13,9 @@
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
  *
  * ✒ Changelog:
+ *     - 1.10.0 (11/15/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
+ *       right panel's strip fits the drawer with five tabs, Compare
+ *       among them, and the Shelf's count.
  *     - 1.9.0 (11/15/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
  *       right panel's strip fits the narrow window's drawer with four
  *       tabs and the Shelf's count on its label.
@@ -510,7 +513,7 @@ const hardening = {
     t.check(`at 800 px the inspector is folded away and its toggle says so (pressed ${n0.pressed})`, n0.insp === 'hidden' && n0.pressed === 'false', JSON.stringify(n0));
     t.check(`the title block fits: the status cell ends at ${Math.round(n0.status)} of ${n0.width} px, the legend keeps ${Math.round(n0.legend)} px; every tab fits the ledger`,
       n0.status <= n0.width + 0.5 && n0.legend >= 80 && n0.tabsFit, JSON.stringify(n0));
-    // The Shelf holds an item, so the strip has four tabs and a count to fit.
+    // The Shelf holds an item, so the strip has five tabs and a count to fit.
     await t.app((T) => { T.api.KEYS.get('shelf')?.run({ node: T.S.model.root.c.find((c) => !c.d) || T.S.model.root.c[0] }); return true; });
     await t.tabTo('#view', { max: 80 });
     await t.key(']');
@@ -533,8 +536,8 @@ const hardening = {
       };
     });
     t.check(`] opens the inspector as a drawer (${Math.round(n1.w)} px wide) and its toggle says pressed`, n1.vis === 'visible' && n1.w > 150 && n1.pressed === 'true', JSON.stringify(n1));
-    t.check(`every tab of the right panel's strip fits the drawer, four with the Shelf's count (${n1.count}), the chosen one's label whole (${n1.tabs.map((x) => x.id).join(', ')})`,
-      n1.bTabsFit && n1.tabs.length === 4 && n1.count === '1', JSON.stringify(n1));
+    t.check(`every tab of the right panel's strip fits the drawer, five with the Shelf's count (${n1.count}), the chosen one's label whole (${n1.tabs.map((x) => x.id).join(', ')})`,
+      n1.bTabsFit && n1.tabs.length === 5 && n1.count === '1', JSON.stringify(n1));
     await t.app((T) => { T.api.KEYS.get('shelf')?.run({ node: T.S.model.root.c.find((c) => !c.d) || T.S.model.root.c[0] }); return true; });
     // Preview reads in the drawer: its text inside the drawer's edges.
     await t.app((T) => {

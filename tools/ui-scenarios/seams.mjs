@@ -1,11 +1,11 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Controller Seams Scenario (Terrane Edition - v1.13)
+ *     - Title: Controller Seams Scenario (Terrane Edition - v1.14)
  *     - File Name: seams.mjs
  *     - Relative Path: tools/ui-scenarios/seams.mjs
  *     - Artifact Type: test
- *     - Version: 1.13.0
+ *     - Version: 1.14.0
  *     - Date: 11/15/2026
  *     - Update: Sunday, November 15, 2026
  *     - Author: Dennis 'dendogg' Smaltz
@@ -13,6 +13,14 @@
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
  *
  * ✒ Changelog:
+ *     - 1.14.0 (11/15/2026) [dendogg + Anthropic - Claude Opus 5.5] — C
+ *       is Compare's in the key allocation and among the owned keys. The
+ *       api offers pick, picking and stopPick: a pick shows the banner
+ *       with its words, Enter on the world and the banner's here button
+ *       take a folder, Escape cancels, and placing's ESCAPE and TIP_LINES
+ *       ids stay as they were. With WebGL the here button waits for the
+ *       flight to make the folder where you are, and the location goes
+ *       back to the root before AFTER_FOCUS is listened to.
  *     - 1.13.0 (11/15/2026) [dendogg + Anthropic - Claude Opus 5.5] — K
  *       is the Shelf's in the key allocation. A registered B tab with a
  *       count draws it on its label, and drawBTabCounts changes it in
@@ -157,7 +165,7 @@ const READING = [
 const OWNERS = {
   w: 'viewport', a: 'viewport', s: 'viewport', d: 'viewport', q: 'viewport', e: 'viewport', r: 'viewport', f: 'viewport',
   i: 'interiors', t: 'time', ',': 'time', '.': 'time', '<': 'time', '>': 'time', b: 'landmarks', h: 'landmarks', j: 'landmarks',
-  p: 'quicklook', k: 'shelf',
+  p: 'quicklook', k: 'shelf', c: 'compare',
 };
 
 const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
@@ -308,7 +316,7 @@ export default {
         ctrlB: tryAdd({ id: 'seam-ctrl-b', mod: 'ctrl', keys: ['b'], run }),
         // A reserved key is either free for its owner or already held by
         // an entry of that owner (its feature is installed).
-        owned: ['i:interiors', 't:time', ',:time', '.:time', '<:time', '>:time', 'b:landmarks', 'h:landmarks', 'j:landmarks', 'p:quicklook', 'k:shelf']
+        owned: ['i:interiors', 't:time', ',:time', '.:time', '<:time', '>:time', 'b:landmarks', 'h:landmarks', 'j:landmarks', 'p:quicklook', 'k:shelf', 'c:compare']
           .map((s) => {
             const [k, owner] = [s.slice(0, s.indexOf(':')), s.slice(s.indexOf(':') + 1)];
             const held = [...K].find((x) => !x.mod && x.keys?.some((z) => (z.length === 1 ? z.toLowerCase() : z) === k));
@@ -549,6 +557,55 @@ export default {
     t.check('a B tab with a drop takes the rows its refuse() allows, marked while they are over it, and refuses the rest',
       bCount.file.taken && bCount.file.marked && !bCount.dir.taken && !bCount.dir.marked && bCount.took.length === 1, JSON.stringify(bCount));
     t.check('the api offers place() and drawBTabCounts()', bCount.place === 'function' && bCount.counts === 'function');
+
+    // A feature's pick: the banner with its words, Enter and the banner's
+    // here button take a folder, Escape cancels; placing's ids unchanged.
+    const pick = await t.app((T) => {
+      const a = T.api;
+      const log = [];
+      const spec = (name) => ({
+        owner: 'seam', text: `Seam: choose (${name})`, here: 'Seam here', say: 'Seam choosing.',
+        ok: (n) => (n === T.S.model.root ? 'not the root' : null),
+        take: (n) => log.push(`${name} took ${n.n}`), cancel: () => log.push(`${name} cancelled`),
+      });
+      const fns = [typeof a.pick, typeof a.picking, typeof a.stopPick];
+      const dir = T.S.model.root.c.find((c) => c.d && !c.e);
+      a.select(dir);
+      a.pick(spec('enter'));
+      const shown = { banner: !document.getElementById('placing').hidden, text: document.getElementById('placing-text').textContent, here: document.getElementById('placing-here-words').textContent, picking: a.picking() };
+      return { fns, shown, dir: dir.n, log, start: true, rootRefused: null, ...(window.__seamPick = { log, spec }, {}) };
+    });
+    await t.tabTo('#view', { max: 80 });
+    await t.key('Enter');
+    const p1 = await t.waitFor((T) => !T.api.picking() && window.__seamPick.log.slice(), { what: 'Enter taking the pick' });
+    // With WebGL the location follows the flight, so the here button waits
+    // until the folder is where you are.
+    const hereDir = await t.app((T) => {
+      const d = T.S.model.root.c.find((c) => c.d && !c.e);
+      T.api.setFocus(d);
+      return d.n;
+    });
+    await t.waitFor((T, n) => T.S.focus?.n === n && T.S.focus.p === T.S.model.root, { args: [hereDir], what: 'the location on the folder' });
+    await t.app((T) => {
+      T.api.pick(window.__seamPick.spec('here'));
+      document.getElementById('placing-here').click();
+      return true;
+    });
+    const p2 = await t.waitFor((T) => !T.api.picking() && window.__seamPick.log.slice(), { what: 'the here button taking the pick' });
+    await t.app((T) => { T.api.pick(window.__seamPick.spec('esc')); return true; });
+    await t.tabTo('#view', { max: 80 });
+    await t.key('Escape');
+    const p3 = await t.waitFor((T) => !T.api.picking() && {
+      log: window.__seamPick.log.slice(), banner: document.getElementById('placing').hidden, here: document.getElementById('placing-here-words').textContent,
+      esc: [...T.api.ESCAPE].map((x) => x.id), tips: [...T.api.TIP_LINES].map((x) => x.id),
+    }, { what: 'Escape cancelling the pick' });
+    t.check('the api offers pick(), picking() and stopPick(); a pick shows the banner with its words', same(pick.fns, ['function', 'function', 'function']) && pick.shown.banner && pick.shown.text === 'Seam: choose (enter)' && pick.shown.here === 'Seam here' && pick.shown.picking, JSON.stringify(pick));
+    t.check(`Enter on the world and the banner's here button take the folder; Escape cancels (${p3.log.join('; ')})`,
+      p1.includes(`enter took ${pick.dir}`) && p2.some((x) => x.startsWith('here took')) && p3.log.includes('esc cancelled') && p3.banner && p3.here === 'Place where I am', JSON.stringify([p1, p2, p3]));
+    t.check('placing and picking share the ESCAPE and TIP_LINES entries, their ids unchanged', p3.esc.includes('placing') && p3.tips.includes('placing') && !p3.esc.some((x) => /pick/.test(x)), JSON.stringify([p3.esc, p3.tips]));
+    // Back to the root, so the AFTER_FOCUS check below sees the location change.
+    await t.app((T) => { T.api.select(null); delete window.__seamPick; T.api.setFocus(T.S.model.root); return true; });
+    await t.waitFor((T) => T.S.focus === T.S.model.root, { timeout: 8000, what: 'the location back at the root' });
     await t.tabTo('#b-tabs [data-btab=seam-b]', { max: 120 });
     await t.key('Enter');
     const bShown = await t.waitFor((T) => T.S.bTab === 'seam-b' && {

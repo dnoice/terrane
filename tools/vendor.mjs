@@ -2,11 +2,11 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Vendor Fetcher (Terrane Edition - v1.4)
+ *     - Title: Vendor Fetcher (Terrane Edition - v1.5)
  *     - File Name: vendor.mjs
  *     - Relative Path: tools/vendor.mjs
  *     - Artifact Type: CLI
- *     - Version: 1.4.0
+ *     - Version: 1.5.0
  *     - Date: 11/15/2026
  *     - Update: Sunday, November 15, 2026
  *     - Author: Dennis 'dendogg' Smaltz
@@ -14,6 +14,10 @@
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
  *
  * ✒ Changelog:
+ *     - 1.5.0 (11/15/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
+ *       icon list gains columns-2, the right panel's Compare tab, and
+ *       arrow-down-up, its Swap; the sprite was written again from the
+ *       same pinned Lucide (62 icons).
  *     - 1.4.0 (11/15/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
  *       icon list gains inbox, under the right panel's tabs, for the Shelf;
  *       the sprite was written again from the same pinned Lucide (60
@@ -116,8 +120,8 @@ export const ICONS = [
   'map-pinned', 'flag', 'bookmark', 'arrow-left-right',
   // the ledger head's tools and the title block's cell labels
   'download', 'list-checks', 'swatch-book', 'activity',
-  // the right panel's tabs
-  'inbox',
+  // the right panel's tabs, and Compare's Swap
+  'inbox', 'columns-2', 'arrow-down-up',
 ];
 
 const PINS = [

@@ -1,10 +1,10 @@
 <!--
 ✒ Metadata
-    - Title: Terrane Architecture (Terrane Edition - v1.17)
+    - Title: Terrane Architecture (Terrane Edition - v1.18)
     - File Name: ARCHITECTURE.md
     - Relative Path: docs/ARCHITECTURE.md
     - Artifact Type: docs
-    - Version: 1.17.0
+    - Version: 1.18.0
     - Date: 11/15/2026
     - Update: Sunday, November 15, 2026
     - Author: Dennis 'dendogg' Smaltz
@@ -12,6 +12,20 @@
     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
 
 ✒ Changelog:
+    - 1.18.0 (11/15/2026) [dendogg + Anthropic - Claude Opus 5.5] —
+      Compare, on branch `tab-compare`. It adds no route: the service
+      section says which it reads. Scale adds how Compare works out and
+      draws a comparison, and the figures measured in Node. The demo
+      world says what its checks cover for Compare. The known
+      limitations add Compare's. Visual identity adds its head, marks,
+      figures, bars and groups, and the stylesheet's compare module.
+      Section 7 adds compare.js and diff.js, Compare in the registries
+      it fills, placing's Escape and hover line serving a pick, the
+      api's pick, picking and stopPick with why they are seams in
+      app.js, the palette's Show item first for a tab's name, that
+      Compare keeps nothing in the browser, C in the key allocation,
+      and a hazard: one banner for placing and a pick. Cleanup and the
+      Shelf are the right panel's fourth and fifth tabs.
     - 1.17.0 (11/15/2026) [dendogg + Anthropic - Claude Opus 5.5] —
       The Shelf, on branch `tab-shelf`. It adds no route: the service
       section says which it uses. Scale adds how the Shelf keeps and
@@ -349,7 +363,13 @@ snapshot mode (--snapshot):  info, scan, stat, events, an empty journal  ->  sna
   Shelf has no route of its own: it keeps its list in the browser, and
   acts through `POST /api/op` (`move`, `copy`, `renames`), Undo, and in
   region mode `GET /api/region` to find its items by path, the routes
-  placing, the batch rename and the region client already use.
+  placing, the batch rename and the region client already use. Compare
+  has none either and sends no change: it compares what the page's
+  model holds, in region mode each folder's region through
+  `GET /api/region` (the region client's `resolve` and `ensure`), and
+  asks the `places` question, `GET /api/places?q=<name>&limit=200`,
+  for the folders of a name across the tree that its empty state
+  offers.
 - **A batch rename is checked whole.** The `renames` operation takes 1
   to 5,000 items, `{ path, name }`, and checks every one before the
   first rename: the guard, the name (`checkName`), no path twice, no
@@ -760,6 +780,9 @@ Node checks answer through the same code.
 | The Shelf's items, at most 1,000, looked up by path in a `Map`; each write re-reads storage, merges by path and serialises the list once; a rename or move followed in one pass over the list | `shelf-store.js` |
 | Whether each Shelf item is still there worked out by path look-ups (the model's `find`, or `api.nearest` in region mode, never a request), at most once a frame and only while its tab is shown; 100 rows drawn at a time; a selection change only marks the rows drawn, and K or a drop changes the tab's count in place (`drawBTabCounts`) | `shelf.js`, `app.js` |
 | In region mode the Shelf finds its items by path (`resolveAll`) only when an action needs them, once per action, a later action dropping an earlier answer | `shelf.js` |
+| Compare keeps of each folder its figures and its direct entries as plain records (`sideOfFolder`, `sideOfBench`), never nodes, so a pair outlives a region let go; the diff is two `Map`s by name (a folded pass on Windows and macOS only for what the exact pass left) and three sorts, ranked by size with ties in codepoint order | `diff.js` |
+| A comparison worked out at most once a frame, only while its tab is shown, with a sequence number so a pair changed meanwhile drops it; a hidden tab keeps what it drew and only marks itself out of date; above 50,000 entries "Comparing N entries…" is painted a frame before the diff; 100 rows drawn to a group, Select all at most 5,000 items (1,000 in region mode) | `compare.js`, `diff.js` |
+| Compare's hooks that run often (`AFTER_SELECT`, `AFTER_FOCUS`) redraw only its start button, its head, or, when the folder meant changes, its empty state; the same-name walk over the tree is kept per folded name until the next survey or refresh, and in region mode the `places` question is asked once per name, the latest ask winning | `compare.js` |
 | Above 100,000 entries the tree kept in the service in typed columns, every figure kept exact along a change's chain, a large folder's held set cached until it changes | `columns.js`, `regions.mjs` |
 | The page holds only the regions near the eye: the layout names the folders it would open, a prefetch from 0.6 of that distance, highest priority first | `layout.js`, `regions.js` |
 | Regions batched under 64 folders, 40,000 entries and about 4 MB an answer, at most two requests in flight, one region's nodes built per task | `columns.js`, `regions.js` |
@@ -993,6 +1016,15 @@ walked down by the folder with most folders beneath, each region timed,
 | `Shelf.parse` of 1,000 kept items | 0.3 ms (ceiling 50 ms) |
 | Two stores on one storage, each writing in turn | each keeps the other's additions, and a removal in either holds |
 
+### Measured (Windows 11, 16 cores, 11/15/2026, Compare in Node)
+
+| Measure | Result |
+| ------- | ------ |
+| `diff` of two folders of 100,000 direct entries each (`compare-test`) | 145 to 178 ms over three runs (the test's ceiling is 400 ms) |
+| A folder of 6,000 entries in region mode, its region of 5,000 against the whole model's diff over the same names (`columns.js`, `regions.js`) | the same four groups; the 1,000 not sent are the folder's tail, and the head figures are the whole folder's |
+| A benchmark pair against `places.compare`, the folder first and the benchmark first | the same here now, no longer here and changed, and the summed rest carried |
+| Select all on a changed group of 6,000 rows (`groupPaths`) | 5,000 of 12,000 paths, largest first, a row's two copies never split |
+
 ### Measured (Windows 11, RTX 5050 laptop GPU, Edge 157, 11/15/2026, the precise terrain)
 
 The second part of the precise terrain, on the demo world pinned to one
@@ -1109,7 +1141,15 @@ Choices and their reasons:
   Archive, undoes it and reloads. A reload starts the world again while
   the shelf, kept in the browser, stays: an item it followed to where a
   move took it then reads as no longer there, since the world is back
-  as it was built.
+  as it was built. Compare asks nothing new of it either: its regions
+  and its `places` question are answered as before. `compare-test`
+  compares two of the world's pairs in Node, the node_modules of
+  harbor-api and of tidepool-web (51 entries only in the first, 31 only
+  in the second, 61 changed) and Photos' oldest event, 2020-04 Night
+  sky, against the old laptop's copy in Archive (24 the same, 53 only
+  in Photos', none only in the copy), and the `demo` and
+  `demo-regions` scenarios open Compare on the node_modules pair, its
+  groups filled and no request leaving the page.
 - **Limits.** A reload starts the world again; Open and Reveal refuse
   with a sentence, since there is no file to hand to another program;
   zip interiors exist only in the page, not in a world written to disk.
@@ -1251,6 +1291,23 @@ Choices and their reasons:
   and on the line under the grid, and the palette and the keys say it in
   a sentence. A row's kind is the CSV's kind word, capitalised, so a
   picture reads "Images", the kind's name, rather than "Image".
+- Compare matches a folder's direct entries, one level at a time; →
+  compares inside a folder that is in both. It judges a file by its
+  size and its last change within 2 seconds and a folder by its size
+  and counts, never by contents: two files of one size and time whose
+  bytes differ read as the same, and Verify by content is where
+  contents are compared. Names fold as the service's platform folds
+  them, on Windows and macOS only, and a name two entries of one side
+  fold to is matched exactly. In region mode a folder's 5,000 largest
+  entries are compared and the rest said, not resolved. A benchmark
+  side has only the 64 largest entries kept when it was measured, no
+  kinds, ages or times, so its pair is judged by size and file count,
+  as the Places tab judges it.
+- Compare's pair lasts as long as the page; it is not kept in the
+  browser or carried by the address. It follows Terrane's own renames
+  and moves; one made outside Terrane reads as no longer there.
+  Choosing the other folder borrows the placing banner, so placing and
+  a pick never run together: starting either ends the other.
 - A batch rename refuses a chain or a swap outright rather than ordering
   it through temporary names, because Undo could not reverse it.
 - `say()` sets the live region's text, so a sentence said twice in a
@@ -1552,23 +1609,46 @@ direction is a survey sheet around a plaster world.
   a selected row takes the ledger's selected ground. A row no longer
   there turns to the third text colour, its swatch hollow and dashed,
   and opens its path line with "no longer there" in the tight capitals
-  in garnet; nothing is struck through. A tab may carry a count after
-  its words, which stays beside the icon in a crowded strip and flashes
-  ink once, for 240 ms, when it changes (not at all under reduced
-  motion); a tab that takes dragged rows wears the highlighter's wash
-  and a 2 px ink ring inside its edge while they are over it. On paper
-  the right panel prints the Inspector whichever tab is chosen, its tab
-  inked as the panel's heading.
+  in garnet; nothing is struck through. Compare's head is the
+  inspector's too: "Compare" in the kind's place, the pair's name, and
+  its two sides, each a button with its mark in the mark slot at A,
+  its name over the folder it is in at B and its size in the figure
+  column. The marks are circles, never letters and never squares,
+  which are swatches: ● a filled 10 px ink circle and ○ a 2 px ink
+  ring on paper, 8 px where a sentence or a row's line names a side.
+  The figures and the bars' keys are grid tables whose first column
+  stands at A (a key's swatch in the mark slot, its words at B) and
+  whose two figure columns are right-aligned in DM Mono tabular
+  figures, ending one gutter inside the scroll gutter; the figures'
+  row heads are in the tight voice, and a key's words, like a side's
+  name and folder, wrap rather than end in an ellipsis. In a right
+  panel of 300 px or less (the drawer, a window of 1280) each row's
+  head stands on a line of its own over its two figures. A bar's track
+  runs from B to the right gutter in the soft rule's colour, and the
+  bar in it is as long as its folder is large beside the other, in the
+  kinds' or the strata's colours. Its groups are the ledger's
+  disclosures, as Cleanup's are, and a row is the ledger's item: its
+  kind's swatch in the mark slot at A, the name over its line at B,
+  the size in the figure column, and a chevron after a folder that is
+  in both. While a folder is being chosen the world shows a pointer,
+  and the placing banner carries the feature's words and icon. A tab
+  may carry a count after its words, which stays beside the icon in a
+  crowded strip and flashes ink once, for 240 ms, when it changes (not
+  at all under reduced motion); a tab that takes dragged rows wears
+  the highlighter's wash and a 2 px ink ring inside its edge while they
+  are over it. On paper the right panel prints the Inspector whichever
+  tab is chosen, its tab inked as the panel's heading.
 - **Stylesheet structure**: `web/css/terrane.css` declares the layers
   `tokens, fonts, base, layout, components, utilities, motion, print`
   and imports its modules into them: one each for the other layers,
   and for components one per component group (controls, bar, ledger,
   stage, inspector, block, floating, splash) and one per feature (time,
   places, traverse, strata, interior, palette, searches, quicklook,
-  presets, batch, preview, cleanup, shelf). Components read their colours
-  from `tokens.css`, never a raw colour (the loading sheet's artwork
-  palette is scoped to the sheet); most sizes are tokens too, while
-  component-local paddings and gaps are written in place. The grid is
+  presets, batch, preview, cleanup, shelf, compare). Components read
+  their colours from `tokens.css`, never a raw colour (the loading
+  sheet's artwork palette is scoped to the sheet); most sizes are
+  tokens too, while component-local paddings and gaps are written in
+  place. The grid is
   in tokens: `--gutter`, `--mark-w` and `--mark-gap`, and the columns
   they make, `--row-indent` (B) and `--row-indent-2` (C); so are the
   sizes that keep text in place, `--facts-label-w`, `--guide-key-w`,
@@ -1603,13 +1683,18 @@ disagree on what a file is shown as or why it is not);
 `batch.js` (the batch rename, with the DOM-free `rename.js`);
 `dupes.js` (duplicate cleanup, whose copy kept, `keepOf`, and read
 again before a move, `recheck`, Cleanup shares); `cleanup.js`
-(Cleanup, the right panel's third tab, whose rules are the DOM-free
+(Cleanup, the right panel's fourth tab, whose rules are the DOM-free
 `reclaim.js`: the page, the service's `cleanup` question, the demo
 and `cleanup-test` all walk through it, and the Big and stale quick
 search reads its thresholds from it); `shelf.js` (the Shelf, the right
-panel's fourth tab, which acts on what it gathers through placing, the
+panel's fifth tab, which acts on what it gathers through placing, the
 batch rename and `csv.js`, and keeps it through the DOM-free
-`shelf-store.js`, which `shelf-test` checks in Node); `copyas.js`;
+`shelf-store.js`, which `shelf-test` checks in Node); `compare.js`
+(Compare, the right panel's third tab, installed after the Shelf,
+which reads nothing but the tree and changes nothing; its logic is
+the DOM-free `diff.js`, which `compare-test` checks in Node and the
+`compare` scenario runs over the disk for the groups it expects);
+`copyas.js`;
 `exports.js` (lists as
 CSV, with the DOM-free `csv.js`); `terminal.js`; and `flavors.js`
 (the flavors, DOM-free: what each drag does in Terrane's own and ten
@@ -1629,31 +1714,31 @@ and the rest still run.
 
 | Registry | An entry | Filled by |
 | -------- | -------- | --------- |
-| `KEYS` | `{ keys, mod, run(c), when, inList, guide, labels, palette, gl }`: the keyboard map, the `?` guide and the palette's actions as one table. `labels` gives one palette item per key (the lenses 1 to 4, the panels `[ ]`), `palette: false` keeps a key out of it (the arrows, Enter, the menu key), and `gl: true` marks it unavailable without WebGL (V, 0) | the controller, Time, Landmarks, Interiors, Palette (Ctrl+K), Quick look (P), Shelf (K, and six guide rows for its drag and its list's keys); guide rows only from Search history, Totals, Batch rename, Preview and Cleanup |
-| `ESCAPE` | `{ active(), clear(), typing }`, first active wins: floating surface 10, placing 20, kind filter 30, Time 40, Preview 45 (reading one of several, with focus in Preview), search 50, selection 70, an open archive 80 | the controller, Time, Preview, Interiors |
+| `KEYS` | `{ keys, mod, run(c), when, inList, guide, labels, palette, gl }`: the keyboard map, the `?` guide and the palette's actions as one table. `labels` gives one palette item per key (the lenses 1 to 4, the panels `[ ]`), `palette: false` keeps a key out of it (the arrows, Enter, the menu key), and `gl: true` marks it unavailable without WebGL (V, 0) | the controller, Time, Landmarks, Interiors, Palette (Ctrl+K), Quick look (P), Shelf (K, and six guide rows for its drag and its list's keys), Compare (C, and five guide rows for its click, its drag and its lists' keys); guide rows only from Search history, Totals, Batch rename, Preview and Cleanup |
+| `ESCAPE` | `{ active(), clear(), typing }`, first active wins: floating surface 10, placing 20 (and a feature's pick, `api.pick`), kind filter 30, Time 40, Preview 45 (reading one of several, with focus in Preview), search 50, selection 70, an open archive 80 | the controller, Time, Preview, Interiors |
 | `PIN_SOURCES` | `{ pins(L, room) }`, added up in order to the 3,000-pin capacity: benchmarks 10, search 20, heavyweights 30 | the controller, Landmarks |
-| `TIP_LINES` | `{ lines(node, { i, type, L }) }`: hover lines after the name and summary: levels 10, Strata 15, matches 20, placing 30, copies 40, pixels 50, Landmarks 50, Time 60, Shelf 65 ("On the shelf"), Interiors 70 | the controller, Time, Landmarks, Strata, Shelf, Interiors |
+| `TIP_LINES` | `{ lines(node, { i, type, L }) }`: hover lines after the name and summary: levels 10, Strata 15, matches 20, placing 30 (while a pick is under way, its `tip`), copies 40, pixels 50, Landmarks 50, Time 60, Shelf 65 ("On the shelf"), Interiors 70 | the controller, Time, Landmarks, Strata, Shelf, Interiors |
 | `INSPECTOR.focus`, `INSPECTOR.node` | `{ build(node, ctx) }`: sections of the "You are in" summary (Landmarks 28, Terminal 30) and of a selected item (Changed with it 32, Landmarks 35, Shelf 52, Terminal 55, Quick look 62); built only while the Inspector's tab is chosen | the controller, Time, Landmarks, Strata, Interiors, Session traverse, Shelf, Quick look, Terminal |
 | `INSPECTOR.many` | `{ build(nodes, ctx) }` with ctx `{ ro, off }`: sections after the Actions grid of a selection of several: Batch rename 10, Shelf 20 | Batch rename, Shelf |
 | `READING` | `{ glyph, title, text }`: a Reading the world row | the controller and every Stage 5 feature |
 | `TABS` | `{ label, draw, list, count, enter, key }`: a ledger tab | the controller, Landmarks (Places) |
-| `B_TABS` | `{ label, icon, title, mount(host), show(host, { focus }), hide(), focusTarget(host), count(), drop }`: a tab of the right panel, the Inspector 0, Preview 20, Cleanup 30 and Shelf 40. The controller draws the strip and gives each feature tab a panel, `div.b-panel#b-panel-<id>` after `#inspector-body`; `mount` runs once, when the tab is first chosen; `show` whenever it is chosen while the right panel is on screen, and again when the panel comes back (`]`, the drawer, the 860 px breakpoint); `hide` when it is left or the panel goes; `focusTarget` is where focus goes in it. `count()`, a number above 0 or null, is drawn after the tab's words and drawn again in place by `api.drawBTabCounts()`; `drop`, `{ refuse(nodes), take(nodes) }`, makes the tab button take ledger rows dragged onto it whenever `refuse` answers null | the controller (the Inspector), Preview, Cleanup, Shelf |
+| `B_TABS` | `{ label, icon, title, mount(host), show(host, { focus }), hide(), focusTarget(host), count(), drop }`: a tab of the right panel, the Inspector 0, Preview 20, Compare 25, Cleanup 30 and Shelf 40. The controller draws the strip and gives each feature tab a panel, `div.b-panel#b-panel-<id>` after `#inspector-body`; `mount` runs once, when the tab is first chosen; `show` whenever it is chosen while the right panel is on screen, and again when the panel comes back (`]`, the drawer, the 860 px breakpoint); `hide` when it is left or the panel goes; `focusTarget` is where focus goes in it. `count()`, a number above 0 or null, is drawn after the tab's words and drawn again in place by `api.drawBTabCounts()`; `drop`, `{ refuse(nodes), take(nodes) }`, makes the tab button take ledger rows dragged onto it whenever `refuse` answers null (Compare's takes one or two folders) | the controller (the Inspector), Preview, Compare, Cleanup, Shelf |
 | `TAB_SECTIONS` | `{ tab, build() }`: a section a feature adds to a tab another one draws; the tab's draw appends `api.tabSections(tab)` after its own | Search history (Saved searches in Places, 30) |
 | `SURVEY` | `{ build(survey) }`: a Survey tab section: Working sessions 5, Quick searches 7, the controller's lists 10 to 50, Export as CSV 95 | the controller, Session traverse, Totals and quick searches, Export |
 | `LEDGER_SUB` | `{ tab, build(ctx) }`, ctx `{ items, search, focus }`: controls on the Contents or Findings count row, in a `span.sub-tools` after the count, each with a `data-k` so a redraw keeps focus on it; a tool is a 24 px icon button (`btn btn-icon sub-tool`) at the row's end: the selection's total 10, Save search… 50, Add all to the shelf 55, Export CSV 60 | Totals, Search history, Shelf, Export |
 | `LAYOUT_OPTS` | `{ options(opts) }`, merged into the layout's one options object | Time (`asOf`), Interiors (`inside`, `aliases`) |
-| `MENU` | `{ items(node, ctx), many(nodes, ctx) }`, at least one: `items` is a group after Open, Reveal and Copy path, or at the end for the folder you are in; `many` follows Copy paths in the menu of several, ctx `{ ro, off }` | Landmarks, Interiors, Session traverse, Remembered view (Copy link), Batch rename, Shelf (24: Add to shelf or Take off the shelf, with K; Add this folder to shelf; Add N items to the shelf), Cleanup (25: Suggest cleanup here, in its folder, or for this folder), Copy as, Terminal |
-| `COMMANDS` | `{ section, items() }`, each item `{ label, detail, hint, run(), off }`: the palette's actions that have no key, asked each time it opens; `off` is the reason an item cannot run | Landmarks, Session traverse, Palette (and a "Show <tab>" item for every `B_TABS` entry), Remembered view, Search history, Totals and quick searches, Preview (Wrap lines), Batch rename, Duplicate cleanup, Cleanup (Suggest cleanup for this folder, its detail naming the folder), Shelf (Add to shelf or Take off the shelf with K, Add this folder to shelf, Add all results to shelf, and the actions on everything on the shelf), Copy as, Export, Terminal |
+| `MENU` | `{ items(node, ctx), many(nodes, ctx) }`, at least one: `items` is a group after Open, Reveal and Copy path, or at the end for the folder you are in; `many` follows Copy paths in the menu of several, ctx `{ ro, off }` | Landmarks, Interiors, Session traverse, Remembered view (Copy link), Batch rename, Shelf (24: Add to shelf or Take off the shelf, with K; Add this folder to shelf; Add N items to the shelf), Cleanup (25: Suggest cleanup here, in its folder, or for this folder), Compare (26: Compare with…, Compare its folder with… or Compare this folder with…; Compare with its benchmark; while comparing, Compare with its match or Select its match; while choosing, Compare with "<the first folder>"; and, for two selected, Compare these two), Copy as, Terminal |
+| `COMMANDS` | `{ section, items() }`, each item `{ label, detail, hint, run(), off }`: the palette's actions that have no key, asked each time it opens; `off` is the reason an item cannot run | Landmarks, Session traverse, Palette (and a "Show <tab>" item for every `B_TABS` entry, listed first when a query of three letters or more begins the tab's name), Remembered view, Search history, Totals and quick searches, Preview (Wrap lines), Batch rename, Duplicate cleanup, Cleanup (Suggest cleanup for this folder, its detail naming the folder), Shelf (Add to shelf or Take off the shelf with K, Add this folder to shelf, Add all results to shelf, and the actions on everything on the shelf), Compare (Compare with…, Compare the two selected folders, Compare with its benchmark, Swap the compared folders, Clear the compared folders), Copy as, Export, Terminal |
 | `RENAME_MANY` | `{ run(nodes) }`, the first entry wins: what F2 does with more than one item selected; with one, F2 is the single rename | Batch rename |
 | `DUP_GROUP` | `{ build(group, ctx) }`, ctx `{ node, where, ro }`: under a group of duplicate candidates, in the inspector's copies (`where: 'inspector'`) and after each group in the Survey (`'survey'`) | Duplicate cleanup |
 | `QUERY.is`, `QUERY.prefix` | `is:<word>` and `<name>:<value>` search tokens; built-in tokens cannot be replaced | Landmarks (`is:benchmark`), Session traverse (`session:N`), Search history (`in:`) |
 | `AFTER_LAYOUT` | `run(L)` at the end of every relayout | Landmarks, Session traverse, Remembered view, Preview |
-| `AFTER_REFRESH` | `run(dirs)` once a refresh has pruned selection, focus and trail; `null` after a warm start's check (or its Survey again) | Landmarks, Interiors, Palette, Preview, Cleanup, Shelf |
-| `AFTER_SURVEY` | `run(survey, { full, warm, settled })` after every survey: `full` for a whole survey, `warm` for one of the last session's tree, `settled` for the check's; the age table is rebuilt first, at 10, and the kept view is put back at 80 | the controller and every Stage 5 feature, Palette, Remembered view, Preview, Cleanup, Shelf |
-| `AFTER_OP` | `run(body, res)` once the service has carried out a change, before the affected folders are re-read: Undo included (`res.moved`), a batch rename (`res.renamed`, the pairs), and a change or an Undo that stopped part way (`res.partial`, with `res.results` or `res.moved`) | Landmarks, Cleanup, Shelf |
+| `AFTER_REFRESH` | `run(dirs)` once a refresh has pruned selection, focus and trail; `null` after a warm start's check (or its Survey again) | Landmarks, Interiors, Palette, Preview, Cleanup, Shelf, Compare |
+| `AFTER_SURVEY` | `run(survey, { full, warm, settled })` after every survey: `full` for a whole survey, `warm` for one of the last session's tree, `settled` for the check's; the age table is rebuilt first, at 10, and the kept view is put back at 80 | the controller and every Stage 5 feature, Palette, Remembered view, Preview, Cleanup, Shelf, Compare |
+| `AFTER_OP` | `run(body, res)` once the service has carried out a change, before the affected folders are re-read: Undo included (`res.moved`), a batch rename (`res.renamed`, the pairs), and a change or an Undo that stopped part way (`res.partial`, with `res.results` or `res.moved`) | Landmarks, Cleanup, Shelf, Compare |
 | `AFTER_QUERY` | `run(search, query)` whenever the search runs; it may set `search.sort` and `search.note` for Findings | Session traverse, Search history |
-| `AFTER_FOCUS` | `run(dir)` once the folder you are in has changed: `moveFocus`, and a refresh, a warm start's check or Rescan all that moved it (`focusMoved`) | Remembered view, Preview, Cleanup, Shelf |
-| `AFTER_SELECT` | `run(sel, primary)` at the end of every selection change, quiet ones and `selectAll` included | Remembered view, Totals, Preview, Cleanup, Shelf |
+| `AFTER_FOCUS` | `run(dir)` once the folder you are in has changed: `moveFocus`, and a refresh, a warm start's check or Rescan all that moved it (`focusMoved`) | Remembered view, Preview, Cleanup, Shelf, Compare |
+| `AFTER_SELECT` | `run(sel, primary)` at the end of every selection change, quiet ones and `selectAll` included | Remembered view, Totals, Preview, Cleanup, Shelf, Compare |
 
 `AFTER_OP` is what lets Landmarks follow Terrane's own renames and moves,
 and their undo, by path before the tree changes, after a reload too;
@@ -1661,14 +1746,22 @@ Cleanup follows them the same way for its folder and for what is left
 out, and learns there that a removal or an Undo has happened, so its
 next count says what is left to suggest; the Shelf carries its items
 through the same pairs (`follow`), and until the folders are read
-again it does not call a path it cannot find gone.
+again it does not call a path it cannot find gone. Compare carries its
+pair, the levels it has compared inside, the folder being chosen and
+the pair Clear's Undo would bring back through those pairs too, does
+not call a side gone after a change until the folders are read again
+(8 seconds at most), and learns from a `trash` that a side went to
+the holding area, so it can say that restoring it brings the
+comparison back.
 `MENU` lets a feature offer its actions where the controller's are, and
 shows them unavailable, with the reason, where they do not apply.
 `AFTER_FOCUS` and `AFTER_SELECT` run often: a hook must be cheap and
 defer anything that is not, as the remembered view saves a second
 later, Preview reads once the arrows have rested, Cleanup only
-shows or hides its offer bar, and the Shelf only marks the rows it has
-drawn and the empty state's buttons.
+shows or hides its offer bar, the Shelf only marks the rows it has
+drawn and the empty state's buttons, and Compare only redraws its
+start button or its head, or its empty state when the folder it means
+changes.
 
 ### The api, sheets and browser storage
 
@@ -1744,6 +1837,30 @@ placed, so the Shelf's items keep their regions while a ledger click
 changes the selection mid-placing. The Shelf reads `listCursor()`,
 `kindTone`, `resolveAll` and `nearest` as they were.
 
+Compare added `pick(spec)`, `picking()` and `stopPick()` to `app.js`:
+choosing a folder for a feature as placing chooses a destination.
+`spec` is `{ owner, text, say, here, ok(node), take(node, from),
+cancel(), tip(target, reason, node), refused(node, reason) }`.
+`S.picking` holds it; the placing banner shows `text`, its here
+button takes `here` for its words (in `span#placing-here-words`) and
+the feature's icon, and `#view` gains `.is-picking`. The world's
+click, the ledger row's double-click and the list's Enter, Enter on
+the world and the here button choose through one function,
+`pickWith`, which asks `ok` and, when it refuses, says `refused` and
+lets the choice go on; a file chosen stands for its folder and is
+passed as `from`. Escape's entry `placing` at 20 and the hover line
+`placing` at 30 keep their ids and serve both; starting placing ends a
+pick and a pick ends placing; in a window of 860 px or less the drawer
+steps aside for the choice and comes back when it ends. These are
+seams in the controller because the banner, the clicks, Enter and
+Escape at 20 are its own, as placing's are. Landmarks reaches Compare
+through its `KEYS` entry, `run({ node, bench: true })`, for Compare
+with now and a Places row's Compare, so neither module imports the
+other; and the palette's "Show <tab>" items carry their tab's id, so
+a query that begins a tab's name lists that tab's Show item first.
+Compare reads `resolve`, `resolveAll`, `ensure`, `nearest`, `ask`,
+`listCursor`, `kindTone`, `setFocus` and `selectAll` as they were.
+
 `ui.js` gains `openSheet(build, { className, label, onKey })`, a sheet
 in the shared dialog for what is richer than `ask()`: the palette,
 Quick look and the batch rename. It takes the floating slot, is modal,
@@ -1775,15 +1892,19 @@ The address, `#/<folder>` with every segment percent-encoded, follows
 the folder you are in through `replaceState`; it never reaches the
 service, because the browser does not send a fragment. Cleanup keeps
 nothing in the browser: its folder, its keep rule and what is left out
-last as long as the page.
+last as long as the page. Nor does Compare: its pair, the levels
+compared inside and what Clear took last as long as the page.
 
 ### Key allocation
 
 `KEY_OWNERS` in `app.js` fixes the plain keys a feature may bind: W A S
 D Q E R F stay the viewport's, I is Interiors', T , . < > are Time's,
-B H J are Landmarks', P is Quick look's, and K is the Shelf's, which
+B H J are Landmarks', P is Quick look's, K is the Shelf's, which
 puts the selection on the shelf or takes it off (with nothing selected,
-the ledger list's cursor row). A reserved key is refused
+the ledger list's cursor row), and C is Compare's, which starts
+choosing the folder to compare the selection's with, compares two
+folders selected, and while choosing chooses (Ctrl+C stays Copy
+path). A reserved key is refused
 to any other owner, and a key bound twice is refused. The palette binds
 the chord Ctrl+K, which acts everywhere but in a text field, where the
 browser keeps it. Session traverse, Strata and the rest of Wave 3 bind
@@ -1799,12 +1920,19 @@ and Enter act on the rows and are kept from the window's handler, so
 Home goes to the group's first row and Space leaves a row out; each
 list is one Tab stop, the row last reached. K in Preview's pane and on
 a Cleanup row runs the Shelf's own `KEYS` entry on that item
-(`run({ node })`), so the shelf has one way in by key. In the Shelf's
+(`run({ node })`), and on a Compare row on its copies together
+(`run({ nodes })`, one toggle and one sentence), so the shelf has one
+way in by key. In the Shelf's
 list ↑ ↓, Home, End, Enter, Space, Del and K act on the rows and are
 kept from the window's handler, so Del takes an item off the shelf
 rather than removing it to the holding area; Del anywhere else in the
 tab is kept from the window too, and says what Del does there. The
-list is one Tab stop, the row last reached, else the first. Both tab
+list is one Tab stop, the row last reached, else the first. In each of
+Compare's lists ↑ ↓, Home, End, Enter, → ← and K act on the rows and
+are kept from the window's handler, so → and ← go into and out of a
+folder in both, Home stays in the list, and K runs the Shelf's entry
+on the row's copies; each list is one Tab stop, the row last reached.
+Both tab
 strips, the ledger's and the right panel's, take ← → (wrapping), Home
 and End themselves (`stripKeys`), the tab reached chosen, under one
 core guide row, "← → on tabs". Their guide rows sit in the guide's
@@ -1923,9 +2051,18 @@ the first survey.
   `api.resolve` while the region client is `stale` or replaced is not a
   folder gone: wait for the next survey. Just after a change, a path
   not found may only not have been read again yet.
+- **One banner for placing and a pick.** A feature that needs the
+  person to choose a folder in the world or the ledger calls
+  `api.pick`, never a banner or a click handler of its own; placing
+  and a pick end each other, and Escape's `placing` entry ends
+  whichever runs. A feature whose own state follows the choice ends
+  it with `api.stopPick()` when that state changes another way (as
+  Compare does when a pair is made while choosing), so the banner
+  never offers a choice that no longer means anything.
 - **A drag that cannot move.** Ledger rows drag wherever they are not
   the root or inside an archive, in read-only and snapshot mode and as
-  region-mode refs too, so they can be dropped on the Shelf's tab. A
+  region-mode refs too, so they can be dropped on the Shelf's tab or
+  Compare's. A
   new target that moves or copies what is dropped asks `dragMoves()`
   first, as every folder target and the world's canvas do, so such a
   drag never reaches `runOp`.

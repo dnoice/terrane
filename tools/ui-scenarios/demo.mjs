@@ -1,11 +1,11 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Demo Scenario (Terrane Edition - v1.5)
+ *     - Title: Demo Scenario (Terrane Edition - v1.6)
  *     - File Name: demo.mjs
  *     - Relative Path: tools/ui-scenarios/demo.mjs
  *     - Artifact Type: test
- *     - Version: 1.5.0
+ *     - Version: 1.6.0
  *     - Date: 11/15/2026
  *     - Update: Sunday, November 15, 2026
  *     - Author: Dennis 'dendogg' Smaltz
@@ -13,6 +13,10 @@
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
  *
  * ✒ Changelog:
+ *     - 1.6.0 (11/15/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
+ *       right panel's Compare tab on the demo's two node_modules, in the
+ *       demo and in demo-regions: only in each and changed all populated,
+ *       every answer from the page.
  *     - 1.5.0 (11/15/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
  *       Shelf in the demo world: K on two items and Add to shelf on a
  *       folder, Move to… Archive as one change answered in the page, the
@@ -351,6 +355,8 @@ const demo = {
       await previewIn(t, photo);
       // The right panel's Cleanup tab on the demo's root: all four groups.
       await cleanupIn(t);
+      // Compare on the demo's two node_modules: every group answered in the page.
+      await compareIn(t);
 
       const asked = t.requests(mark).filter((r) => /\/api\//.test(r.url));
       t.check(`not one request to /api/ left the page (${asked.length})`, asked.length === 0, JSON.stringify(asked.slice(0, 3)));
@@ -394,6 +400,44 @@ async function previewOf(t, rel, fn = () => true) {
   }, rel);
   const name = rel.slice(rel.lastIndexOf('/') + 1);
   return t.until(`(_T, n) => { const st = (${pvState})(); return st.done === n && (${fn})(st) && st; }`, { args: [name], timeout: 8000 });
+}
+
+/**
+ * The demo's Compare on harbor-api's and tidepool-web's node_modules:
+ * only in each, changed and the same groups drawn, the changed group
+ * holding rows, every region and answer from the page.
+ */
+async function compareIn(t) {
+  await t.app((T) => {
+    T.api.select(null);
+    T.api.setFocus(T.S.model.root);
+    return true;
+  });
+  await t.settle();
+  const rels = ['Projects/harbor-api/node_modules', 'Projects/tidepool-web/node_modules'];
+  await t.app(async (T, rs) => {
+    const nodes = await T.api.resolveAll(rs);
+    T.api.selectAll(nodes.filter(Boolean));
+    T.api.showBTab('compare');
+    return true;
+  }, rels);
+  const st = await t.waitFor(() => {
+    const P = document.getElementById('b-panel-compare');
+    const gs = [...(P?.querySelectorAll('.cmp-group') || [])];
+    if (gs.length !== 4) return false;
+    return {
+      name: P.querySelector('.insp-name').textContent, groups: gs.map((g) => [g.dataset.group, Number(g.dataset.count)]),
+      say: P.querySelector('.cmp-say')?.textContent ?? '',
+    };
+  }, { timeout: 15000, what: 'Compare on the node_modules pair' });
+  const n = Object.fromEntries(st.groups);
+  t.check(`on the demo world Compare shows the two node_modules (${st.groups.map((g) => g.join(' ')).join(', ')})`,
+    st.name === 'Two folders named node_modules' && n['only-0'] > 0 && n['only-1'] > 0 && n.changed > 0 && /^The second is /.test(st.say), JSON.stringify(st));
+  await t.app((T) => {
+    T.api.select(null);
+    document.getElementById('b-tab-inspector').click();
+    return true;
+  });
 }
 
 /** The demo's Cleanup on its root: every group seeded, the decoy build left out. */
@@ -627,6 +671,8 @@ const demoRegions = {
       const listed = await t.until((T) => T.S.survey && !T.S.survey.pending && document.querySelectorAll('#ledger-rich .item').length > 0
         && { largest: T.S.survey.largest.length, groups: T.S.survey.dupGroups.length, items: document.querySelectorAll('#ledger-rich .item').length }, { timeout: 15000 });
       t.check(`the Survey lists in regions: ${listed?.largest} largest files, ${listed?.groups} candidate groups`, listed?.largest > 0 && listed.groups > 0, JSON.stringify(listed));
+      // Compare in regions, the regions answered in the page.
+      await compareIn(t);
 
       const asked = t.requests(mark).filter((r) => /\/api\//.test(r.url));
       t.check(`not one request to /api/ left the page (${asked.length})`, asked.length === 0, JSON.stringify(asked.slice(0, 3)));

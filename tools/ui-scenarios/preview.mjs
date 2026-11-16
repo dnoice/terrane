@@ -1,11 +1,11 @@
 /*
  * ============================================================================
  * ✒ Metadata
- *     - Title: Preview Scenarios (Terrane Edition - v1.3)
+ *     - Title: Preview Scenarios (Terrane Edition - v1.4)
  *     - File Name: preview.mjs
  *     - Relative Path: tools/ui-scenarios/preview.mjs
  *     - Artifact Type: test
- *     - Version: 1.3.0
+ *     - Version: 1.4.0
  *     - Date: 11/15/2026
  *     - Update: Sunday, November 15, 2026
  *     - Author: Dennis 'dendogg' Smaltz
@@ -13,6 +13,11 @@
  *     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
  *
  * ✒ Changelog:
+ *     - 1.4.0 (11/15/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
+ *       strip reads Inspector, Preview, Compare, Cleanup, Shelf, with
+ *       Compare's columns-2 icon; ArrowLeft from the Shelf steps through
+ *       Cleanup and Compare back to Preview. The Guide's check reads
+ *       Preview's four rows after P, Compare's following them.
  *     - 1.3.0 (11/15/2026) [dendogg + Anthropic - Claude Opus 5.5] — The
  *       strip reads Inspector, Preview, Cleanup, Shelf: End reaches the
  *       Shelf, ArrowLeft from the Inspector wraps to it, and on through
@@ -228,9 +233,9 @@ const preview = {
       icons: [...document.querySelectorAll('#b-tabs [role=tab] use')].map((u) => u.getAttribute('href').split('#')[1]),
     }));
     const rawsAtStart = raws(t, 0);
-    t.check('the right panel\'s strip reads Inspector, Preview, Cleanup, Shelf, the Inspector chosen and drawn, each with its icon',
-      JSON.stringify(s0.tabs) === JSON.stringify(['inspector:Inspector:true', 'preview:Preview:false', 'cleanup:Cleanup:false', 'shelf:Shelf:false']) && s0.bTab === 'inspector' && s0.insp && s0.panel === true
-      && s0.label === 'Inspector views' && JSON.stringify(s0.icons) === JSON.stringify(['info', 'eye', 'list-checks', 'inbox']), JSON.stringify(s0));
+    t.check('the right panel\'s strip reads Inspector, Preview, Compare, Cleanup, Shelf, the Inspector chosen and drawn, each with its icon',
+      JSON.stringify(s0.tabs) === JSON.stringify(['inspector:Inspector:true', 'preview:Preview:false', 'compare:Compare:false', 'cleanup:Cleanup:false', 'shelf:Shelf:false']) && s0.bTab === 'inspector' && s0.insp && s0.panel === true
+      && s0.label === 'Inspector views' && JSON.stringify(s0.icons) === JSON.stringify(['info', 'eye', 'columns-2', 'list-checks', 'inbox']), JSON.stringify(s0));
     t.check('nothing is read from a file before Preview is chosen', rawsAtStart.length === 0, JSON.stringify(rawsAtStart));
 
     // The palette's wrap command on a page where Preview was never chosen
@@ -275,8 +280,10 @@ const preview = {
     await t.key('ArrowLeft');
     const r6 = await t.waitFor((T) => T.S.bTab === 'cleanup', { what: 'ArrowLeft to Cleanup' }).catch(() => false);
     await t.key('ArrowLeft');
+    const r6b = await t.waitFor((T) => T.S.bTab === 'compare', { what: 'ArrowLeft to Compare' }).catch(() => false);
+    await t.key('ArrowLeft');
     const r7 = await t.waitFor((T) => T.S.bTab === 'preview', { what: 'ArrowLeft to Preview' }).catch(() => false);
-    t.check('End chooses the last tab, the Shelf, ArrowRight and ArrowLeft wrap, and ArrowLeft steps back through Cleanup to Preview', !!r3 && !!r4 && !!r5 && !!r6 && !!r7);
+    t.check('End chooses the last tab, the Shelf, ArrowRight and ArrowLeft wrap, and ArrowLeft steps back through Cleanup and Compare to Preview', !!r3 && !!r4 && !!r5 && !!r6 && !!r6b && !!r7);
 
     // A reload keeps Preview.
     await t.reload();
@@ -731,8 +738,9 @@ const preview = {
     const closer = guide.find(([h]) => h === 'Looking closer')?.[1] || [];
     const selecting = guide.find(([h]) => h === 'Selecting and going places')?.[1] || [];
     const P_ROW = 'P|Quick look at the selected file, or at Preview\'s item';
-    t.check('the Guide lists Preview\'s keys under Looking closer, after Quick look\'s P (one P row), ] as panel B\'s, and the strips\' arrows under Selecting',
-      JSON.stringify(closer.slice(closer.indexOf(P_ROW))) === JSON.stringify([P_ROW, '← →|In Preview: previous / next item',
+    // Preview's rows follow P; Compare's come after them in the same section.
+    t.check('the Guide lists Preview\'s keys under Looking closer, after Quick look\'s P (one P row), ] as the right panel\'s, and the strips\' arrows under Selecting',
+      JSON.stringify(closer.slice(closer.indexOf(P_ROW), closer.indexOf(P_ROW) + 4)) === JSON.stringify([P_ROW, '← →|In Preview: previous / next item',
         'Home  End|In Preview: first / last item, once the text is at its top / end', 'Esc|In Preview, reading one of several: back to the list'])
       && closer.filter((x) => x.startsWith('P|')).length === 1
       && selecting.includes('[  ]|Hide ledger / right panel') && selecting.includes('← → on tabs|Previous / next tab (Home, End: first, last)'), JSON.stringify({ closer, selecting }));

@@ -1,10 +1,10 @@
 <!--
 ✒ Metadata
-    - Title: Terrane Roadmap (Terrane Edition - v1.22)
+    - Title: Terrane Roadmap (Terrane Edition - v1.24)
     - File Name: ROADMAP.md
     - Relative Path: docs/ROADMAP.md
     - Artifact Type: docs
-    - Version: 1.22.0
+    - Version: 1.24.0
     - Date: 11/15/2026
     - Update: Sunday, November 15, 2026
     - Author: Dennis 'dendogg' Smaltz
@@ -12,6 +12,20 @@
     - Signature: ︻デ═─── ✦ ✦ ✦ | Aim Twice, Shoot Once!
 
 ✒ Changelog:
+    - 1.24.0 (11/15/2026) [dendogg + Anthropic - Claude Opus 5.5] —
+      Compare is on `main`, after a look in the demo world that kept a
+      row's figures whole, gave Only in heads their side's mark and a
+      key's words one line; `main` had not moved. Next is the four
+      other tabs, then the precise terrain's third part.
+    - 1.23.0 (11/15/2026) [dendogg + Anthropic - Claude Opus 5.5] —
+      Compare, the fourth of the right panel's tabs beside the
+      Inspector and the third on its strip, is recorded as complete on
+      branch `tab-compare`, waiting to be merged, with its commits, the
+      review, the fixes, the brief's points as met, what is left open
+      and the final check lines; where things stand says so, and Next
+      is its merge, then the four other tabs. The exploration loop
+      names Compare, Stage 5 records it, and the build waves name its
+      branch.
     - 1.22.0 (11/15/2026) [dendogg + Anthropic - Claude Opus 5.5] —
       The Shelf is on `main`; `main` had not moved since its branch
       was made. Next is the five other tabs, then the precise
@@ -266,9 +280,19 @@ As of 11/15/2026:
   writes one Undo. An item no longer there is marked and offered for
   removal, never dropped. Merged in the commit titled "Merge
   tab-shelf: the Shelf".
-- **Next:** the five other tabs, built and merged one at a time:
-  Compare, Activity, Notes and tags, Watch and Connections. Then the
-  precise terrain, part three, for what the second part left partly
+- **Complete, on `main`:** Compare,
+  the fourth of the tabs beside the Inspector, which stands between
+  Preview and Cleanup on the strip: two folders, or a folder and its
+  benchmark, side by side, chosen by C and a click on the other, the
+  world's menu, two folders selected or dragged onto its tab, a
+  benchmark or the palette. It shows their sizes and counts, their
+  makeup by kind and by last change as bars on one scale, and what is
+  only in one, in both but changed and the same, each ranked by size
+  and each row a way into the world. It never writes. Merged in the
+  commit titled "Merge tab-compare: Compare".
+- **Next:** the four other tabs, built and merged one at a time:
+  Activity, Notes and tags, Watch and Connections. Then the precise
+  terrain, part three, for what the second part left partly
   met or unmeasured: names at the overview in smaller windows (at
   1280 × 800 the top-level folders print none); a flight begun close
   by that comes to rest higher than it aimed, so where you are lands
@@ -280,7 +304,7 @@ As of 11/15/2026:
   section 4.
 
 Section 5 has the detail for every wave, for Preview, for the precise
-terrain's second part, for Cleanup and for the Shelf.
+terrain's second part, for Cleanup, for the Shelf and for Compare.
 
 ## 1. The exploration loop
 
@@ -292,7 +316,7 @@ One pass through the loop, and what serves each step today.
 | 2. Notice | Something stands out: a large mass, a tall fresh block, a pin, a colour | Lenses (kind, age, size, duplicates), with closed masses at their typical age under the Age lens; survey tab, working sessions and quick searches included; search pins; benchmark tags that say what changed; the time view, where what changed since a date lies flat; Cleanup's suggestions for a folder, ranked by the space they free |
 | 3. Approach | Flies toward it. It opens as it gets close | Wheel flies to the cursor; distance-driven unfolding; contents rise out of the plateau |
 | 4. Orient | Knows where they are without thinking about it | Breadcrumbs, ledger and the address follow the camera; tags on nearby plateaus; benchmarks as survey marks; horizon and haze |
-| 5. Inspect | Selects a thing and reads it | Inspector: path, size and shares, dates, composition, bytes by last change, what changed since a benchmark or a date, what changed with a file, preview, duplicates; Preview beside the world, following the selection as it moves; Quick look, stepped through a list; what a selection weighs; an archive's contents with I |
+| 5. Inspect | Selects a thing and reads it | Inspector: path, size and shares, dates, composition, bytes by last change, what changed since a benchmark or a date, what changed with a file, preview, duplicates; Preview beside the world, following the selection as it moves; Compare, two folders or a folder and its benchmark side by side, with what is only in one, what changed and what is the same; Quick look, stepped through a list; what a selection weighs; an archive's contents with I |
 | 6. Act | Opens, renames, moves, removes | Context menu, keys, placing mode, drag and drop, the command palette; many items renamed with a preview; verified copies cleaned up; a folder's suggested clutter moved aside as one change; files gathered on the Shelf from several places and moved, copied or renamed together; names and paths copied; lists saved as CSV; a terminal in the folder; every result stated in words |
 | 7. Confirm | Sees the world change to match the disk | Affected folders re-read; boxes move or rise; Undo offered in the notice |
 | 8. Leave | Goes up, back, or jumps somewhere else | Backspace, Alt+Left, 0, J to a marked return point, Fly there in the Places tab, breadcrumbs, search results and saved searches, survey entries, the command palette (Ctrl+K), a row of the Shelf |
@@ -518,6 +542,13 @@ Waves 1 and 2 (section 5), and Wave 3 delivered three of the deferrals:
 | Vertical organisation | 2, 3 (Untouched) | Strata, without using the space above: the inspector's Bytes by last change in six strata, and closed masses coloured by their typical age under the Age lens. Contents sorted Untouched, longest untouched first by typical age | Staffs above the plateaus; leaders to the largest descendants |
 | Landmarks and memory | 1, 3 (places files) | Benchmarks: B measures a folder, a verdigris survey mark and its tag stand on it, and the Places tab says what changed since, including what left it. One return point: H marks where you stand, J flies back and swaps the two. Export and import of places as a file, saved searches with them | A trail of where you have been, under a name and a drawing convention other than the traverse's; coverage; search over benchmarks beyond `is:benchmark` |
 
+Done on 11/15/2026 (Compare): two folders, or a folder and its
+benchmark, compared in the right panel, which serves two candidates at
+once. For Landmarks it sets a folder beside its benchmark in the Places
+tab's words; for Relations across the tree its empty state lists the
+folders of the same name elsewhere, a first step toward same-name
+siblings, which stay deferred in the world itself.
+
 What each answers that the ledger alone cannot:
 
 - **Interiors**: what an archive holds, and which of its files are
@@ -530,6 +561,9 @@ What each answers that the ledger alone cannot:
   how long.
 - **Landmarks**: what changed in a folder since it was measured,
   including what left it.
+- **Compare**: what two folders hold that the other does not, which
+  entries in both differ and how, and how a folder stands against its
+  benchmark, without opening either.
 
 Places are kept in this browser for this directory at this address, and
 a snapshot's apart from the live directory's. Export and import, which
@@ -589,8 +623,9 @@ Stage 5 is built in waves, Wave 3 took the same method across
 Stages 4 to 6, and Wave 4 to Stage 4 and the polish of the sheet. Each
 wave runs on its own branch (`wave-1`, `wave-2`, `qol`, then `wave-4`),
 and each tab of the right panel on one of its own (`tab-preview`, then
-`tab-cleanup`, then `tab-shelf`), in a separate worktree: its build
-steps one after another, then an adversarial review, a fix step, and a
+`tab-cleanup`, `tab-shelf` and `tab-compare`), in a separate worktree:
+its build steps one after another, then an adversarial review, a fix
+step, and a
 docs and header pass. A wave is merged into `main` and pushed only when `npm test`,
 `node tools/vendor.mjs --check` and the full `node tools/ui-check.mjs`
 pass, with and without WebGL, on the default fixture. Through Wave 2
@@ -1752,6 +1787,252 @@ scenarios, which passed in both passes.
 into the branch first. On the merged branch, `npm test`: 1,358
 passed, 0 failed, over sixteen suites. The branch is merged into
 `main` in the commit titled "Merge tab-shelf: the Shelf".
+
+### Complete: Compare
+
+Compare is the fourth of the tabs planned beside the Inspector, after
+Preview, Cleanup and the Shelf, and stands third on the strip, between
+Preview and Cleanup. It was built on its own branch, `tab-compare`,
+made from `main` at `df54441`, in a separate worktree: a build step,
+an adversarial review, a fix step, and a docs and sweep step. It joins
+the strip through `B_TABS`, reads only the tree the page holds (in
+region mode its regions and the `places` question), never writes, and
+has no route of its own.
+
+1. **The tab** (`63a4a38`, `bceb19d`, `f8bba15`, `8444c6f`,
+   `302e2ab`, `6af88fa`): `web/js/diff.js`, the logic with no DOM,
+   which `tools/compare-test.mjs` checks in Node: a side kept as
+   figures and direct entries, never nodes; exact names first, then
+   names folded on Windows and macOS only, and a name two entries of
+   one side fold to matched exactly; each row's reasons (kind,
+   unread, size, files, folders, time beyond 2 seconds, link); every
+   list ranked by size, ties in codepoint order; a benchmark pair
+   matched as `places.compare` matches it; the labels, the sentences
+   and the notes of what a region did not send or a benchmark summed.
+   `web/js/compare.js`, the tab at order 25 with a drop: the empty
+   state and its suggestions, the choice of the other folder, the
+   head with the ● and ○ sides, Swap and Clear with Undo, the
+   figures, the bars by kind and by last change on one scale, the
+   four groups and their keys, a folder removed and back, and the
+   pair kept and followed through `AFTER_OP`; C with five guide rows
+   under Looking closer, a menu group at 26, five palette commands.
+   In `app.js` (1.23.0), the seams a module cannot make: C reserved
+   for Compare, and `api.pick`, `picking` and `stopPick`, a folder
+   chosen for a feature on the placing banner. `landmarks.js` (1.5.0)
+   offers Compare with now in the inspector's Benchmark section and
+   Compare on a Places row; `palette.js` (1.4.0) lists a tab's Show
+   item first for a query that begins its name; `shelf.js` (1.1.0)
+   names a Compare row in its K guide row; the columns-2 and
+   arrow-down-up icons are vendored with `vendor.mjs`. The scenarios
+   `compare`, `compare-modes` and `compare-regions` are new, with
+   Compare's checks in `seams`, `polish` (three new poses),
+   `preview`, `cleanup`, `shelf`, `hardening` and `demo`. The later
+   commits keep a drawn pair through a hide, hear a refresh of the
+   folders on its paths, select both copies after framing one and
+   move the location to the item's folder without WebGL, and list
+   Show Compare first for Ctrl+K "compare" with all five commands.
+   Free memory stayed under the 2,500 MB this machine asks before a
+   browser starts for longer than the step's 20-minute wait, so no
+   interface check ran; in its place `compare.js` was driven in Node
+   over a throwaway stand-in for the page, which found four faults,
+   each fixed: one level of flattening where parts were nested, a
+   null written as the text "null", a refresh's Set of folder nodes
+   read as paths, and a framed row's selection collapsing to one copy.
+2. **The review.** An adversarial review made seven findings: a pair
+   made another way while the other folder was being chosen (Compare
+   these two, a drop, the palette, a benchmark) left the choice and
+   its banner running; the empty tab's suggestions did not follow the
+   selection; each side's line repeated its own name; Select all on a
+   group had no cap; Clear held back comparing two selected folders
+   for the rest of the session; a benchmark pair's Select all spoke
+   of "both copies"; and `compare.js`'s header left `setFocus` out of
+   what it reads. It has no commit of its own.
+3. **The fixes** (`150184e`): every way of making a pair ends
+   Compare's own choice quietly; the empty state is drawn again when
+   the folder it means changes, its suggestions with it, and after a
+   refresh; a side reads its name, then the folder it is in ("left ·
+   compare-lab", "2020/2020-04 Night sky · Photos"), its full path on
+   hover; Select all takes at most Findings' 5,000 items, 1,000 in
+   region mode, largest first with a row's two copies together, and
+   says how many of how many (`groupPaths`, `selectLabel`,
+   `selectedText` in `diff.js`, with fifteen new Node checks); a
+   benchmark pair's buttons and sentences never say "both copies";
+   Clear holds back only until the tab is left or the selection
+   changes; and rows still on screen in the frame before a redraw no
+   longer act on a pair they were not drawn from. New checks in the
+   `compare` scenario hold each fix. Free memory again stayed under
+   2,500 MB for the whole wait, so the scenarios were checked for
+   syntax only.
+4. **Docs and sweep**, in the commit titled "Compare docs and sweep":
+   README, ARCHITECTURE, this roadmap and every header the branch
+   touched, checked against the code. The sweep set right what the
+   new tab moved: Cleanup and the Shelf are now the strip's fourth and
+   fifth tabs in the README, ARCHITECTURE and the titles of their
+   scenarios, and the header of `features.js` says Compare is
+   installed after the Shelf; `palette.js`'s header no longer names
+   the right panel by letter. It ran the full interface check once,
+   after the docs, the branch's first run in a browser: every check of
+   `compare`, `compare-modes` and `compare-regions` passed in both
+   passes but one, and eight failed in each pass, each fixed:
+   `compare`'s Ctrl+K check read the palette before its query had
+   ranked the options, as the Shelf's once did, and now waits for the
+   ranked list; `polish` found the figures' row heads in a fourth
+   uppercase voice (C9), and a key's words, a side's name and, in the
+   drawer, the row heads cut off (C5), so the row heads now speak in
+   the tight voice, those words wrap, and in a right panel of 300 px
+   or less each row's head stands on its own line over its two
+   figures; `preview`'s Guide check wanted nothing after Preview's
+   rows under Looking closer, where Compare's now follow; and `seams`
+   pressed the banner's here button before the flight had made the
+   folder where you are, and without WebGL left the location on the
+   folder its AFTER_FOCUS check then chose, so the hook heard no
+   change. The sweep also made two things right that a person reads:
+   Select all of one item says "it", not "them", and K on a row in
+   both folders puts both copies on the shelf in one toggle with one
+   sentence (the Shelf's entry takes `run({ nodes })`), where it had
+   toggled each copy on its own and said only the second.
+
+The brief's points, as met:
+
+- **Two folders side by side in the right panel.** The strip's third
+  tab, COMPARE with the columns-2 icon, fits the drawer at 800 × 500
+  with five tabs. The pair is the selection and a second pick
+  (Compare with… on the world's menu and in the palette, or C, then a
+  click on the other folder, Enter on it in the ledger or the world,
+  or Compare with where I am on the banner), two folders selected or
+  dragged onto the tab, a folder and its benchmark (the menu, Compare
+  with now in the inspector, Compare on a Places row), or a folder of
+  the same name the empty tab offers.
+- **What it shows.** Both names, told apart by the shortest ends of
+  their paths that differ, each with the folder it is in, and both
+  sizes; makeup by kind as two bars on one scale with a key; the age
+  spread as two bars by last change on the same terms, and the date
+  since which half is unchanged; files, folders and entries; and the
+  differences in four groups, only in each, in both but changed (size,
+  or last change beyond 2 seconds; a folder by size and counts) and the
+  same, each ranked by size, each row selecting its item in both
+  folders and framing it.
+- **Swap and Clear** are one click each, Clear with Undo; the pair is
+  kept by path while the person moves around and while the tab is
+  hidden, and follows Terrane's renames and moves and their Undo.
+- **Region mode** works for what the service answers: the figures are
+  the whole folder's, a folder's 5,000 largest entries are compared
+  and the rest named in a note, the same-name folders come from
+  `GET /api/places`, and Select all takes at most 1,000.
+- **A folder removed under it** is said in words, with the other
+  side's figures kept and Compare "<the other>" with… and Clear
+  offered; it comes back when the folder does, and one removed to the
+  holding area says that restoring it brings the comparison back.
+- **Read-only safe.** It never writes. Read-only and snapshot mode
+  read as ever; Select all's sentence leaves out Copy to… and Move to…
+  when the service takes no changes.
+- **Reach.** The strip; Ctrl+K "compare", Show Compare first with
+  the five commands; the world's right-click menu, which holds every
+  action the tab offers on a folder or item (Compare with…, Compare
+  with its benchmark, Compare with its match or Select its match,
+  Compare these two); the Guide, C and five rows under Looking closer.
+  The demo world answers every route it uses, so GitHub Pages shows it
+  working.
+- **Checks.** `compare-test` for the diff (75 checks), and the
+  `compare`, `compare-modes` and `compare-regions` scenarios, which
+  pass in both passes.
+
+Left open for Dennis: the brief named a saved Place beside the
+benchmarks; Terrane's places are benchmarks and one return point, and
+the return point, a place to stand rather than a folder measured, is
+not offered as a side. "Changed" is judged by size and last change,
+never by contents; Verify by content stays where contents are
+compared. In a right panel of 300 px or less, a window of 1280 among
+them, the figures stand under their row heads rather than beside
+them, which makes the tables taller there. In region mode a
+service that fails to answer while a side is read is shown as the
+folder no longer there or unreadable, where a state of its own with
+Try again would be clearer. A click in the world that takes the
+choice has no check of its own (a scenario would need to click a box
+on the canvas); Enter on the world, on a ledger row and the banner's
+button are checked. Snapshot mode is checked only when a run serves a
+snapshot; the tab writes nothing, so it reads as in read-only mode.
+
+Final check lines, on Windows 11 with Edge 157 on an RTX 5050 laptop
+GPU and the default fixture of 3,126 files:
+
+- `node --check` on all 120 script files outside `web/vendor/`: no
+  error;
+- `npm test`: "276 passed, 0 failed", "97 passed, 0 failed",
+  "57 passed, 0 failed", "33 passed, 0 failed", "60 passed, 0 failed",
+  "52 passed, 0 failed", "54 passed, 0 failed", "31 passed, 0 failed",
+  "80 passed, 0 failed", "159 passed, 0 failed", "68 passed, 0 failed",
+  "130 passed, 0 failed", "91 passed, 0 failed", "58 passed, 0 failed",
+  "60 passed, 0 failed", "52 passed, 0 failed" and "75 passed, 0
+  failed", 1,433 in all over seventeen suites, `compare-test` last,
+  after the last change;
+- `node tools/vendor.mjs --check`:
+  "Every vendored file matches the manifest.";
+- the headers of the 26 files the branch touched that carry one
+  (`package.json`'s is `package.metadata.md`; the vendored sprite and
+  manifest carry none): the digiSpace header in full, the version
+  raised once with the date and the tag, a changelog entry on every new
+  file, shipped headers within three entries and 40 lines, and the long
+  form in `CHANGELOG.md` of every new entry of a file it tracks,
+  opening with its header's words: in rule;
+- Markdown: no line over 100 columns outside tables and fences in the
+  README, ARCHITECTURE, this roadmap, `CHANGELOG.md` and
+  `package.metadata.md`;
+- `node tools/ui-check.mjs --no-shots --port 5300`, both passes, run
+  once after the docs were written, every port it opens between 5300
+  and 5309: "3528 passed, 16 failed, 10 skipped" (1,826 passed, 8
+  failed and 4 skipped with WebGL; 1,702, 8 and 6 without), over 59
+  scenarios with WebGL and 55 without, the first run in a browser of
+  every scenario the branch wrote or touched: `compare` 44,
+  `compare-modes` 8 and `compare-regions` 7 passed in each pass,
+  `demo` 39 in each and `demo-regions` 13 and 12, `hardening` 38 and
+  31, `cleanup` 33 and `shelf` 46 in each. The skips are, in each
+  pass, Compare in snapshot mode (no snapshot served), what needs
+  `--snapshot`, what needs a synthetic snapshot and a `splash` check
+  the survey's timing left nothing to test, and without WebGL two
+  checks of what is drawn in the world. Draw calls at the baseline
+  (overview 7, selected 9, search 8, duplicate ties 10). The sixteen
+  failures, eight in each pass, were the four named under Docs and
+  sweep: `compare`'s palette check, five in `polish` (C5 and C9 at
+  1600 × 1000 and 1280 × 800, C5 in the drawer at 800 × 500), one in
+  `preview` and one in `seams` (with WebGL the scenario stopped at the
+  here button; without, its AFTER_FOCUS check);
+- after the fixes, those scenarios and the ones whose code the fixes
+  changed (`compare`, `compare-modes`, `compare-regions`, `polish`,
+  `preview`, `preview-regions`, `preview-disk`, `seams`, `shelf`,
+  `shelf-modes`, `shelf-regions`, `demo` and `demo-regions`), both
+  passes: "2064 passed, 0 failed, 2 skipped" (1,039 with WebGL and
+  1,025 without; the skips are Compare in snapshot mode). `compare`
+  45 in each pass, `polish` 697 and 695, `seams` 81 and 74, `preview`
+  64 in each.
+
+Before the merge, a look at the tab in the demo world, screenshots at
+1600 × 1000, 1280 × 800 and 800 × 500 of the menu, the empty state
+with its Same name elsewhere, the choice by C, the photo event against
+the old laptop's copy, the two `node_modules` and a row's Enter, and
+the palette, found three things to set right, in the commit titled
+"Compare's row lines keep a figure with its unit, Only in heads show
+their side's mark, and a key's words keep one line". In a narrow panel
+a changed row's line broke a figure from its unit ("786" over "KB"),
+so each run between its separators now moves to the next line whole.
+An Only in head spent its one line on a path and ended in an ellipsis
+("Only in ○ tidep…"), so it shows its side's mark, as the table and
+the bars do, with the folder's name read to a screen reader and shown
+on hover; letting heads wrap was tried and dropped, since the `polish`
+check holds every disclosure's head to one line. And a key's words
+wrapped beside its wide figure columns ("Over three" over "years"), so
+a key's figure columns are narrower than the table's. In both, changed
+still ends in an ellipsis at 1280 × 800, as any head too long for its
+line does. The scenarios they touch, `compare`, `compare-modes`,
+`compare-regions`, `polish`, `demo`, `demo-regions`, `hardening` and
+`hardening-disk`, both passes: "1706 passed, 0 failed, 2 skipped"
+(`compare` 45 in each pass, `polish` 697 with WebGL and 695 without;
+the skips are Compare in snapshot mode).
+
+`main` had not moved since the branch was made, so nothing was merged
+into the branch first. On the merged branch, `npm test`: 1,433 passed,
+0 failed, over seventeen suites. The branch is merged into `main` in
+the commit titled "Merge tab-compare: Compare".
 
 ## 6. Development datasets
 
