@@ -937,9 +937,9 @@ Pictures/2020-04 Night sky.", and the tab shows:
   smaller folder's bar is the shorter, with a key of the largest kinds
   and of the six strata;
 - What differs, four groups, each with its count and size: Only in ●
-  and the first's name, Only in ○ and the second's, In both, changed,
-  and In both, the same. The first group with anything in it is open;
-  the same is closed until opened.
+  and Only in ○, each folder's name read out by a screen reader and
+  shown on hover; In both, changed; and In both, the same. The first
+  group with anything in it is open; the same is closed until opened.
 
 Entries are matched by name, as the system compares names: on Windows
 and macOS `README.md` and `readme.md` are one entry, on Linux two. A

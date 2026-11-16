@@ -32,8 +32,12 @@
  *       mono tabular figures, ending one gutter inside the scroll gutter
  *     - A bar's track runs from B to the right gutter in the soft rule's
  *       colour; the bar inside it is as long as its folder is large
- *     - Group heads as the ledger's disclosures: the triangle at A, the
- *       words at B; rows at A and B as Cleanup's
+ *     - Group heads as the ledger's disclosures, on one line: the
+ *       triangle at A, the words at B; rows at A and B as Cleanup's,
+ *       each run of a row's line (.cmp-seg) moving to the next line
+ *       whole, so a figure never parts from its unit
+ *     - A key's figure columns are narrower than the table's, so its
+ *       words ("Over three years") keep one line
  *     - At 300 px or less each row's head stands on its own line at A,
  *       over its two figures; a side's name and folder, and a key's words,
  *       wrap rather than end in an ellipsis
@@ -160,6 +164,9 @@
   border-collapse: collapse;
   font: 400 var(--fs-fig) / 1.3 var(--mono);
 }
+/* A key's figures are short ("413 MB", "100%"): narrower columns leave its
+   words room for "Over three years" on one line. */
+.cmp-key { grid-template-columns: minmax(0, 1fr) minmax(64px, auto) minmax(64px, auto); }
 .cmp-facts thead, .cmp-facts tbody, .cmp-facts tr,
 .cmp-key thead, .cmp-key tbody, .cmp-key tr { display: contents; }
 .cmp-facts th, .cmp-facts td, .cmp-key th, .cmp-key td {
@@ -238,6 +245,9 @@
 .cmp-item .nm { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .cmp-item .path { white-space: normal; overflow-wrap: anywhere; text-overflow: clip; }
 .cmp-item .path .cmp-mark { vertical-align: 0; }
+/* A run of a row's line (compare.js partsEl) moves to the next line whole,
+   and wraps inside only when it is wider than the line. */
+.cmp-seg { display: inline-block; max-width: 100%; }
 .cmp-in { display: flex; align-self: center; color: var(--text-3); }
 .cmp-in .icon { width: var(--icon-sm); height: var(--icon-sm); }
 

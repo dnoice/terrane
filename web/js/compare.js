@@ -592,8 +592,33 @@ export function install(api) {
 
   /** Parts from diff.js's whyText, a mark carrying its side's label for a screen reader. */
   function partsEl(parts, lab) {
-    // el() flattens one level only: the parts are flattened here.
-    return parts.map((p) => (typeof p === 'string' ? p : [mark(p.mark, { inline: true, sr: `${lab[p.mark]}${p.text ? ',' : ''}` }), p.text ? ` ${p.text}` : null])).flat(Infinity);
+    // Each run between separators (" · ", "; ", ", ") is one span.cmp-seg,
+    // which moves to the next line whole, so "● 786 KB" and "larger in ○"
+    // never break inside; a separator's mark ends the run before it. The
+    // text reads exactly as the parts do.
+    const out = [];
+    let seg = [];
+    const end = () => {
+      // el() flattens one level only, and a mark with its spoken name is two.
+      if (seg.length) out.push(el('span', { class: 'cmp-seg' }, seg.flat(Infinity)));
+      seg = [];
+    };
+    for (const p of parts) {
+      if (typeof p !== 'string') {
+        seg.push(mark(p.mark, { inline: true, sr: `${lab[p.mark]}${p.text ? ',' : ''}` }));
+        if (p.text) seg.push(` ${p.text}`);
+        continue;
+      }
+      p.split(/( · |; |, )/).forEach((x, i) => {
+        if (i % 2) {
+          seg.push(x.trimEnd());
+          end();
+          out.push(' ');
+        } else if (x) seg.push(x);
+      });
+    }
+    end();
+    return out;
   }
 
   /** The head: its kind words, its name for the state, the sides and the tools. */
@@ -837,7 +862,9 @@ export function install(api) {
     const benchI = 1 - nowI;
     const partial = bench ? res.partial[benchI] : null;
     const only = (i) => {
-      if (!bench) return ['Only in ', mark(i, { inline: true }), ` ${lab[i]}`];
+      // The head is one line, as every disclosure's: the side's mark,
+      // its name read to a screen reader and shown on hover.
+      if (!bench) return ['Only in ', ...[].concat(mark(i, { inline: true, sr: lab[i] }))];
       if (i === nowI) return [partial ? `Here now, not among the ${fmtCount(R.datas[benchI].data.kept)} largest then` : 'Here now, not then'];
       return ['No longer here'];
     };
@@ -883,7 +910,8 @@ export function install(api) {
     const n = g.rows.length;
     const isOpen = open.has(g.id) ? open.get(g.id) : g.id !== 'same' && first;
     const count = shown.get(g.id) ?? ROWS;
-    const list = el('ul', { class: 'cmp-list', role: 'list', 'aria-label': g.t.filter((x) => typeof x === 'string').join('').trim() || g.id });
+    const words = g.t.map((x) => (typeof x === 'string' ? x : x.textContent)).join('').trim();
+    const list = el('ul', { class: 'cmp-list', role: 'list', 'aria-label': words || g.id });
     list.append(...g.rows.slice(0, count).map((r) => rowEl(r, g, lab)));
     roving(list);
     const parts = [];
@@ -911,7 +939,7 @@ export function install(api) {
       }, `Show ${fmtCount(Math.min(ROWS, n - count))} more (${fmtCount(n)} in all)`), `more-${g.id}`)));
     }
     const d = el('details', { class: 'cmp-group', 'data-group': g.id, 'data-count': String(n), 'data-bytes': String(g.bytes), open: isOpen },
-      el('summary', { 'data-k': `group-${g.id}` }, el('span', { class: 't' }, g.t), el('span', { class: 'sr', text: ' · ' }),
+      el('summary', { 'data-k': `group-${g.id}`, title: words }, el('span', { class: 't' }, g.t), el('span', { class: 'sr', text: ' · ' }),
         el('span', { class: 'n', text: n ? `${fmtCount(n)} · ${fmtBytes(g.bytes)}` : 'none' })),
       parts);
     d.addEventListener('toggle', () => open.set(g.id, d.open));
